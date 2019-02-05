@@ -4,6 +4,7 @@ import requests
 import threading
 import subprocess
 
+from engines.cromwell.types import CromwellFile
 from engines.engine import Engine, TaskStatus
 from utils.logger import Logger
 
@@ -66,6 +67,7 @@ class Cromwell(Engine):
     url_create = url_base
     url_poll = url_base + "/{id}/status"
     url_outputs = url_base + "/{id}/outputs"
+    url_metadata = url_base + "/{id}/metadata"
 
     def create_task(self, source, inputs: list, dependencies, workflow_type="cwl"):
         # curl \
@@ -107,7 +109,7 @@ class Cromwell(Engine):
         task_id = res["id"]
         return task_id
 
-    def poll_task(self, identifier):
+    def poll_task(self, identifier) -> TaskStatus:
         url = Cromwell.url_poll.format(id=identifier)
         r = requests.get(url)
         res = r.json()
@@ -117,7 +119,38 @@ class Cromwell(Engine):
         url = Cromwell.url_outputs.format(id=identifier)
         r = requests.get(url)
         res = r.json()
-        return res["outputs"]
+        outs = res.get("outputs")
+        if not outs: return {}
+        return {k: CromwellFile.parse(outs[k]) for k in outs}
+
+    def metadata(self, identifier, expand_subworkflows=False):
+        """
+        calls: {
+            backend
+            backendLogs
+            backendStatus
+            end
+            executionStatus
+            failures
+            inputs
+            jobId
+            returnCode
+            start
+            stderr
+            stdout
+        }
+        failures: [{failure, timestamp}]
+        id:
+        inputs:
+        outputs:
+        start:
+        status:
+        submission:
+        :param identifier:
+        :param expand_subworkflows:
+        :return:
+        """
+
 
     @staticmethod
     def _cromwell_status_to_status(status) -> TaskStatus:

@@ -9,10 +9,22 @@
 # 6. Collect output files
 # 7. Shutdown cromwell server
 import time
-from engines.cromwell.main import Cromwell
+import threading
+from engines.cromwell.main import Cromwell, CromwellTask
 
 c = Cromwell()
 c.start()
-print("started", c.process)
-time.sleep(30)
-c.stop()
+
+
+def handler(*args):
+    print(args)
+    c.stop()
+
+
+CromwellTask(
+    cromwell=c,
+    source="/Users/franklinmichael/source/shepherd/helloworld.wdl",
+    inputs="/Users/franklinmichael/source/shepherd/helloworld.json",
+    handler=handler
+).start()
+

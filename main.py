@@ -14,5 +14,5 @@ from engines.cromwell.main import Cromwell
 c = Cromwell()
 c.start()
 print("started", c.process)
-time.sleep(20)
+time.sleep(30)
 c.stop()

@@ -43,15 +43,23 @@ class Engine(ABC):
 
 
 class Task(threading.Thread):
-    def __init__(self, engine: Engine, source, inputs, dependencies=None, identifier=None, handler=None,
+    def __init__(self, engine: Engine,
+                 source=None, source_path=None,
+                 inputs=None, input_paths=None,
+                 dependencies=None, dependencies_path=None,
+
+                 identifier=None, handler=None,
                  status: Optional[TaskStatus] = None, outputs=None, task_start=None, task_finish=None,
                  should_start=None):
         threading.Thread.__init__(self)
         self.engine = engine
 
         self.source = source
-        self.inputs = inputs if isinstance(inputs, list) else [inputs]
+        self.source_path = source_path
+        self.inputs = (inputs if isinstance(inputs, list) else [inputs]) if inputs is not None else None
+        self.input_paths = (input_paths if isinstance(input_paths, list) else [input_paths]) if input_paths is not None else None
         self.dependencies = dependencies
+        self.dependencies_path = dependencies_path
         self.handler = handler
 
         self.status: Optional[TaskStatus] = status
@@ -75,10 +83,17 @@ class Task(threading.Thread):
 
     def start(self):
         Logger.log("Creating workflow and submitting to Cromwell")
+
+        ins, deps = [], None
+        if self.inputs or self.input_paths:
+            ins = self.inputs if self.inputs else [open(i) for i in self.input_paths]
+        if self.dependencies or self.dependencies_path:
+            deps = self.dependencies if self.dependencies else open(self.dependencies_path, 'rb')
+
         self.identifier = self.engine.create_task(
-            source=self.source,
-            inputs=self.inputs,
-            dependencies=self.dependencies
+            source=self.source if self.source else open(self.source_path, 'rb'),
+            inputs=ins,
+            dependencies=deps
         )
         Logger.info("Created task with id: " + self.identifier)
         Logger.log("Task is now processing")

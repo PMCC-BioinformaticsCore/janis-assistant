@@ -1,10 +1,10 @@
-import os
+import os, io
 import signal
 import requests
 import threading
 import subprocess
 
-from engines.cromwell.types import CromwellFile
+from engines.cromwell.data_types import CromwellFile
 from engines.engine import Engine, TaskStatus
 from utils.logger import Logger
 
@@ -28,17 +28,24 @@ class ProcessLogger(threading.Thread):
 
 class Cromwell(Engine):
 
-    def __init__(self, cromwell_loc="/Users/franklinmichael/broad/cromwell-36.jar"):
+    def __init__(self, cromwell_loc="/Users/franklinmichael/broad/cromwell-36.jar", config_path=None):
         self.cromwell_loc = cromwell_loc
 
+        self.config_path = config_path
         self.process = None
         self.logger = None
         self.stdout = []
 
     def start_engine(self):
         Logger.info("Starting cromwell ...")
-        cmd = ["java", "-jar", self.cromwell_loc, "server"]
+
+        cmd = ["java", "-jar"]
+        if self.config_path:
+            Logger.log("Using configuration file for Cromwell: " + self.config_path)
+            cmd.append("-Dconfig.file=" + self.config_path)
+        cmd.extend([self.cromwell_loc, "server"])
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid)
+
         for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
             if not c: continue
             Logger.log("Cromwell: " + str(c))
@@ -85,15 +92,15 @@ class Cromwell(Engine):
             raise Exception("Too many inputs (yaml files). Proposed: automatic merge into one file.")
 
         files = {
-            "workflowSource": open(source, "rb"),
+            "workflowSource": source,
         }
 
         if dependencies:
-            files["workflowDependencies"] = open(dependencies, "rb")
+            files["workflowDependencies"] = dependencies
 
         for i in range(len(inputs)):
             k = "workflowInputs" + ("" if i == 0 else f"_{i+1}")
-            files[k] = open(inputs[i], "rb")
+            files[k] = inputs[i]
 
         r = requests.post(url, files=files)
         try:
@@ -121,7 +128,7 @@ class Cromwell(Engine):
         res = r.json()
         outs = res.get("outputs")
         if not outs: return {}
-        return {k: CromwellFile.parse(outs[k]) for k in outs}
+        return {k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k] for k in outs}
 
     def metadata(self, identifier, expand_subworkflows=False):
         """

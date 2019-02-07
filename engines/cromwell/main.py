@@ -20,10 +20,15 @@ class ProcessLogger(threading.Thread):
         self.should_terminate = True
 
     def run(self):
-        for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
-            if self.should_terminate: return
-            if not c: continue
-            Logger.log(self.prefix + str(c))
+        try:
+            for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
+                if self.should_terminate: return
+                if not c: continue
+                Logger.log(self.prefix + str(c))
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            raise
 
 
 class Cromwell(Engine):
@@ -45,13 +50,14 @@ class Cromwell(Engine):
             cmd.append("-Dconfig.file=" + self.config_path)
         cmd.extend([self.cromwell_loc, "server"])
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid)
-
+        Logger.log("Cromwell is starting with pid=" + str(self.process.pid))
+        Logger.log("Cromwell will start the HTTP server, reading logs to determine when this occurs")
         for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
             if not c: continue
             Logger.log("Cromwell: " + str(c))
             # self.stdout.append(str(c))
             if "service started on" in str(c):
-                Logger.info("Service successfully started")
+                Logger.info("Service successfully started with pid=" + str(self.process.pid))
                 break
 
         if self.process:
@@ -70,7 +76,7 @@ class Cromwell(Engine):
     # API
 
     version = "v1"
-    url_base = f"http://localhost:8000/api/workflows/{version}"
+    url_base = "http://localhost:8000/api/workflows/" + str(version)
     url_create = url_base
     url_poll = url_base + "/{id}/status"
     url_outputs = url_base + "/{id}/outputs"
@@ -99,7 +105,7 @@ class Cromwell(Engine):
             files["workflowDependencies"] = dependencies
 
         for i in range(len(inputs)):
-            k = "workflowInputs" + ("" if i == 0 else f"_{i+1}")
+            k = "workflowInputs" + ("" if i == 0 else "_" + str(i+1))
             files[k] = inputs[i]
 
         r = requests.post(url, files=files)

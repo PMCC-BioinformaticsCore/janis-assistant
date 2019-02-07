@@ -1,12 +1,14 @@
 from typing import Tuple, Any, Dict
-
+import json
 from utils.logger import Logger
 
 
 class Serializable:
 
     def output(self):
-        return "include required(classpath(\"application\"))\n\n" + json.dumps(self.to_dict())
+        d = self.to_dict()
+        tl = [(k + ": " + json.dumps(d[k], indent=2)) for k in d]
+        return "include required(classpath(\"application\"))\n\n" + "\n".join(tl)
 
     @staticmethod
     def serialize(key, value) -> Tuple[str, Any]:
@@ -14,13 +16,13 @@ class Serializable:
         if isinstance(value, int) or isinstance(value, str) or isinstance(value, float):
             return key, value
         elif isinstance(value, tuple):
-            return Serializable.serialize(value[0], value[1])
+            return Serializable.serialize(value[0], Serializable.serialize(None, value[1])[1])
         elif isinstance(value, dict):
             return key, Serializable.serialize_dict(value)
         elif isinstance(value, Serializable):
             return key, value.to_dict()
 
-        raise Exception(f"Unable to serialize '{key}' of type '{type(value)}")
+        raise Exception("Unable to serialize '{key}' of type '{value}".format(key=key, value=type(value)))
 
     @staticmethod
     def serialize_dict(d):
@@ -28,7 +30,7 @@ class Serializable:
         for k, v in d.items():
             if v is None: continue
             k, v = Serializable.serialize(k, v)
-            if not v: continue
+            if not isinstance(v, bool) and not v: continue
             retval[k] = v
         return retval
 
@@ -101,89 +103,132 @@ class CromwellConfiguration(Serializable):
 
     class Backend(Serializable):
 
-        class Config(Serializable):
-            def __init__(self, submit=None, runtime_attributes=None, kill=None, check_alive=None, job_id_regex = None,
-                         concurrent_job_limit=None, default_runtime_attributes=None, filesystems=None, **kwargs):
+        class Provider(Serializable):
 
-                self.default_runtime_attributes = ("default-runtime-attributes", default_runtime_attributes)
-                self.concurrent_job_limit = ("concurrent-job-limit", concurrent_job_limit)
-                self.filesystems = filesystems
-                self.runtime_attributes = ("runtime-attributes", runtime_attributes.replace("\n", "\\n"))
+            class Config(Serializable):
+                def __init__(self, submit=None, submit_docker=None, runtime_attributes=None, kill=None, check_alive=None, job_id_regex = None,
+                             concurrent_job_limit=None, default_runtime_attributes=None, filesystems=None, **kwargs):
 
-                self.submit = submit
-                self.kill = ("kill", kill)
-                self.check_alive = ("check-alive", check_alive)
-                self.job_id_regex = ("job-id-regex", job_id_regex)
+                    self.default_runtime_attributes = ("default-runtime-attributes", default_runtime_attributes)
+                    self.concurrent_job_limit = ("concurrent-job-limit", concurrent_job_limit)
+                    self.filesystems = filesystems
+                    self.runtime_attributes = ("runtime-attributes", runtime_attributes.replace("\n", "\\n"))
 
-                for k, v in kwargs.items():
-                    self.__setattr__(k, v)
+                    self.submit = submit
+                    self.submit_docker = ("submit-docker", submit_docker)
+                    self.kill = ("kill", kill)
+                    self.check_alive = ("check-alive", check_alive)
+                    self.job_id_regex = ("job-id-regex", job_id_regex)
 
-        def __init__(self, actor_factory, config):
-            self.actor_factory = ("actor-factory", actor_factory)
-            self.config = config
+                    for k, v in kwargs.items():
+                        self.__setattr__(k, v)
 
-        @classmethod
-        def slurm(cls):
-            return cls(
-                actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
-                config=cls.Config(
-                    runtime_attributes="""
-Int runtime_minutes = 600
-Int cpus = 2
-Int requested_memory_mb_per_core = 8000
-String queue = "short" """,
-                    submit="""
-sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} -p ${queue} \
-    ${"-n " + cpus} \
-    --mem-per-cpu=${requested_memory_mb_per_core} \
-    --wrap "/usr/bin/env bash ${script}" """,
-                    kill="scancel ${job_id}",
-                    check_alive="squeue -j ${job_id}",
-                    job_id_regex="Submitted batch job (\\d+).*"
+            def __init__(self, actor_factory, config: Config):
+                self.actor_factory = ("actor-factory", actor_factory)
+                self.config = config
+
+            @classmethod
+            def slurm(cls):
+                return cls(
+                    actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+                    config=cls.Config(
+                        runtime_attributes="""
+    Int runtime_minutes = 600
+    Int cpus = 2
+    Int requested_memory_mb_per_core = 8000
+    String queue = "short" """,
+                        submit="""
+    sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} -p ${queue} \
+        ${"-n " + cpus} \
+        --mem-per-cpu=${requested_memory_mb_per_core} \
+        --wrap "/usr/bin/env bash ${script}" """,
+                        kill="scancel ${job_id}",
+                        check_alive="squeue -j ${job_id}",
+                        job_id_regex="Submitted batch job (\\d+).*"
+                    )
                 )
-            )
 
-        @classmethod
-        def torque(cls):
-            """
-            Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
-            """
-            return cls(
-                actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
-                config=cls.Config(
-                    runtime_attributes="""
-Int cpu = 1
-Float memory_gb = 1
-String queue = "batch"
-String walltime = "1:00:00" """,
-                    submit="""
-qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu} \
-    -l walltime=${walltime} ${script}
-        """,
-                    job_id_regex="(\\d+).*",
-                    kill="qdel ${job_id}",
-                    check_alive="qstat ${job_id}"
+            @classmethod
+            def slurm_container(cls, container):
+                slurm = cls.slurm()
+                if container == "udocker":
+                    constring = "udocker run ${\"--user \" + docker_user} --rm -v ${cwd}:${docker_cwd} ${docker} ${script}"
+                elif container == "singularity":
+                    constring = "singularity exec --bind ${cwd}:${docker_cwd} docker://${docker} ${job_shell} ${script}"
+                else:
+                    raise Exception("unrecognised container type: '{container}', expected one of: udocker, singularity"
+                                    .format(container=container))
+
+                slurm.config.runtime_attributes = ("runtime-attributes", """
+    Int runtime_minutes = 600
+    Int cpus = 2
+    Int requested_memory_mb_per_core = 8000
+    String? queue
+    String? docker
+    String? docker_user""")
+                slurm.config.submit = None
+                slurm.config.submit_docker = (slurm.config.submit_docker[0], """
+    sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
+        -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \\
+        --wrap \"""" + constring + "\"")
+                return slurm
+
+            @classmethod
+            def torque(cls):
+                """
+                Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
+                """
+                return cls(
+                    actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+                    config=cls.Config(
+                        runtime_attributes="""
+    Int cpu = 1
+    Float memory_gb = 1
+    String queue = "batch"
+    String walltime = "1:00:00" """,
+                        submit="""
+    qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu} \
+        -l walltime=${walltime} ${script}
+            """,
+                        job_id_regex="(\\d+).*",
+                        kill="qdel ${job_id}",
+                        check_alive="qstat ${job_id}"
+                    )
                 )
-            )
 
-        @classmethod
-        def aws(cls, s3_bucket, queue_arn):
-            return cls(
-                actor_factory="cromwell.backend.impl.aws.AwsBatchBackendLifecycleActorFactory",
+            @classmethod
+            def aws(cls, s3_bucket, queue_arn):
+                return cls(
+                    actor_factory="cromwell.backend.impl.aws.AwsBatchBackendLifecycleActorFactory",
 
-                config=cls.Config(
-                    root=f"s3://{s3_bucket}/cromwell-execution",
+                    config=cls.Config(
+                        root="s3://{bucket}/cromwell-execution".format(bucket=s3_bucket),
 
-                    numSubmitAttempts=3,
-                    numCreateDefinitionAttempts=3,
-                    auth="default",
-                    concurrent_job_limit=16,
-                    default_runtime_attributes={
-                        "queueArn": queue_arn
-                    },
-                    filesystems={"s3": {"auth": "default"}}
+                        numSubmitAttempts=3,
+                        numCreateDefinitionAttempts=3,
+                        auth="default",
+                        concurrent_job_limit=16,
+                        default_runtime_attributes={
+                            "queueArn": queue_arn
+                        },
+                        filesystems={"s3": {"auth": "default"}}
+                    )
                 )
-            )
+
+        def __init__(self, default="Local", providers=Dict[str, Provider]):
+
+            self.default = default
+            self.providers = providers
+
+            if default not in providers:
+                if len(providers) == 1:
+                    backend_key = next(iter(providers.keys()))
+                    Logger.warn("The default tag '{default}' was not found in the providers, this was automatically "
+                                "corrected to be '{backend_key}'.".format(default=default, backend_key=backend_key))
+                    self.default = default
+                else:
+                    raise Exception("The default tag '{default}' was not found in the providers and couldn't be "
+                                    "automatically corrected".format(default=default))
 
     class Engine(Serializable):
         def __init__(self, s3=Any, gcs=Any):
@@ -217,28 +262,34 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
                 auths = [self.Auth()]
             self.auths = auths if isinstance(auths, list) else [auths]
 
-    def __init__(self, webservice: Webservice=None, akka: Akka=None, metadata: Database=None, backend: Dict[str, Backend]=None):
+    class Docker(Serializable):
+        class HashLookup(Serializable):
+            def __init__(self, enabled=True):
+                self.enabled = enabled
+
+        def __init__(self, hash_lookup=None):
+            self.hash_lookup = ("hash-lookup", hash_lookup)
+
+    def __init__(self, webservice: Webservice=None, akka: Akka=None, metadata: Database=None, backend: Backend=None,
+                 docker: Docker=None):
         self.webservice = webservice
         self.akka = akka
-        self.metadaata = metadata
-
-        if isinstance(backend, dict) and "default" not in backend:
-            if len(backend) == 1:
-                backend_key = next(iter(backend.keys()))
-                backend["default"] = backend_key
-                Logger.warn("There was no 'default' tag included in the backend configuration, this was automatically "
-                            f"corrected to be '{backend_key}'.")
-            else:
-                Logger.critical("There was no 'default' tag included in the backend configuration, "
-                                "this might cause unexpected behaviour")
-
-        self.backend = backend if isinstance(backend, dict) else { "default": "DEFAULT_BACKEND", "DEFAULT_BACKEND": backend }
+        self.metadata = metadata
+        self.backend = backend
+        self.docker = docker
 
 
 if __name__ == "__main__":
     import json
-    config = CromwellConfiguration(backend={"SLURM": CromwellConfiguration.Backend.slurm()}).to_dict()
-    print(json.dumps(config, indent=4))
+    config = CromwellConfiguration(
+        backend=CromwellConfiguration.Backend(
+            default="udocker",
+            providers={"udocker": CromwellConfiguration.Backend.Provider.slurm_container(container="udocker"),}
+        ),
+        docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+    ).output()
+    print(config)
+    # open("configuration.conf", "w+").write(config)
 
 _aws = """
 include required(classpath("application"))
@@ -304,7 +355,6 @@ backend {
     }
   }
 }
-
 """
 
 _mysql = """
@@ -327,5 +377,38 @@ database {
       connectionTimeout = 3000
     }
   }
+}
+"""
+
+_udocker = """
+include required(classpath("application"))
+
+docker.hash-lookup.enabled = false
+
+backend {
+    default: udocker
+    providers: {
+        udocker {
+            # The backend custom configuration.
+            actor-factory = "cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory"
+
+            config {
+                run-in-background = true
+                # The list of possible runtime custom attributes.
+                runtime-attributes = \"""
+                String? docker
+                String? docker_user
+                ""\"
+
+                # Submit string when there is a "docker" runtime attribute.
+                submit-docker = \"""
+                udocker run \
+                  ${"--user " + docker_user} \
+                  -v ${cwd}:${docker_cwd} \
+                  ${docker} ${job_shell} ${script}
+                ""\"
+            }
+        }
+    }
 }
 """

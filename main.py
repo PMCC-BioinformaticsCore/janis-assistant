@@ -3,18 +3,25 @@ from engines.cromwell.main import Cromwell
 from engines.engine import Task
 import json
 
-# config = CromwellConfiguration(backend=CromwellConfiguration.Backend.slurm())
-# path = "config.conf"
-# with open(path, "w+") as f:
-#     f.write(config.output())
+config = CromwellConfiguration(
+    backend=CromwellConfiguration.Backend(
+        default="udocker",
+        providers={"udocker": CromwellConfiguration.Backend.Provider.slurm_container(container="udocker"), }
+    ),
+    docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+)
+path = "config.conf"
+with open(path, "w+") as f:
+    f.write(config.output())
 
-c = Cromwell(config_path=None) # path)
+c = Cromwell(config_path=path) # path)
 c.start_engine()
 
 
 def handler(task, status, outputs):
     print(outputs)
     c.stop_engine()
+
 
 wdl = """
 task hello {
@@ -24,7 +31,7 @@ task hello {
     echo 'Hello, ${name}!'
   }
   runtime {
-  	docker: "ubuntu:latest"
+    docker: "ubuntu:latest"
   }
   output {
     File response = stdout()
@@ -35,11 +42,14 @@ workflow test {
   call hello
 }"""
 
+def onerror(task):
+    c.stop_engine()
 
 Task(
     engine=c,
     source=wdl,
-    handler=handler
+    handler=handler,
+    onerror=onerror
 ).start()
 
 # Task(

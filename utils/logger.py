@@ -112,7 +112,7 @@ class Logger:
             # This is a developer error, we should never try to log with no level, it's purely for
             return
 
-        m = f"{Logger.get_prefix(level)}: {message}"
+        m = Logger.get_prefix(level) + ": " + message
         if Logger.CONSOLE_LEVEL is not None and level <= Logger.CONSOLE_LEVEL:
             print(LogLevel.get_color(level) + m + _bcolors.ENDC)
 
@@ -137,4 +137,7 @@ class Logger:
 
     @staticmethod
     def get_prefix(level: int):
-        return f"{datetime.now().replace(microsecond=0).isoformat()} [{LogLevel.get_str(level)}]"
+        return "{date} [{level}]".format(
+            date=datetime.now().replace(microsecond=0).isoformat(),
+            level=LogLevel.get_str(level)
+        )

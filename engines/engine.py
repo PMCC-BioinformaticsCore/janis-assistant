@@ -15,6 +15,9 @@ class TaskStatus(Enum):
     FAILED = 4
     TERMINATED = 5
 
+    @staticmethod
+    def FINAL_STATES(): return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
+
 
 class Engine(ABC):
 
@@ -48,7 +51,8 @@ class Task(threading.Thread):
                  inputs=None, input_paths=None,
                  dependencies=None, dependencies_path=None,
 
-                 identifier=None, handler=None,
+                 identifier=None,
+                 handler=None, onerror=None,
                  status: Optional[TaskStatus] = None, outputs=None, task_start=None, task_finish=None,
                  should_start=None):
         threading.Thread.__init__(self)
@@ -61,6 +65,7 @@ class Task(threading.Thread):
         self.dependencies = dependencies
         self.dependencies_path = dependencies_path
         self.handler = handler
+        self.onerror = onerror
 
         self.status: Optional[TaskStatus] = status
         self.identifier = identifier
@@ -98,18 +103,23 @@ class Task(threading.Thread):
         Logger.info("Created task with id: " + self.identifier)
         Logger.log("Task is now processing")
         self.task_start = datetime.now()
-        while self.status != TaskStatus.COMPLETED:
+        while self.status not in TaskStatus.FINAL_STATES():
             status = self.engine.poll_task(self.identifier)
             if status != self.status:
-                Logger.info(f"Task ('{self.identifier}') has progressed to: '{status}'")
+                Logger.info("Task ('{id}') has progressed to: '{status}'".format(id=self.identifier, status=status))
             self.status = status
             time.sleep(1)
 
         self.task_finish = datetime.now()
         Logger.info("Task ('{id}') has finished processing: {t} seconds"
                     .format(id=self.identifier, t=str((self.task_finish - self.task_start).total_seconds())))
-        Logger.log("Collecting outputs")
-        self.outputs = self.engine.outputs_task(self.identifier)
 
-        if self.handler:
-            self.handler(self, self.status, self.outputs)
+        if self.status == TaskStatus.COMPLETED:
+            Logger.log("Collecting outputs")
+            self.outputs = self.engine.outputs_task(self.identifier)
+
+            if self.handler:
+                self.handler(self, self.status, self.outputs)
+        else:
+            if self.onerror:
+                self.onerror(self)

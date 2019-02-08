@@ -1,6 +1,6 @@
 from engines.cromwell.configurations import CromwellConfiguration
 from engines.cromwell.main import Cromwell
-from engines.engine import Task
+from engines.engine import AsyncTask
 import json
 
 config = CromwellConfiguration(
@@ -14,7 +14,7 @@ path = "config.conf"
 with open(path, "w+") as f:
     f.write(config.output())
 
-c = Cromwell(config_path=path) # path)
+c = Cromwell(config_path=None) # path)
 c.start_engine()
 
 
@@ -42,16 +42,18 @@ workflow test {
   call hello
 }"""
 
+
 def onerror(task):
     c.stop_engine()
 
-Task(
+print("starting async task")
+AsyncTask(
     engine=c,
     source=wdl,
     handler=handler,
     onerror=onerror
 ).start()
-
+print("Task has been scheduled")
 # Task(
 #     engine=c,
 #     source_path="/Users/franklinmichael/Desktop/workflows-for-testing/wgs/docker/whole_genome_germline.cwl",

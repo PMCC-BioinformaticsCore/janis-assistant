@@ -63,6 +63,7 @@ class Cromwell(Engine):
         if self.process:
             self.logger = ProcessLogger(self.process, "Cromwell: ")
             self.logger.start()
+        return self
 
     def stop_engine(self):
         self.logger.terminate()

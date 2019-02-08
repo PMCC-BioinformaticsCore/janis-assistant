@@ -20,6 +20,10 @@ def process_args():
 
     parser_run = subparsers.add_parser("run")
     parser_run.add_argument("workflow")
+    parser_run.add_argument("-i", "--inputs", help="workflow inputs")
+    parser_run.add_argument("-p", "--tools", help="required dependencies")
+    parser_run.add_argument("-e", "--environment", choices=["pmac"], default="pmac")
+    parser_run.add_argument("-E", "--engine", choices=["cromwell", "cwltool"], default="cromwell")
 
     args = parser.parse_args()
     print(args)
@@ -33,6 +37,8 @@ def do_version(args):
 def do_run(args):
     Logger.info("Run the shepherd-runner with the CommandLine arguments")
     print(args)
+
+    engine = args.engine
 
 
 if __name__ == "__main__":

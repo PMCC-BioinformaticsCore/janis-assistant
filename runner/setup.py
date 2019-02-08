@@ -2,10 +2,10 @@ from setuptools import setup
 
 __version__ = "v0.0.5"
 
-setup(name="sherpherd-cli",
+setup(name="sherpherd-pipelines",
       version=__version__,
       description='Easier way to run workflows, configurable across environments',
-      long_description=open("./README.md").read(),
+      long_description=open("../README.md").read(),
       long_description_content_type="text/markdown",
       author='Michael Franklin',
       author_email='michael.franklin@petermac.org',

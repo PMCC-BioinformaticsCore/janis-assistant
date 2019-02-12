@@ -136,9 +136,9 @@ class CromwellConfiguration(Serializable):
 Int runtime_minutes = 600
 Int cpus = 2
 Int requested_memory_mb_per_core = 8000
-String queue = "short" """.strip(),
+String? queue""".strip(),
                         submit="""
-    sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} -p ${queue} \
+    sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} ${"-p " + queue} \
         ${"-n " + cpus} \
         --mem-per-cpu=${requested_memory_mb_per_core} \
         --wrap "/usr/bin/env bash ${script}" """,
@@ -158,7 +158,7 @@ String queue = "short" """.strip(),
 Int runtime_minutes = 600
 Int cpus = 2
 Int requested_memory_mb_per_core = 8000
-String queue = "short"
+String? queue
 String? docker"""
                 )
                 slurm.config.submit = None
@@ -166,7 +166,7 @@ String? docker"""
 export SINGULARITY_CACHEDIR=/data/projects/punim0755/singularity_cache
 module load Singularity/3.0.3-spartan_gcc-6.2.0
 IMAGE=/data/projects/punim0755/docker_location/${docker}
-singularity build --sandbox $IMAGE docker://${docker} > /dev/null
+echo n | singularity build --sandbox $IMAGE docker://${docker} > /dev/null
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \
     -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \
     --wrap "singularity exec --userns -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """)
@@ -174,12 +174,17 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                 return slurm
 
             @classmethod
-            def slurm_udocker(cls, container):
+            def slurm_udocker(cls):
                 slurm = cls.slurm()
 
                 slurm.config.runtime_attributes = (
                     slurm.config.runtime_attributes[0],
-                    slurm.config.runtime_attributes[1] + "\nString? docker\nString? docker_user"
+                    """
+Int runtime_minutes = 600
+Int cpus = 2
+Int requested_memory_mb_per_core = 8000
+String? queue
+String? docker"""
                 )
                 slurm.config.submit = None
                 slurm.config.submit_docker = (slurm.config.submit_docker[0], """

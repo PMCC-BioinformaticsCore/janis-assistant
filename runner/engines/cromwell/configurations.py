@@ -158,7 +158,7 @@ String queue = "short" """.strip(),
 Int runtime_minutes = 600
 Int cpus = 2
 Int requested_memory_mb_per_core = 8000
-String queue = "short
+String queue = "short"
 String? docker"""
                 )
                 slurm.config.submit = None

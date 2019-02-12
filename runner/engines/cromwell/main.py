@@ -33,16 +33,16 @@ class Cromwell(Engine):
         Logger.log("Cromwell is starting with pid=" + str(self.process.pid))
         Logger.log("Cromwell will start the HTTP server, reading logs to determine when this occurs")
         for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
-            if not c: continue
-            Logger.log("Cromwell: " + str(c))
+            cd = c.decode("utf-8").strip()
+            if not cd: continue
+            Logger.log("Cromwell: " + cd)
             # self.stdout.append(str(c))
-            if "service started on" in str(c):
+            if "service started on" in cd:
                 Logger.info("Service successfully started with pid=" + str(self.process.pid))
                 break
 
         if self.process:
             self.logger = ProcessLogger(self.process, "Cromwell: ")
-            self.logger.start()
         return self
 
     def stop_engine(self):
@@ -141,7 +141,7 @@ class Cromwell(Engine):
             task.status = status
             time.sleep(1)
 
-        task.task_finish = task.now()
+        task.task_finish = datetime.now()
         Logger.info("Task ('{id}') has finished processing: {t} seconds"
                     .format(id=task.identifier, t=str((task.task_finish - task.task_start).total_seconds())))
 

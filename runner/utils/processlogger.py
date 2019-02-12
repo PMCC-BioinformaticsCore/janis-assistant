@@ -19,7 +19,7 @@ class ProcessLogger(threading.Thread):
             for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
                 if self.should_terminate: return
                 if not c: continue
-                Logger.log(self.prefix + c.decode("utf-8"))
+                Logger.log(self.prefix + c.decode("utf-8").strip())
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")

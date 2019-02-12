@@ -14,8 +14,8 @@ path = "config.conf"
 with open(path, "w+") as f:
     f.write(config.output())
 
-# c = Cromwell(config_path=None) # path)
-c = CWLTool()
+c = Cromwell(config_path=None) # path)
+# c = CWLTool()
 c.start_engine()
 
 

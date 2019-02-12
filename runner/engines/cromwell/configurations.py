@@ -149,28 +149,38 @@ class CromwellConfiguration(Serializable):
                 )
 
             @classmethod
-            def slurm_container(cls, container):
+            def slurm_singularity(cls):
                 slurm = cls.slurm()
-                if container == "udocker":
-                    constring = "udocker run ${\"--user \" + docker_user} --rm -v ${cwd}:${docker_cwd} ${docker} ${script}"
-                elif container == "singularity":
-                    constring = "singularity exec --bind ${cwd}:${docker_cwd} docker://${docker} ${job_shell} ${script}"
-                else:
-                    raise Exception("unrecognised container type: '{container}', expected one of: udocker, singularity"
-                                    .format(container=container))
 
-                slurm.config.runtime_attributes = ("runtime-attributes", """
-    Int runtime_minutes = 600
-    Int cpus = 2
-    Int requested_memory_mb_per_core = 8000
-    String? queue
-    String? docker
-    String? docker_user""")
+                slurm.config.runtime_attributes = (
+                    slurm.config.runtime_attributes[0],
+                    slurm.config.runtime_attributes[1] + "\nString? docker"
+                )
+                slurm.config.submit = None
+                slurm.config.submit_docker = ("submit-docker", """
+export SINGULARITY_CACHEDIR=/data/projects/punim0755/singularity_cache
+module load Singularity/3.0.3-spartan_gcc-6.2.0
+IMAGE=/data/projects/punim0755/docker_location/${docker}
+singularity build --sandbox $IMAGE docker://${docker} > /dev/null
+sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \
+    -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \
+    --wrap "singularity exec --userns -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """)
+
+                return slurm
+
+            @classmethod
+            def slurm_udocker(cls, container):
+                slurm = cls.slurm()
+
+                slurm.config.runtime_attributes = (
+                    slurm.config.runtime_attributes[0],
+                    slurm.config.runtime_attributes[1] + "\nString? docker\nString? docker_user"
+                )
                 slurm.config.submit = None
                 slurm.config.submit_docker = (slurm.config.submit_docker[0], """
-    sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
-        -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \\
-        --wrap \"""" + constring + "\"")
+sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
+    -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \\
+    --wrap "udocker run ${'--user ' + docker_user} --rm -v ${cwd}:${docker_cwd} ${docker} ${script}" """)
                 return slurm
 
             @classmethod
@@ -283,10 +293,9 @@ if __name__ == "__main__":
     import json
     config = CromwellConfiguration(
         backend=CromwellConfiguration.Backend(
-            default="udocker",
-            providers={"udocker": CromwellConfiguration.Backend.Provider.slurm_container(container="udocker"),}
+            default="singularity",
+            providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
         ),
-        docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
     ).output()
     print(config)
     # open("configuration.conf", "w+").write(config)

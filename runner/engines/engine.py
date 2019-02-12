@@ -5,7 +5,7 @@ from enum import Enum
 import time
 from typing import Dict, Any, Optional
 
-from utils.logger import Logger
+from runner.utils.logger import Logger
 
 
 class TaskStatus(Enum):
@@ -30,8 +30,12 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def create_task(self, source, inputs, dependencies) -> str:
+    def start_task(self, task):
         pass
+
+    # @abstractmethod
+    # def create_task(self, source, inputs, dependencies) -> str:
+    #     pass
 
     @abstractmethod
     def poll_task(self, identifier) -> TaskStatus:
@@ -80,36 +84,7 @@ class TaskBase:
         return self.status
 
     def start(self):
-        Logger.log("Creating workflow and submitting to Cromwell")
-
-        ins, deps = [], None
-        if self.inputs or self.input_paths:
-            ins = self.inputs if self.inputs else [open(i) for i in self.input_paths]
-        if self.dependencies or self.dependencies_path:
-            deps = self.dependencies if self.dependencies else open(self.dependencies_path, 'rb')
-
-        self.identifier = self.engine.create_task(
-            source=self.source if self.source else open(self.source_path, 'rb'),
-            inputs=ins,
-            dependencies=deps
-        )
-        Logger.info("Created task with id: " + self.identifier)
-        Logger.log("Task is now processing")
-        self.task_start = datetime.now()
-        while self.status not in TaskStatus.FINAL_STATES():
-            status = self.engine.poll_task(self.identifier)
-            if status != self.status:
-                Logger.info("Task ('{id}') has progressed to: '{status}'".format(id=self.identifier, status=status))
-            self.status = status
-            time.sleep(1)
-
-        self.task_finish = datetime.now()
-        Logger.info("Task ('{id}') has finished processing: {t} seconds"
-                    .format(id=self.identifier, t=str((self.task_finish - self.task_start).total_seconds())))
-
-        if self.status == TaskStatus.COMPLETED:
-            Logger.log("Collecting outputs")
-            self.outputs = self.engine.outputs_task(self.identifier)
+        self.engine.start_task(self)
 
 
 class AsyncTask(threading.Thread, TaskBase):

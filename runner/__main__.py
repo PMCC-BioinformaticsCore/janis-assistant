@@ -1,5 +1,5 @@
 import argparse
-from utils.logger import Logger
+from runner.utils.logger import Logger
 
 __version__ = "v0.0.1"
 
@@ -9,7 +9,6 @@ def process_args():
     cmds = {
         "version": do_version,
         "run": do_run
-
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")

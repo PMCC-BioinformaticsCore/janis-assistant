@@ -1,35 +1,15 @@
-import os, io
+import os, time
 import signal
 import requests
 import threading
 import subprocess
 
-from engines.cromwell.data_types import CromwellFile
-from engines.engine import Engine, TaskStatus
-from utils.logger import Logger
+from datetime import datetime
 
-
-class ProcessLogger(threading.Thread):
-    def __init__(self, process, prefix):
-        threading.Thread.__init__(self)
-        self.should_terminate = False
-        self.process = process
-        self.prefix = prefix
-
-    def terminate(self):
-        self.should_terminate = True
-
-    def run(self):
-        try:
-            for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
-                if self.should_terminate: return
-                if not c: continue
-                Logger.log(self.prefix + str(c))
-        except KeyboardInterrupt:
-            raise
-        except Exception:
-            raise
-
+from runner.engines.cromwell.data_types import CromwellFile
+from runner.engines.engine import Engine, TaskStatus
+from runner.utils import ProcessLogger
+from runner.utils.logger import Logger
 
 class Cromwell(Engine):
 
@@ -136,6 +116,38 @@ class Cromwell(Engine):
         outs = res.get("outputs")
         if not outs: return {}
         return {k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k] for k in outs}
+
+    def start_task(self, task):
+        Logger.log("Creating workflow and submitting to Cromwell")
+
+        ins, deps = [], None
+        if task.inputs or task.input_paths:
+            ins = task.inputs if task.inputs else [open(i) for i in task.input_paths]
+        if task.dependencies or task.dependencies_path:
+            deps = task.dependencies if task.dependencies else open(task.dependencies_path, 'rb')
+
+        task.identifier = self.create_task(
+            source=task.source if task.source else open(task.source_path, 'rb'),
+            inputs=ins,
+            dependencies=deps
+        )
+        Logger.info("Created task with id: " + task.identifier)
+        Logger.log("Task is now processing")
+        task.task_start = datetime.now()
+        while task.status not in TaskStatus.FINAL_STATES():
+            status = self.poll_task(task.identifier)
+            if status != task.status:
+                Logger.info("Task ('{id}') has progressed to: '{status}'".format(id=task.identifier, status=status))
+            task.status = status
+            time.sleep(1)
+
+        task.task_finish = task.now()
+        Logger.info("Task ('{id}') has finished processing: {t} seconds"
+                    .format(id=task.identifier, t=str((task.task_finish - task.task_start).total_seconds())))
+
+        if task.status == TaskStatus.COMPLETED:
+            Logger.log("Collecting outputs")
+            task.outputs = self.outputs_task(task.identifier)
 
     def metadata(self, identifier, expand_subworkflows=False):
         """

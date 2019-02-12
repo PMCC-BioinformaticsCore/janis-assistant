@@ -1,6 +1,6 @@
-from typing import Tuple, Any, Dict
 import json
-from utils.logger import Logger
+from typing import Tuple, Any, Dict
+from runner.utils.logger import Logger
 
 
 class Serializable:

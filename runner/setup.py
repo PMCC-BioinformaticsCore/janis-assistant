@@ -11,7 +11,7 @@ setup(name="sherpherd-pipelines",
       author_email='michael.franklin@petermac.org',
       license='MIT',
       keywords=['shepherd'],
-      install_requires=['six', 'ruamel.yaml >= 0.12.4, <= 0.15.77'],
+      install_requires=[],
       packages=["runner", "engines", "engines.cromwell"],
       classifiers=[
           'Development Status :: 4 - Beta',

@@ -9,6 +9,7 @@ from runner.utils.logger import Logger
 
 
 class TaskStatus(Enum):
+    PROCESSING = 0
     QUEUED = 1
     RUNNING = 2
     COMPLETED = 3

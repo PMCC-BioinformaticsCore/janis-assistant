@@ -133,10 +133,10 @@ class CromwellConfiguration(Serializable):
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes="""
-    Int runtime_minutes = 600
-    Int cpus = 2
-    Int requested_memory_mb_per_core = 8000
-    String queue = "short" """,
+Int runtime_minutes = 600
+Int cpus = 2
+Int requested_memory_mb_per_core = 8000
+String queue = "short" """.strip(),
                         submit="""
     sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} -p ${queue} \
         ${"-n " + cpus} \
@@ -154,7 +154,12 @@ class CromwellConfiguration(Serializable):
 
                 slurm.config.runtime_attributes = (
                     slurm.config.runtime_attributes[0],
-                    slurm.config.runtime_attributes[1] + "\nString? docker"
+                    """
+Int runtime_minutes = 600
+Int cpus = 2
+Int requested_memory_mb_per_core = 8000
+String queue = "short
+String? docker"""
                 )
                 slurm.config.submit = None
                 slurm.config.submit_docker = ("submit-docker", """

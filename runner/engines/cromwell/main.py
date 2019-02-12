@@ -181,7 +181,7 @@ class Cromwell(Engine):
     @staticmethod
     def _cromwell_status_to_status(status) -> TaskStatus:
         if status == "fail":
-            return TaskStatus.QUEUED
+            return TaskStatus.PROCESSING
         elif status == "Submitted":
             return TaskStatus.QUEUED
         elif status == "Running":

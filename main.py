@@ -5,16 +5,15 @@ from runner.engines.engine import AsyncTask
 
 config = CromwellConfiguration(
     backend=CromwellConfiguration.Backend(
-        default="udocker",
-        providers={"udocker": CromwellConfiguration.Backend.Provider.slurm_container(container="udocker"), }
+        default="singularity",
+        providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
     ),
-    docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
 )
 path = "config.conf"
 with open(path, "w+") as f:
     f.write(config.output())
 
-c = Cromwell(config_path=None) # path)
+c = Cromwell(config_path=path)
 # c = CWLTool()
 c.start_engine()
 

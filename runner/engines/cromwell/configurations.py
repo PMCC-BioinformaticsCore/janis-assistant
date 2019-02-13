@@ -1,5 +1,5 @@
 import json
-from typing import Tuple, Any, Dict
+from typing import Tuple, Any, Dict, Union
 from runner.utils.logger import Logger
 
 
@@ -251,7 +251,7 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                                     "automatically corrected".format(default=default))
 
     class Engine(Serializable):
-        def __init__(self, s3=Any, gcs=Any):
+        def __init__(self, s3=Union[bool, str], gcs=Union[bool, str]):
             self.filesystems = {}
 
             if s3:

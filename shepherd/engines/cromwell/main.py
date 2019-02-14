@@ -1,15 +1,17 @@
 import os, time
 import signal
+from typing import Tuple
+
 import requests
 import threading
 import subprocess
 
 from datetime import datetime
 
-from runner.engines.cromwell.data_types import CromwellFile
-from runner.engines.engine import Engine, TaskStatus
-from runner.utils import ProcessLogger
-from runner.utils.logger import Logger
+from shepherd.engines.cromwell.data_types import CromwellFile
+from shepherd.engines.engine import Engine, TaskStatus, TaskBase
+from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
+from shepherd.utils.logger import Logger
 
 class Cromwell(Engine):
 
@@ -117,13 +119,23 @@ class Cromwell(Engine):
         if not outs: return {}
         return {k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k] for k in outs}
 
-    def start_task(self, task):
+    def start_task(self, task: TaskBase):
         Logger.log("Creating workflow and submitting to Cromwell")
 
         ins, deps = [], None
         if task.inputs or task.input_paths:
             ins = task.inputs if task.inputs else [open(i) for i in task.input_paths]
-        if task.dependencies or task.dependencies_path:
+
+        if task.dependencies:
+            d = write_files_into_buffered_zip(task.dependencies)
+            q1 = open("tools.zip", "wb+")
+            q1.write(d)
+            q1.close()
+
+            q2 = open("tools.zip", "rb")
+            deps = q2.read()
+            q2.close()
+        elif task.dependencies_path:
             deps = task.dependencies if task.dependencies else open(task.dependencies_path, 'rb')
 
         task.identifier = self.create_task(

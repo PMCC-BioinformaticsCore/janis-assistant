@@ -1,5 +1,5 @@
 import argparse
-from runner.utils.logger import Logger
+from shepherd.utils.logger import Logger
 
 __version__ = "v0.0.1"
 
@@ -34,7 +34,7 @@ def do_version(args):
 
 
 def do_run(args):
-    Logger.info("Run the shepherd-runner with the CommandLine arguments")
+    Logger.info("Run the shepherd-shepherd with the CommandLine arguments")
     print(args)
 
     engine = args.engine

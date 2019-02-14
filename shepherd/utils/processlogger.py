@@ -1,6 +1,6 @@
 import threading
 
-from runner.utils.logger import Logger
+from shepherd.utils.logger import Logger
 
 
 class ProcessLogger(threading.Thread):

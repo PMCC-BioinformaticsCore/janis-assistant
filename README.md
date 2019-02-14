@@ -4,7 +4,7 @@
 
 As a shepherd tends to his sheep, so does `Shepherd` tends and gathers pipelines. 
 
-### Pipeline runner
+### Pipeline shepherd
 
 This is the first step. Can we take a workflow written in CWL or WDL, Spin up an instance of 
 [Cromwell](https://github.com/broadinstitute/cromwell), run the workflow with any required tools and give back the user the result.

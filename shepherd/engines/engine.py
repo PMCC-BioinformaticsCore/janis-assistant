@@ -5,7 +5,7 @@ from enum import Enum
 import time
 from typing import Dict, Any, Optional
 
-from runner.utils.logger import Logger
+from shepherd.utils.logger import Logger
 
 
 class TaskStatus(Enum):

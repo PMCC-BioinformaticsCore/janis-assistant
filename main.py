@@ -1,7 +1,7 @@
-from runner.engines.cromwell.configurations import CromwellConfiguration
-from runner.engines.cromwell.main import Cromwell
-from runner.engines.cwltool.main import CWLTool
-from runner.engines.engine import AsyncTask
+from shepherd.engines.cromwell.configurations import CromwellConfiguration
+from shepherd.engines.cromwell.main import Cromwell
+from shepherd.engines.cwltool.main import CWLTool
+from shepherd.engines.engine import AsyncTask
 
 config = CromwellConfiguration(
     backend=CromwellConfiguration.Backend(
@@ -13,7 +13,7 @@ path = "config.conf"
 with open(path, "w+") as f:
     f.write(config.output())
 
-c = Cromwell(config_path=path)
+c = Cromwell(config_path=None)# path)
 # c = CWLTool()
 c.start_engine()
 

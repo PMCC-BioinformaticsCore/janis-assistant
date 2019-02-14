@@ -4,8 +4,8 @@ import subprocess
 import tempfile
 from typing import Dict, Any
 
-from runner.engines.engine import Engine, TaskStatus, TaskBase
-from runner.utils.logger import Logger
+from shepherd.engines.engine import Engine, TaskStatus, TaskBase
+from shepherd.utils.logger import Logger
 
 
 class CWLTool(Engine):

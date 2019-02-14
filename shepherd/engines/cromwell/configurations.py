@@ -1,6 +1,6 @@
 import json
 from typing import Tuple, Any, Dict, Union
-from runner.utils.logger import Logger
+from shepherd.utils.logger import Logger
 
 
 class Serializable:

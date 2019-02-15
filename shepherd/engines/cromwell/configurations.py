@@ -205,16 +205,29 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
     Int cpu = 1
     Float memory_gb = 1
     String queue = "batch"
-    String walltime = "1:00:00" """,
+    String walltime = "00:10:00"
+    String mem = "1gb"
+     """,
                         submit="""
-    qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu} \
-        -l walltime=${walltime} ${script}
+    qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
+        -l walltime=${walltime} -l mem=${mem} ${script}
             """,
                         job_id_regex="(\\d+).*",
                         kill="qdel ${job_id}",
                         check_alive="qstat ${job_id}"
                     )
                 )
+
+            @classmethod
+            def torque_singularity(cls):
+                """
+                Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
+                """
+                torq = cls.torque()
+
+                torq.config.submit_docker = ("submit-docker", """
+                
+                """)
 
             @classmethod
             def aws(cls, s3_bucket, queue_arn):

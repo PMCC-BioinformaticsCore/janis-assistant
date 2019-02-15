@@ -34,10 +34,6 @@ class Engine(ABC):
     def start_task(self, task):
         pass
 
-    # @abstractmethod
-    # def create_task(self, source, inputs, dependencies) -> str:
-    #     pass
-
     @abstractmethod
     def poll_task(self, identifier) -> TaskStatus:
         pass

@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
-__version__ = "v0.0.5"
+__version__ = "v0.0.1"
 
 modules = ["shepherd." + p for p in sorted(find_packages('./shepherd'))]
 
-setup(name="sherpherd-pipelines",
+setup(name="shepherd-pipelines",
       version=__version__,
       description='Easier way to run workflows, configurable across environments',
       long_description=open("./README.md").read(),
@@ -13,6 +13,9 @@ setup(name="sherpherd-pipelines",
       author_email='michael.franklin@petermac.org',
       license='MIT',
       keywords=['shepherd'],
+      entry_points={
+          'console_scripts': ['shepherd=shepherd.main:process_args']
+      },
       install_requires=[],
       packages=["shepherd"] + modules,
       classifiers=[
@@ -22,4 +25,4 @@ setup(name="sherpherd-pipelines",
           'Intended Audience :: Science/Research',
           'Environment :: Console',
       ],
-)
+      )

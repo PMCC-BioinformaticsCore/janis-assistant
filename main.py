@@ -3,15 +3,15 @@ from shepherd.engines.cromwell.main import Cromwell
 from shepherd.engines.cwltool.main import CWLTool
 from shepherd.engines.engine import AsyncTask
 
-config = CromwellConfiguration(
-    backend=CromwellConfiguration.Backend(
-        default="singularity",
-        providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
-    ),
-)
-path = "config.conf"
-with open(path, "w+") as f:
-    f.write(config.output())
+# config = CromwellConfiguration(
+#     backend=CromwellConfiguration.Backend(
+#         default="singularity",
+#         providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
+#     ),
+# )
+# path = "config.conf"
+# with open(path, "w+") as f:
+#     f.write(config.output())
 
 c = Cromwell(config_path=None)# path)
 # c = CWLTool()

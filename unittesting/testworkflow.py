@@ -1,10 +1,10 @@
 import unittest
+from abc import ABC
 
 from shepherd.engines.cromwell.main import Cromwell
 from shepherd.engines.engine import SyncTask, TaskStatus
 
-
-class TestWorkflowCase(unittest.TestCase):
+class TestWorkflowCase(ABC, unittest.TestCase):
 
     engine = None
 
@@ -21,15 +21,18 @@ class TestWorkflowCase(unittest.TestCase):
         print(expected, check)
         assert expected == check
 
-    # def test_bwamem(self):
-    #
-    #     task = SyncTask(engine=self.engine, source=BioinformaticsTestCase.bwamem, inputs=BioinformaticsTestCase.inps)
-    #     print(task.outputs)
-    #     self.assertBamEqual(task.outputs, "check")
+
+class TestDependencies(TestWorkflowCase):
+
+    def test_bwamem(self):
+
+        task = SyncTask(engine=self.engine, source=TestDependencies.bwamem, inputs=TestDependencies.inps)
+        print(task.outputs)
+        self.assertBamEqual(task.outputs, "check")
 
     def test_deps(self):
-        task = SyncTask(engine=self.engine, source=TestWorkflowCase.wdl_w_deps,
-                        dependencies=TestWorkflowCase.wdl_dep)
+        task = SyncTask(engine=self.engine, source=TestDependencies.wdl_w_deps,
+                        dependencies=TestDependencies.wdl_dep)
         print(task.outputs)
         self.assertEqual(task.status, TaskStatus.COMPLETED)
         self.assertTrue(True)

@@ -1,21 +1,20 @@
-import os, time
-import signal
-from typing import Tuple
-
+import os
 import requests
-import threading
+import signal
 import subprocess
-
+import time
 from datetime import datetime
+
 
 from shepherd.engines.cromwell.data_types import CromwellFile
 from shepherd.engines.engine import Engine, TaskStatus, TaskBase
 from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
 from shepherd.utils.logger import Logger
 
+
 class Cromwell(Engine):
 
-    def __init__(self, cromwell_loc="/Users/franklinmichael/broad/cromwell-36.jar", config_path=None):
+    def __init__(self, cromwell_loc=None, config_path=None):
         self.cromwell_loc = cromwell_loc
 
         self.config_path = config_path
@@ -26,11 +25,16 @@ class Cromwell(Engine):
     def start_engine(self):
         Logger.info("Starting cromwell ...")
 
+        cromwell_loc = self.cromwell_loc if self.cromwell_loc else os.getenv("cromwell")
+
+        if not cromwell_loc:
+            raise Exception("Couldn't get $cromwell from the environment, `export cromwell=\"path/to/cromwell.jar\"`")
+
         cmd = ["java", "-jar"]
         if self.config_path:
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)
-        cmd.extend([self.cromwell_loc, "server"])
+        cmd.extend([cromwell_loc, "server"])
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid)
         Logger.log("Cromwell is starting with pid=" + str(self.process.pid))
         Logger.log("Cromwell will start the HTTP server, reading logs to determine when this occurs")
@@ -127,14 +131,7 @@ class Cromwell(Engine):
             ins = task.inputs if task.inputs else [open(i) for i in task.input_paths]
 
         if task.dependencies:
-            d = write_files_into_buffered_zip(task.dependencies)
-            q1 = open("tools.zip", "wb+")
-            q1.write(d)
-            q1.close()
-
-            q2 = open("tools.zip", "rb")
-            deps = q2.read()
-            q2.close()
+            deps = write_files_into_buffered_zip(task.dependencies)
         elif task.dependencies_path:
             deps = task.dependencies if task.dependencies else open(task.dependencies_path, 'rb')
 

@@ -50,6 +50,9 @@ class CWLTool(Engine):
         if task.inputs:
             inputs = []
             for s in task.inputs:
+                if isinstance(s, dict):
+                    import ruamel.yaml
+                    s = ruamel.yaml.dump(task.inputs, default_flow_style=False)
                 t = tempfile.NamedTemporaryFile(mode="w+t")
                 t.writelines(s)
                 t.seek(0)
@@ -78,7 +81,9 @@ class CWLTool(Engine):
         self.taskid_to_process[task.identifier] = process.pid
 
         for c in iter(process.stderr.readline, 'b'):  # replace '' with b'' for Python 3
-            Logger.log("cwltool: " + c.decode("utf-8").strip())
+            stripped = c.decode("utf-8").strip()
+            if not stripped: continue
+            Logger.log("cwltool: " + stripped)
             if b"Final process status is success" in c:
                 break
         j = ""

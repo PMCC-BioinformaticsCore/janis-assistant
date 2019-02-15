@@ -128,7 +128,14 @@ class Cromwell(Engine):
 
         ins, deps = [], None
         if task.inputs or task.input_paths:
-            ins = task.inputs if task.inputs else [open(i) for i in task.input_paths]
+            for t in (task.inputs if task.inputs else task.input_paths):
+                if isinstance(t, dict):
+                    import ruamel.yaml
+                    ins.append(ruamel.yaml.dump(t, default_flow_style=False))
+                elif task.inputs:
+                    ins.append(t)
+                else:
+                    ins = open(t, 'rb')
 
         if task.dependencies:
             deps = write_files_into_buffered_zip(task.dependencies)

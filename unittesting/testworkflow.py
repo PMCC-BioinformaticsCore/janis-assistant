@@ -4,8 +4,8 @@ from abc import ABC
 from shepherd.engines.cromwell.main import Cromwell
 from shepherd.engines.engine import SyncTask, TaskStatus
 
-class TestWorkflowCase(ABC, unittest.TestCase):
 
+class TestWorkflowCase(ABC, unittest.TestCase):
     engine = None
 
     @classmethod
@@ -25,7 +25,6 @@ class TestWorkflowCase(ABC, unittest.TestCase):
 class TestDependencies(TestWorkflowCase):
 
     def test_bwamem(self):
-
         task = SyncTask(engine=self.engine, source=TestDependencies.bwamem, inputs=TestDependencies.inps)
         print(task.outputs)
         self.assertBamEqual(task.outputs, "check")
@@ -36,7 +35,6 @@ class TestDependencies(TestWorkflowCase):
         print(task.outputs)
         self.assertEqual(task.status, TaskStatus.COMPLETED)
         self.assertTrue(True)
-
 
     bwamem = """
 baseCommand:

@@ -163,14 +163,12 @@ String? docker"""
                 )
                 slurm.config.submit = None
                 slurm.config.submit_docker = ("submit-docker", """
-export SINGULARITY_CACHEDIR=/data/projects/punim0755/singularity_cache
 module load Singularity/3.0.3-spartan_gcc-6.2.0
-IMAGE=/data/projects/punim0755/docker_location/${docker}
-echo n | singularity build --sandbox $IMAGE docker://${docker} > /dev/null
+IMAGE=${cwd}/${docker}.sif
+singularity build $IMAGE docker://${docker}
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \
     -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \
     --wrap "singularity exec --userns -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """)
-
                 return slurm
 
             @classmethod

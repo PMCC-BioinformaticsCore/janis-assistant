@@ -107,7 +107,7 @@ class CromwellConfiguration(Serializable):
 
             class Config(Serializable):
                 def __init__(self, submit=None, submit_docker=None, runtime_attributes=None, kill=None, check_alive=None, job_id_regex = None,
-                             concurrent_job_limit=None, default_runtime_attributes=None, filesystems=None, **kwargs):
+                             concurrent_job_limit=None, default_runtime_attributes=None, filesystems=None, run_in_background=None, **kwargs):
 
                     self.default_runtime_attributes = ("default-runtime-attributes", default_runtime_attributes)
                     self.concurrent_job_limit = ("concurrent-job-limit", concurrent_job_limit)
@@ -119,6 +119,7 @@ class CromwellConfiguration(Serializable):
                     self.kill = ("kill", kill)
                     self.check_alive = ("check-alive", check_alive)
                     self.job_id_regex = ("job-id-regex", job_id_regex)
+                    self.run_in_background = ("run-in-background", run_in_background)
 
                     for k, v in kwargs.items():
                         self.__setattr__(k, v)
@@ -126,6 +127,17 @@ class CromwellConfiguration(Serializable):
             def __init__(self, actor_factory, config: Config):
                 self.actor_factory = ("actor-factory", actor_factory)
                 self.config = config
+
+            @classmethod
+            def udocker(cls):
+                return cls(
+                    actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+                    config=cls.Config(
+                        run_in_background=True,
+                        runtime_attributes="String? docker",
+                        submit_docker="udocker run ${'--user ' + docker_user} --rm -v ${cwd}:${docker_cwd} ${docker} ${script}"
+                    )
+                )
 
             @classmethod
             def slurm(cls):
@@ -168,7 +180,7 @@ IMAGE=${cwd}/${docker}.sif
 singularity build $IMAGE docker://${docker}
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \
     -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \
-    --wrap "singularity exec --userns -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """)
+    --wrap "singularity exec -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """)
                 return slurm
 
             @classmethod
@@ -224,7 +236,8 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                 torq = cls.torque()
 
                 torq.config.submit_docker = ("submit-docker", """
-                
+qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
+    -l walltime=${walltime} -l mem=${mem} ${script}
                 """)
 
             @classmethod

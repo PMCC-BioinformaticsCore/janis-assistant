@@ -155,7 +155,7 @@ String? queue""".strip(),
         --mem-per-cpu=${requested_memory_mb_per_core} \
         --wrap "/usr/bin/env bash ${script}" """,
                         kill="scancel ${job_id}",
-                        check_alive="squeue -j ${job_id}",
+                        check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*"
                     )
                 )
@@ -219,14 +219,51 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
     String mem = "1gb"
      """,
                         submit="""
-    qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${mem} ${script}
+    chmod +x ${script}
+    echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
+        -l walltime=${walltime} -l mem=${mem}
             """,
                         job_id_regex="(\\d+).*",
                         kill="qdel ${job_id}",
                         check_alive="qstat ${job_id}"
                     )
                 )
+
+            @classmethod
+            def torque_udocker(cls):
+                """
+                Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
+                """
+                torque = cls.torque()
+                torque.config.submit = None
+                torque.config.submit_docker = (
+                    'submit-docker',
+                    """
+    chmod +x ${script}
+    udocker pull ${docker}
+    echo "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
+        -l walltime=${walltime} -l mem=${mem}"""
+                )
+                return torque
+                # return cls(
+                #     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+                #     config=cls.Config(
+                #         runtime_attributes="""
+                # Int cpu = 1
+                # Float memory_gb = 1
+                # String queue = "batch"
+                # String walltime = "00:10:00"
+                # String mem = "1gb"
+                #  """,
+                #         submit="""
+                # qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
+                #     -l walltime=${walltime} -l mem=${mem} udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}
+                #         """,
+                #         job_id_regex="(\\d+).*",
+                #         kill="qdel ${job_id}",
+                #         check_alive="qstat ${job_id}"
+                #     )
+                # )
 
             @classmethod
             def torque_singularity(cls):
@@ -351,10 +388,21 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
             docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
         )
 
+    @staticmethod
+    def udocker_torque():
+        return CromwellConfiguration(
+            backend=CromwellConfiguration.Backend(
+                default="torque",
+                providers={"torque": CromwellConfiguration.Backend.Provider.torque_udocker()}
+            ),
+            docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+        )
+
 
 if __name__ == "__main__":
     import json
-    config = CromwellConfiguration.udocker_slurm().output()
+    # config = CromwellConfiguration.udocker_slurm().output()
+    config = CromwellConfiguration.udocker_torque().output()
     print(config)
     # open("configuration.conf", "w+").write(config)
 
@@ -416,7 +464,7 @@ backend {
             --wrap "/bin/bash ${script}"
         ""\"
         kill = "scancel ${job_id}"
-        check-alive = "squeue -j ${job_id}"
+        check-alive = "scontrol show job ${job_id}"
         job-id-regex = "Submitted batch job (\\d+).*"
       }
     }

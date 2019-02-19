@@ -135,7 +135,7 @@ class CromwellConfiguration(Serializable):
                     config=cls.Config(
                         run_in_background=True,
                         runtime_attributes="String? docker",
-                        submit_docker="udocker run ${'--user ' + docker_user} --rm -v ${cwd}:${docker_cwd} ${docker} ${script}"
+                        submit_docker="udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}"
                     )
                 )
 
@@ -200,7 +200,7 @@ String? docker"""
                 slurm.config.submit_docker = (slurm.config.submit_docker[0], """
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
     -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \\
-    --wrap "udocker run ${'--user ' + docker_user} --rm -v ${cwd}:${docker_cwd} ${docker} ${script}" """)
+    --wrap "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" """)
                 return slurm
 
             @classmethod
@@ -312,25 +312,49 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
                 self.enabled = enabled
 
         def __init__(self, hash_lookup=None):
+            if hash_lookup is not None and not isinstance(hash_lookup, self.HashLookup): raise Exception("hash-lookup is not of type CromwellConfiguration.Docker.HashLookup")
             self.hash_lookup = ("hash-lookup", hash_lookup)
 
     def __init__(self, webservice: Webservice=None, akka: Akka=None, metadata: Database=None, backend: Backend=None,
-                 docker: Docker=None):
+                 engine: Engine=None, docker: Docker=None):
+        if webservice is not None and isinstance(webservice, CromwellConfiguration.Webservice): raise Exception("webservice not of type CromwellConfiguration.Webservice")
         self.webservice = webservice
+        if akka is not None and not isinstance(akka, CromwellConfiguration.Akka): raise Exception("akka not of type CromwellConfiguration.Akka")
         self.akka = akka
+        if metadata is not None and not isinstance(metadata, CromwellConfiguration.System): raise Exception("metadata not of type CromwellConfiguration.System")
         self.metadata = metadata
+        if backend is not None and not isinstance(backend, CromwellConfiguration.Backend): raise Exception("backend not of type CromwellConfiguration.Backend")
         self.backend = backend
+        if engine is not None and not isinstance(engine, CromwellConfiguration.Engine): raise Exception("engine not of type CromwellConfiguration.Engine")
+        self.engine = engine
+        if docker is not None and not isinstance(docker, CromwellConfiguration.Docker): raise Exception("docker not of type CromwellConfiguration.Docker")
         self.docker = docker
+
+
+    @staticmethod
+    def udocker():
+        return CromwellConfiguration(
+            backend=CromwellConfiguration.Backend(
+                default="udocker",
+                providers={"udocker": CromwellConfiguration.Backend.Provider.udocker()}
+            ),
+            docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+        )
+
+    @staticmethod
+    def udocker_slurm():
+        return CromwellConfiguration(
+            backend=CromwellConfiguration.Backend(
+                default="udocker",
+                providers={"udocker": CromwellConfiguration.Backend.Provider.slurm_udocker()}
+            ),
+            docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+        )
 
 
 if __name__ == "__main__":
     import json
-    config = CromwellConfiguration(
-        backend=CromwellConfiguration.Backend(
-            default="singularity",
-            providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
-        ),
-    ).output()
+    config = CromwellConfiguration.udocker_slurm().output()
     print(config)
     # open("configuration.conf", "w+").write(config)
 

@@ -19,6 +19,8 @@ class Serializable:
             return Serializable.serialize(value[0], Serializable.serialize(None, value[1])[1])
         elif isinstance(value, dict):
             return key, Serializable.serialize_dict(value)
+        elif isinstance(value, list):
+            return key, [Serializable.serialize(None, t)[1] for t in value]
         elif isinstance(value, Serializable):
             return key, value.to_dict()
 
@@ -312,7 +314,7 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
                                     "automatically corrected".format(default=default))
 
     class Engine(Serializable):
-        def __init__(self, s3=Union[bool, str], gcs=Union[bool, str]):
+        def __init__(self, s3: Union[bool, str]=None, gcs: Union[bool, str]=None):
             self.filesystems = {}
 
             if s3:
@@ -322,19 +324,22 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
 
         @staticmethod
         def _gcs(obj):
-            if isinstance(obj, bool): return "application-default"
+            if isinstance(obj, bool): return { "auth": "application-default" }
             return obj
 
         @staticmethod
         def _s3(obj):
-            if isinstance(obj, bool): return "default"
+            if isinstance(obj, bool): return { "auth": "default" }
             return obj
 
     class AWS(Serializable):
         class Auth(Serializable):
-            def __init__(self, name="default", scheme="default"):
+            def __init__(self, name="default", scheme="default", access_key=None, secret_key=None):
                 self.name = name
                 self.scheme = scheme
+
+                self.access_key = ('access-key', access_key)
+                self.secret_key = ('secret-key', secret_key)
 
         def __init__(self, region, application_name="cromwell", auths=None):
             self.region = region
@@ -353,7 +358,7 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
             self.hash_lookup = ("hash-lookup", hash_lookup)
 
     def __init__(self, webservice: Webservice=None, akka: Akka=None, metadata: Database=None, backend: Backend=None,
-                 engine: Engine=None, docker: Docker=None):
+                 engine: Engine=None, docker: Docker=None, aws=None):
         if webservice is not None and isinstance(webservice, CromwellConfiguration.Webservice): raise Exception("webservice not of type CromwellConfiguration.Webservice")
         self.webservice = webservice
         if akka is not None and not isinstance(akka, CromwellConfiguration.Akka): raise Exception("akka not of type CromwellConfiguration.Akka")
@@ -366,7 +371,8 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         self.engine = engine
         if docker is not None and not isinstance(docker, CromwellConfiguration.Docker): raise Exception("docker not of type CromwellConfiguration.Docker")
         self.docker = docker
-
+        if aws is not None and not isinstance(aws, CromwellConfiguration.AWS): raise Exception("aws not of type CromwellConfiguration.AWS")
+        self.aws = aws
 
     @staticmethod
     def udocker():
@@ -401,9 +407,17 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
 
 if __name__ == "__main__":
     import json
-    # config = CromwellConfiguration.udocker_slurm().output()
-    config = CromwellConfiguration.udocker_torque().output()
-    print(config)
+    # config = CromwellConfiguration.udocker_slurm()
+    # config = CromwellConfiguration.udocker_torque()
+    config = CromwellConfiguration(
+        aws=CromwellConfiguration.AWS(region="ap-southeast-2", auths=[CromwellConfiguration.AWS.Auth()]),
+        engine=CromwellConfiguration.Engine(s3=True)
+        # backend=CromwellConfiguration.Backend(
+        #     default="singularity",
+        #     providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
+        # ),
+    )
+    print(config.output())
     # open("configuration.conf", "w+").write(config)
 
 _aws = """

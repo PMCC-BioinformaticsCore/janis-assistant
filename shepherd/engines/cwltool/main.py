@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from typing import Dict, Any
@@ -49,11 +50,13 @@ class CWLTool(Engine):
 
         if task.inputs:
             inputs = []
+            if len(task.inputs) > 1:
+                raise Exception("CWLTool currently only supports 1 input file")
             for s in task.inputs:
                 if isinstance(s, dict):
                     import ruamel.yaml
-                    s = ruamel.yaml.dump(task.inputs, default_flow_style=False)
-                t = tempfile.NamedTemporaryFile(mode="w+t")
+                    s = ruamel.yaml.dump(s, default_flow_style=False)
+                t = tempfile.NamedTemporaryFile(mode="w+t", suffix=".yml")
                 t.writelines(s)
                 t.seek(0)
                 inputs.append(t)
@@ -62,10 +65,16 @@ class CWLTool(Engine):
 
         if task.dependencies:
             # might need to work out where to put these
-            t = tempfile.NamedTemporaryFile(mode="w+t")
-            t.writelines(task.dependencies)
-            temps.append(t)
-            toolspath = t.name
+
+            tmp_container = tempfile.tempdir + "/"
+            tmpdir = tmp_container + "tools/"
+            shutil.rmtree(tmpdir)
+            os.mkdir(tmpdir)
+            for (f, d) in task.dependencies:
+                with open(tmp_container + f, "w+") as q:
+                    q.write(d)
+            temps.append(tmp_container)
+            toolspath = tmp_container
 
         # start cwltool
         cmd = ["cwltool", *self.options]
@@ -74,16 +83,17 @@ class CWLTool(Engine):
             if len(inputpaths) > 1:
                 raise Exception("CWLTool only accepts 1 input, Todo: Implement inputs merging later")
             cmd.append(inputpaths[0])
-        if toolspath: cmd.append(toolspath)
+        # if toolspath: cmd.extend(["--basedir", toolspath])
 
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE)
+        Logger.log("Running command: '" + " ".join(cmd) + "'")
         Logger.info("CWLTool has started with pid=" + str(process.pid))
         self.taskid_to_process[task.identifier] = process.pid
 
         for c in iter(process.stderr.readline, 'b'):  # replace '' with b'' for Python 3
-            stripped = c.decode("utf-8").strip()
-            if not stripped: continue
-            Logger.log("cwltool: " + stripped)
+            line = c.decode("utf-8").rstrip()
+            if not line.strip(): continue
+            Logger.log("cwltool: " + line)
             if b"Final process status is success" in c:
                 break
         j = ""
@@ -96,10 +106,19 @@ class CWLTool(Engine):
                 break
             except:
                 continue
-        print("Completed!")
+        Logger.info("Workflow has completed execution")
+        process.terminate()
+
         print(json.loads(j))
 
 
-
-
-
+        # close temp files
+        Logger.log(f"Closing {len(temps)} temp files")
+        for t in temps:
+            if hasattr(t, "close"):
+                t.close()
+            if isinstance(t, str):
+                if os.path.isdir(t):
+                    os.rmdir(t)
+                else:
+                    os.remove(t)

@@ -1,7 +1,6 @@
 from typing import Tuple, List
-
+import tempfile
 from .processlogger import ProcessLogger
-
 
 def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
     """
@@ -15,21 +14,26 @@ def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
     # but it ends up: -> tools/...listoftools.cwl
     import subprocess, os
 
-    zipfilename = "tools.zip"
+
+    base = tempfile.tempdir + "/"
+    zipfilename = base + "tools.zip"
 
     if os.path.exists(zipfilename):
         os.remove(zipfilename)
-    if os.path.exists("tools"):
+    if os.path.exists(base + "tools"):
         import shutil
-        shutil.rmtree("tools")
-    os.mkdir("tools")
+        shutil.rmtree(base + "tools")
+    os.mkdir(base + "tools")
 
     for (f, d) in files:
-        with open(f, "w+") as q:
+        with open(base + f, "w+") as q:
             q.write(d)
+    prevwd = os.getcwd()
+    os.chdir(base)
     subprocess.call(["zip", "-r", "tools.zip", "tools/"])
-    with open(zipfilename, "rb") as z:
-        return z.read()
+    os.chdir(prevwd)
+
+    return open(zipfilename, "rb")
 
     # import io, zipfile
     #
@@ -42,3 +46,4 @@ def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
     # print(zip.printdir())
     # print(zip_buf.getvalue())
     # return zip_buf.getvalue()
+

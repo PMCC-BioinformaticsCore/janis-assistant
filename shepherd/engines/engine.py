@@ -82,6 +82,7 @@ class TaskBase:
 
     def start(self):
         self.engine.start_task(self)
+        return self
 
 
 class AsyncTask(threading.Thread, TaskBase):

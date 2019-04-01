@@ -76,7 +76,7 @@ class CromwellConfiguration(Serializable):
             self.number_of_cache_read_workers = ("number-of-cache-read-workers", number_of_cache_read_workers)
 
     class Database(Serializable):
-        class Db:
+        class Db(Serializable):
             def __init__(self, driver, url, user, password, connection_timeout):
                 self.driver = driver
                 self.url = url
@@ -90,12 +90,12 @@ class CromwellConfiguration(Serializable):
             self.insert_batch_size = ("insert-batch-size", insert_batch_size)
 
         @classmethod
-        def mysql(cls, username=None, password=None, connection_timeout=None,
-                  url="jdbc:hsqldb:file:metadata-db-file-path;shutdown=false;hsqldb.tx=mvcc"):
+        def mysql(cls, username=None, password=None, connection_timeout=5000,
+                  url="jdbc:mysql://localhost/cromwell?rewriteBatchedStatements=true&useSSL=false&serverTimezone=UTC"):
             return cls(
-                profile="slick.jdbc.HsqldbProfile$",
+                profile="slick.jdbc.MySQLProfile$",
                 db=cls.Db(
-                    driver="org.hsqldb.jdbcDriver",
+                    driver="com.mysql.jdbc.Driver",
                     url=url,
                     user=username,
                     password=password,
@@ -357,14 +357,16 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
             if hash_lookup is not None and not isinstance(hash_lookup, self.HashLookup): raise Exception("hash-lookup is not of type CromwellConfiguration.Docker.HashLookup")
             self.hash_lookup = ("hash-lookup", hash_lookup)
 
-    def __init__(self, webservice: Webservice=None, akka: Akka=None, metadata: Database=None, backend: Backend=None,
-                 engine: Engine=None, docker: Docker=None, aws=None):
+    def __init__(self, webservice: Webservice=None, akka: Akka=None, system: System=None, database: Database=None,
+                 backend: Backend=None, engine: Engine=None, docker: Docker=None, aws=None):
         if webservice is not None and isinstance(webservice, CromwellConfiguration.Webservice): raise Exception("webservice not of type CromwellConfiguration.Webservice")
         self.webservice = webservice
         if akka is not None and not isinstance(akka, CromwellConfiguration.Akka): raise Exception("akka not of type CromwellConfiguration.Akka")
         self.akka = akka
-        if metadata is not None and not isinstance(metadata, CromwellConfiguration.System): raise Exception("metadata not of type CromwellConfiguration.System")
-        self.metadata = metadata
+        if system is not None and not isinstance(system, CromwellConfiguration.System): raise Exception("system not of type CromwellConfiguration.System")
+        self.system = system
+        if database is not None and not isinstance(database, CromwellConfiguration.Database): raise Exception("database not of type CromwellConfiguration.Database")
+        self.database = database
         if backend is not None and not isinstance(backend, CromwellConfiguration.Backend): raise Exception("backend not of type CromwellConfiguration.Backend")
         self.backend = backend
         if engine is not None and not isinstance(engine, CromwellConfiguration.Engine): raise Exception("engine not of type CromwellConfiguration.Engine")

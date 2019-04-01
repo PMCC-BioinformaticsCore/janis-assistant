@@ -1,4 +1,5 @@
 import os
+import tempfile
 import requests
 import signal
 import subprocess
@@ -7,6 +8,7 @@ from datetime import datetime
 
 
 from shepherd.engines.cromwell.data_types import CromwellFile
+from shepherd.engines.cromwell.configurations import CromwellConfiguration
 from shepherd.engines.engine import Engine, TaskStatus, TaskBase
 from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
 from shepherd.utils.logger import Logger
@@ -14,8 +16,17 @@ from shepherd.utils.logger import Logger
 
 class Cromwell(Engine):
 
-    def __init__(self, cromwell_loc=None, config_path=None):
+    def __init__(self, cromwell_loc=None, config_path=None, config=None):
         self.cromwell_loc = cromwell_loc
+
+        if config and not config_path:
+            f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".conf", delete=False)
+            lines = config
+            if isinstance(config, CromwellConfiguration):
+                lines = config.output()
+            f.writelines(lines)
+            f.seek(0)
+            config_path = f.name
 
         self.config_path = config_path
         self.process = None
@@ -35,11 +46,14 @@ class Cromwell(Engine):
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)
         cmd.extend([cromwell_loc, "server"])
+
+        Logger.log(f"Starting Cromwell with command: '{' '.join(cmd)}'")
         self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid)
         Logger.log("Cromwell is starting with pid=" + str(self.process.pid))
         Logger.log("Cromwell will start the HTTP server, reading logs to determine when this occurs")
         for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
-            cd = c.decode("utf-8").strip()
+            cd = c.decode("utf-8").rstrip()
+
             if not cd: continue
             Logger.log("Cromwell: " + cd)
             # self.stdout.append(str(c))

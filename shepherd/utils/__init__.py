@@ -14,8 +14,7 @@ def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
     # but it ends up: -> tools/...listoftools.cwl
     import subprocess, os
 
-
-    base = tempfile.tempdir + "/"
+    base = tempfile.gettempdir() + "/"
     zipfilename = base + "tools.zip"
 
     if os.path.exists(zipfilename):

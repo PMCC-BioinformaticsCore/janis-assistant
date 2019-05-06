@@ -3,17 +3,24 @@ from shepherd.engines.cromwell.main import Cromwell
 from shepherd.engines.cwltool.main import CWLTool
 from shepherd.engines.engine import AsyncTask
 
-# config = CromwellConfiguration(
-#     backend=CromwellConfiguration.Backend(
-#         default="singularity",
-#         providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
-#     ),
-# )
-# path = "config.conf"
-# with open(path, "w+") as f:
-#     f.write(config.output())
+config = CromwellConfiguration(
+    aws=CromwellConfiguration.AWS(region="ap-southeast-2", auths=[
+        CromwellConfiguration.AWS.Auth(scheme="custom_keys",
+                                       access_key="AKIAISQWTZSOBRUJGROA",
+                                       secret_key="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")
+    ]),
+    engine=CromwellConfiguration.Engine(s3=True)
+    # backend=CromwellConfiguration.Backend(
+    #     default="singularity",
+    #     providers={"singularity": CromwellConfiguration.Backend.Provider.slurm_singularity()}
+    # ),
+)
+path = "config.conf"
+with open(path, "w+") as f:
+    print("Configuration: \n" + "\n\t".join(config.output().splitlines()))
+    f.write(config.output())
 
-c = Cromwell(config_path=None)# path)
+c = Cromwell(config_path=path)
 # c = CWLTool()
 c.start_engine()
 
@@ -42,6 +49,24 @@ workflow test {
   call hello
 }"""
 
+wdl_aws = """
+task cat_string {
+  String str
+  
+  command {
+    cat ${str}
+  }
+  output {
+    File response = stdout()
+  }
+}
+
+workflow test {
+  File inp = "s3://shepherd-test-data/hello.txt"
+  File inpstr = read_string(inp)
+  call cat_string { input: str=inpstr }
+}"""
+
 cwl = """
 cwlVersion: v1.0
 class: CommandLineTool
@@ -67,7 +92,7 @@ def onerror(task):
 print("starting async task")
 AsyncTask(
     engine=c,
-    source=cwl,
+    source=wdl_aws,
     handler=handler,
     onerror=onerror
 ).start()

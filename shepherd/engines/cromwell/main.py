@@ -12,11 +12,17 @@ from shepherd.engines.cromwell.configurations import CromwellConfiguration
 from shepherd.engines.engine import Engine, TaskStatus, TaskBase
 from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
 from shepherd.utils.logger import Logger
+from shepherd.engines.cromwell.metadata import cromwell_status_to_status, CromwellMetadata
 
 
 class Cromwell(Engine):
 
-    def __init__(self, cromwell_loc=None, config_path=None, config=None):
+    environment_map = {
+        "default": "localhost:8000",
+        "pmac": "vmdv-res-seq.unix.petermac.org.au:8000"
+    }
+
+    def __init__(self, cromwell_loc=None, config_path=None, config=None, environment=None):
         self.cromwell_loc = cromwell_loc
 
         if config and not config_path:
@@ -28,12 +34,26 @@ class Cromwell(Engine):
             f.seek(0)
             config_path = f.name
 
+        if environment and environment not in Cromwell.environment_map:
+            raise Exception(f"The environment '{environment}' was not recognised")
+
+        self.environment = environment
+        host = Cromwell.environment_map.get(environment)
+        self.host = host if host else Cromwell.environment_map.get("default")
+
         self.config_path = config_path
         self.process = None
         self.logger = None
         self.stdout = []
 
     def start_engine(self):
+
+        if self.environment:
+            return Logger.info("Cromwell environment discovered, skipping local instance")
+
+        if self.process:
+            return Logger.info(f"Discovered Cromwell instance (pid={self.process}), skipping start")
+
         Logger.info("Starting cromwell ...")
 
         cromwell_loc = self.cromwell_loc if self.cromwell_loc else os.getenv("cromwell")
@@ -77,11 +97,21 @@ class Cromwell(Engine):
     # API
 
     version = "v1"
-    url_base = "http://localhost:8000/api/workflows/" + str(version)
-    url_create = url_base
-    url_poll = url_base + "/{id}/status"
-    url_outputs = url_base + "/{id}/outputs"
-    url_metadata = url_base + "/{id}/metadata"
+
+    def url_base(self):
+        return f"http://{self.host}/api/workflows/" + str(Cromwell.version)
+
+    def url_create(self):
+        return self.url_base()
+
+    def url_poll(self, id):
+        return self.url_base() + f"/{id}/status"
+
+    def url_outputs(self, id):
+        return self.url_base() + f"/{id}/outputs"
+
+    def url_metadata(self, id, expand_workflows=True):
+        return self.url_base() + f"/{id}/metadata?expandSubWorkflows={expand_workflows}"
 
     def create_task(self, source, inputs: list, dependencies, workflow_type="cwl"):
         # curl \
@@ -92,7 +122,7 @@ class Cromwell(Engine):
         #   -F "workflowInputs=@whole_genome_germline-local.yml;type=" \
         #   -F "workflowDependencies=@tools-gatk4.0.1.2.zip;type=application/zip
 
-        url = Cromwell.url_base
+        url = self.url_create()
 
         max_inputs = 5
         if len(inputs) > max_inputs:
@@ -124,13 +154,13 @@ class Cromwell(Engine):
         return task_id
 
     def poll_task(self, identifier) -> TaskStatus:
-        url = Cromwell.url_poll.format(id=identifier)
+        url = self.url_poll(id=identifier)
         r = requests.get(url)
         res = r.json()
-        return self._cromwell_status_to_status(res["status"])
+        return cromwell_status_to_status(res["status"])
 
     def outputs_task(self, identifier):
-        url = Cromwell.url_outputs.format(id=identifier)
+        url = self.url_outputs(id=identifier)
         r = requests.get(url)
         res = r.json()
         outs = res.get("outputs")
@@ -208,15 +238,4 @@ class Cromwell(Engine):
         """
 
 
-    @staticmethod
-    def _cromwell_status_to_status(status) -> TaskStatus:
-        if status == "fail":
-            return TaskStatus.PROCESSING
-        elif status == "Submitted":
-            return TaskStatus.QUEUED
-        elif status == "Running":
-            return TaskStatus.RUNNING
-        elif status == "Succeeded":
-            return TaskStatus.COMPLETED
-        else:
-            return TaskStatus.FAILED
+

@@ -68,13 +68,13 @@ class CWLTool(Engine):
 
             tmp_container = tempfile.tempdir + "/"
             tmpdir = tmp_container + "tools/"
-            shutil.rmtree(tmpdir)
+            if os.path.exists(tmpdir):
+                shutil.rmtree(tmpdir)
             os.mkdir(tmpdir)
             for (f, d) in task.dependencies:
                 with open(tmp_container + f, "w+") as q:
                     q.write(d)
-            temps.append(tmp_container)
-            toolspath = tmp_container
+            temps.append(tmpdir)
 
         # start cwltool
         cmd = ["cwltool", *self.options]
@@ -118,7 +118,7 @@ class CWLTool(Engine):
             if hasattr(t, "close"):
                 t.close()
             if isinstance(t, str):
-                if os.path.isdir(t):
-                    os.rmdir(t)
+                if os.path.exists(t) and os.path.isdir(t):
+                    shutil.rmtree(t)
                 else:
                     os.remove(t)

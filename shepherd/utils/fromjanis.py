@@ -24,4 +24,3 @@ def from_janis(wf_tool: Tool, engine=None, task_type: Type[TaskBase] = SyncTask)
     task = task_type(engine=engine, source=source, inputs=inputs, dependencies=deps)
 
     return task
-

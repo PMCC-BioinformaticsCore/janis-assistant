@@ -1,23 +1,8 @@
 import threading
 from abc import ABC, abstractmethod
-from datetime import datetime
-from enum import Enum
-import time
 from typing import Dict, Any, Optional
 
-from shepherd.utils.logger import Logger
-
-
-class TaskStatus(Enum):
-    PROCESSING = 0
-    QUEUED = 1
-    RUNNING = 2
-    COMPLETED = 3
-    FAILED = 4
-    TERMINATED = 5
-
-    @staticmethod
-    def FINAL_STATES(): return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
+from shepherd.data.schema import TaskStatus
 
 
 class Engine(ABC):

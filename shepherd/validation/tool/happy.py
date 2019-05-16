@@ -12,7 +12,7 @@ from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed, VcfTabix
 class HapPyValidator(CommandTool):
     @staticmethod
     def tool() -> str:
-        return "hap.py"
+        return "happy_validator"
 
     @staticmethod
     def docker():
@@ -32,7 +32,7 @@ class HapPyValidator(CommandTool):
             ToolInput("reportPrefix", String(), prefix="--report-prefix",
                       doc="(-o)  Filename prefix for report output."),
             ToolInput("reference", FastaWithDict(), prefix="--reference", doc="(-r)  Specify a reference file."),
-            ToolInput("targetRegions", Bed(), prefix="--target-regions",
+            ToolInput("targetRegions", Bed(optional=True), prefix="--target-regions",
                       doc="(-T)  Restrict analysis to given (dense) regions (using -T in bcftools)."),
 
             ToolInput("version", Boolean(optional=True), prefix="--version", doc="(-v) Show version number and exit."),
@@ -79,11 +79,11 @@ class HapPyValidator(CommandTool):
             ToolInput("ciAlpha", Int(optional=True), prefix="--ci-alpha",
                       doc="Confidence level for Jeffrey's CI for recall, precision and fraction of non-assessed calls."),
             ToolInput("noJson", Boolean(optional=True), prefix="--no-json", doc="Disable JSON file output."),
-            ToolInput("location", Array(String(optional=True)), prefix="--location", separator=",",
+            ToolInput("location", Array(String(), optional=True), prefix="--location", separator=",",
                       doc="(-l)  Comma-separated list of locations [use naming after preprocessing], "
                           "when not specified will use whole VCF."),
             ToolInput("passOnly", Boolean(optional=True), prefix="--pass-only", doc="Keep only PASS variants."),
-            ToolInput("filtersOnly", Array(String(optional=True)), prefix="--filters-only", separator=",",
+            ToolInput("filtersOnly", Array(String(), optional=True), prefix="--filters-only", separator=",",
                       doc=" Specify a comma-separated list of filters to apply "
                           "(by default all filters are ignored / passed on."),
             ToolInput("restrictRegions", Boolean(optional=True), prefix="--restrict-regions",

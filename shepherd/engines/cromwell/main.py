@@ -110,8 +110,8 @@ class Cromwell(Engine):
     def url_outputs(self, id):
         return self.url_base() + f"/{id}/outputs"
 
-    def url_metadata(self, id, expand_workflows=True):
-        return self.url_base() + f"/{id}/metadata?expandSubWorkflows={expand_workflows}"
+    def url_metadata(self, id, expand_subworkflows=True):
+        return self.url_base() + f"/{id}/metadata?expandSubWorkflows={expand_subworkflows}"
 
     def create_task(self, source, inputs: list, dependencies, workflow_type="cwl"):
         # curl \
@@ -209,7 +209,7 @@ class Cromwell(Engine):
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
 
-    def metadata(self, identifier, expand_subworkflows=False):
+    def metadata(self, identifier, expand_subworkflows=True):
         """
         calls: {
             backend
@@ -236,6 +236,9 @@ class Cromwell(Engine):
         :param expand_subworkflows:
         :return:
         """
+        url = self.url_metadata(id=identifier, expand_subworkflows=expand_subworkflows)
+        r = requests.get(url)
+        return CromwellMetadata(r.json())
 
 
 

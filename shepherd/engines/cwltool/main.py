@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 from typing import Dict, Any
 
+from shepherd.data.schema import TaskMetadata
 from shepherd.engines.engine import Engine, TaskStatus, TaskBase
 from shepherd.utils.logger import Logger
 
@@ -15,6 +16,8 @@ class CWLTool(Engine):
 
     def __init__(self, options=None):
         self.options = options if options else []
+        self.process = None
+        self.pid = None
 
     def start_engine(self):
         Logger.info("Cwltool doesn't run in a server mode, an instance will "
@@ -35,6 +38,28 @@ class CWLTool(Engine):
 
     def outputs_task(self, identifier) -> Dict[str, Any]:
         pass
+
+    def terminate_task(self, identifier) -> TaskStatus:
+        """
+        This CWLTool implementation is not super great. It should start the process and issue an async task
+        to watch out for progress and eventually report back to the sqlite database. Then when 'terminate_task'
+        is called, it could kill this process (eventually self.pid | self.process) and cleanup the metadata.
+
+        :param identifier:
+        :return:
+        """
+        raise NotImplementedError("terminate_task needs to be implemented in CWLTool, may require rework of tool")
+
+    def metadata(self, identifier) -> TaskMetadata:
+        """
+        So CWLTool doesn't really have a metadata thing. See the 'terminate_task' description, but this
+        implementation should instead create a thread to watch for process, and write metadata back to sqlite.
+        Then this method could just read from the sqlite database.
+
+        :param identifier:
+        :return:
+        """
+        raise NotImplementedError("metadata needs to be implemented in CWLTool, may require rework of tool")
 
     def start_task(self, task: TaskBase):
         task.identifier = self.create_task(None, None, None)

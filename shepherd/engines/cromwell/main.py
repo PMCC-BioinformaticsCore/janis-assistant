@@ -6,7 +6,7 @@ import subprocess
 import time
 from datetime import datetime
 
-
+from shepherd.data.schema import TaskMetadata
 from shepherd.engines.cromwell.data_types import CromwellFile
 from shepherd.engines.cromwell.configurations import CromwellConfiguration
 from shepherd.engines.engine import Engine, TaskStatus, TaskBase
@@ -19,10 +19,9 @@ class Cromwell(Engine):
 
     environment_map = {
         "default": "localhost:8000",
-        "pmac": "vmdv-res-seq.unix.petermac.org.au:8000"
     }
 
-    def __init__(self, cromwell_loc=None, config_path=None, config=None, environment=None):
+    def __init__(self, cromwell_loc=None, config_path=None, config=None, host=None):
         self.cromwell_loc = cromwell_loc
 
         if config and not config_path:
@@ -34,21 +33,23 @@ class Cromwell(Engine):
             f.seek(0)
             config_path = f.name
 
-        if environment and environment not in Cromwell.environment_map:
-            raise Exception(f"The environment '{environment}' was not recognised")
-
-        self.environment = environment
-        host = Cromwell.environment_map.get(environment)
-        self.host = host if host else Cromwell.environment_map.get("default")
+        self.connect_to_instance = True if host else False
+        self.host = host if host else "localhost:8000"
 
         self.config_path = config_path
         self.process = None
         self.logger = None
         self.stdout = []
 
+    @staticmethod
+    def from_url(url):
+        if not url:
+            raise Exception("No url was provided to 'Cromwell.from_url', this field is required for expected results")
+        return Cromwell(host=url)
+
     def start_engine(self):
 
-        if self.environment:
+        if self.connect_to_instance:
             return Logger.info("Cromwell environment discovered, skipping local instance")
 
         if self.process:
@@ -209,7 +210,7 @@ class Cromwell(Engine):
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
 
-    def metadata(self, identifier, expand_subworkflows=True):
+    def metadata(self, identifier, expand_subworkflows=True) -> TaskMetadata:
         """
         calls: {
             backend
@@ -238,7 +239,7 @@ class Cromwell(Engine):
         """
         url = self.url_metadata(id=identifier, expand_subworkflows=expand_subworkflows)
         r = requests.get(url)
-        return CromwellMetadata(r.json())
+        return CromwellMetadata(r.json()).standard()
 
 
 

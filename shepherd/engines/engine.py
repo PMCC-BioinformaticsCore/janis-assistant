@@ -2,7 +2,7 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 
-from shepherd.data.schema import TaskStatus
+from shepherd.data.schema import TaskStatus, TaskMetadata
 
 
 class Engine(ABC):
@@ -27,7 +27,12 @@ class Engine(ABC):
     def outputs_task(self, identifier) -> Dict[str, Any]:
         pass
 
+    @abstractmethod
     def terminate_task(self, identifier) -> TaskStatus:
+        pass
+
+    @abstractmethod
+    def metadata(self, identifier) -> TaskMetadata:
         pass
 
 

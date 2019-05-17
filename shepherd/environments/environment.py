@@ -1,6 +1,9 @@
 from enum import Enum
 
-from shepherd.data.filescheme import FileScheme
+from shepherd import Cromwell
+from shepherd.engines.engine import Engine
+
+from shepherd.data.filescheme import FileScheme, LocalFileScheme, SSHFileScheme
 
 
 class Environment:
@@ -8,23 +11,32 @@ class Environment:
     A class to contain a series of attributes about an environment
     """
 
-    def __init__(self, identifier, filescheme: FileScheme):
-        self.identifier = identifier
-        self.filescheme = filescheme
+    def __init__(self, identifier, engine: Engine, filescheme: FileScheme, hg_ref_path: str=None):
+        self.identifier: str = identifier
+        self.engine: Engine = engine
+        self.filescheme: FileScheme = filescheme
+        self.reference_path: str = hg_ref_path
 
     def id(self):
-        return self.id
-
-    def hg38_reference(self):
-        pass
+        return self.identifier
 
 
+def get_predefined_environment_by_id(envid):
+    if envid == "local":
+        return Environment(envid, Cromwell(), LocalFileScheme())
+    elif envid == "local-connect":
+        return Environment(envid, Cromwell.from_url("localhost:8000"), LocalFileScheme())
+    elif envid == "pmac":
+        return Environment(envid, Cromwell.from_url(url="vmdv-res-seq.unix.petermac.org.au:8000"), SSHFileScheme("pmac", "cluster"))
+
+    raise Exception(f"Couldn't find predefined environment with id: '{envid}'")
 
 # submit_job(Workflow, validate=True, outputs_that_are_Variants=["vcStrelka"], env="pmac")
 #
 # - Submit the job
 # - Watch around the job
 # - collect outputs
-# PARLLE
+
+# PARALLEL
 #   - SUbmit new job that is hap.py variant to same Cromwell at env="pmac"
 #   - Copy outputs to output_dir

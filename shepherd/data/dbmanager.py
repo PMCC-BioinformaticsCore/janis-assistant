@@ -2,6 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 from enum import Enum
+from typing import Tuple, List
 
 from shepherd.data.schema import TaskStatus
 
@@ -12,6 +13,7 @@ class DatabaseManager:
         engineId = "engineId"
         status = "status"
         start = "start"
+        environment = "environment"
         validating = "validating"
 
         def __str__(self):
@@ -40,10 +42,17 @@ class DatabaseManager:
 
     def create_info_table_if_required(self):
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS info 
-                                (key text PRIMARY KEY, value text)""")
+                                (key text, value text)""")
 
     def add_meta_info(self, key: InfoKeys, value: any):
-        self.cursor.execute("INSERT INTO info VALUES (?, ?)", (str(key), str(value)))
+        self.add_meta_infos([(key, value)])
+
+    def add_meta_infos(self, infos: List[Tuple[InfoKeys, any]]):
+        for key, value in infos:
+            if not isinstance(value, list):
+                value = [value]
+            for v in value:
+                self.cursor.execute("INSERT INTO info VALUES (?, ?)", (str(key), str(v)))
         self.commit()
 
     def get_engine_identifier(self):

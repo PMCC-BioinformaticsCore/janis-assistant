@@ -16,7 +16,7 @@ setup(name="shepherd-pipelines",
       entry_points={
           'console_scripts': ['shepherd=shepherd.main:process_args']
       },
-      install_requires=[],
+      install_requires=['python-dotenv'],
       packages=["shepherd"] + modules,
       classifiers=[
           'Development Status :: 4 - Beta',

@@ -1,4 +1,9 @@
 import argparse
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 
 # from shepherd.engines import Cromwell, CWLTool, SyncTask, AsyncTask, CromwellConfiguration
 from shepherd.utils.logger import Logger

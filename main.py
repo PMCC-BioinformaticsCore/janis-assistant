@@ -6,8 +6,8 @@ from shepherd.engines.engine import AsyncTask
 config = CromwellConfiguration(
     aws=CromwellConfiguration.AWS(region="ap-southeast-2", auths=[
         CromwellConfiguration.AWS.Auth(scheme="custom_keys",
-                                       access_key="AKIAISQWTZSOBRUJGROA",
-                                       secret_key="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")
+                                       access_key="",
+                                       secret_key="")
     ]),
     engine=CromwellConfiguration.Engine(s3=True)
     # backend=CromwellConfiguration.Backend(

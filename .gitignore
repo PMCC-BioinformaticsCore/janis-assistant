@@ -3,3 +3,5 @@ cromwell-workflow-logs/
 __pycache__/
 .idea/
 .pyc
+.env
+.DS_Store

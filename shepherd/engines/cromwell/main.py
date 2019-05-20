@@ -7,15 +7,19 @@ import time
 from datetime import datetime
 
 from shepherd.data.schema import TaskMetadata
-from shepherd.engines.cromwell.data_types import CromwellFile
-from shepherd.engines.cromwell.configurations import CromwellConfiguration
-from shepherd.engines.engine import Engine, TaskStatus, TaskBase
 from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
 from shepherd.utils.logger import Logger
 from shepherd.engines.cromwell.metadata import cromwell_status_to_status, CromwellMetadata
 
+from .data_types import CromwellFile
+from .configurations import CromwellConfiguration
+from ..engine import Engine, TaskStatus, TaskBase
+
 
 class Cromwell(Engine):
+
+    def id(self):
+        return "cromwell"
 
     environment_map = {
         "default": "localhost:8000",
@@ -210,36 +214,19 @@ class Cromwell(Engine):
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
 
-    def metadata(self, identifier, expand_subworkflows=True) -> TaskMetadata:
-        """
-        calls: {
-            backend
-            backendLogs
-            backendStatus
-            end
-            executionStatus
-            failures
-            inputs
-            jobId
-            returnCode
-            start
-            stderr
-            stdout
-        }
-        failures: [{failure, timestamp}]
-        id:
-        inputs:
-        outputs:
-        start:
-        status:
-        submission:
-        :param identifier:
-        :param expand_subworkflows:
-        :return:
-        """
+    def raw_metadata(self, identifier, expand_subworkflows=True) -> CromwellMetadata:
         url = self.url_metadata(id=identifier, expand_subworkflows=expand_subworkflows)
         r = requests.get(url)
-        return CromwellMetadata(r.json()).standard()
+        r.raise_for_status()
+
+        return CromwellMetadata(r.json())
+
+    def metadata(self, identifier, expand_subworkflows=True) -> TaskMetadata:
+        raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
+        return raw.standard() if raw else raw
+
+    def terminate_task(self, identifier) -> TaskStatus:
+        raise NotImplementedError("need to implement terminate_task from Cromwell")
 
 
 

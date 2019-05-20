@@ -55,10 +55,12 @@ class DatabaseManager:
                 self.cursor.execute("INSERT INTO info VALUES (?, ?)", (str(key), str(v)))
         self.commit()
 
+    def get_meta_info(self, key: InfoKeys):
+        self.cursor.execute("SELECT value from info where key = ?", (str(key), ))
+        return self.cursor.fetchone()[0]
+
     def get_engine_identifier(self):
-        self.cursor.execute("SELECT value from info where key = ?", (str(DatabaseManager.InfoKeys.engineId), ))
-        row = self.cursor.fetchone()
-        return row[0]
+        return self.get_meta_info(DatabaseManager.InfoKeys.engineId)
 
 
 # if __name__ == "__main__":

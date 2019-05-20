@@ -15,6 +15,7 @@ class DatabaseManager:
         start = "start"
         environment = "environment"
         validating = "validating"
+        engine_tid = "engine_tid"
 
         def __str__(self):
             return self.value

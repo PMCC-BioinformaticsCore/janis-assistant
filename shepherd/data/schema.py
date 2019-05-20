@@ -37,6 +37,29 @@ class TaskStatus(Enum):
         return __str[self.value]
 
 
+def time_formatter(secs):
+    from math import floor
+    if not secs: return "0"
+
+    intervals = []
+    ranges = [60, 3600, 86400]
+    remainder = secs
+
+    for r in ranges[::-1]:
+        if remainder > r:
+            val = floor(remainder / r)
+            remainder -= val * r
+            intervals.append(val)
+
+    intervals.append(remainder)
+
+    outp = str(intervals[0])
+    for ivl in intervals[1:]:
+        outp += ":" + str(ivl)
+
+    return outp
+
+
 class TaskMetadata:
 
     def __init__(self, wid: str, name: str, status: TaskStatus, start: datetime, finish: Optional[datetime], outputs: List, jobs: List):
@@ -49,20 +72,26 @@ class TaskMetadata:
 
         self.jobs: List[JobMetadata] = jobs
 
-    def log(self):
+    def format(self):
         tb = "    "
         nl = "\n"
+
+        fin = self.finish if self.finish else datetime.now()
+        duration = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else 0
+
         return f"""
-WID:    {self.wid}
-Name:   {self.name}
+WID:        {self.wid}
+Name:       {self.name}
 
-Status: {self.status}
-Start:  {self.start.isoformat() if self.start else 'N/A'}
-Finish: {self.finish.isoformat() if self.finish else "N/A"}
+Status:     {self.status}
+Duration:   {time_formatter(duration)}
+Start:      {self.start.isoformat() if self.start else 'N/A'}
+Finish:     {self.finish.isoformat() if self.finish else "N/A"}
 
-Jobs: {nl.join(j.log(tb) for j in sorted(self.jobs, key=lambda j: j.start))}       
+Jobs: 
+{nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start))}       
 
-{("Outputs:" + "".join(nl + tb + o for o in self.outputs)) if self.outputs else ''}
+{("Outputs:" + nl.join(tb + o for o in self.outputs)) if self.outputs else ''}
 
         """.strip()
 
@@ -90,18 +119,18 @@ class JobMetadata:
         self.stdout = stdout
         self.stderr = stderr
 
-    def log(self, pre):
+    def format(self, pre):
 
-        tb = "    "
+        tb = "├---"
         fin = self.finish if self.finish else datetime.now()
         time = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else "N/A "
-        standard = pre + f"[{self.status.symbol()}]  {self.name} ({time}s)"
+        standard = pre + f"[{self.status.symbol()}] {self.name} ({time}s)"
 
         if self.subjobs:
-            ppre = pre + "     "
+            ppre = pre + tb
             subs: List[JobMetadata] = sorted(self.subjobs if self.subjobs else [], key=lambda j: j.start, reverse=False)
 
-            return standard + "".join([j.log(ppre) for j in subs])
+            return standard + "".join(["\n" + j.format(ppre) for j in subs])
 
         fields: List[Tuple[str, str]] = []
 
@@ -129,8 +158,8 @@ class JobMetadata:
         else:
             return standard + f" :: Unimplemented status: '{self.status}' for task: '{self.name}'"
 
-        ppre = "\n" + pre + "     " + tb
-        return "\n" + standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
+        ppre = "\n" + pre + 2 * tb
+        return standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
 
 
 

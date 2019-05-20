@@ -1,7 +1,7 @@
 from enum import Enum
 
-from shepherd import Cromwell
-from shepherd.engines.engine import Engine
+# from shepherd.engines.cromwell import Cromwell
+from shepherd.engines import Engine, Cromwell
 
 from shepherd.data.filescheme import FileScheme, LocalFileScheme, SSHFileScheme
 
@@ -20,16 +20,16 @@ class Environment:
     def id(self):
         return self.identifier
 
+    @staticmethod
+    def get_predefined_environment_by_id(envid):
+        if envid == "local":
+            return Environment(envid, Cromwell(), LocalFileScheme())
+        elif envid == "local-connect":
+            return Environment(envid, Cromwell.from_url("localhost:8000"), LocalFileScheme())
+        elif envid == "pmac":
+            return Environment(envid, Cromwell.from_url(url="vmdv-res-seq.unix.petermac.org.au:8000"), SSHFileScheme("pmac", "cluster"))
 
-def get_predefined_environment_by_id(envid):
-    if envid == "local":
-        return Environment(envid, Cromwell(), LocalFileScheme())
-    elif envid == "local-connect":
-        return Environment(envid, Cromwell.from_url("localhost:8000"), LocalFileScheme())
-    elif envid == "pmac":
-        return Environment(envid, Cromwell.from_url(url="vmdv-res-seq.unix.petermac.org.au:8000"), SSHFileScheme("pmac", "cluster"))
-
-    raise Exception(f"Couldn't find predefined environment with id: '{envid}'")
+        raise Exception(f"Couldn't find predefined environment with id: '{envid}'")
 
 # submit_job(Workflow, validate=True, outputs_that_are_Variants=["vcStrelka"], env="pmac")
 #

@@ -2,10 +2,14 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 
-from shepherd.data.schema import TaskStatus, TaskMetadata
+from ..data.schema import TaskStatus, TaskMetadata
 
 
 class Engine(ABC):
+
+    @abstractmethod
+    def id(self):
+        pass
 
     @abstractmethod
     def start_engine(self):

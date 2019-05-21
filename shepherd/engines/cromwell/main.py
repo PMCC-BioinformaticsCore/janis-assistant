@@ -1,5 +1,7 @@
 import os
 import tempfile
+from typing import Optional
+
 import requests
 import signal
 import subprocess
@@ -86,6 +88,10 @@ class Cromwell(Engine):
                 Logger.info("Service successfully started with pid=" + str(self.process.pid))
                 break
 
+        Logger.log("Waiting 1 second for Cromwell to get ready")
+        time.sleep(3)
+        Logger.log("Proceeding after intention Cromwell delay")
+
         if self.process:
             self.logger = ProcessLogger(self.process, "Cromwell: ")
         return self
@@ -118,7 +124,7 @@ class Cromwell(Engine):
     def url_metadata(self, id, expand_subworkflows=True):
         return self.url_base() + f"/{id}/metadata?expandSubWorkflows={expand_subworkflows}"
 
-    def create_task(self, source, inputs: list, dependencies, workflow_type="cwl"):
+    def create_task(self, source, inputs: list, dependencies, workflow_type=None):
         # curl \
         #   -X POST "http://localhost:8000/api/workflows/v1" \
         #   -H "accept: application/json" \
@@ -172,7 +178,25 @@ class Cromwell(Engine):
         if not outs: return {}
         return {k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k] for k in outs}
 
-    def start_task(self, task: TaskBase):
+    def start_from_paths(self, source_path: str, input_path: str, deps_path: str):
+        """
+        This does NOT watch, it purely schedule the jobs
+        :param source_path:
+        :param input_path:
+        :param deps_path:
+        :return:
+        """
+        src = open(source_path, 'rb')
+        inp = open(input_path, 'rb')
+        deps = open(deps_path, 'rb')
+        return self.create_task(src, [inp], deps, workflow_type="wdl")
+
+    def start_from_task(self, task: TaskBase):
+        """
+        This watches the job, and calls a task handler / onerror if it can
+        :param task:
+        :return:
+        """
         Logger.log("Creating workflow and submitting to Cromwell")
 
         ins, deps = [], None
@@ -199,12 +223,15 @@ class Cromwell(Engine):
         Logger.info("Created task with id: " + task.identifier)
         Logger.log("Task is now processing")
         task.task_start = datetime.now()
+
         while task.status not in TaskStatus.FINAL_STATES():
             status = self.poll_task(task.identifier)
             if status != task.status:
                 Logger.info("Task ('{id}') has progressed to: '{status}'".format(id=task.identifier, status=status))
             task.status = status
-            time.sleep(1)
+
+            if task.status not in TaskStatus.FINAL_STATES():
+                time.sleep(1)
 
         task.task_finish = datetime.now()
         Logger.info("Task ('{id}') has finished processing: {t} seconds"
@@ -214,14 +241,18 @@ class Cromwell(Engine):
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
 
-    def raw_metadata(self, identifier, expand_subworkflows=True) -> CromwellMetadata:
+    def raw_metadata(self, identifier, expand_subworkflows=True) -> Optional[CromwellMetadata]:
         url = self.url_metadata(id=identifier, expand_subworkflows=expand_subworkflows)
         r = requests.get(url)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+            return CromwellMetadata(r.json())
 
-        return CromwellMetadata(r.json())
+        except Exception as e:
+            print(e)
+            return None
 
-    def metadata(self, identifier, expand_subworkflows=True) -> TaskMetadata:
+    def metadata(self, identifier, expand_subworkflows=True) -> Optional[TaskMetadata]:
         raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
         return raw.standard() if raw else raw
 

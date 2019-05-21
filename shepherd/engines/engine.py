@@ -20,7 +20,11 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def start_task(self, task):
+    def start_from_paths(self, source_path: str, input_path: str, deps_path: str):
+        pass
+
+    @abstractmethod
+    def start_from_task(self, task):
         pass
 
     @abstractmethod
@@ -75,7 +79,7 @@ class TaskBase:
         return self.status
 
     def start(self):
-        self.engine.start_task(self)
+        self.engine.start_from_task(self)
         return self
 
 

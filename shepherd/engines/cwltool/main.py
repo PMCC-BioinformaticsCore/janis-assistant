@@ -61,7 +61,7 @@ class CWLTool(Engine):
         """
         raise NotImplementedError("metadata needs to be implemented in CWLTool, may require rework of tool")
 
-    def start_task(self, task: TaskBase):
+    def start_from_task(self, task: TaskBase):
         task.identifier = self.create_task(None, None, None)
 
         temps = []

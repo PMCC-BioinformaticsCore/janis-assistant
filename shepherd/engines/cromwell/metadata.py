@@ -15,7 +15,10 @@ def cromwell_status_to_status(status: str) -> TaskStatus:
         return TaskStatus.RUNNING
     elif st == "succeeded" or st == "done":
         return TaskStatus.COMPLETED
+    elif st == "failed":
+        return TaskStatus.FAILED
     else:
+        Logger.critical(f"Didn't recognise CromwellStatus '{status}', returning TaskStatus.FAILED")
         return TaskStatus.FAILED
 
 

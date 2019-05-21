@@ -1,17 +1,18 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from janis import Tool, Workflow, DataType, ToolOutput, String
-from janis_bioinformatics.data_types import Vcf
+from janis_bioinformatics.data_types import Vcf, Bed
 
 from shepherd.utils.logger import Logger
 from shepherd.validation.tool.happy import HapPyValidator
 
 
 class ValidationRequirements:
-    def __init__(self, truthVCF: str, reference: str, fields: List[str]):
+    def __init__(self, truthVCF: str, reference: str, fields: List[str], intervals: Optional[str]=None):
         self.truthVCF = truthVCF
         self.reference = reference
         self.fields = fields
+        self.intervals = intervals
 
 
 def generate_validation_workflow_from_janis(tool: Workflow, validreqs: ValidationRequirements):
@@ -32,6 +33,7 @@ def generate_validation_workflow_from_janis(tool: Workflow, validreqs: Validatio
 
     reference = Input("validatorReference", FastaWithDict(), validreqs.reference)
     truth = Input("validatorTruthVCF", Vcf(), validreqs.truthVCF)
+    intervals = Input("validatorIntervals", Bed(optional=True), validreqs.intervals)
 
     inps = [Input(i.id(), i.input.data_type, value=i.input.value) for i in tool._inputs]
     otps = [Output(o.id(), o.output.data_type) for o in tool._outputs]
@@ -49,7 +51,8 @@ def generate_validation_workflow_from_janis(tool: Workflow, validreqs: Validatio
             (f"{tool.id()}/{o}", val.compareVCF),
             (reference, val.reference),
             (truth, val.truthVCF),
-            (Input(o + "validation_prefix", String(), o), val.reportPrefix)
+            (Input(o + "validation_prefix", String(), o), val.reportPrefix),
+            (intervals, val.intervals)
         ])
 
         # Connect all the outputs of the validator to an output

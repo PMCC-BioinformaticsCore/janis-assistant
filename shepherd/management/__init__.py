@@ -4,17 +4,16 @@ import os
 from subprocess import call
 
 from shepherd.data.schema import TaskStatus
-from shepherd.environments.environment import Environment
-
 
 def generate_new_id():
     import uuid
 
     path = get_default_export_dir()
+    gen_uuid = lambda: str(uuid.uuid4())[:6]
 
-    tid = uuid.uuid4()[:6]
+    tid = gen_uuid()
     while os.path.exists(path + tid):
-        tid = uuid.uuid4()[:6]
+        tid = gen_uuid()
 
     return tid
 
@@ -26,11 +25,11 @@ def get_default_export_dir():
     return DEFAULT_EXPORT_DIR
 
 
-def ask_about_job_status(tid, env: Environment):
+def ask_about_job_status(tid, env):
     return env.engine.metadata(tid)
 
 
-def watch_job_status(tid, env: Environment):
+def watch_job_status(tid, env):
     import time
     status = None
 

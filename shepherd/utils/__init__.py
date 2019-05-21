@@ -46,3 +46,9 @@ def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
     # print(zip_buf.getvalue())
     # return zip_buf.getvalue()
 
+
+def get_extension(fn):
+    if "." not in fn: return None
+    idx = fn[::-1].index(".")
+    if idx <= 0: return None
+    return fn[-idx:]

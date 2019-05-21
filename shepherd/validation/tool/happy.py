@@ -20,7 +20,7 @@ class HapPyValidator(CommandTool):
 
     @staticmethod
     def base_command():
-        return ""
+        return "/opt/hap.py/bin/hap.py"
 
     def friendly_name(self) -> str:
         return "hap.py validation"
@@ -32,7 +32,7 @@ class HapPyValidator(CommandTool):
             ToolInput("reportPrefix", String(), prefix="--report-prefix",
                       doc="(-o)  Filename prefix for report output."),
             ToolInput("reference", FastaWithDict(), prefix="--reference", doc="(-r)  Specify a reference file."),
-            ToolInput("targetRegions", Bed(optional=True), prefix="--target-regions",
+            ToolInput("intervals", Bed(optional=True), prefix="--target-regions",
                       doc="(-T)  Restrict analysis to given (dense) regions (using -T in bcftools)."),
 
             ToolInput("version", Boolean(optional=True), prefix="--version", doc="(-v) Show version number and exit."),
@@ -41,16 +41,12 @@ class HapPyValidator(CommandTool):
                       doc="Directory for scratch files."),
             ToolInput("keepScratch", String(optional=True), prefix="--keep-scratch",
                       doc="Filename prefix for scratch report output. Annotation format in input VCF file."),
-            ToolInput("keepScratch", String(optional=True), prefix="--keep-scratch",
-                      doc="Filename prefix for scratch report output. Annotation format in input VCF file."),
             ToolInput("falsePositives", Bed(optional=True), prefix="--false-positives",
                       doc="(-f)  False positive / confident call regions (.bed or .bed.gz). "
                           "Calls outside these regions will be labelled as UNK."),
             ToolInput("stratification", Tsv(optional=True), prefix="--stratification",
                       doc=" Stratification file list (TSV format -- first column is region name, "
                           "second column is file name)."),
-            ToolInput("stratificationRegion", Boolean(optional=True), prefix="--stratification-region",
-                      doc=" Add single stratification region, e.g."),
             ToolInput("stratificationRegion", String(optional=True), prefix="--stratification-region",
                       doc="Add single stratification region, e.g. --stratification-region TEST:test.bed"),
             ToolInput("stratificationFixchr", String(optional=True), prefix="--stratification-fixchr",
@@ -79,13 +75,13 @@ class HapPyValidator(CommandTool):
             ToolInput("ciAlpha", Int(optional=True), prefix="--ci-alpha",
                       doc="Confidence level for Jeffrey's CI for recall, precision and fraction of non-assessed calls."),
             ToolInput("noJson", Boolean(optional=True), prefix="--no-json", doc="Disable JSON file output."),
-            ToolInput("location", Array(String(), optional=True), prefix="--location", separator=",",
-                      doc="(-l)  Comma-separated list of locations [use naming after preprocessing], "
-                          "when not specified will use whole VCF."),
+            # ToolInput("location", Array(String(), optional=True), prefix="--location", separator=",",
+            #           doc="(-l)  Comma-separated list of locations [use naming after preprocessing], "
+            #               "when not specified will use whole VCF."),
             ToolInput("passOnly", Boolean(optional=True), prefix="--pass-only", doc="Keep only PASS variants."),
-            ToolInput("filtersOnly", Array(String(), optional=True), prefix="--filters-only", separator=",",
-                      doc=" Specify a comma-separated list of filters to apply "
-                          "(by default all filters are ignored / passed on."),
+            # ToolInput("filtersOnly", Array(String(), optional=True), prefix="--filters-only", separator=",",
+            #           doc=" Specify a comma-separated list of filters to apply "
+            #               "(by default all filters are ignored / passed on."),
             ToolInput("restrictRegions", Boolean(optional=True), prefix="--restrict-regions",
                       doc="(-R)  Restrict analysis to given (sparse) regions (using -R in bcftools)."),
 

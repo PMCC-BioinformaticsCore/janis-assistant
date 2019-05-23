@@ -62,7 +62,14 @@ class DatabaseManager:
     # progress
 
     def progress_mark_completed(self, key: ProgressKeys):
-        return self.cursor.execute("INSERT INTO progress VALUES (?)", (str(key), ))
+        self.cursor.execute("INSERT INTO progress VALUES (?)", (str(key), ))
+        self.commit()
 
     def progress_has_completed(self, key: ProgressKeys):
         return self.cursor.execute("SELECT count(*) from progress where key = ?", (str(key), )).fetchone()[0] > 0
+
+    def close(self):
+        self.connection.close()
+        self.cursor = None
+        self.connection = None
+

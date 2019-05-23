@@ -75,10 +75,10 @@ class TaskManager:
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = janis.translations.get_translator(spec)
-        tm.prepare_and_output_workflow_to_evaluate_if_required(wf, spec_translator, validation_requirements)
+        wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(wf, spec_translator, validation_requirements)
 
         # this happens for all workflows no matter what type
-        tm.submit_workflow_if_required(wf, spec_translator)
+        tm.submit_workflow_if_required(wf_evaluate, spec_translator)
         tm.resume_if_possible()
 
     @staticmethod
@@ -96,15 +96,13 @@ class TaskManager:
     def resume_if_possible(self):
         # check status and see if we can resume
         if not self.database.progress_has_completed(ProgressKeys.submitWorkflow):
-            return Logger.critical("Can't resume workflow with id '{self.tid}' as the workflow "
+            return Logger.critical(f"Can't resume workflow with id '{self.tid}' as the workflow "
                                    "was not submitted to the engine")
         self.wait_if_required()
+        self.save_metadata_if_required()
         self.copy_outputs_if_required()
 
-        print("Finished!")
-
-
-
+        print(f"Finished managing task '{self.tid}'. View the task outputs: file://{self.get_task_path()}")
 
     def prepare_and_output_workflow_to_evaluate_if_required(self, workflow, translator, validation: ValidationRequirements):
         if self.database.progress_has_completed(ProgressKeys.saveWorkflow):
@@ -131,7 +129,7 @@ class TaskManager:
             # we need to generate both the validation and non-validation workflow
             workflow_to_evaluate = generate_validation_workflow_from_janis(workflow, validation)
             translator.translate(
-                workflow,
+                workflow_to_evaluate,
                 to_console=False,
                 to_disk=True,
                 with_resource_overrides=True,
@@ -166,7 +164,7 @@ class TaskManager:
         if isinstance(self.environment.engine, Cromwell):
             import json
             meta = self.environment.engine.raw_metadata(self.get_engine_tid()).meta
-            with open(self.get_task_path() + "outputs/metadata/metadata.json", "w+") as fp:
+            with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
                 json.dump(meta, fp)
 
         else:
@@ -181,10 +179,15 @@ class TaskManager:
         outputs = self.environment.engine.outputs_task(self.get_engine_tid())
         if not outputs: return
 
-        od = self.get_task_path() + "outputs/"
+        is_validating = bool(self.database.get_meta_info(InfoKeys.validating))
+        outdir = self.get_task_path() + "outputs/"
+        valdir = self.get_task_path() + "validation/"
+        output_is_validating = lambda o: is_validating and o.split(".")[-1].startswith("validated_")
         fs = self.environment.filescheme
 
         for outname, o in outputs.items():
+
+            od = valdir if output_is_validating(outname) else outdir
 
             if isinstance(o, list):
                 self.copy_sharded_outputs(fs, od, outname, o)
@@ -225,13 +228,14 @@ class TaskManager:
             TaskManager.copy_cromwell_output(filescheme, output_dir, filename, source)
         elif isinstance(source, str):
             ext = get_extension(source)
-            filescheme.cp_from(source, output_dir + filename + "." + ext, None)
+            extwdot = ('.' + ext) if ext else ''
+            filescheme.cp_from(source, output_dir + filename + extwdot, None)
 
     @staticmethod
     def copy_sharded_outputs(filescheme: FileScheme, output_dir, filename, outputs: List[CromwellFile]):
-        pre = "shard-"
         for counter in range(len(outputs)):
-            TaskManager.copy_output(filescheme, output_dir, filename + pre + str(counter), outputs[counter])
+            sid = f"-shard-{counter}"
+            TaskManager.copy_output(filescheme, output_dir, filename + sid, outputs[counter])
 
     @staticmethod
     def copy_cromwell_output(filescheme: FileScheme, output_dir: str, filename: str, out: CromwellFile):
@@ -251,7 +255,6 @@ class TaskManager:
     @staticmethod
     def get_task_path_by(tid):
         return get_default_export_dir() + tid + "/"
-
 
     def get_task_path_safe(self):
         path = self.get_task_path()
@@ -283,7 +286,8 @@ class TaskManager:
 
     def metadata(self) -> TaskMetadata:
         meta = self.environment.engine.metadata(self.get_engine_tid())
-        meta.tid = self.tid
+        if meta:
+            meta.tid = self.tid
         return meta
 
     @staticmethod

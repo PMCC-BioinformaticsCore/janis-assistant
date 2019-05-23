@@ -2,6 +2,8 @@ from enum import Enum
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+from shepherd.utils import second_formatter
+
 
 class TaskStatus(Enum):
     PROCESSING = 0
@@ -37,32 +39,10 @@ class TaskStatus(Enum):
         return __str[self.value]
 
 
-def time_formatter(secs):
-    from math import floor
-    if not secs: return "0"
-
-    intervals = []
-    ranges = [60, 3600, 86400]
-    remainder = secs
-
-    for r in ranges[::-1]:
-        if remainder > r:
-            val = floor(remainder / r)
-            remainder -= val * r
-            intervals.append(val)
-
-    intervals.append(remainder)
-
-    outp = str(intervals[0])
-    for ivl in intervals[1:]:
-        outp += ":" + str(ivl)
-
-    return outp
-
-
 class TaskMetadata:
 
     def __init__(self, wid: str, name: str, status: TaskStatus, start: datetime, finish: Optional[datetime], outputs: List, jobs: List):
+        self.tid = None     # needs to be set by taskManager
         self.wid: str = str(wid)
         self.name: str = name
         self.status: TaskStatus = status
@@ -80,11 +60,12 @@ class TaskMetadata:
         duration = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else 0
 
         return f"""
+TID:        {self.tid}
 WID:        {self.wid}
 Name:       {self.name}
 
 Status:     {self.status}
-Duration:   {time_formatter(duration)}
+Duration:   {second_formatter(duration)}
 Start:      {self.start.isoformat() if self.start else 'N/A'}
 Finish:     {self.finish.isoformat() if self.finish else "N/A"}
 

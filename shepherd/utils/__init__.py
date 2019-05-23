@@ -52,3 +52,28 @@ def get_extension(fn):
     idx = fn[::-1].index(".")
     if idx <= 0: return None
     return fn[-idx:]
+
+
+def second_formatter(secs):
+    if not secs: return "0"
+
+    intervals = []
+    ranges = [60, 3600, 86400]
+
+    remainder = secs
+    under_first_interval = False
+
+    for r in ranges[::-1]:
+        if under_first_interval or remainder >= r:
+            under_first_interval = True
+            val = remainder // r
+            remainder -= val * r
+            intervals.append(val)
+
+    intervals.append(remainder)
+
+    outp = str(intervals[0])
+    for ivl in intervals[1:]:
+        outp += ":" + str(ivl).zfill(2)
+
+    return outp

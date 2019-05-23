@@ -14,7 +14,7 @@ setup(name="shepherd-pipelines",
       license='MIT',
       keywords=['shepherd'],
       entry_points={
-          'console_scripts': ['shepherd=shepherd.main:process_args']
+          'console_scripts': ['shepherd=shepherd:process_args']
       },
       install_requires=['python-dotenv'],
       packages=["shepherd"] + modules,

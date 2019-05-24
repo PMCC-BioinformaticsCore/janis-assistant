@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Union
 
 from shepherd.utils.logger import Logger
 from shepherd.data.schema import TaskStatus, TaskMetadata, JobMetadata
@@ -95,7 +96,34 @@ class CromwellMetadata:
                             status=cromwell_status_to_status(self.meta.get("status")),
                             start=self._parse_date(self.meta.get("start")),
                             finish=self._parse_date(self.meta.get("end")),
-                            outputs=[], jobs=jobs)
+                            outputs=[], jobs=jobs, error=self.get_caused_by_text())
+
+    def get_caused_by_text(self):
+        if "failures" not in self.meta:
+            return ""
+
+        return CromwellMetadata.unwrap_caused_by(self.meta["failures"])
+
+
+    @staticmethod
+    def unwrap_caused_by(d) -> str:
+        if isinstance(d, list):
+            return ", ".join(CromwellMetadata.unwrap_caused_by(x) for x in d)
+
+        message = ""
+        m = d.get("message")
+        if m and not m.startswith("Workflow failed"):
+            message = m + ": "
+
+        causedby: Union[list, dict] = d.get("causedBy")
+
+        if not causedby:
+            return message
+
+        if len(causedby) > 0:
+            message += CromwellMetadata.unwrap_caused_by(causedby)
+        return message
+
 
     @classmethod
     def parse_standard_call(cls, name, calls):

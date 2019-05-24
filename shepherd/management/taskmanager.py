@@ -212,6 +212,9 @@ class TaskManager:
     def wait_if_required(self):
 
         if self.database.progress_has_completed(ProgressKeys.workflowMovedToFinalState):
+            meta = self.metadata()
+            if meta:
+                print(meta.format())
             return Logger.log(f"Workflow '{self.tid}' has already finished, skipping")
 
         status = None
@@ -292,8 +295,6 @@ class TaskManager:
         for j in meta:
             ms.append((f"{j.jobid}-stderr", j.stderr))
             ms.append((f"{j.jobid}-stdout", j.stderr))
-
-
 
     def watch(self):
         import time

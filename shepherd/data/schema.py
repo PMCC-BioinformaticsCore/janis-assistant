@@ -41,7 +41,8 @@ class TaskStatus(Enum):
 
 class TaskMetadata:
 
-    def __init__(self, wid: str, name: str, status: TaskStatus, start: datetime, finish: Optional[datetime], outputs: List, jobs: List):
+    def __init__(self, wid: str, name: str, status: TaskStatus, start: datetime, finish: Optional[datetime],
+                 outputs: List, jobs: List, error: Optional[str]):
         self.tid = None             # needs to be set by taskManager
         self.outdir: str = None     # provided by TaskManager
 
@@ -51,6 +52,7 @@ class TaskMetadata:
         self.start: datetime = start
         self.finish: datetime = finish
         self.outputs = outputs
+        self.error = error
 
         self.jobs: List[JobMetadata] = jobs
 
@@ -60,6 +62,8 @@ class TaskMetadata:
 
         fin = self.finish if self.finish else datetime.now()
         duration = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else 0
+
+
 
         return f"""
 TID:        {self.tid}
@@ -77,8 +81,10 @@ Jobs:
 {nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start))}       
 
 {("Outputs:" + nl.join(tb + o for o in self.outputs)) if self.outputs else ''}
-
+{("Error: " + self.error) if self.error else ''}
         """.strip()
+
+
 
 
 class JobMetadata:

@@ -1,6 +1,20 @@
-from typing import Tuple, List
+from typing import Tuple, List, Set
 import tempfile
 from .processlogger import ProcessLogger
+from .logger import Logger
+
+
+def generate_new_id(forbiddenids: Set[str]):
+    import uuid
+
+    def gen_uuid(): return str(uuid.uuid4())[:6]
+
+    tid = gen_uuid()
+    while tid in forbiddenids:
+        tid = gen_uuid()
+
+    return tid
+
 
 def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
     """

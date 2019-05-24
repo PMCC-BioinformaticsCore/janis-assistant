@@ -42,7 +42,9 @@ class TaskStatus(Enum):
 class TaskMetadata:
 
     def __init__(self, wid: str, name: str, status: TaskStatus, start: datetime, finish: Optional[datetime], outputs: List, jobs: List):
-        self.tid = None     # needs to be set by taskManager
+        self.tid = None             # needs to be set by taskManager
+        self.outdir: str = None     # provided by TaskManager
+
         self.wid: str = str(wid)
         self.name: str = name
         self.status: TaskStatus = status
@@ -64,6 +66,8 @@ TID:        {self.tid}
 WID:        {self.wid}
 Name:       {self.name}
 
+Path:       {self.outdir}
+
 Status:     {self.status}
 Duration:   {second_formatter(duration)}
 Start:      {self.start.isoformat() if self.start else 'N/A'}
@@ -80,11 +84,13 @@ Jobs:
 class JobMetadata:
     def __init__(self, name: str, status: TaskStatus, job_id: Optional[str], backend: Optional[str],
                  runtime_attributes: Optional[dict], outputs: List, exec_dir: Optional[str], stdout: Optional[str],
-                 stderr: Optional[str], start: datetime, finish: Optional[datetime], subjobs, from_cache: bool):
+                 stderr: Optional[str], start: datetime, finish: Optional[datetime], subjobs, from_cache: bool,
+                 shard: int):
 
         self.name = name
         self.status = status
         self.jobid = job_id
+        self.shard = shard if shard >= 0 else None
         self.backend = backend
         self.runtimeattributes = runtime_attributes
 
@@ -105,7 +111,8 @@ class JobMetadata:
         tb = "├---"
         fin = self.finish if self.finish else datetime.now()
         time = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else "N/A "
-        standard = pre + f"[{self.status.symbol()}] {self.name} ({time}s)"
+        shard = f"-shard-{self.shard}" if self.shard else ""
+        standard = pre + f"[{self.status.symbol()}] {self.name}{shard} ({time}s)"
 
         if self.subjobs:
             ppre = pre + tb

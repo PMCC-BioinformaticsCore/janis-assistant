@@ -28,10 +28,13 @@ class Environment:
             return Environment(envid, Cromwell.from_url("localhost:8000"), LocalFileScheme())
         elif envid == "pmac":
             return Environment(envid, Cromwell.from_url(url="vmdv-res-seq.unix.petermac.org.au:8000"), SSHFileScheme("pmac", "cluster"))
+        elif envid == "pmac-head":
+            return Environment(envid, Cromwell.from_url(url="vmpr-res-cluster1.unix.petermac.org.au:8000"), SSHFileScheme("pmac", "cluster"))
 
         raise Exception(f"Couldn't find predefined environment with id: '{envid}'")
 
-# submit_job(Workflow, validate=True, outputs_that_are_Variants=["vcStrelka"], env="pmac")
+# submit_job(Workflow, validate=True, outputs_that_are_Variants=["vcStrelka"], enll
+# ="pmac")
 #
 # - Submit the job
 # - Watch around the job

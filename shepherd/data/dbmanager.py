@@ -7,8 +7,7 @@ from shepherd.utils.logger import Logger
 
 class DatabaseManager:
 
-    def __init__(self, tid, path):
-        self.tid = tid
+    def __init__(self, path):
         self.exec_path = path
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
@@ -17,7 +16,7 @@ class DatabaseManager:
         self.create_progress_table_if_required()
 
     def get_sql_path(self):
-        return self.exec_path + "janis.db"
+        return self.exec_path + "task.db"
 
     def db_connection(self):
         path = self.get_sql_path()

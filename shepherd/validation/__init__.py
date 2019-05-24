@@ -35,7 +35,8 @@ def generate_validation_workflow_from_janis(tool: Workflow, validreqs: Validatio
     truth = Input("validatorTruthVCF", Vcf(), validreqs.truthVCF)
     intervals = Input("validatorIntervals", Bed(optional=True), validreqs.intervals)
 
-    inps = [Input(i.id(), i.input.data_type, value=i.input.value) for i in tool._inputs]
+    inps = [Input(i.id(), i.input.data_type, value=i.input.value, label=i.input.label,
+                  include_in_inputs_file_if_none=i.input.include_in_inputs_file_if_none) for i in tool._inputs]
     otps = [Output(o.id(), o.output.data_type) for o in tool._outputs]
 
     w.add_items(Step(tool.id(), tool))

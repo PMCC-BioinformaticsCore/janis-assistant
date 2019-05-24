@@ -8,7 +8,7 @@ A task manager will have reference to a database,
 import os
 import time
 from subprocess import call
-from typing import Optional, List
+from typing import Optional, List, Tuple, Dict
 
 import janis
 
@@ -16,29 +16,31 @@ from shepherd.management.enums import InfoKeys, ProgressKeys
 from shepherd.utils.logger import Logger
 from shepherd.data.dbmanager import DatabaseManager
 from shepherd.data.filescheme import FileScheme
-from shepherd.data.schema import TaskStatus, TaskMetadata
+from shepherd.data.schema import TaskStatus, TaskMetadata, JobMetadata
 from shepherd.engines import get_ideal_specification_for_engine, AsyncTask, Cromwell
 from shepherd.engines.cromwell import CromwellFile
 from shepherd.environments.environment import Environment
-from shepherd.management import get_default_export_dir, generate_new_id
 from shepherd.utils import get_extension
 from shepherd.validation import generate_validation_workflow_from_janis, ValidationRequirements
 
 
 class TaskManager:
 
-    def __init__(self, tid, environment: Environment = None, outdir=None):
+    def __init__(self, outdir: str, tid: str, environment: Environment = None):
         # do stuff here
         self.tid = tid
 
         # hydrate from here if required
         self._engine_tid = None
-        self.outdir = outdir
+        self.path = outdir
         self.outdir_workflow = self.get_task_path() + "workflow/"   # handy to have as reference
         self.create_output_structure()
 
-        self.database = DatabaseManager(tid, path=self.get_task_path_safe())
+        self.database = DatabaseManager(self.get_task_path_safe())
         self.environment = environment
+
+        if not self.tid:
+            self.tid = self.get_engine_tid()
 
         if environment:
             self.environment = environment
@@ -55,18 +57,17 @@ class TaskManager:
             Environment.get_predefined_environment_by_id(env)
 
     @staticmethod
-    def from_janis(wf: janis.Workflow, environment: Environment,
-                   validation_requirements: Optional[ValidationRequirements], output_dir: str = None):
+    def from_janis(tid: str, outdir: str, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
+                   validation_requirements: Optional[ValidationRequirements]):
 
-        # create tid
         # create output folder
         # create structure
 
-        tid = generate_new_id()
         # output directory has been created
 
-        tm = TaskManager(tid, environment=environment)
+        tm = TaskManager(tid=tid, outdir=outdir, environment=environment)
         tm.database.add_meta_infos([
+            (InfoKeys.taskId, tid),
             (InfoKeys.status, TaskStatus.PROCESSING),
             (InfoKeys.validating, validation_requirements is not None),
             (InfoKeys.engineId, environment.engine.id()),
@@ -75,23 +76,30 @@ class TaskManager:
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = janis.translations.get_translator(spec)
-        wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(wf, spec_translator, validation_requirements)
+        wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(wf, spec_translator, validation_requirements, hints)
 
         # this happens for all workflows no matter what type
         tm.submit_workflow_if_required(wf_evaluate, spec_translator)
         tm.resume_if_possible()
 
     @staticmethod
-    def from_tid(tid):
+    def from_path(path):
+        """
+        :param path: Path should include the $tid if relevant
+        :return: TaskManager after resuming (might include a wait)
+        """
         # get everything and pass to constructor
         # database path
-        path = TaskManager.get_task_path_by(tid)
-        db = DatabaseManager(tid, path)
+
+        path = TaskManager.get_task_path_for(path)
+        db = DatabaseManager(path)
+        tid = db.get_meta_info(InfoKeys.taskId)
         envid = db.get_meta_info(InfoKeys.environment)
         env = Environment.get_predefined_environment_by_id(envid)
         db.close()
-        tm = TaskManager(tid, env)
+        tm = TaskManager(outdir=path, tid=tid, environment=env)
         tm.resume_if_possible()
+        return tm
 
     def resume_if_possible(self):
         # check status and see if we can resume
@@ -104,7 +112,7 @@ class TaskManager:
 
         print(f"Finished managing task '{self.tid}'. View the task outputs: file://{self.get_task_path()}")
 
-    def prepare_and_output_workflow_to_evaluate_if_required(self, workflow, translator, validation: ValidationRequirements):
+    def prepare_and_output_workflow_to_evaluate_if_required(self, workflow, translator, validation: ValidationRequirements, hints: Dict[str, str]):
         if self.database.progress_has_completed(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.tid}', skipping.")
 
@@ -116,7 +124,7 @@ class TaskManager:
             to_disk=True,
             with_resource_overrides=False,
             merge_resources=False,
-            hints=None,
+            hints=hints,
             write_inputs_file=True,
             export_path=self.outdir_workflow)
 
@@ -134,7 +142,7 @@ class TaskManager:
                 to_disk=True,
                 with_resource_overrides=True,
                 merge_resources=True,
-                hints=None,
+                hints=hints,
                 write_inputs_file=True,
                 export_path=self.outdir_workflow
             )
@@ -250,11 +258,12 @@ class TaskManager:
         return self._engine_tid
 
     def get_task_path(self):
-        return TaskManager.get_task_path_by(self.tid)
+        return TaskManager.get_task_path_for(self.path)
 
     @staticmethod
-    def get_task_path_by(tid):
-        return get_default_export_dir() + tid + "/"
+    def get_task_path_for(outdir: str):
+        extraback = "" if outdir.endswith("/") else "/"
+        return outdir + extraback
 
     def get_task_path_safe(self):
         path = self.get_task_path()
@@ -263,11 +272,28 @@ class TaskManager:
 
     def create_output_structure(self):
         outputdir = self.get_task_path_safe()
-        folders = ["workflow", "metadata", "validation", "outputs"]
+        folders = ["workflow", "metadata", "validation", "outputs", "logs"]
 
         # workflow folder
         for f in folders:
             self._create_dir_if_needed(outputdir + f)
+
+    def copy_logs_if_required(self):
+        if not self.database.progress_has_completed(ProgressKeys.savedLogs):
+            return Logger.log(f"Workflow '{self.tid}' has copied logs, skipping")
+
+        meta = self.metadata()
+
+
+    @staticmethod
+    def get_logs_from_jobs_meta(meta: List[JobMetadata]):
+        ms = []
+
+        for j in meta:
+            ms.append((f"{j.jobid}-stderr", j.stderr))
+            ms.append((f"{j.jobid}-stdout", j.stderr))
+
+
 
     def watch(self):
         import time
@@ -288,6 +314,7 @@ class TaskManager:
         meta = self.environment.engine.metadata(self.get_engine_tid())
         if meta:
             meta.tid = self.tid
+            meta.outdir = self.path
         return meta
 
     @staticmethod

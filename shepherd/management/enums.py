@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class InfoKeys(Enum):
+    taskId = "taskId"
     engineId = "engineId"
     status = "status"
     start = "start"
@@ -20,6 +21,7 @@ class ProgressKeys(Enum):
     workflowMovedToFinalState = "workflowMovedToFinalState"
     copiedOutputs = "copiedOutputs"
     savedMetadata = "savedMetadata"
+    savedLogs = "savedLogs"
 
     def __str__(self):
         return self.value

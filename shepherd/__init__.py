@@ -1,6 +1,8 @@
 import argparse
 from dotenv import load_dotenv
 
+from shepherd.management.configmanager import ConfigManager
+
 load_dotenv()
 
 from shepherd.engines import Cromwell, CWLTool, CromwellConfiguration
@@ -17,7 +19,8 @@ def process_args():
     cmds = {
         "version": do_version,
         "janis": print,
-        "run": do_run
+        "run": do_run,
+        "watch": do_watch
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -25,6 +28,8 @@ def process_args():
     parser.add_argument("-d", "--debug", action="store_true")
 
     subparsers.add_parser("version")
+    add_watch_args(subparsers.add_parser("watch"))
+    # add_abort_args(subparsers.add_parser("abort"))
     add_janis_args(subparsers.add_parser("janis"))
     add_reconnect_args(subparsers.add_parser("reconnect"))
     # add_workflow_args(subparsers.add_parser("run-workflow"))
@@ -32,6 +37,11 @@ def process_args():
     args = parser.parse_args()
     print(args)
     cmds[args.command](args)
+
+
+def add_watch_args(parser):
+    parser.add_argument("tid", help="Task id")
+    return parser
 
 
 def add_workflow_args(parser):
@@ -68,6 +78,12 @@ def do_run(args):
     Logger.info("Run the shepherd-shepherd with the CommandLine arguments")
     print(args)
     raise NotImplementedError("This path hasn't been implemented yet, raise an issue.")
+
+
+def do_watch(args):
+    tid = args.tid
+
+    ConfigManager().from_tid(tid)
 
 
 if __name__ == "__main__":

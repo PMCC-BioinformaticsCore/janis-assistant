@@ -112,12 +112,15 @@ class CromwellMetadata:
             for k in sw.get("calls"):
                 sjs.append(cls.parse_standard_call(k, sw["calls"][k]))
 
-        return JobMetadata(name=name, status=status, job_id=call.get("jobId"), backend=None,
-                           runtime_attributes=None,
-                           outputs=call.get("outputs"),
-                           exec_dir="",
-                           stdout=call.get("stdout"),
-                           stderr=call.get("stderr"),
-                           start=cls._parse_date(call.get("start")), finish=cls._parse_date(call.get("end")),
-                           subjobs=sjs,
-                           from_cache=call["callCaching"].get("hit") if "callCaching" in call else False)
+        return JobMetadata(
+            name=name, status=status, job_id=call.get("jobId"), backend=None,
+            runtime_attributes=None,
+            outputs=call.get("outputs"),
+            exec_dir="",
+            stdout=call.get("stdout"),
+            stderr=call.get("stderr"),
+            start=cls._parse_date(call.get("start")), finish=cls._parse_date(call.get("end")),
+            subjobs=sjs,
+            from_cache=call["callCaching"].get("hit") if "callCaching" in call else False,
+            shard=call.get("shardIndex")
+        )

@@ -1,13 +1,33 @@
-from typing import List
+from typing import List, Dict, Any
 from datetime import datetime
 
 from janis import CommandTool, ToolInput, ToolOutput, String, Boolean, Int, CpuSelector, ToolMetadata, Array, Filename, \
-    InputSelector, File
+    InputSelector, File, CaptureType
 from janis.unix.data_types.tsv import Tsv
 from janis.unix.data_types.csv import Csv
 from janis.unix.data_types.json import JsonFile
+from janis.utils import get_value_for_hints_and_ordered_resource_tuple
 from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed, VcfTabix
 
+CORES_TUPLE = [
+    (CaptureType.key(), {
+        CaptureType.CHROMOSOME: 4,
+        CaptureType.EXOME: 4,
+        CaptureType.THIRTYX: 8,
+        CaptureType.NINETYX: 8,
+        CaptureType.THREEHUNDREDX: 8
+    })
+]
+
+MEM_TUPLE = [
+    (CaptureType.key(), {
+        CaptureType.CHROMOSOME: 16,
+        CaptureType.EXOME: 16,
+        CaptureType.THIRTYX: 32,
+        CaptureType.NINETYX: 64,
+        CaptureType.THREEHUNDREDX: 64
+    })
+]
 
 class HapPyValidator(CommandTool):
     @staticmethod
@@ -24,6 +44,16 @@ class HapPyValidator(CommandTool):
 
     def friendly_name(self) -> str:
         return "hap.py validation"
+
+    def cpus(self, hints: Dict[str, Any]):
+        val = get_value_for_hints_and_ordered_resource_tuple(hints, CORES_TUPLE)
+        if val: return val
+        return 2
+
+    def memory(self, hints: Dict[str, Any]):
+        val = get_value_for_hints_and_ordered_resource_tuple(hints, MEM_TUPLE)
+        if val: return val
+        return 8
 
     def inputs(self) -> List[ToolInput]:
         return [

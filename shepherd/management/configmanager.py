@@ -149,12 +149,12 @@ class ConfigManager:
         if should_commit:
             self.commit()
 
-    def persist_filescheme(self, envid, filescheme, should_commit=True):
+    def persist_filescheme(self, filescheme, should_commit=True):
         # check if already exists
 
         kvargs = filescheme.db_to_kwargs()
         for (k,v) in kvargs.items():
-            self.cursor.execute("""INSERT INTO fileschemes (envid, key, value) VALUES (?, ?, ?)""",
+            self.cursor.execute("""INSERT INTO fileschemes (fsid, key, value) VALUES (?, ?, ?)""",
                                 (filescheme.id, k, str(v)))
 
         if should_commit:

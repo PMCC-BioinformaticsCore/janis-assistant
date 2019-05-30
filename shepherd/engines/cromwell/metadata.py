@@ -89,8 +89,17 @@ class CromwellMetadata:
     def standard(self):
         jobs = []
 
+        s = self._parse_date(self.meta.get("start"))
+        f = self._parse_date(self.meta.get("end"))
+        st = 0
+        if s:
+            s = s.replace(tzinfo=None)
+            ff = (f if f else datetime.now()).replace(tzinfo=None)
+            st = int((ff - s).total_seconds())
+
         for k in self.meta.get("calls"):
-            jobs.append(self.parse_standard_call(k, self.meta["calls"][k]))
+
+            jobs.extend(self.parse_standard_call(k, self.meta["calls"][k], st))
 
         return TaskMetadata(wid=self.meta.get("id"), name=self.meta.get("workflowName"),
                             status=cromwell_status_to_status(self.meta.get("status")),
@@ -126,29 +135,66 @@ class CromwellMetadata:
 
 
     @classmethod
-    def parse_standard_call(cls, name, calls):
+    def parse_standard_call(cls, name, calls, supertime):
         if len(calls) > 1:
-            raise Exception("Too many calls for " + name)
+            processed_calls = []
+            for c in calls:
+                processed_calls.extend(cls.parse_standard_call(name, [c], supertime=0))
+
+            statuses = set(s.status for s in processed_calls)
+            status = list(statuses)[0] if len(statuses) == 1 else TaskStatus.RUNNING
+            start = min(s.start for s in processed_calls)
+            finishes = [s.finish for s in processed_calls]
+            finish = None if any(f is None for f in finishes) else max(finishes)
+
+            st = 0.01
+            if start:
+                start = start.replace(tzinfo=None)
+                ff = (finish if finish else datetime.now()).replace(tzinfo=None)
+
+                st = (ff - start).total_seconds()
+            for c in processed_calls:
+                c.supertime = st
+
+            return [
+                JobMetadata(
+                    name=name, status=status, job_id=None, backend=None, runtime_attributes=None, exec_dir=None,
+                    stdout=None, stderr=None, start=start, finish=finish, subjobs=processed_calls, from_cache=False,
+                    shard=None, outputs=[],
+                    super_time=supertime
+                )
+            ]
+
         call = calls[0]
         sjs = []
 
         status = cromwell_status_to_status(call.get("executionStatus"))
 
+        s = cls._parse_date(call.get("start"))
+        f = cls._parse_date(call.get("end"))
+        st = 0
+        if s:
+            s = s.replace(tzinfo=None)
+            ff = (f if f else datetime.now()).replace(tzinfo=None)
+            st = int((ff - s).total_seconds())
+
         if "subWorkflowMetadata" in call:
             sw = call["subWorkflowMetadata"]
 
             for k in sw.get("calls"):
-                sjs.append(cls.parse_standard_call(k, sw["calls"][k]))
+                sjs.extend(cls.parse_standard_call(k, sw["calls"][k], st))
 
-        return JobMetadata(
+
+        return [JobMetadata(
             name=name, status=status, job_id=call.get("jobId"), backend=None,
             runtime_attributes=None,
             outputs=call.get("outputs"),
             exec_dir="",
             stdout=call.get("stdout"),
             stderr=call.get("stderr"),
-            start=cls._parse_date(call.get("start")), finish=cls._parse_date(call.get("end")),
+            start=s, finish=f,
+            super_time=supertime,
             subjobs=sjs,
             from_cache=call["callCaching"].get("hit") if "callCaching" in call else False,
             shard=call.get("shardIndex")
-        )
+        )]

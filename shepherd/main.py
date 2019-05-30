@@ -8,9 +8,9 @@
 """
 from typing import Optional, Dict, Union
 
-from shepherd import TaskManager, Environment
-from shepherd.cli import get_janis_workflow_from_searchname
+from shepherd import Environment
 from shepherd.management.configmanager import ConfigManager
+from shepherd.utils import get_janis_workflow_from_searchname
 
 
 def main(path, validation_reqs, env: Union[str, Environment], hints: Dict[str, str], output_dir: Optional[str]=None):
@@ -22,8 +22,6 @@ def main(path, validation_reqs, env: Union[str, Environment], hints: Dict[str, s
         outdir=output_dir,
         hints=hints
     )
-
-
 
 
 def validate_and_run_janis(wf, **kwargs):

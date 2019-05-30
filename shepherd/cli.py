@@ -1,70 +1,106 @@
-import os
-from inspect import isclass, isabstract
+import argparse
 
-from path import Path   # path.py
+from janis import HINTS, HintEnum
 
-from janis import Workflow
 from shepherd.utils.logger import Logger
-
-def get_janis_workflow_from_searchname(name, cwd):
-
-    Logger.log(f"Searching for a file called '{name}'")
-    if os.path.exists(name):
-        Logger.log(f"Found file called '{name}'")
-        return get_workflow_from_file(name)
-
-    Logger.log(f"Searching for file '{name}' in the cwd, '{cwd}'")
-    with Path(cwd):
-        if os.path.exists(name):
-            Logger.log(f"Found file in '{cwd}' called '{name}'")
-            return get_workflow_from_file(name)
-
-    Logger.log(f"Attempting to get search path $JANIS_SEARCHPATH from environment variables")
-    search_path = os.getenv("JANIS_SEARCHPATH")
-    if search_path:
-        Logger.log(f"Got value for env JANIS_SEARCHPATH '{search_path}', searching for file '{name}' here.")
-        with Path(search_path):
-            if os.path.exists(name):
-                Logger.log(f"Found file in '{search_path}' called '{name}'")
-                return get_workflow_from_file(name)
-    else:
-        Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
-
-    raise Exception("Couldn't find workflow with filename '{name}' in any of the search paths: "
-                    "qualified path, current working directory ({cwd}) or the search path.")
+from shepherd.management.configmanager import ConfigManager
 
 
-def get_workflow_from_file(file):
-    # How to import a module given the full path
-    # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("module.name", file)
-    foo = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(foo)
-    ptypes = get_workflows_from_module_spec(foo)
-    if len(ptypes) == 0:
-        raise Exception(f"Couldn't find any valid workflows in '{file}'.")
-    if len(ptypes) > 1:
-        raise Exception(f"Too many workflows detected ({len(ptypes)}) in '{file}': " + ','.join(str(x) for x in ptypes))
-    return ptypes[0]
+def process_args():
+    cmds = {
+        "version": do_version,
+        "janis": do_janis,
+        "run": do_run,
+        "watch": do_watch,
+        "abort": do_abort
+    }
+
+    parser = argparse.ArgumentParser(description="Execute a workflow")
+    subparsers = parser.add_subparsers(help="subcommand help", dest="command")
+    parser.add_argument("-d", "--debug", action="store_true")
+
+    subparsers.add_parser("version")
+    add_watch_args(subparsers.add_parser("watch"))
+    add_abort_args(subparsers.add_parser("abort"))
+    add_janis_args(subparsers.add_parser("janis"))
+    add_reconnect_args(subparsers.add_parser("reconnect"))
+    # add_workflow_args(subparsers.add_parser("run-workflow"))
+
+    args = parser.parse_args()
+    cmds[args.command](args)
 
 
-def get_workflows_from_module_spec(spec):
-    """
-    Get all the Janis.Workflow's that are defined in the file (__module__ == 'module.name')
-    :return: List of all the subclasses of a workflow
-    """
-    potentials = []
-    for ptype in spec.__dict__.values():
-        if isinstance(ptype, Workflow):
-            Logger.warn(f"Detected instance of 'Workflow' (id: '{ptype.id()}'), only subclasses are supported")
-            continue
-        if not callable(ptype): continue
-        if isabstract(ptype): continue
-        if not isclass(ptype): continue
-        if ptype == Workflow: continue
-        if not issubclass(ptype, Workflow): continue
-        if ptype.__module__ != "module.name": continue
-        potentials.append(ptype)
+def add_watch_args(parser):
+    parser.add_argument("tid", help="Task id")
+    return parser
 
-    return potentials
+
+def add_abort_args(parser):
+    parser.add_argument("tid", help="Task id")
+    return parser
+
+
+def add_workflow_args(parser):
+    parser.add_argument("workflow")
+    parser.add_argument("-i", "--inputs", help="workflow inputs")
+    parser.add_argument("-p", "--tools", help="required dependencies")
+    parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local")
+
+    return parser
+
+
+def add_janis_args(parser):
+    parser.add_argument("workflow", help="Run the workflow defined in this file")
+
+    parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local")
+    parser.add_argument("-o", "--task-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
+
+    parser.add_argument("--validation-reference", help="reference file for validation")
+    parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
+    parser.add_argument("--validation-intervals", help="intervals to validate between")
+    parser.add_argument("--validation-fields", nargs="+", help="outputs from the workflow to validate")
+
+    # add hints
+    for HintType in HINTS:
+        if issubclass(HintType, HintEnum):
+            print("Adding " + HintType.key())
+            parser.add_argument("--hint-" + HintType.key(), choices=HintType.symbols())
+        else:
+            print("Skipping " + HintType.key())
+
+    return parser
+
+
+def add_reconnect_args(parser):
+    parser.add_argument("tid", help="task-id to reconnect to")
+    return parser
+
+
+def do_version(args):
+    print("v0.0.2")
+
+
+def do_run(args):
+    Logger.info("Run the shepherd-shepherd with the CommandLine arguments")
+    print(args)
+    raise NotImplementedError("This path hasn't been implemented yet, raise an issue.")
+
+
+def do_watch(args):
+    tid = args.tid
+    tm = ConfigManager().from_tid(tid)
+    tm.resume_if_possible()
+
+
+def do_abort(args):
+    tid = args.tid
+    tm = ConfigManager().from_tid(tid)
+    tm.abort()
+
+
+def do_janis(args):
+    print(args)
+
+
+if __name__ == "__main__":
+    process_args()

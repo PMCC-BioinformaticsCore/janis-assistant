@@ -1,3 +1,4 @@
+from typing import Union
 from .cromwell import Cromwell, CromwellConfiguration
 from .cwltool.main import CWLTool
 from .engine import SyncTask, AsyncTask, Engine
@@ -9,3 +10,13 @@ def get_ideal_specification_for_engine(engine: Engine):
         return SupportedTranslations.WDL
 
     return SupportedTranslations.CWL
+
+
+def get_engine_type(engtype: Union[str, Engine.EngineType]):
+    engid = str(engtype)
+    if engid == Engine.EngineType.cromwell.value:
+        return Cromwell
+    elif engid == Engine.EngineType.cwltool.value:
+        return CWLTool
+
+    raise Exception("Couldn't recognise engine type ")

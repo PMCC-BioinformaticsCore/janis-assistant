@@ -4,9 +4,10 @@ from enum import Enum
 from shepherd.engines import Engine, Cromwell
 
 from shepherd.data.filescheme import FileScheme, LocalFileScheme, SSHFileScheme
+from shepherd.management import Archivable
 
 
-class Environment:
+class Environment(Archivable):
     """
     A class to contain a series of attributes about an environment
     """

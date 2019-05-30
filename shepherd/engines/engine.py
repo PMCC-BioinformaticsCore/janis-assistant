@@ -1,11 +1,22 @@
 import threading
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Dict, Any, Optional
 
+from shepherd.management import Archivable
 from ..data.schema import TaskStatus, TaskMetadata
 
 
-class Engine(ABC):
+class Engine(Archivable, ABC):
+
+    class EngineType(Enum):
+        cromwell = "cromwell"
+        cwltool = "cwltool"
+
+        def __str__(self): return self.value
+
+    def __init__(self, engtype: EngineType):
+        self.engtype = engtype
 
     @abstractmethod
     def id(self):

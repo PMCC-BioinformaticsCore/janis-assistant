@@ -1,11 +1,25 @@
 import abc
-from typing import Optional, Callable
+from enum import Enum
+from typing import Optional, Callable, Tuple
+
+from shepherd.management import Archivable
 from shepherd.utils.logger import Logger
 
 
-class FileScheme(abc.ABC):
-    def __init__(self, id):
+class FileScheme(Archivable, abc.ABC):
+
+    class FileSchemeType(Enum):
+        local = "local"
+        ssh = "ssh"
+        gcs = "gcs"
+        s3 = "s3"
+
+        def __str__(self):
+            return self.value
+
+    def __init__(self, id, fstype):
         self.id = id
+        self.fstype = fstype
 
     @abc.abstractmethod
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
@@ -21,11 +35,24 @@ class FileScheme(abc.ABC):
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         pass
 
+    @staticmethod
+    def get_type(identifier):
+        if identifier == "local":
+            return LocalFileScheme
+        elif identifier == "ssh":
+            return SSHFileScheme
+        elif identifier == "gcp":
+            return GCSFileScheme
+        elif identifier == "s3":
+            return S3FileScheme
+
+        raise Exception(f"Couldn't find filescheme with id '{identifier}")
+
 
 class LocalFileScheme(FileScheme):
 
     def __init__(self):
-        super().__init__("local")
+        super().__init__("local", FileScheme.FileSchemeType.local)
 
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         self.link_copy_or_fail(source, dest)
@@ -55,7 +82,7 @@ class LocalFileScheme(FileScheme):
 
 class SSHFileScheme(FileScheme):
     def __init__(self, id, connectionstring):
-        super().__init__(id)
+        super().__init__(id, FileScheme.FileSchemeType.ssh)
         self.connectionstring = connectionstring
 
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
@@ -72,6 +99,14 @@ class SSHFileScheme(FileScheme):
 class GCSFileScheme(FileScheme):
     """
     Placeholder for GCS File schema, almost for sure going to need the 'gsutil' package,
+    probably a credentials file to access the files. Should call the report_progress param on cp
+    """
+    pass
+
+
+class S3FileScheme(FileScheme):
+    """
+    Placeholder for S3 File schema, almost for sure going to need the 'aws' package,
     probably a credentials file to access the files. Should call the report_progress param on cp
     """
     pass

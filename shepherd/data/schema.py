@@ -46,6 +46,9 @@ class TaskMetadata:
         self.tid = None             # needs to be set by taskManager
         self.outdir: str = None     # provided by TaskManager
 
+        self.engine_name = None
+        self.engine_url = None
+
         self.wid: str = str(wid)
         self.name: str = name
         self.status: TaskStatus = status
@@ -63,12 +66,11 @@ class TaskMetadata:
         fin = self.finish if self.finish else datetime.now()
         duration = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else 0
 
-
-
         return f"""
 TID:        {self.tid}
 WID:        {self.wid}
 Name:       {self.name}
+{(("Engine:     " + self.engine_name) if self.engine_name else '')}{("Egn url:    " + self.engine_url) if self.engine_url else ''}
 
 Path:       {self.outdir}
 
@@ -85,18 +87,16 @@ Jobs:
         """.strip()
 
 
-
-
 class JobMetadata:
     def __init__(self, name: str, status: TaskStatus, job_id: Optional[str], backend: Optional[str],
                  runtime_attributes: Optional[dict], outputs: List, exec_dir: Optional[str], stdout: Optional[str],
                  stderr: Optional[str], start: datetime, finish: Optional[datetime], subjobs, from_cache: bool,
-                 shard: int):
+                 shard: Optional[int], super_time: Optional[int]):
 
         self.name = name
         self.status = status
         self.jobid = job_id
-        self.shard = shard if shard >= 0 else None
+        self.shard = shard if shard is not None and shard >= 0 else None
         self.backend = backend
         self.runtimeattributes = runtime_attributes
 
@@ -105,6 +105,7 @@ class JobMetadata:
 
         self.start: datetime = start
         self.finish: datetime = finish
+        self.supertime = super_time
 
         self.outputs = outputs
 
@@ -114,11 +115,13 @@ class JobMetadata:
 
     def format(self, pre):
 
-        tb = "├---"
+        tb = "    "
         fin = self.finish if self.finish else datetime.now()
         time = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else "N/A "
-        shard = f"-shard-{self.shard}" if self.shard else ""
-        standard = pre + f"[{self.status.symbol()}] {self.name}{shard} ({time}s)"
+        percentage = (round(1000 * time / self.supertime)/10) if self.start else None
+
+        shard = f"-shard-{self.shard}" if self.shard is not None else ""
+        standard = pre + f"[{self.status.symbol()}] {self.name}{shard} ({time}s :: {percentage} %)"
 
         if self.subjobs:
             ppre = pre + tb
@@ -152,7 +155,7 @@ class JobMetadata:
         else:
             return standard + f" :: Unimplemented status: '{self.status}' for task: '{self.name}'"
 
-        ppre = "\n" + pre + 2 * tb
+        ppre = "\n" + " " * len(pre) + 2 * tb
         return standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
 
 

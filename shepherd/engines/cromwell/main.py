@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import Optional
+from typing import Optional, List
 
 import requests
 import signal
@@ -20,15 +20,21 @@ from ..engine import Engine, TaskStatus, TaskBase
 
 class Cromwell(Engine):
 
-    def id(self):
-        return "cromwell"
-
     environment_map = {
         "default": "localhost:8000",
     }
 
-    def __init__(self, cromwell_loc=None, config_path=None, config=None, host=None):
+    @classmethod
+    def db_to_kwargs(cls, keys: [str]=None):
+        super(Cromwell, cls).db_to_kwargs(["host", "cromwell_loc", "config_path"])
+
+    def __init__(self, identifier, cromwell_loc=None, config_path=None, config=None, host=None):
+
+        super().__init__(Engine.EngineType.cromwell)
+
         self.cromwell_loc = cromwell_loc
+
+        self.identifier = identifier
 
         if config and not config_path:
             f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".conf", delete=False)
@@ -47,11 +53,14 @@ class Cromwell(Engine):
         self.logger = None
         self.stdout = []
 
+    def id(self):
+        return self.identifier
+
     @staticmethod
     def from_url(url):
         if not url:
             raise Exception("No url was provided to 'Cromwell.from_url', this field is required for expected results")
-        return Cromwell(host=url)
+        return Cromwell(host=url, identifier="pmac-head")
 
     def start_engine(self):
 
@@ -123,6 +132,9 @@ class Cromwell(Engine):
 
     def url_metadata(self, id, expand_subworkflows=True):
         return self.url_base() + f"/{id}/metadata?expandSubWorkflows={expand_subworkflows}"
+
+    def url_abort(self, id):
+        return self.url_base() + f"/{id}/abort"
 
     def create_task(self, source, inputs: list, dependencies, workflow_type=None):
         # curl \
@@ -257,7 +269,10 @@ class Cromwell(Engine):
         return raw.standard() if raw else raw
 
     def terminate_task(self, identifier) -> TaskStatus:
-        raise NotImplementedError("need to implement terminate_task from Cromwell")
+        url = self.url_abort(identifier)
+        r = requests.post(url)
+        Logger.log("Cromwell (Abort): " + str(r))
+        return TaskStatus.TERMINATED
 
 
 

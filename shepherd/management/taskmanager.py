@@ -98,7 +98,7 @@ class TaskManager:
         env = Environment.get_predefined_environment_by_id(envid)
         db.close()
         tm = TaskManager(outdir=path, tid=tid, environment=env)
-        tm.resume_if_possible()
+        Logger.log("You should call 'resume_if_possible' if you want the job to keep executing")
         return tm
 
     def resume_if_possible(self):
@@ -316,7 +316,12 @@ class TaskManager:
         if meta:
             meta.tid = self.tid
             meta.outdir = self.path
+            meta.engine_name = self.environment.engine.engtype.value
+            meta.engine_url = self.environment.engine.host if isinstance(self.environment.engine, Cromwell) else 'N/A'
         return meta
+
+    def abort(self) -> bool:
+        return bool(self.environment.engine.terminate_task(self.get_engine_tid()))
 
     @staticmethod
     def _create_dir_if_needed(path):

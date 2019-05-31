@@ -18,7 +18,7 @@ setup(
         'console_scripts': ['shepherd=shepherd.cli:process_args']
     },
     install_requires=[
-        'janis-pipelines[bioinformatics]',
+        'janis-pipelines[bioinformatics]>=v0.2.17',
         'requests',
         'path.py',
         'python-dotenv'

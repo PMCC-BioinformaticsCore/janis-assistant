@@ -24,7 +24,7 @@ class Environment(Archivable):
     @staticmethod
     def get_predefined_environment_by_id(envid):
         if envid == "local":
-            return Environment(envid, Cromwell().start_engine(), LocalFileScheme())
+            return Environment(envid, Cromwell("local").start_engine(), LocalFileScheme())
         elif envid == "local-connect":
             return Environment(envid, Cromwell.from_url("localhost:8000"), LocalFileScheme())
         elif envid == "pmac":

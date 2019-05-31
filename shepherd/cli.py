@@ -2,8 +2,10 @@ import argparse
 
 from janis import HINTS, HintEnum
 
-from shepherd.utils.logger import Logger
+from shepherd.main import fromjanis
 from shepherd.management.configmanager import ConfigManager
+from shepherd.utils.logger import Logger
+from shepherd.validation import ValidationRequirements
 
 
 def process_args():
@@ -53,7 +55,7 @@ def add_janis_args(parser):
     parser.add_argument("workflow", help="Run the workflow defined in this file")
 
     parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local")
-    parser.add_argument("-o", "--task-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
+    parser.add_argument("-o", "--output-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
@@ -100,6 +102,27 @@ def do_abort(args):
 
 def do_janis(args):
     print(args)
+
+    v = None
+
+    if args.validation_fields:
+        Logger.info("Will prepare validation")
+        v = ValidationRequirements(
+            truthVCF=args.validation_truth_vcf,
+            reference=args.validation_reference,
+            fields=args.validation_fields,
+            intervals=args.validation_intervals
+        )
+
+    hints = {k[5:]: v for k, v in vars(args).items() if k.startswith("hint_") and v is not None}
+
+    fromjanis(
+        args.workflow,
+        validation_reqs=v,
+        env=args.environment,
+        hints=hints,
+        output_dir=args.output_dir
+    )
 
 
 if __name__ == "__main__":

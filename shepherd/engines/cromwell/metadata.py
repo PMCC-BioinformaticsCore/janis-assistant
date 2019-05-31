@@ -56,8 +56,8 @@ class CromwellMetadata:
             call = calls[call_key][0]
 
             s, f = call["start"], call.get("end")
-            sd = datetime.fromisoformat(s)
-            fd = datetime.fromisoformat(f) if f else None
+            sd = None # datetime.fromisoformat(s)
+            fd = None # datetime.fromisoformat(f) if f else None
 
             prefixed_call_key = prefix + call_key
 
@@ -84,7 +84,7 @@ class CromwellMetadata:
     @staticmethod
     def _parse_date(datestr):
         if not datestr: return None
-        return datetime.fromisoformat(datestr)
+        return datetime.now() # datetime.fromisoformat(datestr)
 
     def standard(self):
         jobs = []

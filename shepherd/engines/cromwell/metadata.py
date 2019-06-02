@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Union
 
 from shepherd.utils.logger import Logger
-from shepherd.data.schema import TaskStatus, TaskMetadata, JobMetadata
+from shepherd.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
 
 
 def cromwell_status_to_status(status: str) -> TaskStatus:

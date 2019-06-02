@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import Optional, List
+from typing import Optional
 
 import requests
 import signal
@@ -8,7 +8,7 @@ import subprocess
 import time
 from datetime import datetime
 
-from shepherd.data.schema import TaskMetadata
+from shepherd.data.models.schema import TaskMetadata
 from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
 from shepherd.utils.logger import Logger
 from shepherd.engines.cromwell.metadata import cromwell_status_to_status, CromwellMetadata
@@ -24,17 +24,14 @@ class Cromwell(Engine):
         "default": "localhost:8000",
     }
 
-    @classmethod
-    def db_to_kwargs(cls, keys: [str]=None):
-        super(Cromwell, cls).db_to_kwargs(["host", "cromwell_loc", "config_path"])
+    def db_to_kwargs(self, keys: [str]=None):
+        return super(Cromwell, self).db_to_kwargs(["host", "cromwell_loc", "config_path"])
 
     def __init__(self, identifier, cromwell_loc=None, config_path=None, config=None, host=None):
 
-        super().__init__(Engine.EngineType.cromwell)
+        super().__init__(identifier, Engine.EngineType.cromwell)
 
         self.cromwell_loc = cromwell_loc
-
-        self.identifier = identifier
 
         if config and not config_path:
             f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".conf", delete=False)
@@ -53,14 +50,11 @@ class Cromwell(Engine):
         self.logger = None
         self.stdout = []
 
-    def id(self):
-        return self.identifier
-
     @staticmethod
-    def from_url(url):
+    def from_url(identifier, url):
         if not url:
             raise Exception("No url was provided to 'Cromwell.from_url', this field is required for expected results")
-        return Cromwell(host=url, identifier="pmac-head")
+        return Cromwell(identifier=identifier, host=url)
 
     def start_engine(self):
 

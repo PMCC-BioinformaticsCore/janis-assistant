@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Dict, Any, Optional
 
 from shepherd.management import Archivable
-from ..data.schema import TaskStatus, TaskMetadata
+from shepherd.data.models.schema import TaskStatus, TaskMetadata
 
 
 class Engine(Archivable, ABC):
@@ -15,12 +15,12 @@ class Engine(Archivable, ABC):
 
         def __str__(self): return self.value
 
-    def __init__(self, engtype: EngineType):
+    def __init__(self, identifier: str, engtype: EngineType):
+        self.identifier = identifier
         self.engtype = engtype
 
-    @abstractmethod
     def id(self):
-        pass
+        return self.identifier
 
     @abstractmethod
     def start_engine(self):

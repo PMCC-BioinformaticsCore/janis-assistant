@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from typing import Dict, Any
 
-from shepherd.data.schema import TaskMetadata
+from shepherd.data.models.schema import TaskMetadata
 from shepherd.engines.engine import Engine, TaskStatus, TaskBase
 from shepherd.utils.logger import Logger
 
@@ -14,7 +14,8 @@ class CWLTool(Engine):
 
     taskid_to_process = {}
 
-    def __init__(self, options=None):
+    def __init__(self, identifier: str, options=None):
+        super().__init__(identifier, Engine.EngineType.cwltool)
         self.options = options if options else []
         self.process = None
         self.pid = None

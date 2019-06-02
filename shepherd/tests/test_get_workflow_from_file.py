@@ -1,6 +1,6 @@
 import unittest
 
-from shepherd.cli import get_janis_workflow_from_searchname
+from shepherd.utils import get_janis_workflow_from_searchname
 
 
 class TestGetWorkflowFromFile(unittest.TestCase):

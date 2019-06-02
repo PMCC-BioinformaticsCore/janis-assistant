@@ -3,7 +3,7 @@ import tempfile
 from shutil import rmtree
 from unittest import TestCase
 
-from shepherd.data.filescheme import SSHFileScheme
+from shepherd.data.models.filescheme import SSHFileScheme
 
 
 class TestSSHFileScheme(TestCase):

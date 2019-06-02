@@ -4,8 +4,7 @@ from shutil import rmtree
 from unittest import TestCase
 
 from shepherd.data.dbmanager import DatabaseManager
-from shepherd.data.schema import TaskStatus
-from shepherd.management.enums import InfoKeys, ProgressKeys
+from shepherd.data.enums import InfoKeys, ProgressKeys
 
 
 class TestDatabaseManager(TestCase):
@@ -16,7 +15,7 @@ class TestDatabaseManager(TestCase):
         if os.path.exists(self.path):
             rmtree(self.path)
         os.makedirs(self.path)
-        self.db = DatabaseManager("tid", self.path)
+        self.db = DatabaseManager(self.path)
 
     def tearDown(self):
         from shutil import rmtree

@@ -14,7 +14,8 @@ def process_args():
         "janis": do_janis,
         "run": do_run,
         "watch": do_watch,
-        "abort": do_abort
+        "abort": do_abort,
+        "environment": do_environment,
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -26,6 +27,7 @@ def process_args():
     add_abort_args(subparsers.add_parser("abort"))
     add_janis_args(subparsers.add_parser("janis"))
     add_reconnect_args(subparsers.add_parser("reconnect"))
+    add_environment_args(subparsers.add_parser("environment"))
     # add_workflow_args(subparsers.add_parser("run-workflow"))
 
     args = parser.parse_args()
@@ -54,13 +56,16 @@ def add_workflow_args(parser):
 def add_janis_args(parser):
     parser.add_argument("workflow", help="Run the workflow defined in this file")
 
-    parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local")
     parser.add_argument("-o", "--output-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
+
+    parser.add_argument("-e", "--environment", choices=ConfigManager().environmentDB.get_env_ids())
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
     parser.add_argument("--validation-intervals", help="intervals to validate between")
     parser.add_argument("--validation-fields", nargs="+", help="outputs from the workflow to validate")
+
+    parser.add_argument("--dryrun", help="convert workflow, and do everything except submit the workflow")
 
     # add hints
     for HintType in HINTS:
@@ -70,6 +75,11 @@ def add_janis_args(parser):
         else:
             print("Skipping " + HintType.key())
 
+    return parser
+
+
+def add_environment_args(parser):
+    parser.add_argument("method", choices=["list", "create", "delete"])
     return parser
 
 
@@ -121,8 +131,18 @@ def do_janis(args):
         validation_reqs=v,
         env=args.environment,
         hints=hints,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        dryrun=args.dryrun
     )
+
+
+def do_environment(args):
+    method = args.method
+
+    if method == "list":
+        return print(ConfigManager().environmentDB.get_env_ids())
+
+    raise NotImplementedError(f"No implementation for '{method}' yet")
 
 
 if __name__ == "__main__":

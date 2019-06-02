@@ -1,7 +1,8 @@
 import sqlite3
 from typing import Tuple, List
 
-from shepherd.management.enums import InfoKeys, ProgressKeys
+from shepherd.data.enums import InfoKeys, ProgressKeys
+
 from shepherd.utils.logger import Logger
 
 

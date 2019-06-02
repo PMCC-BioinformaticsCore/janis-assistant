@@ -6,11 +6,15 @@ from typing import List, Tuple
 
 class Archivable(abc.ABC):
 
+    @abc.abstractmethod
+    def id(self):
+        pass
+
     def db_to_kwargs(self, keys: List[str]=None):
         if not keys:
-            keys = {k for k,v in self.__dict__.items() if not k.startswith("_") and not callable(v)}
+            keys = {k for k,v in vars(self).items() if not k.startswith("_")}
 
-        return {k: self.__getattribute__(k) for k in keys}
+        return {k: str(self.__getattribute__(k)) for k in keys}
 
     @classmethod
     def db_from_kvargs(cls, kvargs: [Tuple[str, any]]):

@@ -123,7 +123,7 @@ def get_janis_workflow_from_searchname(name, cwd):
     else:
         Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
 
-    raise Exception("Couldn't find workflow with filename '{name}' in any of the following: "
+    raise Exception(f"Couldn't find workflow with filename '{name}' in any of the following: "
                     f"full path, current working directory ({cwd}) or the search path.")
 
 

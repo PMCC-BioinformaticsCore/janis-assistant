@@ -8,19 +8,18 @@ A task manager will have reference to a database,
 import os
 import time
 from subprocess import call
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Dict
 
 import janis
 
-from shepherd.management.enums import InfoKeys, ProgressKeys
-from shepherd.utils.logger import Logger
 from shepherd.data.dbmanager import DatabaseManager
-from shepherd.data.filescheme import FileScheme
-from shepherd.data.schema import TaskStatus, TaskMetadata, JobMetadata
-from shepherd.engines import get_ideal_specification_for_engine, AsyncTask, Cromwell
+from shepherd.data.enums import InfoKeys, ProgressKeys
+from shepherd.data.models.filescheme import FileScheme
+from shepherd.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
+from shepherd.engines import get_ideal_specification_for_engine, Cromwell
 from shepherd.engines.cromwell import CromwellFile
 from shepherd.environments.environment import Environment
-from shepherd.utils import get_extension
+from shepherd.utils import get_extension, Logger
 from shepherd.validation import generate_validation_workflow_from_janis, ValidationRequirements
 
 
@@ -58,7 +57,7 @@ class TaskManager:
 
     @staticmethod
     def from_janis(tid: str, outdir: str, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
-                   validation_requirements: Optional[ValidationRequirements]):
+                   validation_requirements: Optional[ValidationRequirements], dryrun=False):
 
         # create output folder
         # create structure
@@ -80,7 +79,10 @@ class TaskManager:
 
         # this happens for all workflows no matter what type
         tm.submit_workflow_if_required(wf_evaluate, spec_translator)
-        tm.resume_if_possible()
+        if not dryrun:
+            tm.resume_if_possible()
+
+        return tm
 
     @staticmethod
     def from_path(path):
@@ -111,6 +113,7 @@ class TaskManager:
         self.copy_outputs_if_required()
 
         print(f"Finished managing task '{self.tid}'. View the task outputs: file://{self.get_task_path()}")
+        return self
 
     def prepare_and_output_workflow_to_evaluate_if_required(self, workflow, translator, validation: ValidationRequirements, hints: Dict[str, str]):
         if self.database.progress_has_completed(ProgressKeys.saveWorkflow):

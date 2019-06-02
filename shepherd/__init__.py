@@ -8,7 +8,6 @@ load_dotenv()
 from shepherd.engines import Cromwell, CWLTool, CromwellConfiguration
 from shepherd.management.taskmanager import TaskManager, TaskStatus
 from shepherd.environments.environment import Environment
-from shepherd.utils.logger import Logger
 from shepherd.validation import ValidationRequirements
 
 __version__ = "v0.0.1"

@@ -84,7 +84,7 @@ class CromwellMetadata:
     @staticmethod
     def _parse_date(datestr):
         if not datestr: return None
-        return datetime.now() # datetime.fromisoformat(datestr)
+        return datetime.fromisoformat(datestr)
 
     def standard(self):
         jobs = []

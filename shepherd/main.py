@@ -13,14 +13,15 @@ from shepherd.management.configmanager import ConfigManager
 from shepherd.utils import get_janis_workflow_from_searchname
 
 
-def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Optional[Dict[str, str]], output_dir: Optional[str]=None):
+def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Optional[Dict[str, str]], output_dir: Optional[str]=None, dryrun: bool=False):
     Wf = get_janis_workflow_from_searchname(path, ".")
     tm = ConfigManager().create_task(
         wf=Wf(),
         environment=Environment.get_predefined_environment_by_id(env) if isinstance(env, str) else env,
         validation_requirements=validation_reqs,
         outdir=output_dir,
-        hints=hints
+        hints=hints,
+        dryrun=dryrun
     )
 
 

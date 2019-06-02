@@ -70,7 +70,7 @@ class TaskMetadata:
 TID:        {self.tid}
 WID:        {self.wid}
 Name:       {self.name}
-{(("Engine:     " + self.engine_name) if self.engine_name else '')}{("Egn url:    " + self.engine_url) if self.engine_url else ''}
+{((f"{nl}Engine:     " + self.engine_name) if self.engine_name else '')}{(f"{nl}Engine url: " + self.engine_url) if self.engine_url else ''}
 
 Path:       {self.outdir}
 
@@ -118,7 +118,7 @@ class JobMetadata:
         tb = "    "
         fin = self.finish if self.finish else datetime.now()
         time = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else "N/A "
-        percentage = (round(1000 * time / self.supertime)/10) if self.start else None
+        percentage = (round(1000 * time / self.supertime)/10) if (self.start and self.supertime) else None
 
         shard = f"-shard-{self.shard}" if self.shard is not None else ""
         standard = pre + f"[{self.status.symbol()}] {self.name}{shard} ({time}s :: {percentage} %)"

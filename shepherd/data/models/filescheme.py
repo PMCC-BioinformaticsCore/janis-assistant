@@ -17,9 +17,12 @@ class FileScheme(Archivable, abc.ABC):
         def __str__(self):
             return self.value
 
-    def __init__(self, id, fstype):
-        self.id = id
+    def __init__(self, identifier: str, fstype: FileSchemeType):
+        self.identifier = identifier
         self.fstype = fstype
+
+    def id(self):
+        return self.identifier
 
     @abc.abstractmethod
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):

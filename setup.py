@@ -23,6 +23,7 @@ setup(
         'path.py',
         'ruamel.yaml',
         'python-dotenv',
+        'python-dateutil'
     ],
     packages=["shepherd"] + modules,
     classifiers=[

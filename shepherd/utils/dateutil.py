@@ -1,15 +1,15 @@
 from typing import Optional, List
-from datetime import datetime
-
+from dateutil import parser
 
 class DateUtil:
 
     @staticmethod
-    def parse_iso(d) -> Optional[datetime]:
+    def parse_iso(d):
         if not d:
             return None
         try:
-            return datetime.fromisoformat(d)
+            dd = parser.parse(d)
+            return dd
 
         except Exception as e:
             return None

@@ -2,6 +2,9 @@ import json
 from datetime import datetime
 from typing import Union
 
+from shepherd.utils.dateutil import DateUtil
+
+from shepherd.utils import dateutil
 from shepherd.utils.logger import Logger
 from shepherd.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
 
@@ -56,8 +59,8 @@ class CromwellMetadata:
             call = calls[call_key][0]
 
             s, f = call["start"], call.get("end")
-            sd = None # datetime.fromisoformat(s)
-            fd = None # datetime.fromisoformat(f) if f else None
+            sd = DateUtil.parse_iso(s)
+            fd = DateUtil.parse_iso(f) if f else None
 
             prefixed_call_key = prefix + call_key
 
@@ -81,16 +84,12 @@ class CromwellMetadata:
 
         return dcalls
 
-    @staticmethod
-    def _parse_date(datestr):
-        if not datestr: return None
-        return datetime.fromisoformat(datestr)
 
     def standard(self):
         jobs = []
 
-        s = self._parse_date(self.meta.get("start"))
-        f = self._parse_date(self.meta.get("end"))
+        s = DateUtil.parse_iso(self.meta.get("start"))
+        f = DateUtil.parse_iso(self.meta.get("end"))
         st = 0
         if s:
             s = s.replace(tzinfo=None)
@@ -103,8 +102,8 @@ class CromwellMetadata:
 
         return TaskMetadata(wid=self.meta.get("id"), name=self.meta.get("workflowName"),
                             status=cromwell_status_to_status(self.meta.get("status")),
-                            start=self._parse_date(self.meta.get("start")),
-                            finish=self._parse_date(self.meta.get("end")),
+                            start=DateUtil.parse_iso(self.meta.get("start")),
+                            finish=DateUtil.parse_iso(self.meta.get("end")),
                             outputs=[], jobs=jobs, error=self.get_caused_by_text())
 
     def get_caused_by_text(self):
@@ -170,8 +169,8 @@ class CromwellMetadata:
 
         status = cromwell_status_to_status(call.get("executionStatus"))
 
-        s = cls._parse_date(call.get("start"))
-        f = cls._parse_date(call.get("end"))
+        s = DateUtil.parse_iso(call.get("start"))
+        f = DateUtil.parse_iso(call.get("end"))
         st = 0
         if s:
             s = s.replace(tzinfo=None)

@@ -14,8 +14,8 @@ class EnvironmentDbProvider(DbProviderBase):
             envid varchar(10) PRIMARY KEY, 
             engid varchar(10), 
             fsid varchar(10),
-            FOREIGN KEY(engid)  REFERENCES engines(engid),
-            FOREIGN KEY(fsid)   REFERENCES fileschemes(fsid)
+            FOREIGN KEY(engid)  REFERENCES engines(identifier),
+            FOREIGN KEY(fsid)   REFERENCES fileschemes(identifier)
         )""")
 
     def get_env_ids(self) -> [str]:

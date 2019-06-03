@@ -1,7 +1,7 @@
 # from shepherd.engines.cromwell import Cromwell
 from shepherd.engines import Engine, Cromwell
 
-from shepherd.data.models.filescheme import FileScheme, LocalFileScheme, SSHFileScheme
+from shepherd.data.models.filescheme import FileScheme, LocalFileScheme, SSHFileScheme, GCSFileScheme
 from shepherd.management import Archivable
 
 
@@ -21,7 +21,9 @@ class Environment(Archivable):
                 "pmac-head",
                 Cromwell.from_url(identifier="pmac-head", url="vmpr-res-cluster1.unix.petermac.org.au:8000"),
                 SSHFileScheme("pmac", "cluster")
-            )
+            ),
+            Environment("gcp", Cromwell.from_url(identifier="gpc-connect", url="35.189.14.233:9000"),
+                        GCSFileScheme())
         ]
 
     def __init__(self, identifier, engine: Engine, filescheme: FileScheme, hg_ref_path: str=None):

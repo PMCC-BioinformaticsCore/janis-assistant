@@ -6,5 +6,10 @@ class DateUtil:
 
     @staticmethod
     def parse_iso(d) -> Optional[datetime]:
-        q = datetime.fromisoformat(d)
-        return q
+        if not d:
+            return None
+        try:
+            return datetime.fromisoformat(d)
+
+        except Exception as e:
+            return None

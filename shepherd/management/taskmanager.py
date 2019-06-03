@@ -57,7 +57,7 @@ class TaskManager:
 
     @staticmethod
     def from_janis(tid: str, outdir: str, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
-                   validation_requirements: Optional[ValidationRequirements], dryrun=False):
+                   validation_requirements: Optional[ValidationRequirements], inputs_dict: dict=None, dryrun=False):
 
         # create output folder
         # create structure
@@ -75,11 +75,13 @@ class TaskManager:
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = janis.translations.get_translator(spec)
-        wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(wf, spec_translator, validation_requirements, hints)
+        wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
+            wf, spec_translator, validation_requirements, hints, inputs_dict
+        )
 
-        # this happens for all workflows no matter what type
-        tm.submit_workflow_if_required(wf_evaluate, spec_translator)
         if not dryrun:
+            # this happens for all workflows no matter what type
+            tm.submit_workflow_if_required(wf_evaluate, spec_translator)
             tm.resume_if_possible()
 
         return tm
@@ -115,7 +117,8 @@ class TaskManager:
         print(f"Finished managing task '{self.tid}'. View the task outputs: file://{self.get_task_path()}")
         return self
 
-    def prepare_and_output_workflow_to_evaluate_if_required(self, workflow, translator, validation: ValidationRequirements, hints: Dict[str, str]):
+    def prepare_and_output_workflow_to_evaluate_if_required(self, workflow, translator, validation: ValidationRequirements,
+                                                            hints: Dict[str, str], additional_inputs: dict):
         if self.database.progress_has_completed(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.tid}', skipping.")
 
@@ -125,11 +128,12 @@ class TaskManager:
             workflow,
             to_console=False,
             to_disk=True,
-            with_resource_overrides=False,
-            merge_resources=False,
+            with_resource_overrides=True,
+            merge_resources=True,
             hints=hints,
             write_inputs_file=True,
-            export_path=self.outdir_workflow)
+            export_path=self.outdir_workflow,
+            additional_inputs=additional_inputs)
 
         Logger.log(f"Saved workflow with id '{workflow.id()}' to '{self.outdir_workflow}'")
 
@@ -139,6 +143,10 @@ class TaskManager:
 
             # we need to generate both the validation and non-validation workflow
             workflow_to_evaluate = generate_validation_workflow_from_janis(workflow, validation)
+
+            wid = workflow.id()
+            adjusted_inputs = { wid + "_" + k: v for k, v in additional_inputs.items() }
+
             translator.translate(
                 workflow_to_evaluate,
                 to_console=False,
@@ -147,7 +155,8 @@ class TaskManager:
                 merge_resources=True,
                 hints=hints,
                 write_inputs_file=True,
-                export_path=self.outdir_workflow
+                export_path=self.outdir_workflow,
+                additional_inputs=adjusted_inputs,
             )
 
         self.database.progress_mark_completed(ProgressKeys.saveWorkflow)

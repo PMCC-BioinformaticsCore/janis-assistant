@@ -97,7 +97,8 @@ class ConfigManager:
         )""")
 
     def create_task(self, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
-                   validation_requirements: Optional[ValidationRequirements], outdir=None, dryrun=False) -> TaskManager:
+                   validation_requirements: Optional[ValidationRequirements], outdir=None, inputs_dict: dict=None,
+                    dryrun=False) -> TaskManager:
 
         od = outdir if outdir else EnvVariables.exec_dir.default()
 
@@ -111,7 +112,8 @@ class ConfigManager:
         self.taskDB.insert_task(TaskRow(tid, task_path))
 
         return TaskManager.from_janis(tid, outdir=task_path, wf=wf, environment=environment, hints=hints,
-                                      validation_requirements=validation_requirements, dryrun=dryrun)
+                                      inputs_dict=inputs_dict, validation_requirements=validation_requirements,
+                                      dryrun=dryrun)
 
     def from_tid(self, tid):
         path = self.cursor.execute("SELECT outputdir FROM tasks where tid=?", (tid, )).fetchone()

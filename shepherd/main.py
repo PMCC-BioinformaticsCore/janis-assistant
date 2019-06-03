@@ -10,17 +10,26 @@ from typing import Optional, Dict, Union
 
 from shepherd import Environment
 from shepherd.management.configmanager import ConfigManager
-from shepherd.utils import get_janis_workflow_from_searchname
+from shepherd.utils import get_janis_workflow_from_searchname, try_parse_dict, get_file_from_searchname
 
 
-def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Optional[Dict[str, str]], output_dir: Optional[str]=None, dryrun: bool=False):
+def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Optional[Dict[str, str]],
+              output_dir: Optional[str]=None, dryrun: bool=False, inputs: Union[str, dict]=None):
     Wf = get_janis_workflow_from_searchname(path, ".")
+
+    inputsdict = None
+    if inputs:
+        inputsfile = get_file_from_searchname(inputs, ".")
+        inputsdict = try_parse_dict(inputsfile)
+
+
     tm = ConfigManager().create_task(
         wf=Wf(),
         environment=Environment.get_predefined_environment_by_id(env) if isinstance(env, str) else env,
         validation_requirements=validation_reqs,
         outdir=output_dir,
         hints=hints,
+        inputs_dict=inputsdict,
         dryrun=dryrun
     )
 

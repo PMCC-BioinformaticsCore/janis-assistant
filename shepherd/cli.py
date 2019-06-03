@@ -55,6 +55,8 @@ def add_workflow_args(parser):
 
 def add_janis_args(parser):
     parser.add_argument("workflow", help="Run the workflow defined in this file")
+    parser.add_argument("--inputs", help="File of inputs (matching the workflow) to override, these inputs will "
+                                         "take precedence over inputs declared in the workflow")
 
     parser.add_argument("-o", "--output-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
 
@@ -132,7 +134,8 @@ def do_janis(args):
         env=args.environment,
         hints=hints,
         output_dir=args.output_dir,
-        dryrun=args.dryrun
+        dryrun=args.dryrun,
+        inputs=args.inputs
     )
 
 

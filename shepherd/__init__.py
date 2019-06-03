@@ -1,7 +1,7 @@
 import argparse
 from dotenv import load_dotenv
 
-from shepherd.management.configmanager import ConfigManager
+# from shepherd.management.configmanager import ConfigManager
 
 load_dotenv()
 

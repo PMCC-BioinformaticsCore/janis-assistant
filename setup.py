@@ -21,7 +21,8 @@ setup(
         'janis-pipelines[bioinformatics]>=v0.2.17',
         'requests',
         'path.py',
-        'python-dotenv'
+        'ruamel.yaml',
+        'python-dotenv',
     ],
     packages=["shepherd"] + modules,
     classifiers=[

@@ -104,7 +104,14 @@ class GCSFileScheme(FileScheme):
     Placeholder for GCS File schema, almost for sure going to need the 'gsutil' package,
     probably a credentials file to access the files. Should call the report_progress param on cp
     """
-    pass
+    def __init__(self):
+        super().__init__("gcp", fstype=FileScheme.FileSchemeType.gcs)
+
+    def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+        pass
+
+    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+        pass
 
 
 class S3FileScheme(FileScheme):

@@ -1,8 +1,9 @@
 """
     Logger - Controls logging of the application
 """
-from datetime import datetime
 from typing import Optional, TextIO
+
+from shepherd.utils.dateutil import DateUtil
 
 
 class _bcolors:
@@ -138,6 +139,6 @@ class Logger:
     @staticmethod
     def get_prefix(level: int):
         return "{date} [{level}]".format(
-            date=datetime.now().replace(microsecond=0).isoformat(),
+            date=DateUtil.now().replace(microsecond=0).isoformat(),
             level=LogLevel.get_str(level)
         )

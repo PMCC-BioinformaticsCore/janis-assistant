@@ -1,5 +1,6 @@
 from typing import Optional, List
-from dateutil import parser
+from datetime import datetime
+from dateutil import parser, tz
 
 class DateUtil:
 
@@ -9,7 +10,20 @@ class DateUtil:
             return None
         try:
             dd = parser.parse(d)
-            return dd
+            return dd.astimezone(tz.UTC)
 
         except Exception as e:
             return None
+
+    @staticmethod
+    def now():
+        return datetime.utcnow().replace(tzinfo=tz.UTC)
+
+    @staticmethod
+    def secs_difference(a: datetime, b: datetime):
+        if a.tzinfo is None or b.tzinfo is None:
+            aorb = 'a' if a.tzinfo is None else 'b'
+            raise Exception(f"input '{aorb}' doesn't have tzinfo, "
+                            "please use DateUtil methods to create all dates")
+
+        return (b - a).total_seconds()

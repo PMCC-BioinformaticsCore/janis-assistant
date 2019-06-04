@@ -215,12 +215,12 @@ class HapPyValidator(CommandTool):
     def metadata(self):
         return ToolMetadata(
             creator=None,
-            maintainer="Michael Franklin", maintainer_email=None,
-            date_created=datetime(2019, 5, 15), date_updated=datetime(2019, 5, 15),
+            maintainer="Michael Franklin", maintainerEmail=None,
+            dateCreated=datetime(2019, 5, 15), dateUpdated=datetime(2019, 5, 15),
             institution=None, doi=None,
             citation=None,
             keywords=["HapPy"],
-            documentation_url="",
+            documentationUrl="",
             documentation="""usage: Haplotype Comparison 
     [-h] [-v] [-r REF] [-o REPORTS_PREFIX]
     [--scratch-prefix SCRATCH_PREFIX] [--keep-scratch]

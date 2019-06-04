@@ -6,10 +6,10 @@ import requests
 import signal
 import subprocess
 import time
-from datetime import datetime
 
 from shepherd.data.models.schema import TaskMetadata
 from shepherd.utils import ProcessLogger, write_files_into_buffered_zip
+from shepherd.utils.dateutil import DateUtil
 from shepherd.utils.logger import Logger
 from shepherd.engines.cromwell.metadata import cromwell_status_to_status, CromwellMetadata
 
@@ -228,7 +228,7 @@ class Cromwell(Engine):
         )
         Logger.info("Created task with id: " + task.identifier)
         Logger.log("Task is now processing")
-        task.task_start = datetime.now()
+        task.task_start = DateUtil.now()
 
         while task.status not in TaskStatus.FINAL_STATES():
             status = self.poll_task(task.identifier)
@@ -239,7 +239,7 @@ class Cromwell(Engine):
             if task.status not in TaskStatus.FINAL_STATES():
                 time.sleep(1)
 
-        task.task_finish = datetime.now()
+        task.task_finish = DateUtil.now()
         Logger.info("Task ('{id}') has finished processing: {t} seconds"
                     .format(id=task.identifier, t=str((task.task_finish - task.task_start).total_seconds())))
 

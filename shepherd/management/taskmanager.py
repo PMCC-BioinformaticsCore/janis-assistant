@@ -145,7 +145,8 @@ class TaskManager:
             workflow_to_evaluate = generate_validation_workflow_from_janis(workflow, validation)
 
             wid = workflow.id()
-            adjusted_inputs = { wid + "_" + k: v for k, v in additional_inputs.items() }
+
+            adjusted_inputs = {wid + "_" + k: v for k, v in additional_inputs.items()} if additional_inputs else None
 
             translator.translate(
                 workflow_to_evaluate,

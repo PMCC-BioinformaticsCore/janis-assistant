@@ -92,9 +92,8 @@ class CromwellMetadata:
         f = DateUtil.parse_iso(self.meta.get("end"))
         st = 0
         if s:
-            s = s.replace(tzinfo=None)
-            ff = (f if f else datetime.now()).replace(tzinfo=None)
-            st = int((ff - s).total_seconds())
+            ff = (f if f else DateUtil.now())
+            st = int(DateUtil.secs_difference(s, ff))
 
         for k in self.meta.get("calls"):
 
@@ -148,8 +147,7 @@ class CromwellMetadata:
 
             st = 0.01
             if start:
-                start = start.replace(tzinfo=None)
-                ff = (finish if finish else datetime.now()).replace(tzinfo=None)
+                ff = (finish if finish else DateUtil.now())
 
                 st = (ff - start).total_seconds()
             for c in processed_calls:
@@ -173,9 +171,9 @@ class CromwellMetadata:
         f = DateUtil.parse_iso(call.get("end"))
         st = 0
         if s:
-            s = s.replace(tzinfo=None)
-            ff = (f if f else datetime.now()).replace(tzinfo=None)
-            st = int((ff - s).total_seconds())
+            s = s
+            ff = (f if f else DateUtil.now())
+            st = int(DateUtil.secs_difference(s, ff))
 
         if "subWorkflowMetadata" in call:
             sw = call["subWorkflowMetadata"]

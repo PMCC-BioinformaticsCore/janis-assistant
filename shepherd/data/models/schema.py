@@ -2,6 +2,8 @@ from enum import Enum
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+from shepherd.utils.dateutil import DateUtil
+
 from shepherd.utils import second_formatter
 
 
@@ -63,8 +65,8 @@ class TaskMetadata:
         tb = "    "
         nl = "\n"
 
-        fin = self.finish if self.finish else datetime.now()
-        duration = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else 0
+        fin = self.finish if self.finish else DateUtil.now()
+        duration = round((fin - self.start).total_seconds()) if self.start else 0
 
         return f"""
 TID:        {self.tid}
@@ -116,8 +118,8 @@ class JobMetadata:
     def format(self, pre):
 
         tb = "    "
-        fin = self.finish if self.finish else datetime.now()
-        time = round((fin.replace(tzinfo=None) - self.start.replace(tzinfo=None)).total_seconds()) if self.start else "N/A "
+        fin = self.finish if self.finish else DateUtil.now()
+        time = round(DateUtil.secs_difference(self.start, fin)) if self.start else "N/A "
         percentage = (round(1000 * time / self.supertime)/10) if (self.start and self.supertime) else None
 
         shard = f"-shard-{self.shard}" if self.shard is not None else ""
@@ -125,7 +127,7 @@ class JobMetadata:
 
         if self.subjobs:
             ppre = pre + tb
-            subs: List[JobMetadata] = sorted(self.subjobs if self.subjobs else [], key=lambda j: j.start, reverse=False)
+            subs: List[JobMetadata] = sorted(self.subjobs if self.subjobs else [], key=lambda j: j.start if j.start else 0, reverse=False)
 
             return standard + "".join(["\n" + j.format(ppre) for j in subs])
 
@@ -158,29 +160,3 @@ class JobMetadata:
         ppre = "\n" + " " * len(pre) + 2 * tb
         return standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
 
-
-
-# if __name__ == "__main__":
-#     jobs = [
-#         JobMetadata("task1", TaskStatus.COMPLETED, start=datetime(2019,5,15,11,23), finish=datetime(2019, 5, 15, 11, 24),
-#                     job_id=None, backend="local",  runtime_attributes={}, outputs=[],
-#                     exec_dir=None, stdout=None, stderr=None),
-#         JobMetadata("subworkflow", TaskStatus.RUNNING, start=datetime(2019, 5, 15, 11, 24), finish=datetime.now(),
-#                     job_id=None, backend="local", runtime_attributes={}, outputs=[],
-#                     exec_dir=None, stdout=None, stderr=None, subjobs=[
-#                 JobMetadata("subtask1", TaskStatus.COMPLETED, start=datetime(2019, 5, 15, 11, 24),
-#                             finish=datetime(2019, 5, 15, 11, 24, 30),
-#                             job_id=None, backend="local", runtime_attributes={}, outputs=[],
-#                             exec_dir=None, stdout=None, stderr=None),
-#                 JobMetadata("subtask2", TaskStatus.RUNNING, start=datetime(2019, 5, 15, 11, 24, 31),
-#                             finish=None,
-#                             job_id="15462", backend="local", runtime_attributes={}, outputs=[],
-#                             exec_dir=None, stdout=None, stderr=None)
-#             ]),
-#         JobMetadata("task3", TaskStatus.FAILED, start=datetime(2019, 5, 15, 11, 23, 1),
-#                     finish=None,
-#                     job_id="15462", backend="local", runtime_attributes={}, outputs=[],
-#                     exec_dir=None, stdout=None, stderr=None)
-#     ]
-#     meta = TaskMetadata("1828", "whole_genome_germline", TaskStatus.RUNNING, datetime.now(), None, [], jobs=jobs)
-#     print(meta.log())

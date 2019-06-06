@@ -44,13 +44,13 @@ def add_abort_args(parser):
     return parser
 
 
-def add_workflow_args(parser):
-    parser.add_argument("workflow")
-    parser.add_argument("-i", "--inputs", help="workflow inputs")
-    parser.add_argument("-p", "--tools", help="required dependencies")
-    parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local")
-
-    return parser
+# def add_workflow_args(parser):
+#     parser.add_argument("workflow")
+#     parser.add_argument("-i", "--inputs", help="workflow inputs")
+#     parser.add_argument("-p", "--tools", help="required dependencies")
+#     parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local-connect")
+#
+#     return parser
 
 
 def add_janis_args(parser):
@@ -60,7 +60,7 @@ def add_janis_args(parser):
 
     parser.add_argument("-o", "--output-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
 
-    parser.add_argument("-e", "--environment", choices=ConfigManager().environmentDB.get_env_ids())
+    parser.add_argument("-e", "--environment", choices=ConfigManager().environmentDB.get_env_ids(), required=True)
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
@@ -102,13 +102,13 @@ def do_run(args):
 
 def do_watch(args):
     tid = args.tid
-    tm = ConfigManager().from_tid(tid)
+    tm = ConfigManager.manager().from_tid(tid)
     tm.resume_if_possible()
 
 
 def do_abort(args):
     tid = args.tid
-    tm = ConfigManager().from_tid(tid)
+    tm = ConfigManager.manager().from_tid(tid)
     tm.abort()
 
 
@@ -143,7 +143,7 @@ def do_environment(args):
     method = args.method
 
     if method == "list":
-        return print(ConfigManager().environmentDB.get_env_ids())
+        return print(ConfigManager.manager().environmentDB.get_env_ids())
 
     raise NotImplementedError(f"No implementation for '{method}' yet")
 

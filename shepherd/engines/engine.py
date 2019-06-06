@@ -1,7 +1,7 @@
 import threading
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from shepherd.management import Archivable
 from shepherd.data.models.schema import TaskStatus, TaskMetadata
@@ -18,6 +18,9 @@ class Engine(Archivable, ABC):
     def __init__(self, identifier: str, engtype: EngineType):
         self.identifier = identifier
         self.engtype = engtype
+
+    def db_to_kwargs(self, keys: List[str]=None):
+        return super(Engine, self).db_to_kwargs(["engtype", *keys])
 
     def id(self):
         return self.identifier

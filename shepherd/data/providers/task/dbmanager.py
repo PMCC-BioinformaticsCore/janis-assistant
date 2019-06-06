@@ -6,7 +6,7 @@ from shepherd.data.enums import InfoKeys, ProgressKeys
 from shepherd.utils.logger import Logger
 
 
-class DatabaseManager:
+class TaskDbManager:
 
     def __init__(self, path):
         self.exec_path = path
@@ -27,7 +27,7 @@ class DatabaseManager:
     def commit(self):
         return self.connection.commit()
 
-    ## TABLE creaters
+    # TABLE creators
 
     def create_info_table_if_required(self):
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS info 

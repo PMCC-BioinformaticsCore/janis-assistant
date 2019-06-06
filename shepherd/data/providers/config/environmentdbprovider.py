@@ -18,6 +18,9 @@ class EnvironmentDbProvider(DbProviderBase):
             FOREIGN KEY(fsid)   REFERENCES fileschemes(identifier)
         )""")
 
+    def get_by_id(self, identifier):
+        return self.cursor.execute("SELECT engid, fsid FROM environments WHERE envid = ? ", (identifier, )).fetchone()
+
     def get_env_ids(self) -> [str]:
         envs = self.cursor.execute("SELECT envid FROM environments").fetchall()
         if not envs:

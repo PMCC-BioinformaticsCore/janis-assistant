@@ -156,6 +156,7 @@ class Cromwell(Engine):
             k = "workflowInputs" + ("" if i == 0 else "_" + str(i+1))
             files[k] = inputs[i]
 
+        Logger.log("Posting to " + url)
         r = requests.post(url, files=files)
         try:
             res = r.json()
@@ -249,6 +250,7 @@ class Cromwell(Engine):
 
     def raw_metadata(self, identifier, expand_subworkflows=True) -> Optional[CromwellMetadata]:
         url = self.url_metadata(id=identifier, expand_subworkflows=expand_subworkflows)
+        Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
         r = requests.get(url)
         try:
             r.raise_for_status()

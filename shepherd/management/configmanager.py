@@ -9,7 +9,7 @@ from shepherd.data.models.filescheme import FileScheme
 from shepherd.data.providers.config.enginedbprovider import EngineDbProvider
 from shepherd.data.providers.config.environmentdbprovider import EnvironmentDbProvider
 from shepherd.data.providers.config.fileschemedbprovider import FileschemeDbProvider
-from shepherd.data.providers.config.taskdbprovider import TaskDbProvider, TaskRow
+from shepherd.data.providers.config.tasksdbprovider import TasksDbProvider, TaskRow
 from shepherd.engines import get_engine_type
 from shepherd.environments.environment import Environment
 from shepherd.management.taskmanager import TaskManager
@@ -37,6 +37,14 @@ class EnvVariables(Enum):
 
 class ConfigManager:
 
+    _manager = None
+
+    @staticmethod
+    def manager():
+        if not ConfigManager._manager:
+            ConfigManager._manager = ConfigManager()
+        return ConfigManager._manager
+
     def __init__(self):
         self._path = self.get_db_path()
 
@@ -45,7 +53,7 @@ class ConfigManager:
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
 
-        self.taskDB = TaskDbProvider(self.connection, self.cursor)
+        self.taskDB = TasksDbProvider(self.connection, self.cursor)
         self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
         self.engineDB = EngineDbProvider(self.connection, self.cursor)
         self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
@@ -73,29 +81,6 @@ class ConfigManager:
     def commit(self):
         return self.connection.commit()
 
-    def create_environment_related_tables_if_required(self):
-        self.create_engine_table_if_required()
-        self.create_filescheme_table_if_required()
-
-
-    def create_engine_table_if_required(self):
-        # essentially a key-value store
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS engines(
-            engid varchar(10) NOT NULL, 
-            key varchar(15) NOT NULL, 
-            value text, 
-            PRIMARY KEY(engid, key)
-        )""")
-
-    def create_filescheme_table_if_required(self):
-        # essentially a key-value store
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS fileschemes(
-            fsid varchar(10) NOT NULL,
-            key varchar(15) NOT NULL,
-            value text, 
-            PRIMARY KEY(fsid, key)
-        )""")
-
     def create_task(self, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
                    validation_requirements: Optional[ValidationRequirements], outdir=None, inputs_dict: dict=None,
                     dryrun=False) -> TaskManager:
@@ -119,7 +104,7 @@ class ConfigManager:
         path = self.cursor.execute("SELECT outputdir FROM tasks where tid=?", (tid, )).fetchone()
         if not path:
             raise Exception(f"Couldn't find task with id='{tid}'")
-        return TaskManager.from_path(path[0])
+        return TaskManager.from_path(path[0], self)
 
     def insert_default_environments(self):
         for e in Environment.DEFAULTS():
@@ -129,7 +114,16 @@ class ConfigManager:
 
         self.commit()
 
+    def get_environment(self, envid):
+        envtuple = self.environmentDB.get_by_id(envid)
+        if not envtuple:
+            raise KeyError(f"Couldn't find environment with id '{envid}'")
 
+        (engid, fsid) = envtuple
+        eng = self.engineDB.get(engid)
+        fs = self.fileschemeDB.get(fsid)
+
+        return Environment(envid, eng, fs)
 
     def persist_engine(self, engine, throw_if_exists=True, should_commit=True):
         return self.engineDB.persist(engine, throw_if_exists=throw_if_exists, should_commit=should_commit)

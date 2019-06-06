@@ -6,13 +6,14 @@ A task manager will have reference to a database,
 
 """
 import os
+import json
 import time
 from subprocess import call
 from typing import Optional, List, Dict
 
 import janis
 
-from shepherd.data.dbmanager import DatabaseManager
+from shepherd.data.providers.task.dbmanager import TaskDbManager
 from shepherd.data.enums import InfoKeys, ProgressKeys
 from shepherd.data.models.filescheme import FileScheme
 from shepherd.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
@@ -35,25 +36,18 @@ class TaskManager:
         self.outdir_workflow = self.get_task_path() + "workflow/"   # handy to have as reference
         self.create_output_structure()
 
-        self.database = DatabaseManager(self.get_task_path_safe())
+        self.database = TaskDbManager(self.get_task_path_safe())
+
+        if not isinstance(environment, Environment):
+            raise Exception("TaskManager requires an Environment")
+
         self.environment = environment
 
         if not self.tid:
             self.tid = self.get_engine_tid()
 
-        if environment:
-            self.environment = environment
-        else:
-            # get environment from db
-            env = self.database.get_meta_info(InfoKeys.environment)
-            if not env:
-                raise Exception(f"Couldn't get environment from DB for task id: '{self.tid}'")
 
-            # will except if not valid, but should probably pull store + pull more metadata from env
-            #
-            # If we do store more metadata, it might be worth storing a hash of the
-            # environment object to ensure we're getting the same environment back.
-            Environment.get_predefined_environment_by_id(env)
+
 
     @staticmethod
     def from_janis(tid: str, outdir: str, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
@@ -87,7 +81,7 @@ class TaskManager:
         return tm
 
     @staticmethod
-    def from_path(path):
+    def from_path(path, config_manager):
         """
         :param path: Path should include the $tid if relevant
         :return: TaskManager after resuming (might include a wait)
@@ -96,11 +90,12 @@ class TaskManager:
         # database path
 
         path = TaskManager.get_task_path_for(path)
-        db = DatabaseManager(path)
+        db = TaskDbManager(path)
         tid = db.get_meta_info(InfoKeys.taskId)
         envid = db.get_meta_info(InfoKeys.environment)
-        env = Environment.get_predefined_environment_by_id(envid)
+        env = config_manager.get_environment(envid)
         db.close()
+
         tm = TaskManager(outdir=path, tid=tid, environment=env)
         Logger.log("You should call 'resume_if_possible' if you want the job to keep executing")
         return tm
@@ -174,7 +169,7 @@ class TaskManager:
         Logger.log(f"Submitting task '{self.tid}' to '{self.environment.engine.id()}'")
         self._engine_tid = self.environment.engine.start_from_paths(fn_wf, fn_inp, fn_deps)
         self.database.add_meta_info(InfoKeys.engine_tid, self._engine_tid)
-        Logger.log(f"Submitted workflow ({self.tid}), got engine id = '{self.get_engine_tid()}")
+        Logger.log(f"Submitted workflow ({self.tid}), got engine id = '{self.get_engine_tid()}'")
 
         self.database.progress_mark_completed(ProgressKeys.submitWorkflow)
 
@@ -205,6 +200,9 @@ class TaskManager:
         valdir = self.get_task_path() + "validation/"
         output_is_validating = lambda o: is_validating and o.split(".")[-1].startswith("validated_")
         fs = self.environment.filescheme
+
+        with open(outdir + "outputs.txt", "w+") as oofp:
+            json.dump(dict(outputs), oofp)
 
         for outname, o in outputs.items():
 
@@ -329,7 +327,7 @@ class TaskManager:
         if meta:
             meta.tid = self.tid
             meta.outdir = self.path
-            meta.engine_name = self.environment.engine.engtype.value
+            meta.engine_name = str(self.environment.engine.engtype)
             meta.engine_url = self.environment.engine.host if isinstance(self.environment.engine, Cromwell) else 'N/A'
         return meta
 

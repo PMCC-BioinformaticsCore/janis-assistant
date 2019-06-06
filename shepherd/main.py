@@ -15,6 +15,9 @@ from shepherd.utils import get_janis_workflow_from_searchname, try_parse_dict, g
 
 def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Optional[Dict[str, str]],
               output_dir: Optional[str]=None, dryrun: bool=False, inputs: Union[str, dict]=None):
+
+    cm = ConfigManager.manager()
+
     Wf = get_janis_workflow_from_searchname(path, ".")
 
     inputsdict = None
@@ -22,10 +25,11 @@ def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Option
         inputsfile = get_file_from_searchname(inputs, ".")
         inputsdict = try_parse_dict(inputsfile)
 
+    selectedenv = cm.get_environment(env) if isinstance(env, str) else env
 
-    tm = ConfigManager().create_task(
+    tm = cm.create_task(
         wf=Wf(),
-        environment=Environment.get_predefined_environment_by_id(env) if isinstance(env, str) else env,
+        environment=selectedenv,
         validation_requirements=validation_reqs,
         outdir=output_dir,
         hints=hints,

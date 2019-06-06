@@ -44,12 +44,12 @@ class FileScheme(Archivable, abc.ABC):
             return LocalFileScheme
         elif identifier == "ssh":
             return SSHFileScheme
-        elif identifier == "gcp":
+        elif identifier == "gcs":
             return GCSFileScheme
         elif identifier == "s3":
             return S3FileScheme
 
-        raise Exception(f"Couldn't find filescheme with id '{identifier}")
+        raise Exception(f"Couldn't find filescheme with id '{identifier}'")
 
 
 class LocalFileScheme(FileScheme):
@@ -58,9 +58,11 @@ class LocalFileScheme(FileScheme):
         super().__init__("local", FileScheme.FileSchemeType.local)
 
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+        Logger.info(f"Hard linking {source} to {dest}")
         self.link_copy_or_fail(source, dest)
 
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+        Logger.info(f"Hard linking {source} to {dest}")
         self.link_copy_or_fail(source, dest)
 
     @staticmethod
@@ -84,17 +86,26 @@ class LocalFileScheme(FileScheme):
 
 
 class SSHFileScheme(FileScheme):
-    def __init__(self, id, connectionstring):
-        super().__init__(id, FileScheme.FileSchemeType.ssh)
+    def __init__(self, identifier, connectionstring):
+        super().__init__(identifier, FileScheme.FileSchemeType.ssh)
         self.connectionstring = connectionstring
 
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        import subprocess
+        import subprocess, os
         args = ["scp", self.connectionstring + ":" + source, dest]
+
+        if dest.endswith("bam"):
+            return Logger.warn("Manually skipped BAM file, as they're usually too big")
+
+        if os.path.exists(dest):
+            return Logger.log(f"Skipping as exists ({source} -> {dest}")
+
+        Logger.info(f"Secure copying (SCP) from {self.connectionstring}:{source} to local:{dest}")
         subprocess.call(args)
 
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         import subprocess
+        Logger.info(f"Secure copying (SCP) from local:{source} to {self.connectionstring}:{dest}")
         args = ["scp", source, self.connectionstring + ":" + dest]
         subprocess.call(args)
 

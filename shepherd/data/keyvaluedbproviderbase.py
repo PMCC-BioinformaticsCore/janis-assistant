@@ -28,7 +28,9 @@ class KeyValueDbProviderBase(DbProviderBase, abc.ABC):
         args = self.cursor.execute(f"SELECT key, value FROM {self.tablename} where identifier = ?", (identifier, )).fetchall()
         arged = {k: v for k, v in args}
 
-        T = self.get_type_from_args(arged["fstype"])
+        T = self.get_type_from_args(arged)
+
+        arged["identifier"] = identifier
 
         return T.db_from_kwargs(**arged)
 

@@ -47,17 +47,22 @@ class Archivable(abc.ABC):
         # Params can't shadow the built in 'id', so we'll put in a little hack
         # to guess the required param name that ends in
 
-        id_field_names = [k for k in required_param_keys if k == "id" or k.endswith("_id")]
+        id_field_names = [k for k in required_param_keys if k == "identifier" or k.endswith("_id")]
         id_field_name = None
-        id_field_value = valuesdict.get("id")
+        id_field_value = valuesdict.get("identifier")
 
         if len(id_field_names) == 1:
             id_field_name = id_field_names[0]
             inspect_ignore_keys.add(id_field_name)
         elif len(id_field_names) > 1:
-            print("Warning, can't determine if there are multiple id fieldnames")
+            print("Warning, can't determine id field as there are potentially many: " + ", ".join(id_field_names))
 
-        required_init_kwargs = {k: valuesdict[k] for k in required_param_keys if (k not in inspect_ignore_keys)}
+        required_init_kwargs = {}
+        try:
+            required_init_kwargs = {k: valuesdict[k] for k in required_param_keys if (k not in inspect_ignore_keys)}
+        except Exception as e:
+            print(e)
+
         if id_field_name:
             required_init_kwargs[id_field_name] = id_field_value
 

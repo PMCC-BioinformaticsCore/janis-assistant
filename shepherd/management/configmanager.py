@@ -72,7 +72,9 @@ class ConfigManager:
         if not os.path.exists(dbpath):
             os.makedirs(dbpath)
 
-        return dbpath + "/janis.db"
+        extra_slash = '' if dbpath.endswith('/') else '/'
+
+        return dbpath + extra_slash + "janis.db"
 
     def db_connection(self):
         Logger.log("Opening database connection to: " + self._path)
@@ -98,7 +100,7 @@ class ConfigManager:
 
         return TaskManager.from_janis(tid, outdir=task_path, wf=wf, environment=environment, hints=hints,
                                       inputs_dict=inputs_dict, validation_requirements=validation_requirements,
-                                      dryrun=dryrun)
+                                      dryrun=dryrun, watch=watch)
 
     def from_tid(self, tid):
         path = self.cursor.execute("SELECT outputdir FROM tasks where tid=?", (tid, )).fetchone()

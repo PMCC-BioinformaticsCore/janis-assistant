@@ -34,7 +34,7 @@ class Engine(Archivable, ABC):
         pass
 
     @abstractmethod
-    def start_from_paths(self, source_path: str, input_path: str, deps_path: str):
+    def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
         pass
 
     @abstractmethod
@@ -59,13 +59,14 @@ class Engine(Archivable, ABC):
 
 
 class TaskBase:
-    def __init__(self, engine: Engine,
+    def __init__(self, tid: str, engine: Engine,
                  source=None, source_path=None,
                  inputs=None, input_paths=None,
                  dependencies=None, dependencies_path=None,
 
                  identifier=None,
                  status: Optional[TaskStatus] = None, outputs=None, task_start=None, task_finish=None):
+        self.tid = tid
         self.engine = engine
 
         self.source = source

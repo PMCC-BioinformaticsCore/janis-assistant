@@ -2,6 +2,7 @@ import os
 import tempfile
 from typing import Optional
 
+import json
 import requests
 import signal
 import subprocess
@@ -130,7 +131,7 @@ class Cromwell(Engine):
     def url_abort(self, id):
         return self.url_base() + f"/{id}/abort"
 
-    def create_task(self, source, inputs: list, dependencies, workflow_type=None):
+    def create_task(self, tid, source, inputs: list, dependencies, workflow_type=None):
         # curl \
         #   -X POST "http://localhost:8000/api/workflows/v1" \
         #   -H "accept: application/json" \
@@ -147,6 +148,7 @@ class Cromwell(Engine):
 
         files = {
             "workflowSource": source,
+            'labels': json.dumps({'taskid': tid})
         }
 
         if dependencies:
@@ -185,7 +187,7 @@ class Cromwell(Engine):
         if not outs: return {}
         return {k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k] for k in outs}
 
-    def start_from_paths(self, source_path: str, input_path: str, deps_path: str):
+    def start_from_paths(self, tid: str, source_path: str, input_path: str, deps_path: str):
         """
         This does NOT watch, it purely schedule the jobs
         :param source_path:
@@ -196,7 +198,12 @@ class Cromwell(Engine):
         src = open(source_path, 'rb')
         inp = open(input_path, 'rb')
         deps = open(deps_path, 'rb')
-        return self.create_task(src, [inp], deps, workflow_type="wdl")
+        engid = self.create_task(tid, src, [inp], deps, workflow_type="wdl")
+
+        src.close()
+        inp.close()
+        deps.close()
+        return engid
 
     def start_from_task(self, task: TaskBase):
         """
@@ -223,6 +230,7 @@ class Cromwell(Engine):
             deps = task.dependencies if task.dependencies else open(task.dependencies_path, 'rb')
 
         task.identifier = self.create_task(
+            tid=task.tid,
             source=task.source if task.source else open(task.source_path, 'rb'),
             inputs=ins,
             dependencies=deps

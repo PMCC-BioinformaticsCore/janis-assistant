@@ -31,7 +31,7 @@ def process_args():
     # add_workflow_args(subparsers.add_parser("run-workflow"))
 
     args = parser.parse_args()
-    cmds[args.command](args)
+    return cmds[args.command](args)
 
 
 def add_watch_args(parser):
@@ -68,6 +68,7 @@ def add_janis_args(parser):
     parser.add_argument("--validation-fields", nargs="+", help="outputs from the workflow to validate")
 
     parser.add_argument("--dryrun", help="convert workflow, and do everything except submit the workflow")
+    parser.add_argument("--no-watch", help="Submit the workflow and return the task id", type=bool)
 
     # add hints
     for HintType in HINTS:
@@ -128,7 +129,7 @@ def do_janis(args):
 
     hints = {k[5:]: v for k, v in vars(args).items() if k.startswith("hint_") and v is not None}
 
-    fromjanis(
+    return fromjanis(
         args.workflow,
         validation_reqs=v,
         env=args.environment,

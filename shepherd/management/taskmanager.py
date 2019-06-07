@@ -51,7 +51,8 @@ class TaskManager:
 
     @staticmethod
     def from_janis(tid: str, outdir: str, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
-                   validation_requirements: Optional[ValidationRequirements], inputs_dict: dict=None, dryrun=False):
+                   validation_requirements: Optional[ValidationRequirements], inputs_dict: dict=None, dryrun=False,
+                   watch=True):
 
         # create output folder
         # create structure
@@ -76,7 +77,8 @@ class TaskManager:
         if not dryrun:
             # this happens for all workflows no matter what type
             tm.submit_workflow_if_required(wf_evaluate, spec_translator)
-            tm.resume_if_possible()
+            if watch:
+                tm.resume_if_possible()
 
         return tm
 
@@ -167,7 +169,7 @@ class TaskManager:
         fn_deps = self.outdir_workflow + translator.dependencies_filename(wf)
 
         Logger.log(f"Submitting task '{self.tid}' to '{self.environment.engine.id()}'")
-        self._engine_tid = self.environment.engine.start_from_paths(fn_wf, fn_inp, fn_deps)
+        self._engine_tid = self.environment.engine.start_from_paths(self.tid, fn_wf, fn_inp, fn_deps)
         self.database.add_meta_info(InfoKeys.engine_tid, self._engine_tid)
         Logger.log(f"Submitted workflow ({self.tid}), got engine id = '{self.get_engine_tid()}'")
 

@@ -6,19 +6,28 @@
 
 
 """
+from inspect import isclass
+
+import janis
 from typing import Optional, Dict, Union
 
-from shepherd import Environment
+from shepherd.environments.environment import Environment
 from shepherd.management.configmanager import ConfigManager
 from shepherd.utils import get_janis_workflow_from_searchname, try_parse_dict, get_file_from_searchname
 
 
-def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Optional[Dict[str, str]],
-              output_dir: Optional[str]=None, dryrun: bool=False, inputs: Union[str, dict]=None):
+def fromjanis(workflow, env: Union[str, Environment], validation_reqs=None, hints: Optional[Dict[str, str]]=None,
+              output_dir: Optional[str]=None, dryrun: bool=False, inputs: Union[str, dict]=None, watch=True):
 
     cm = ConfigManager.manager()
 
-    Wf = get_janis_workflow_from_searchname(path, ".")
+    wf = None
+    if isinstance(workflow, janis.Tool):
+        wf = workflow
+    elif isclass(workflow) and issubclass(workflow, janis.Tool):
+        wf = workflow()
+    else:
+        wf = get_janis_workflow_from_searchname(workflow, ".")()
 
     inputsdict = None
     if inputs:
@@ -28,14 +37,17 @@ def fromjanis(path, validation_reqs, env: Union[str, Environment], hints: Option
     selectedenv = cm.get_environment(env) if isinstance(env, str) else env
 
     tm = cm.create_task(
-        wf=Wf(),
+        wf=wf,
         environment=selectedenv,
         validation_requirements=validation_reqs,
         outdir=output_dir,
         hints=hints,
         inputs_dict=inputsdict,
-        dryrun=dryrun
+        dryrun=dryrun,
+        watch=watch
     )
+
+    return tm.tid
 
 
 def validate_and_run_janis(wf, **kwargs):

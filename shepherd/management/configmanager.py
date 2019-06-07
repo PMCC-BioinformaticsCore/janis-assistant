@@ -85,7 +85,7 @@ class ConfigManager:
 
     def create_task(self, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
                    validation_requirements: Optional[ValidationRequirements], outdir=None, inputs_dict: dict=None,
-                    dryrun=False) -> TaskManager:
+                    dryrun=False, watch=True) -> TaskManager:
 
         od = outdir if outdir else EnvVariables.exec_dir.default()
 

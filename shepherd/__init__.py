@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from shepherd.main import fromjanis
 from shepherd.engines import Cromwell, CWLTool, CromwellConfiguration
 from shepherd.management.taskmanager import TaskManager, TaskStatus
 from shepherd.environments.environment import Environment

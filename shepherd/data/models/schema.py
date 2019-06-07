@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 from shepherd.utils.dateutil import DateUtil
 
 from shepherd.utils import second_formatter
+from shepherd.utils.logger import _bcolors
 
 
 class TaskStatus(Enum):
@@ -34,7 +35,7 @@ class TaskStatus(Enum):
             TaskStatus.PROCESSING.value: "...",
             TaskStatus.QUEUED.value: " ",
             TaskStatus.RUNNING.value: "~",
-            TaskStatus.COMPLETED.value: "x",
+            TaskStatus.COMPLETED.value: "✓",
             TaskStatus.FAILED.value: "!",
             TaskStatus.TERMINATED.value: "T"
         }
@@ -125,11 +126,20 @@ class JobMetadata:
         shard = f"-shard-{self.shard}" if self.shard is not None else ""
         standard = pre + f"[{self.status.symbol()}] {self.name}{shard} ({time}s :: {percentage} %)"
 
+        col = ''
+
+        if self.status == TaskStatus.FAILED:
+            col = _bcolors.FAIL
+        elif self.status == TaskStatus.COMPLETED:
+            col = _bcolors.OKGREEN
+        # else:
+        # col = _bcolors.UNDERLINE
+
         if self.subjobs:
             ppre = pre + tb
             subs: List[JobMetadata] = sorted(self.subjobs if self.subjobs else [], key=lambda j: j.start if j.start else 0, reverse=False)
 
-            return standard + "".join(["\n" + j.format(ppre) for j in subs])
+            return col + standard + "".join(["\n" + j.format(ppre) for j in subs]) + _bcolors.ENDC
 
         fields: List[Tuple[str, str]] = []
 
@@ -158,5 +168,9 @@ class JobMetadata:
             return standard + f" :: Unimplemented status: '{self.status}' for task: '{self.name}'"
 
         ppre = "\n" + " " * len(pre) + 2 * tb
-        return standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
+        retval = standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
+
+
+
+        return col + retval + _bcolors.ENDC
 

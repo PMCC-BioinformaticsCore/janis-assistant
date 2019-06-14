@@ -148,7 +148,8 @@ class Cromwell(Engine):
 
         files = {
             "workflowSource": source,
-            'labels': json.dumps({'taskid': tid})
+            'labels': json.dumps({'taskid': tid}),
+            'workflowOptions': json.dumps({'google_labels': {'taskid': tid}})
         }
 
         if dependencies:

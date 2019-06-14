@@ -203,7 +203,7 @@ class TaskManager:
         output_is_validating = lambda o: is_validating and o.split(".")[-1].startswith("validated_")
         fs = self.environment.filescheme
 
-        with open(outdir + "outputs.txt", "w+") as oofp:
+        with open(outdir + "outputs.json", "w+") as oofp:
             json.dump(dict(outputs), oofp)
 
         for outname, o in outputs.items():

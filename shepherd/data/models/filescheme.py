@@ -1,4 +1,5 @@
 import abc
+import subprocess, os
 from enum import Enum
 from typing import Optional, Callable, Tuple
 
@@ -90,8 +91,11 @@ class SSHFileScheme(FileScheme):
         super().__init__(identifier, FileScheme.FileSchemeType.ssh)
         self.connectionstring = connectionstring
 
+    def makedir(self, location):
+        args = ['ssh', self.connectionstring, 'mkdir -p ' + location]
+        subprocess.call(args)
+
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        import subprocess, os
         args = ["scp", self.connectionstring + ":" + source, dest]
 
         if dest.endswith("bam"):

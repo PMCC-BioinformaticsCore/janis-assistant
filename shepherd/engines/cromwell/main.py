@@ -183,8 +183,14 @@ class Cromwell(Engine):
     def outputs_task(self, identifier):
         url = self.url_outputs(id=identifier)
         r = requests.get(url)
-        res = r.json()
-        outs = res.get("outputs")
+        if not r.ok:
+            return Logger.warn(f"Couldn't get outputs with identifier='${identifier}', got status: " + str(r.status_code))
+        try:
+            res = r.json()
+            outs = res.get("outputs")
+        except Exception as e:
+            return Logger.warn(f"Couldn't get outputs with identifier='${identifier}', got error: " + str(e))
+
         if not outs: return {}
         return {k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k] for k in outs}
 

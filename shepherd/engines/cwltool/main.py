@@ -148,3 +148,6 @@ class CWLTool(Engine):
                     shutil.rmtree(t)
                 else:
                     os.remove(t)
+
+    def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
+        pass

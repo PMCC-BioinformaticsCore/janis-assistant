@@ -52,9 +52,24 @@ class TaskDbManager:
                 self.cursor.execute("INSERT INTO info VALUES (?, ?)", (str(key), str(v)))
         self.commit()
 
+    def update_meta_info(self, key: InfoKeys, value: any):
+        return self.update_meta_infos([(key, value)])
+
+    def update_meta_infos(self, infos: List[Tuple[InfoKeys, any]]):
+        for key, value in infos:
+            if not isinstance(value, list):
+                value = [value]
+            for v in value:
+                self.cursor.execute("UPDATE info SET value = ? WHERE key = ?", (str(key), str(v)))
+        self.commit()
+
     def get_meta_info(self, key: InfoKeys):
-        self.cursor.execute("SELECT value from info where key = ?", (str(key), ))
+        self.cursor.execute("SELECT value FROM info WHERE key = ?", (str(key), ))
         return self.cursor.fetchone()[0]
+
+    def get_all_meta_info(self):
+        results = self.cursor.execute("SELECT key, value FROM info").fetchall()
+        return {v[0]: v[1] for v in results}
 
     def get_engine_identifier(self):
         return self.get_meta_info(InfoKeys.engineId)

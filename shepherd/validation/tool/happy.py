@@ -29,6 +29,7 @@ MEM_TUPLE = [
     })
 ]
 
+
 class HapPyValidator(CommandTool):
     @staticmethod
     def tool() -> str:
@@ -196,20 +197,18 @@ class HapPyValidator(CommandTool):
 
     def outputs(self) -> List[ToolOutput]:
         return [
-            ToolOutput("extended", Csv(), glob=InputSelector("reportPrefix", suffix=".extended.csv")),
-            ToolOutput("summary", Csv(), glob=InputSelector("reportPrefix", suffix=".summary.csv")),
-            ToolOutput("metrics", File(), glob=InputSelector("reportPrefix", suffix=".metrics.json.gz")),
-            ToolOutput("vcf", VcfTabix(), glob=InputSelector("reportPrefix", suffix=".vcf.gz")),
-            ToolOutput("runinfo", JsonFile(), glob=InputSelector("reportPrefix", suffix=".runinfo.json")),
-            ToolOutput("roc", File(), glob=InputSelector("reportPrefix", suffix=".roc.all.csv.gz")),
-            ToolOutput("indelLocations", File(), glob=InputSelector("reportPrefix",
-                                                                    suffix=".roc.Locations.INDEL.csv.gz")),
-            ToolOutput("indelPassLocations", File(), glob=InputSelector("reportPrefix",
-                                                                        suffix=".roc.Locations.INDEL.PASS.csv.gz")),
-            ToolOutput("snpLocations", File(), glob=InputSelector("reportPrefix",
-                                                                  suffix=".roc.Locations.SNP.csv.gz")),
-            ToolOutput("snpPassLocations", File(), glob=InputSelector("reportPrefix",
-                                                                      suffix=".roc.Locations.SNP.PASS.csv.gz")),
+            ToolOutput("extended", Csv(), glob=InputSelector("reportPrefix") + ".extended.csv"),
+            ToolOutput("summary", Csv(), glob=InputSelector("reportPrefix") + ".summary.csv"),
+            ToolOutput("metrics", File(), glob=InputSelector("reportPrefix") + ".metrics.json.gz"),
+            ToolOutput("vcf", VcfTabix(), glob=InputSelector("reportPrefix") + ".vcf.gz"),
+            ToolOutput("runinfo", JsonFile(), glob=InputSelector("reportPrefix") + ".runinfo.json"),
+            ToolOutput("roc", File(), glob=InputSelector("reportPrefix") + ".roc.all.csv.gz"),
+            ToolOutput("indelLocations", File(), glob=InputSelector("reportPrefix") + ".roc.Locations.INDEL.csv.gz"),
+            ToolOutput("indelPassLocations", File(), glob=InputSelector("reportPrefix")
+                                                          + ".roc.Locations.INDEL.PASS.csv.gz"),
+            ToolOutput("snpLocations", File(), glob=InputSelector("reportPrefix") + ".roc.Locations.SNP.csv.gz"),
+            ToolOutput("snpPassLocations", File(), glob=InputSelector("reportPrefix")
+                                                        + ".roc.Locations.SNP.PASS.csv.gz")
         ]
 
     def metadata(self):

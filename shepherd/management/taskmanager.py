@@ -46,8 +46,11 @@ class TaskManager:
         if not self.tid:
             self.tid = self.get_engine_tid()
 
+    def has(self, status: Optional[TaskStatus], environment: Optional[str]):
+        if environment and self.environment.identifier != environment:
+            return False
 
-
+        return True
 
     @staticmethod
     def from_janis(tid: str, outdir: str, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
@@ -238,10 +241,20 @@ class TaskManager:
             if meta:
                 print(meta.format())
                 status = meta.status
+                self.database.update_meta_info(InfoKeys.status, status)
             if status not in TaskStatus.FINAL_STATES():
                 time.sleep(5)
 
         self.database.progress_mark_completed(ProgressKeys.workflowMovedToFinalState)
+
+    def log_dbmetadata(self):
+        import tabulate
+        # log all the metadata we have:
+        results = self.database.get_all_meta_info()
+        header = ("Key", "Value")
+        res = tabulate.tabulate([header, ("tid", self.tid), *results.items()])
+        print(res)
+        return res
 
     @staticmethod
     def copy_output(filescheme: FileScheme, output_dir, filename, source):

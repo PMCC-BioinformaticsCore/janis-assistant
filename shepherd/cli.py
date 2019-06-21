@@ -1,12 +1,14 @@
 import argparse
 
 from janis import HINTS, HintEnum
+from shepherd.data.models.schema import TaskStatus
 
 from shepherd.main import fromjanis
 from shepherd.management.configmanager import ConfigManager
 from shepherd.utils.logger import Logger
 from shepherd.validation import ValidationRequirements
 
+environments = ConfigManager.manager().environmentDB.get_env_ids()
 
 def process_args():
     cmds = {
@@ -15,7 +17,9 @@ def process_args():
         "run": do_run,
         "watch": do_watch,
         "abort": do_abort,
+        "metadata": do_metadata,
         "environment": do_environment,
+        "query": do_query
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -26,8 +30,10 @@ def process_args():
     add_watch_args(subparsers.add_parser("watch"))
     add_abort_args(subparsers.add_parser("abort"))
     add_janis_args(subparsers.add_parser("janis"))
+    add_metadata_args(subparsers.add_parser("metadata"))
     add_reconnect_args(subparsers.add_parser("reconnect"))
     add_environment_args(subparsers.add_parser("environment"))
+    add_query_args(subparsers.add_parser("query"))
     # add_workflow_args(subparsers.add_parser("run-workflow"))
 
     args = parser.parse_args()
@@ -35,6 +41,11 @@ def process_args():
 
 
 def add_watch_args(parser):
+    parser.add_argument("tid", help="Task id")
+    return parser
+
+
+def add_metadata_args(parser):
     parser.add_argument("tid", help="Task id")
     return parser
 
@@ -60,7 +71,7 @@ def add_janis_args(parser):
 
     parser.add_argument("-o", "--output-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
 
-    parser.add_argument("-e", "--environment", choices=ConfigManager().environmentDB.get_env_ids(), required=True)
+    parser.add_argument("-e", "--environment", choices=environments, required=True)
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
@@ -91,6 +102,12 @@ def add_reconnect_args(parser):
     return parser
 
 
+def add_query_args(parser):
+    parser.add_argument("--status", help="workflow status", choices=TaskStatus.ALL())
+    parser.add_argument("--environment", help="The environment the task is executing in", choices=environments)
+    return parser
+
+
 def do_version(args):
     print("v0.0.2")
 
@@ -105,6 +122,12 @@ def do_watch(args):
     tid = args.tid
     tm = ConfigManager.manager().from_tid(tid)
     tm.resume_if_possible()
+
+
+def do_metadata(args):
+    tid = args.tid
+    tm = ConfigManager.manager().from_tid(tid)
+    tm.log_dbmetadata()
 
 
 def do_abort(args):
@@ -147,6 +170,11 @@ def do_environment(args):
         return print(ConfigManager.manager().environmentDB.get_env_ids())
 
     raise NotImplementedError(f"No implementation for '{method}' yet")
+
+def do_query(args):
+    status = args.status
+    environment = args.environment
+    ConfigManager.manager().query_tasks(status, environment)
 
 
 if __name__ == "__main__":

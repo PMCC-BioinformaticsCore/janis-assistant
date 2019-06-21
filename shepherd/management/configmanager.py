@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from enum import Enum
-from typing import Dict, Optional, cast
+from typing import Dict, Optional, cast, List, Tuple
 
 import janis
 
@@ -139,7 +139,10 @@ class ConfigManager:
     def get_engine(self, engid):
         return self.engineDB.get(engid)
 
-    # def _save_default_configs(self):
+    def query_tasks(self, status, env):
+        tids: [TaskRow] = self.taskDB.get_all_tasks()
+        ms: List[Tuple[TaskRow, TaskManager]] = [(t, TaskManager.from_path(t.outputdir, self)) for t in tids]
+        return [t.tid for (t, m) in ms if m.has(status=status, environment=env)]
 
 
 

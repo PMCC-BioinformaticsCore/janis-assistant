@@ -23,7 +23,9 @@ class Environment(Archivable):
                 SSHFileScheme("pmac", "cluster")
             ),
             Environment("gcp", Cromwell.from_url(identifier="gpc-connect", url="35.189.14.233:9000"),
-                        GCSFileScheme())
+                        GCSFileScheme()),
+            Environment("fs", Cromwell.from_url(identifier="fs-connect", url="localhost:8001"),
+                        SSHFileScheme("fs", "fs"))
         ]
 
     def __init__(self, identifier, engine: Engine, filescheme: FileScheme, hg_ref_path: str=None):

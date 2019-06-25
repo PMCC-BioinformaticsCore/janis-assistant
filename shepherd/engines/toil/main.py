@@ -2,7 +2,7 @@ import json
 import os
 import subprocess
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from shepherd.data.models.schema import TaskMetadata, TaskStatus
 from shepherd.engines.engine import Engine
@@ -23,9 +23,10 @@ def read_stdout(process):
 
 class Toil(Engine):
 
-    def __init__(self, tid):
+    def __init__(self, tid, scale=None):
         super(Toil, self).__init__("toil-" + tid, Engine.EngineType.toil)
         self.tid = tid
+        self.scale: Optional[float] = scale
 
     def start_engine(self):
         Logger.info("Toil doesn't run in a server mode, an instance will "
@@ -37,7 +38,8 @@ class Toil(Engine):
 
     def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
         print("TMP: " + os.getenv("TMPDIR"))
-        cmd = ["toil-cwl-runner",  "--stats", source_path, input_path]
+        scale = ["--scale", str(self.scale)] if self.scale else []
+        cmd = ["toil-cwl-runner",  "--stats", *scale, source_path, input_path]
         Logger.log("Running command: '" + " ".join(cmd) + "'")
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE)
 

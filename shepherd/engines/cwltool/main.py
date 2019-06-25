@@ -60,7 +60,8 @@ class CWLTool(Engine):
         :param identifier:
         :return:
         """
-        raise NotImplementedError("metadata needs to be implemented in CWLTool, may require rework of tool")
+        return None
+        # raise NotImplementedError("metadata needs to be implemented in CWLTool, may require rework of tool")
 
     def start_from_task(self, task: TaskBase):
         task.identifier = self.create_task(None, None, None)
@@ -150,4 +151,33 @@ class CWLTool(Engine):
                     os.remove(t)
 
     def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
-        pass
+        cmd = ["cwltool", *self.options, source_path]
+
+        if input_path:
+            cmd.append(input_path)
+
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE)
+        Logger.log("Running command: '" + " ".join(cmd) + "'")
+        Logger.info("CWLTool has started with pid=" + str(process.pid))
+        self.taskid_to_process[tid] = process.pid
+
+        for c in iter(process.stderr.readline, 'b'):  # replace '' with b'' for Python 3
+            line = c.decode("utf-8").rstrip()
+            if not line.strip(): continue
+            Logger.log("cwltool: " + line)
+            if b"Final process status is success" in c:
+                break
+        j = ""
+        Logger.log("Process has completed")
+        for c in iter(process.stdout.readline, 's'):  # replace '' with b'' for Python 3
+            if not c: continue
+            j += c.decode("utf-8")
+            try:
+                json.loads(j)
+                break
+            except:
+                continue
+        Logger.info("Workflow has completed execution")
+        process.terminate()
+
+        print(json.loads(j))

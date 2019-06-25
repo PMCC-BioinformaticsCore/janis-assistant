@@ -1,6 +1,5 @@
 from setuptools import setup, find_packages
-
-__version__ = "v0.0.1"
+from shepherd import __version__
 
 modules = ["shepherd." + p for p in sorted(find_packages('./shepherd'))]
 

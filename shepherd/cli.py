@@ -118,7 +118,7 @@ def add_reconnect_args(parser):
 
 
 def add_query_args(parser):
-    parser.add_argument("--status", help="workflow status", choices=TaskStatus.ALL())
+    parser.add_argument("--status", help="workflow status", choices=TaskStatus.all())
     parser.add_argument(
         "--environment",
         help="The environment the task is executing in",
@@ -127,7 +127,7 @@ def add_query_args(parser):
     return parser
 
 
-def do_version(args):
+def do_version(_):
     print("v0.0.2")
 
 

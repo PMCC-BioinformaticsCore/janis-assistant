@@ -13,19 +13,35 @@ class KeyValueDbProviderBase(DbProviderBase, abc.ABC):
         self.create_schema_if_required()
 
     def create_schema_if_required(self):
-        self.cursor.execute(f"""CREATE TABLE IF NOT EXISTS {self.tablename}(
+        self.cursor.execute(
+            f"""CREATE TABLE IF NOT EXISTS {self.tablename}(
                     identifier varchar(10) NOT NULL,
                     key varchar(15) NOT NULL,
                     value text, 
                     PRIMARY KEY(identifier, key)
-                )""")
+                )"""
+        )
 
     @abc.abstractmethod
     def get_type_from_args(self, args) -> Archivable:
         pass
 
+    def __contains__(self, item):
+        idt = str(item)
+        if isinstance(item, Archivable):
+            idt = item.id()
+
+        exists = self.cursor.execute(
+            f"SELECT 1 from {self.tablename} where identifier = ? LIMIT 1", (idt,)
+        ).fetchone()
+        print(exists)
+        return exists[0]
+
     def get(self, identifier) -> Archivable:
-        args = self.cursor.execute(f"SELECT key, value FROM {self.tablename} where identifier = ?", (identifier, )).fetchall()
+        args = self.cursor.execute(
+            f"SELECT key, value FROM {self.tablename} where identifier = ?",
+            (identifier,),
+        ).fetchall()
         arged = {k: v for k, v in args}
 
         T = self.get_type_from_args(arged)
@@ -37,7 +53,12 @@ class KeyValueDbProviderBase(DbProviderBase, abc.ABC):
     def persist(self, t: Archivable, throw_if_exists=True, should_commit=True):
         # check if already exists
 
-        if self.cursor.execute(f"SELECT COUNT(*) from {self.tablename} where identifier = ?", (t.id(),)).fetchone()[0] > 0:
+        if (
+            self.cursor.execute(
+                f"SELECT COUNT(*) from {self.tablename} where identifier = ?", (t.id(),)
+            ).fetchone()[0]
+            > 0
+        ):
             message = f"An environment with identifier '{t.id()}' already exists"
             Logger.log(message)
             if throw_if_exists:
@@ -46,8 +67,10 @@ class KeyValueDbProviderBase(DbProviderBase, abc.ABC):
 
         kvargs = t.db_to_kwargs()
         for (k, v) in kvargs.items():
-            self.cursor.execute(f"""INSERT INTO {self.tablename} (identifier, key, value) VALUES (?, ?, ?)""",
-                                (t.id(), k, v))
+            self.cursor.execute(
+                f"""INSERT INTO {self.tablename} (identifier, key, value) VALUES (?, ?, ?)""",
+                (t.id(), k, v),
+            )
 
         if should_commit:
             self.commit()

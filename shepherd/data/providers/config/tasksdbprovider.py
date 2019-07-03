@@ -43,27 +43,38 @@ class TasksDbProvider(DbProviderBase):
         self.create_tasks_table_if_required()
 
     def create_tasks_table_if_required(self) -> None:
-        self.cursor.execute(f"""CREATE TABLE IF NOT EXISTS {TasksDbProvider.table_name}(
+        self.cursor.execute(
+            f"""CREATE TABLE IF NOT EXISTS {TasksDbProvider.table_name}(
             tid varchar(6) PRIMARY KEY, 
             outputdir text
-        )""")
+        )"""
+        )
         self.commit()
 
     def get_by_tid(self, tid) -> Optional[TaskRow]:
-        row = self.cursor.execute(f"SELECT * FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)).fetchone()
-        if len(row) == 0: return None
+        row = self.cursor.execute(
+            f"SELECT * FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+        ).fetchone()
+        if len(row) == 0:
+            return None
 
         return TaskRow.from_row(row[0])
 
     def get_all_tasks(self) -> [TaskRow]:
-        return [TaskRow.from_row(r) for r in self.cursor.execute(f"SELECT * FROM {TasksDbProvider.table_name}").fetchall()]
+        return [
+            TaskRow.from_row(r)
+            for r in self.cursor.execute(
+                f"SELECT * FROM {TasksDbProvider.table_name}"
+            ).fetchall()
+        ]
 
     def insert_task(self, task: TaskRow) -> None:
         insfields = TaskRow.insert_fields()
         str_insfields = ",".join(insfields)
-        str_insplaceholder = ['?'] * len(insfields)
+        str_insplaceholder = ["?"] * len(insfields)
 
-        self.cursor.execute(f"INSERT INTO {TasksDbProvider.table_name}({str_insfields}) VALUES ({', '.join(str_insplaceholder)})", task.to_row())
+        self.cursor.execute(
+            f"INSERT INTO {TasksDbProvider.table_name}({str_insfields}) VALUES ({', '.join(str_insplaceholder)})",
+            task.to_row(),
+        )
         self.commit()
-
-

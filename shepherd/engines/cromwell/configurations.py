@@ -4,19 +4,21 @@ from shepherd.utils.logger import Logger
 
 
 class Serializable:
-
     def output(self):
         d = self.to_dict()
         tl = [(k + ": " + json.dumps(d[k], indent=2)) for k in d]
-        return "include required(classpath(\"application\"))\n\n" + "\n".join(tl)
+        return 'include required(classpath("application"))\n\n' + "\n".join(tl)
 
     @staticmethod
     def serialize(key, value) -> Tuple[str, Any]:
-        if value is None: return key, None
+        if value is None:
+            return key, None
         if isinstance(value, int) or isinstance(value, str) or isinstance(value, float):
             return key, value
         elif isinstance(value, tuple):
-            return Serializable.serialize(value[0], Serializable.serialize(None, value[1])[1])
+            return Serializable.serialize(
+                value[0], Serializable.serialize(None, value[1])[1]
+            )
         elif isinstance(value, dict):
             return key, Serializable.serialize_dict(value)
         elif isinstance(value, list):
@@ -24,15 +26,21 @@ class Serializable:
         elif isinstance(value, Serializable):
             return key, value.to_dict()
 
-        raise Exception("Unable to serialize '{key}' of type '{value}".format(key=key, value=type(value)))
+        raise Exception(
+            "Unable to serialize '{key}' of type '{value}".format(
+                key=key, value=type(value)
+            )
+        )
 
     @staticmethod
     def serialize_dict(d):
         retval = {}
         for k, v in d.items():
-            if v is None: continue
+            if v is None:
+                continue
             k, v = Serializable.serialize(k, v)
-            if not isinstance(v, bool) and not v: continue
+            if not isinstance(v, bool) and not v:
+                continue
             retval[k] = v
         return retval
 
@@ -46,7 +54,9 @@ class CromwellConfiguration(Serializable):
     """
 
     class Webservice(Serializable):
-        def __init__(self, port=None, interface=None, binding_timeout=None, instance_name=None):
+        def __init__(
+            self, port=None, interface=None, binding_timeout=None, instance_name=None
+        ):
             self.port = port
             self.interface = interface
             self.binding_timeout = ("binding-timeout", binding_timeout)
@@ -57,23 +67,55 @@ class CromwellConfiguration(Serializable):
 
     class System(Serializable):
         class Io(Serializable):
-            def __init__(self, per=None, number_of_attempts=None, number_of_requests=None):
+            def __init__(
+                self, per=None, number_of_attempts=None, number_of_requests=None
+            ):
                 self.per = per
                 self.number_of_attempts = ("number-of-attempts", number_of_attempts)
                 self.number_of_requests = ("number-of-requests", number_of_requests)
 
-        def __init__(self, io: Io=None, abort_jobs_on_terminate=None, graceful_server_shutdown=None,
-                     workflow_restart=None, max_concurrent_workflows=None, max_workflow_launch_count=None,
-                     new_workflow_poll_rate=None, number_of_workflow_log_copy_workers=None, number_of_cache_read_workers=None):
+        def __init__(
+            self,
+            io: Io = None,
+            abort_jobs_on_terminate=None,
+            graceful_server_shutdown=None,
+            workflow_restart=None,
+            max_concurrent_workflows=None,
+            max_workflow_launch_count=None,
+            new_workflow_poll_rate=None,
+            number_of_workflow_log_copy_workers=None,
+            number_of_cache_read_workers=None,
+        ):
             self.io = io
-            self.abort_jobs_on_terminate = ("abort-jobs-on-terminate", abort_jobs_on_terminate)
-            self.graceful_server_shutdown = ("graceful-server-shutdown", graceful_server_shutdown)
+            self.abort_jobs_on_terminate = (
+                "abort-jobs-on-terminate",
+                abort_jobs_on_terminate,
+            )
+            self.graceful_server_shutdown = (
+                "graceful-server-shutdown",
+                graceful_server_shutdown,
+            )
             self.workflow_restart = ("workflow-restart", workflow_restart)
-            self.max_concurrent_workflows = ("max-concurrent-workflows", max_concurrent_workflows)
-            self.max_workflow_launch_count = ("max-workflow-launch-count", max_workflow_launch_count)
-            self.new_workflow_poll_rate = ("new-workflow-poll-rate", new_workflow_poll_rate)
-            self.number_of_workflow_log_copy_workers = ("number-of-workflow-log-copy-workers", number_of_workflow_log_copy_workers)
-            self.number_of_cache_read_workers = ("number-of-cache-read-workers", number_of_cache_read_workers)
+            self.max_concurrent_workflows = (
+                "max-concurrent-workflows",
+                max_concurrent_workflows,
+            )
+            self.max_workflow_launch_count = (
+                "max-workflow-launch-count",
+                max_workflow_launch_count,
+            )
+            self.new_workflow_poll_rate = (
+                "new-workflow-poll-rate",
+                new_workflow_poll_rate,
+            )
+            self.number_of_workflow_log_copy_workers = (
+                "number-of-workflow-log-copy-workers",
+                number_of_workflow_log_copy_workers,
+            )
+            self.number_of_cache_read_workers = (
+                "number-of-cache-read-workers",
+                number_of_cache_read_workers,
+            )
 
     class Database(Serializable):
         class Db(Serializable):
@@ -84,14 +126,19 @@ class CromwellConfiguration(Serializable):
                 self.password = password
                 self.connectionTimeout = connection_timeout
 
-        def __init__(self, profile=None, insert_batch_size=None, db: Db=None):
+        def __init__(self, profile=None, insert_batch_size=None, db: Db = None):
             self.db = db
             self.profile = profile
             self.insert_batch_size = ("insert-batch-size", insert_batch_size)
 
         @classmethod
-        def mysql(cls, username=None, password=None, connection_timeout=5000,
-                  url="jdbc:mysql://localhost/cromwell?rewriteBatchedStatements=true&useSSL=false&serverTimezone=UTC"):
+        def mysql(
+            cls,
+            username=None,
+            password=None,
+            connection_timeout=5000,
+            url="jdbc:mysql://localhost/cromwell?rewriteBatchedStatements=true&useSSL=false&serverTimezone=UTC",
+        ):
             return cls(
                 profile="slick.jdbc.MySQLProfile$",
                 db=cls.Db(
@@ -99,22 +146,41 @@ class CromwellConfiguration(Serializable):
                     url=url,
                     user=username,
                     password=password,
-                    connection_timeout=connection_timeout
-                )
+                    connection_timeout=connection_timeout,
+                ),
             )
 
     class Backend(Serializable):
-
         class Provider(Serializable):
-
             class Config(Serializable):
-                def __init__(self, submit=None, submit_docker=None, runtime_attributes=None, kill=None, check_alive=None, job_id_regex = None,
-                             concurrent_job_limit=None, default_runtime_attributes=None, filesystems=None, run_in_background=None, **kwargs):
+                def __init__(
+                    self,
+                    submit=None,
+                    submit_docker=None,
+                    runtime_attributes=None,
+                    kill=None,
+                    check_alive=None,
+                    job_id_regex=None,
+                    concurrent_job_limit=None,
+                    default_runtime_attributes=None,
+                    filesystems=None,
+                    run_in_background=None,
+                    **kwargs,
+                ):
 
-                    self.default_runtime_attributes = ("default-runtime-attributes", default_runtime_attributes)
-                    self.concurrent_job_limit = ("concurrent-job-limit", concurrent_job_limit)
+                    self.default_runtime_attributes = (
+                        "default-runtime-attributes",
+                        default_runtime_attributes,
+                    )
+                    self.concurrent_job_limit = (
+                        "concurrent-job-limit",
+                        concurrent_job_limit,
+                    )
                     self.filesystems = filesystems
-                    self.runtime_attributes = ("runtime-attributes", runtime_attributes.replace("\n", "\\n"))
+                    self.runtime_attributes = (
+                        "runtime-attributes",
+                        runtime_attributes.replace("\n", "\\n"),
+                    )
 
                     self.submit = submit
                     self.submit_docker = ("submit-docker", submit_docker)
@@ -137,8 +203,8 @@ class CromwellConfiguration(Serializable):
                     config=cls.Config(
                         run_in_background=True,
                         runtime_attributes="String? docker",
-                        submit_docker="udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}"
-                    )
+                        submit_docker="udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}",
+                    ),
                 )
 
             @classmethod
@@ -158,8 +224,8 @@ String? queue""".strip(),
         --wrap "/usr/bin/env bash ${script}" """,
                         kill="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
-                        job_id_regex="Submitted batch job (\\d+).*"
-                    )
+                        job_id_regex="Submitted batch job (\\d+).*",
+                    ),
                 )
 
             @classmethod
@@ -173,16 +239,19 @@ Int runtime_minutes = 600
 Int cpus = 2
 Int requested_memory_mb_per_core = 8000
 String? queue
-String? docker"""
+String? docker""",
                 )
                 slurm.config.submit = None
-                slurm.config.submit_docker = ("submit-docker", """
+                slurm.config.submit_docker = (
+                    "submit-docker",
+                    """
 module load Singularity/3.0.3-spartan_gcc-6.2.0
 IMAGE=${cwd}/${docker}.sif
 singularity build $IMAGE docker://${docker}
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \
     -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \
-    --wrap "singularity exec -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """)
+    --wrap "singularity exec -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """,
+                )
                 return slurm
 
             @classmethod
@@ -196,13 +265,16 @@ Int runtime_minutes = 600
 Int cpus = 2
 Int requested_memory_mb_per_core = 8000
 String? queue
-String? docker"""
+String? docker""",
                 )
                 slurm.config.submit = None
-                slurm.config.submit_docker = (slurm.config.submit_docker[0], """
+                slurm.config.submit_docker = (
+                    slurm.config.submit_docker[0],
+                    """
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
     -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \\
-    --wrap "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" """)
+    --wrap "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" """,
+                )
                 return slurm
 
             @classmethod
@@ -227,8 +299,8 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
             """,
                         job_id_regex="(\\d+).*",
                         kill="qdel ${job_id}",
-                        check_alive="qstat ${job_id}"
-                    )
+                        check_alive="qstat ${job_id}",
+                    ),
                 )
 
             @classmethod
@@ -239,12 +311,12 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                 torque = cls.torque()
                 torque.config.submit = None
                 torque.config.submit_docker = (
-                    'submit-docker',
+                    "submit-docker",
                     """
     chmod +x ${script}
     udocker pull ${docker}
     echo "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${mem}"""
+        -l walltime=${walltime} -l mem=${mem}""",
                 )
                 return torque
                 # return cls(
@@ -274,28 +346,29 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                 """
                 torq = cls.torque()
 
-                torq.config.submit_docker = ("submit-docker", """
+                torq.config.submit_docker = (
+                    "submit-docker",
+                    """
 qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
     -l walltime=${walltime} -l mem=${mem} ${script}
-                """)
+                """,
+                )
 
             @classmethod
             def aws(cls, s3_bucket, queue_arn):
                 return cls(
                     actor_factory="cromwell.backend.impl.aws.AwsBatchBackendLifecycleActorFactory",
-
                     config=cls.Config(
-                        root="s3://{bucket}/cromwell-execution".format(bucket=s3_bucket),
-
+                        root="s3://{bucket}/cromwell-execution".format(
+                            bucket=s3_bucket
+                        ),
                         numSubmitAttempts=3,
                         numCreateDefinitionAttempts=3,
                         auth="default",
                         concurrent_job_limit=16,
-                        default_runtime_attributes={
-                            "queueArn": queue_arn
-                        },
-                        filesystems={"s3": {"auth": "default"}}
-                    )
+                        default_runtime_attributes={"queueArn": queue_arn},
+                        filesystems={"s3": {"auth": "default"}},
+                    ),
                 )
 
         def __init__(self, default="Local", providers=Dict[str, Provider]):
@@ -306,15 +379,21 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
             if default not in providers:
                 if len(providers) == 1:
                     backend_key = next(iter(providers.keys()))
-                    Logger.warn("The default tag '{default}' was not found in the providers, this was automatically "
-                                "corrected to be '{backend_key}'.".format(default=default, backend_key=backend_key))
+                    Logger.warn(
+                        "The default tag '{default}' was not found in the providers, this was automatically "
+                        "corrected to be '{backend_key}'.".format(
+                            default=default, backend_key=backend_key
+                        )
+                    )
                     self.default = default
                 else:
-                    raise Exception("The default tag '{default}' was not found in the providers and couldn't be "
-                                    "automatically corrected".format(default=default))
+                    raise Exception(
+                        "The default tag '{default}' was not found in the providers and couldn't be "
+                        "automatically corrected".format(default=default)
+                    )
 
     class Engine(Serializable):
-        def __init__(self, s3: Union[bool, str]=None, gcs: Union[bool, str]=None):
+        def __init__(self, s3: Union[bool, str] = None, gcs: Union[bool, str] = None):
             self.filesystems = {}
 
             if s3:
@@ -324,22 +403,26 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
 
         @staticmethod
         def _gcs(obj):
-            if isinstance(obj, bool): return { "auth": "application-default" }
+            if isinstance(obj, bool):
+                return {"auth": "application-default"}
             return obj
 
         @staticmethod
         def _s3(obj):
-            if isinstance(obj, bool): return { "auth": "default" }
+            if isinstance(obj, bool):
+                return {"auth": "default"}
             return obj
 
     class AWS(Serializable):
         class Auth(Serializable):
-            def __init__(self, name="default", scheme="default", access_key=None, secret_key=None):
+            def __init__(
+                self, name="default", scheme="default", access_key=None, secret_key=None
+            ):
                 self.name = name
                 self.scheme = scheme
 
-                self.access_key = ('access-key', access_key)
-                self.secret_key = ('secret-key', secret_key)
+                self.access_key = ("access-key", access_key)
+                self.secret_key = ("secret-key", secret_key)
 
         def __init__(self, region, application_name="cromwell", auths=None):
             self.region = region
@@ -354,26 +437,52 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
                 self.enabled = enabled
 
         def __init__(self, hash_lookup=None):
-            if hash_lookup is not None and not isinstance(hash_lookup, self.HashLookup): raise Exception("hash-lookup is not of type CromwellConfiguration.Docker.HashLookup")
+            if hash_lookup is not None and not isinstance(hash_lookup, self.HashLookup):
+                raise Exception(
+                    "hash-lookup is not of type CromwellConfiguration.Docker.HashLookup"
+                )
             self.hash_lookup = ("hash-lookup", hash_lookup)
 
-    def __init__(self, webservice: Webservice=None, akka: Akka=None, system: System=None, database: Database=None,
-                 backend: Backend=None, engine: Engine=None, docker: Docker=None, aws=None):
-        if webservice is not None and isinstance(webservice, CromwellConfiguration.Webservice): raise Exception("webservice not of type CromwellConfiguration.Webservice")
+    def __init__(
+        self,
+        webservice: Webservice = None,
+        akka: Akka = None,
+        system: System = None,
+        database: Database = None,
+        backend: Backend = None,
+        engine: Engine = None,
+        docker: Docker = None,
+        aws=None,
+    ):
+        if webservice is not None and isinstance(
+            webservice, CromwellConfiguration.Webservice
+        ):
+            raise Exception("webservice not of type CromwellConfiguration.Webservice")
         self.webservice = webservice
-        if akka is not None and not isinstance(akka, CromwellConfiguration.Akka): raise Exception("akka not of type CromwellConfiguration.Akka")
+        if akka is not None and not isinstance(akka, CromwellConfiguration.Akka):
+            raise Exception("akka not of type CromwellConfiguration.Akka")
         self.akka = akka
-        if system is not None and not isinstance(system, CromwellConfiguration.System): raise Exception("system not of type CromwellConfiguration.System")
+        if system is not None and not isinstance(system, CromwellConfiguration.System):
+            raise Exception("system not of type CromwellConfiguration.System")
         self.system = system
-        if database is not None and not isinstance(database, CromwellConfiguration.Database): raise Exception("database not of type CromwellConfiguration.Database")
+        if database is not None and not isinstance(
+            database, CromwellConfiguration.Database
+        ):
+            raise Exception("database not of type CromwellConfiguration.Database")
         self.database = database
-        if backend is not None and not isinstance(backend, CromwellConfiguration.Backend): raise Exception("backend not of type CromwellConfiguration.Backend")
+        if backend is not None and not isinstance(
+            backend, CromwellConfiguration.Backend
+        ):
+            raise Exception("backend not of type CromwellConfiguration.Backend")
         self.backend = backend
-        if engine is not None and not isinstance(engine, CromwellConfiguration.Engine): raise Exception("engine not of type CromwellConfiguration.Engine")
+        if engine is not None and not isinstance(engine, CromwellConfiguration.Engine):
+            raise Exception("engine not of type CromwellConfiguration.Engine")
         self.engine = engine
-        if docker is not None and not isinstance(docker, CromwellConfiguration.Docker): raise Exception("docker not of type CromwellConfiguration.Docker")
+        if docker is not None and not isinstance(docker, CromwellConfiguration.Docker):
+            raise Exception("docker not of type CromwellConfiguration.Docker")
         self.docker = docker
-        if aws is not None and not isinstance(aws, CromwellConfiguration.AWS): raise Exception("aws not of type CromwellConfiguration.AWS")
+        if aws is not None and not isinstance(aws, CromwellConfiguration.AWS):
+            raise Exception("aws not of type CromwellConfiguration.AWS")
         self.aws = aws
 
     @staticmethod
@@ -381,9 +490,11 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         return CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
                 default="udocker",
-                providers={"udocker": CromwellConfiguration.Backend.Provider.udocker()}
+                providers={"udocker": CromwellConfiguration.Backend.Provider.udocker()},
             ),
-            docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+            docker=CromwellConfiguration.Docker(
+                hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
+            ),
         )
 
     @staticmethod
@@ -391,9 +502,13 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         return CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
                 default="udocker",
-                providers={"udocker": CromwellConfiguration.Backend.Provider.slurm_udocker()}
+                providers={
+                    "udocker": CromwellConfiguration.Backend.Provider.slurm_udocker()
+                },
             ),
-            docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+            docker=CromwellConfiguration.Docker(
+                hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
+            ),
         )
 
     @staticmethod
@@ -401,18 +516,25 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         return CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
                 default="torque",
-                providers={"torque": CromwellConfiguration.Backend.Provider.torque_udocker()}
+                providers={
+                    "torque": CromwellConfiguration.Backend.Provider.torque_udocker()
+                },
             ),
-            docker=CromwellConfiguration.Docker(hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False))
+            docker=CromwellConfiguration.Docker(
+                hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
+            ),
         )
 
 
 if __name__ == "__main__":
     import json
+
     # config = CromwellConfiguration.udocker_slurm()
     # config = CromwellConfiguration.udocker_torque()
     config = CromwellConfiguration(
-        aws=CromwellConfiguration.AWS(region="ap-southeast-2", auths=[CromwellConfiguration.AWS.Auth()]),
+        aws=CromwellConfiguration.AWS(
+            region="ap-southeast-2", auths=[CromwellConfiguration.AWS.Auth()]
+        ),
         engine=CromwellConfiguration.Engine(s3=True)
         # backend=CromwellConfiguration.Backend(
         #     default="singularity",

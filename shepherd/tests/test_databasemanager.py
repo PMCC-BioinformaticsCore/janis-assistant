@@ -19,6 +19,7 @@ class TestDatabaseManager(TestCase):
 
     def tearDown(self):
         from shutil import rmtree
+
         self.db.commit()
         rmtree(self.path)
 
@@ -30,4 +31,3 @@ class TestDatabaseManager(TestCase):
         self.assertFalse(self.db.progress_has_completed(ProgressKeys.copiedOutputs))
         self.db.progress_mark_completed(ProgressKeys.copiedOutputs)
         self.assertTrue(self.db.progress_has_completed(ProgressKeys.copiedOutputs))
-

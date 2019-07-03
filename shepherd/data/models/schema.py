@@ -17,11 +17,19 @@ class TaskStatus(Enum):
     TERMINATED = 5
 
     @staticmethod
-    def ALL(): return [TaskStatus.PROCESSING, TaskStatus.QUEUED, TaskStatus.RUNNING,
-                       TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
+    def ALL():
+        return [
+            TaskStatus.PROCESSING,
+            TaskStatus.QUEUED,
+            TaskStatus.RUNNING,
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.TERMINATED,
+        ]
 
     @staticmethod
-    def FINAL_STATES(): return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
+    def FINAL_STATES():
+        return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
 
     def __str__(self):
         __str = {
@@ -30,7 +38,7 @@ class TaskStatus(Enum):
             TaskStatus.RUNNING.value: "Running",
             TaskStatus.COMPLETED.value: "Completed",
             TaskStatus.FAILED.value: "Failed",
-            TaskStatus.TERMINATED.value: "Terminated"
+            TaskStatus.TERMINATED.value: "Terminated",
         }
         return __str[self.value]
 
@@ -41,17 +49,25 @@ class TaskStatus(Enum):
             TaskStatus.RUNNING.value: "~",
             TaskStatus.COMPLETED.value: "✓",
             TaskStatus.FAILED.value: "!",
-            TaskStatus.TERMINATED.value: "T"
+            TaskStatus.TERMINATED.value: "T",
         }
         return __str[self.value]
 
 
 class TaskMetadata:
-
-    def __init__(self, wid: str, name: str, status: TaskStatus, start: datetime, finish: Optional[datetime],
-                 outputs: List, jobs: List, error: Optional[str]):
-        self.tid = None             # needs to be set by taskManager
-        self.outdir: str = None     # provided by TaskManager
+    def __init__(
+        self,
+        wid: str,
+        name: str,
+        status: TaskStatus,
+        start: datetime,
+        finish: Optional[datetime],
+        outputs: List,
+        jobs: List,
+        error: Optional[str],
+    ):
+        self.tid = None  # needs to be set by taskManager
+        self.outdir: str = None  # provided by TaskManager
 
         self.engine_name = None
         self.engine_url = None
@@ -95,10 +111,24 @@ Jobs:
 
 
 class JobMetadata:
-    def __init__(self, name: str, status: TaskStatus, job_id: Optional[str], backend: Optional[str],
-                 runtime_attributes: Optional[dict], outputs: List, exec_dir: Optional[str], stdout: Optional[str],
-                 stderr: Optional[str], start: datetime, finish: Optional[datetime], subjobs, from_cache: bool,
-                 shard: Optional[int], super_time: Optional[int]):
+    def __init__(
+        self,
+        name: str,
+        status: TaskStatus,
+        job_id: Optional[str],
+        backend: Optional[str],
+        runtime_attributes: Optional[dict],
+        outputs: List,
+        exec_dir: Optional[str],
+        stdout: Optional[str],
+        stderr: Optional[str],
+        start: datetime,
+        finish: Optional[datetime],
+        subjobs,
+        from_cache: bool,
+        shard: Optional[int],
+        super_time: Optional[int],
+    ):
 
         self.name = name
         self.status = status
@@ -124,13 +154,22 @@ class JobMetadata:
 
         tb = "    "
         fin = self.finish if self.finish else DateUtil.now()
-        time = round(DateUtil.secs_difference(self.start, fin)) if self.start else "N/A "
-        percentage = (round(1000 * time / self.supertime)/10) if (self.start and self.supertime) else None
+        time = (
+            round(DateUtil.secs_difference(self.start, fin)) if self.start else "N/A "
+        )
+        percentage = (
+            (round(1000 * time / self.supertime) / 10)
+            if (self.start and self.supertime)
+            else None
+        )
 
         shard = f"-shard-{self.shard}" if self.shard is not None else ""
-        standard = pre + f"[{self.status.symbol()}] {self.name}{shard} ({time}s :: {percentage} %)"
+        standard = (
+            pre
+            + f"[{self.status.symbol()}] {self.name}{shard} ({time}s :: {percentage} %)"
+        )
 
-        col = ''
+        col = ""
 
         if self.status == TaskStatus.FAILED:
             col = _bcolors.FAIL
@@ -141,40 +180,44 @@ class JobMetadata:
 
         if self.subjobs:
             ppre = pre + tb
-            subs: List[JobMetadata] = sorted(self.subjobs if self.subjobs else [], key=lambda j: j.start if j.start else 0, reverse=False)
+            subs: List[JobMetadata] = sorted(
+                self.subjobs if self.subjobs else [],
+                key=lambda j: j.start if j.start else 0,
+                reverse=False,
+            )
 
-            return col + standard + "".join(["\n" + j.format(ppre) for j in subs]) + _bcolors.ENDC
+            return (
+                col
+                + standard
+                + "".join(["\n" + j.format(ppre) for j in subs])
+                + _bcolors.ENDC
+            )
 
         fields: List[Tuple[str, str]] = []
 
         if self.status == TaskStatus.COMPLETED:
-            if not self.finish: raise Exception(f"Finish was null for completed task: {self.name}")
+            if not self.finish:
+                raise Exception(f"Finish was null for completed task: {self.name}")
             if self.fromcache:
                 fields.append(("from cache", str(self.fromcache)))
 
         elif self.status == TaskStatus.RUNNING:
-            fields.extend([
-                ("jid", self.jobid),
-                ("backend", self.backend)
-            ])
+            fields.extend([("jid", self.jobid), ("backend", self.backend)])
 
         elif self.status == TaskStatus.FAILED:
-            fields.extend([
-                ("stdout", self.stdout),
-                ("stderr", self.stderr),
-            ])
+            fields.extend([("stdout", self.stdout), ("stderr", self.stderr)])
         elif self.status == TaskStatus.PROCESSING:
             pass
         elif self.status == TaskStatus.QUEUED:
             pass
 
         else:
-            return standard + f" :: Unimplemented status: '{self.status}' for task: '{self.name}'"
+            return (
+                standard
+                + f" :: Unimplemented status: '{self.status}' for task: '{self.name}'"
+            )
 
         ppre = "\n" + " " * len(pre) + 2 * tb
         retval = standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
 
-
-
         return col + retval + _bcolors.ENDC
-

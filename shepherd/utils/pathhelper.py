@@ -27,6 +27,7 @@ def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
         os.remove(zipfilename)
     if os.path.exists(base + "tools"):
         import shutil
+
         shutil.rmtree(base + "tools")
     os.mkdir(base + "tools")
 
@@ -53,10 +54,14 @@ def get_file_from_searchname(name, cwd):
             Logger.log(f"Found file in '{cwd}' called '{name}'")
             return name
 
-    Logger.log(f"Attempting to get search path $JANIS_SEARCHPATH from environment variables")
+    Logger.log(
+        f"Attempting to get search path $JANIS_SEARCHPATH from environment variables"
+    )
     search_path = os.getenv("JANIS_SEARCHPATH")
     if search_path:
-        Logger.log(f"Got value for env JANIS_SEARCHPATH '{search_path}', searching for file '{name}' here.")
+        Logger.log(
+            f"Got value for env JANIS_SEARCHPATH '{search_path}', searching for file '{name}' here."
+        )
         with Path(search_path):
             if os.path.exists(name):
                 Logger.log(f"Found file in '{search_path}' called '{name}'")
@@ -64,8 +69,10 @@ def get_file_from_searchname(name, cwd):
     else:
         Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
 
-    raise Exception(f"Couldn't find a file with filename '{name}' in any of the following: "
-                    f"full path, current working directory ({cwd}) or the search path.")
+    raise Exception(
+        f"Couldn't find a file with filename '{name}' in any of the following: "
+        f"full path, current working directory ({cwd}) or the search path."
+    )
 
 
 def try_parse_dict(file: str):
@@ -100,6 +107,7 @@ def get_workflow_from_file(file):
     # How to import a module given the full path
     # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     import importlib.util
+
     spec = importlib.util.spec_from_file_location("module.name", file)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
@@ -107,7 +115,10 @@ def get_workflow_from_file(file):
     if len(ptypes) == 0:
         raise Exception(f"Couldn't find any valid workflows in '{file}'.")
     if len(ptypes) > 1:
-        raise Exception(f"Too many workflows detected ({len(ptypes)}) in '{file}': " + ','.join(str(x) for x in ptypes))
+        raise Exception(
+            f"Too many workflows detected ({len(ptypes)}) in '{file}': "
+            + ",".join(str(x) for x in ptypes)
+        )
     return ptypes[0]
 
 
@@ -119,14 +130,22 @@ def get_workflows_from_module_spec(spec):
     potentials = []
     for ptype in spec.__dict__.values():
         if isinstance(ptype, Workflow):
-            Logger.warn(f"Detected instance of 'Workflow' (id: '{ptype.id()}'), only subclasses are supported")
+            Logger.warn(
+                f"Detected instance of 'Workflow' (id: '{ptype.id()}'), only subclasses are supported"
+            )
             continue
-        if not callable(ptype): continue
-        if isabstract(ptype): continue
-        if not isclass(ptype): continue
-        if ptype == Workflow: continue
-        if not issubclass(ptype, Workflow): continue
-        if ptype.__module__ != "module.name": continue
+        if not callable(ptype):
+            continue
+        if isabstract(ptype):
+            continue
+        if not isclass(ptype):
+            continue
+        if ptype == Workflow:
+            continue
+        if not issubclass(ptype, Workflow):
+            continue
+        if ptype.__module__ != "module.name":
+            continue
         potentials.append(ptype)
 
     return potentials

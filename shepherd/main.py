@@ -13,11 +13,23 @@ from typing import Optional, Dict, Union
 
 from shepherd.environments.environment import Environment
 from shepherd.management.configmanager import ConfigManager
-from shepherd.utils import get_janis_workflow_from_searchname, try_parse_dict, get_file_from_searchname
+from shepherd.utils import (
+    get_janis_workflow_from_searchname,
+    try_parse_dict,
+    get_file_from_searchname,
+)
 
 
-def fromjanis(workflow, env: Union[str, Environment], validation_reqs=None, hints: Optional[Dict[str, str]]=None,
-              output_dir: Optional[str]=None, dryrun: bool=False, inputs: Union[str, dict]=None, watch=True):
+def fromjanis(
+    workflow,
+    env: Union[str, Environment],
+    validation_reqs=None,
+    hints: Optional[Dict[str, str]] = None,
+    output_dir: Optional[str] = None,
+    dryrun: bool = False,
+    inputs: Union[str, dict] = None,
+    watch=True,
+):
 
     cm = ConfigManager.manager()
 
@@ -44,7 +56,7 @@ def fromjanis(workflow, env: Union[str, Environment], validation_reqs=None, hint
         hints=hints,
         inputs_dict=inputsdict,
         dryrun=dryrun,
-        watch=watch
+        watch=watch,
     )
 
     return tm.tid
@@ -52,4 +64,3 @@ def fromjanis(workflow, env: Union[str, Environment], validation_reqs=None, hint
 
 def validate_and_run_janis(wf, **kwargs):
     pass
-

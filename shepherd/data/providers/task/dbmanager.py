@@ -7,7 +7,6 @@ from shepherd.utils.logger import Logger
 
 
 class TaskDbManager:
-
     def __init__(self, path):
         self.exec_path = path
         self.connection = self.db_connection()
@@ -30,12 +29,16 @@ class TaskDbManager:
     # TABLE creators
 
     def create_info_table_if_required(self):
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS info 
-                                (key text PRIMARY KEY, value text)""")
+        self.cursor.execute(
+            """CREATE TABLE IF NOT EXISTS info 
+                                (key text PRIMARY KEY, value text)"""
+        )
 
     def create_progress_table_if_required(self):
-        self.cursor.execute("""CREATE TABLE IF NOT EXISTS progress
-                                (key text PRIMARY KEY)""")
+        self.cursor.execute(
+            """CREATE TABLE IF NOT EXISTS progress
+                                (key text PRIMARY KEY)"""
+        )
 
     ## getters and setters
 
@@ -49,7 +52,9 @@ class TaskDbManager:
             if not isinstance(value, list):
                 value = [value]
             for v in value:
-                self.cursor.execute("INSERT INTO info VALUES (?, ?)", (str(key), str(v)))
+                self.cursor.execute(
+                    "INSERT INTO info VALUES (?, ?)", (str(key), str(v))
+                )
         self.commit()
 
     def update_meta_info(self, key: InfoKeys, value: any):
@@ -60,11 +65,13 @@ class TaskDbManager:
             if not isinstance(value, list):
                 value = [value]
             for v in value:
-                self.cursor.execute("UPDATE info SET value = ? WHERE key = ?", (str(key), str(v)))
+                self.cursor.execute(
+                    "UPDATE info SET value = ? WHERE key = ?", (str(key), str(v))
+                )
         self.commit()
 
     def get_meta_info(self, key: InfoKeys):
-        self.cursor.execute("SELECT value FROM info WHERE key = ?", (str(key), ))
+        self.cursor.execute("SELECT value FROM info WHERE key = ?", (str(key),))
         return self.cursor.fetchone()[0]
 
     def get_all_meta_info(self):
@@ -77,14 +84,18 @@ class TaskDbManager:
     # progress
 
     def progress_mark_completed(self, key: ProgressKeys):
-        self.cursor.execute("INSERT INTO progress VALUES (?)", (str(key), ))
+        self.cursor.execute("INSERT INTO progress VALUES (?)", (str(key),))
         self.commit()
 
     def progress_has_completed(self, key: ProgressKeys):
-        return self.cursor.execute("SELECT count(*) from progress where key = ?", (str(key), )).fetchone()[0] > 0
+        return (
+            self.cursor.execute(
+                "SELECT count(*) from progress where key = ?", (str(key),)
+            ).fetchone()[0]
+            > 0
+        )
 
     def close(self):
         self.connection.close()
         self.cursor = None
         self.connection = None
-

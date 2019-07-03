@@ -1,6 +1,13 @@
 class CromwellFile:
-
-    def __init__(self, location, size, format=None, secondary_files=None, contents=None, checksum=None):
+    def __init__(
+        self,
+        location,
+        size,
+        format=None,
+        secondary_files=None,
+        contents=None,
+        checksum=None,
+    ):
         self.type = "File"
         self.format = format
         self.location = location
@@ -18,5 +25,5 @@ class CromwellFile:
             format=d.get("format"),
             contents=d.get("contents"),
             checksum=d.get("checksum"),
-            secondary_files=[CromwellFile.parse(sf) for sf in sfs] if sfs else []
+            secondary_files=[CromwellFile.parse(sf) for sf in sfs] if sfs else [],
         )

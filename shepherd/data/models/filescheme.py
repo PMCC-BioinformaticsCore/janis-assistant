@@ -8,7 +8,6 @@ from shepherd.utils.logger import Logger
 
 
 class FileScheme(Archivable, abc.ABC):
-
     class FileSchemeType(Enum):
         local = "local"
         ssh = "ssh"
@@ -54,7 +53,6 @@ class FileScheme(Archivable, abc.ABC):
 
 
 class LocalFileScheme(FileScheme):
-
     def __init__(self):
         super().__init__("local", FileScheme.FileSchemeType.local)
 
@@ -76,12 +74,14 @@ class LocalFileScheme(FileScheme):
         """
         try:
             import os
+
             os.link(source, dest)
         except Exception as e:
             Logger.warn(f"Couldn't link file: {source} > {dest}")
             Logger.log(str(e))
 
             from shutil import copyfile
+
             # if this fails, it should error
             copyfile(source, dest)
 
@@ -92,7 +92,7 @@ class SSHFileScheme(FileScheme):
         self.connectionstring = connectionstring
 
     def makedir(self, location):
-        args = ['ssh', self.connectionstring, 'mkdir -p ' + location]
+        args = ["ssh", self.connectionstring, "mkdir -p " + location]
         subprocess.call(args)
 
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
@@ -104,12 +104,17 @@ class SSHFileScheme(FileScheme):
         if os.path.exists(dest):
             return Logger.log(f"Skipping as exists ({source} -> {dest}")
 
-        Logger.info(f"Secure copying (SCP) from {self.connectionstring}:{source} to local:{dest}")
+        Logger.info(
+            f"Secure copying (SCP) from {self.connectionstring}:{source} to local:{dest}"
+        )
         subprocess.call(args)
 
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         import subprocess
-        Logger.info(f"Secure copying (SCP) from local:{source} to {self.connectionstring}:{dest}")
+
+        Logger.info(
+            f"Secure copying (SCP) from local:{source} to {self.connectionstring}:{dest}"
+        )
         args = ["scp", source, self.connectionstring + ":" + dest]
         subprocess.call(args)
 
@@ -119,6 +124,7 @@ class GCSFileScheme(FileScheme):
     Placeholder for GCS File schema, almost for sure going to need the 'gsutil' package,
     probably a credentials file to access the files. Should call the report_progress param on cp
     """
+
     def __init__(self):
         super().__init__("gcp", fstype=FileScheme.FileSchemeType.gcs)
 
@@ -134,4 +140,5 @@ class S3FileScheme(FileScheme):
     Placeholder for S3 File schema, almost for sure going to need the 'aws' package,
     probably a credentials file to access the files. Should call the report_progress param on cp
     """
+
     pass

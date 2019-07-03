@@ -3,7 +3,6 @@ from shepherd.utils import get_extension, second_formatter
 
 
 class TestGetExtension(TestCase):
-
     def test_regular(self):
         self.assertEqual("txt", get_extension("test.txt"))
 
@@ -71,4 +70,3 @@ class TestGetTimeFormat(TestCase):
     def test_day(self):
         secs = 86400
         self.assertEqual("1:00:00:00", second_formatter(secs))
-

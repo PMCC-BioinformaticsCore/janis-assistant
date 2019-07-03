@@ -10,6 +10,7 @@ from shepherd.validation import ValidationRequirements
 
 environments = ConfigManager.manager().environmentDB.get_env_ids()
 
+
 def process_args():
     cmds = {
         "version": do_version,
@@ -19,7 +20,7 @@ def process_args():
         "abort": do_abort,
         "metadata": do_metadata,
         "environment": do_environment,
-        "query": do_query
+        "query": do_query,
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -66,20 +67,34 @@ def add_abort_args(parser):
 
 def add_janis_args(parser):
     parser.add_argument("workflow", help="Run the workflow defined in this file")
-    parser.add_argument("--inputs", help="File of inputs (matching the workflow) to override, these inputs will "
-                                         "take precedence over inputs declared in the workflow")
+    parser.add_argument(
+        "--inputs",
+        help="File of inputs (matching the workflow) to override, these inputs will "
+        "take precedence over inputs declared in the workflow",
+    )
 
-    parser.add_argument("-o", "--output-dir", help="The output directory to which tasks are saved in, defaults to $HOME.")
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        help="The output directory to which tasks are saved in, defaults to $HOME.",
+    )
 
     parser.add_argument("-e", "--environment", choices=environments, required=True)
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
     parser.add_argument("--validation-intervals", help="intervals to validate between")
-    parser.add_argument("--validation-fields", nargs="+", help="outputs from the workflow to validate")
+    parser.add_argument(
+        "--validation-fields", nargs="+", help="outputs from the workflow to validate"
+    )
 
-    parser.add_argument("--dryrun", help="convert workflow, and do everything except submit the workflow")
-    parser.add_argument("--no-watch", help="Submit the workflow and return the task id", type=bool)
+    parser.add_argument(
+        "--dryrun",
+        help="convert workflow, and do everything except submit the workflow",
+    )
+    parser.add_argument(
+        "--no-watch", help="Submit the workflow and return the task id", type=bool
+    )
 
     # add hints
     for HintType in HINTS:
@@ -104,7 +119,11 @@ def add_reconnect_args(parser):
 
 def add_query_args(parser):
     parser.add_argument("--status", help="workflow status", choices=TaskStatus.ALL())
-    parser.add_argument("--environment", help="The environment the task is executing in", choices=environments)
+    parser.add_argument(
+        "--environment",
+        help="The environment the task is executing in",
+        choices=environments,
+    )
     return parser
 
 
@@ -126,8 +145,19 @@ def do_watch(args):
 
 def do_metadata(args):
     tid = args.tid
-    tm = ConfigManager.manager().from_tid(tid)
-    tm.log_dbmetadata()
+    Logger.mute()
+    if tid == "*":
+        tasks = ConfigManager.manager().taskDB.get_all_tasks()
+        for t in tasks:
+            try:
+                print("--- TASKID = " + t.tid + " ---")
+                ConfigManager.manager().from_tid(t.tid).log_dbmetadata()
+            except Exception as e:
+                print("\tThe following error ocurred: " + str(e))
+    else:
+        tm = ConfigManager.manager().from_tid(tid)
+        tm.log_dbmetadata()
+    Logger.unmute()
 
 
 def do_abort(args):
@@ -147,10 +177,14 @@ def do_janis(args):
             truthVCF=args.validation_truth_vcf,
             reference=args.validation_reference,
             fields=args.validation_fields,
-            intervals=args.validation_intervals
+            intervals=args.validation_intervals,
         )
 
-    hints = {k[5:]: v for k, v in vars(args).items() if k.startswith("hint_") and v is not None}
+    hints = {
+        k[5:]: v
+        for k, v in vars(args).items()
+        if k.startswith("hint_") and v is not None
+    }
 
     return fromjanis(
         args.workflow,
@@ -159,7 +193,7 @@ def do_janis(args):
         hints=hints,
         output_dir=args.output_dir,
         dryrun=args.dryrun,
-        inputs=args.inputs
+        inputs=args.inputs,
     )
 
 
@@ -170,6 +204,7 @@ def do_environment(args):
         return print(ConfigManager.manager().environmentDB.get_env_ids())
 
     raise NotImplementedError(f"No implementation for '{method}' yet")
+
 
 def do_query(args):
     status = args.status

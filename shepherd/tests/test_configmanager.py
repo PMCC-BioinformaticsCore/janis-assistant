@@ -5,7 +5,6 @@ from shepherd.data.models.filescheme import LocalFileScheme, SSHFileScheme
 
 
 class TestTaskManager(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.tm = ConfigManager()
@@ -14,7 +13,6 @@ class TestTaskManager(unittest.TestCase):
 
 
 class TestPersistFileschemes(TestTaskManager):
-
     def test_persist_local_filescheme(self):
         fs = LocalFileScheme()
         self.tm.persist_filescheme(fs, should_commit=True)
@@ -40,4 +38,3 @@ class TestPersistFileschemes(TestTaskManager):
 #         self.tm.persist_engine(engine=eng)
 #
 #         e = self.tm.get_engine()
-

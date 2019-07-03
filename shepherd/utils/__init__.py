@@ -1,15 +1,21 @@
 from typing import Set
 
 from .logger import Logger
-from .pathhelper import get_janis_workflow_from_searchname, get_workflow_from_file, get_file_from_searchname, \
-    try_parse_dict, write_files_into_buffered_zip
+from .pathhelper import (
+    get_janis_workflow_from_searchname,
+    get_workflow_from_file,
+    get_file_from_searchname,
+    try_parse_dict,
+    write_files_into_buffered_zip,
+)
 from .processlogger import ProcessLogger
 
 
 def generate_new_id(forbiddenids: Set[str]):
     import uuid
 
-    def gen_uuid(): return str(uuid.uuid4())[:6]
+    def gen_uuid():
+        return str(uuid.uuid4())[:6]
 
     tid = gen_uuid()
     while tid in forbiddenids:
@@ -19,14 +25,17 @@ def generate_new_id(forbiddenids: Set[str]):
 
 
 def get_extension(fn):
-    if "." not in fn: return None
+    if "." not in fn:
+        return None
     idx = fn[::-1].index(".")
-    if idx <= 0: return None
+    if idx <= 0:
+        return None
     return fn[-idx:]
 
 
 def second_formatter(secs):
-    if not secs: return "0"
+    if not secs:
+        return "0"
 
     intervals = []
     ranges = [60, 3600, 86400]
@@ -48,4 +57,3 @@ def second_formatter(secs):
         outp += ":" + str(ivl).zfill(2)
 
     return outp
-

@@ -27,6 +27,7 @@ class EnvVariables(Enum):
 
     def default(self):
         import os
+
         if self == EnvVariables.config_dir:
             return os.getenv("HOME") + "/.janis/"
         elif self == EnvVariables.exec_dir:
@@ -63,7 +64,9 @@ class ConfigManager:
 
     @staticmethod
     def get_db_path():
-        Logger.log(f"Looking for db_path in environment variable: '${EnvVariables.config_dir}'")
+        Logger.log(
+            f"Looking for db_path in environment variable: '${EnvVariables.config_dir}'"
+        )
         dbpath = os.getenv(EnvVariables.config_dir.value)
         if not dbpath:
             Logger.log("Couldn't find environment variable, defaulting $HOME")
@@ -72,7 +75,7 @@ class ConfigManager:
         if not os.path.exists(dbpath):
             os.makedirs(dbpath)
 
-        extra_slash = '' if dbpath.endswith('/') else '/'
+        extra_slash = "" if dbpath.endswith("/") else "/"
 
         return dbpath + extra_slash + "janis.db"
 
@@ -83,13 +86,23 @@ class ConfigManager:
     def commit(self):
         return self.connection.commit()
 
-    def create_task(self, wf: janis.Workflow, environment: Environment, hints: Dict[str, str],
-                   validation_requirements: Optional[ValidationRequirements], outdir=None, inputs_dict: dict=None,
-                    dryrun=False, watch=True) -> TaskManager:
+    def create_task(
+        self,
+        wf: janis.Workflow,
+        environment: Environment,
+        hints: Dict[str, str],
+        validation_requirements: Optional[ValidationRequirements],
+        outdir=None,
+        inputs_dict: dict = None,
+        dryrun=False,
+        watch=True,
+    ) -> TaskManager:
 
         od = outdir if outdir else EnvVariables.exec_dir.default()
 
-        forbiddenids = set(t[0] for t in self.cursor.execute("SELECT tid FROM tasks").fetchall())
+        forbiddenids = set(
+            t[0] for t in self.cursor.execute("SELECT tid FROM tasks").fetchall()
+        )
         forbiddenids = forbiddenids.union(set(os.listdir(od)))
 
         tid = generate_new_id(forbiddenids)
@@ -98,23 +111,47 @@ class ConfigManager:
         task_path = od + ("" if outdir else (tid + "/"))
         self.taskDB.insert_task(TaskRow(tid, task_path))
 
-        return TaskManager.from_janis(tid, outdir=task_path, wf=wf, environment=environment, hints=hints,
-                                      inputs_dict=inputs_dict, validation_requirements=validation_requirements,
-                                      dryrun=dryrun, watch=watch)
+        return TaskManager.from_janis(
+            tid,
+            outdir=task_path,
+            wf=wf,
+            environment=environment,
+            hints=hints,
+            inputs_dict=inputs_dict,
+            validation_requirements=validation_requirements,
+            dryrun=dryrun,
+            watch=watch,
+        )
 
     def from_tid(self, tid):
-        path = self.cursor.execute("SELECT outputdir FROM tasks where tid=?", (tid, )).fetchone()
+        path = self.cursor.execute(
+            "SELECT outputdir FROM tasks where tid=?", (tid,)
+        ).fetchone()
         if not path:
             raise Exception(f"Couldn't find task with id='{tid}'")
         return TaskManager.from_path(path[0], self)
 
     def insert_default_environments(self):
         for e in Environment.DEFAULTS():
-            self.persist_engine(engine=e.engine, throw_if_exists=False, should_commit=False)
-            self.persist_filescheme(filescheme=e.filescheme, throw_if_exists=False, should_commit=False)
-            self.environmentDB.persist_environment(e, throw_if_exists=False, should_commit=False)
+            self.persist_engine(
+                engine=e.engine, throw_if_exists=False, should_commit=False
+            )
+            self.persist_filescheme(
+                filescheme=e.filescheme, throw_if_exists=False, should_commit=False
+            )
+            self.environmentDB.persist_environment(
+                e, throw_if_exists=False, should_commit=False
+            )
 
         self.commit()
+
+    def persist_environment_if_required(self, env: Environment):
+        try:
+            envid = self.get_environment(env.id())
+
+        except KeyError:
+            # we didn't find the environment
+            self.get_engine(env.engine)
 
     def get_environment(self, envid):
         envtuple = self.environmentDB.get_by_id(envid)
@@ -128,10 +165,14 @@ class ConfigManager:
         return Environment(envid, eng, fs)
 
     def persist_engine(self, engine, throw_if_exists=True, should_commit=True):
-        return self.engineDB.persist(engine, throw_if_exists=throw_if_exists, should_commit=should_commit)
+        return self.engineDB.persist(
+            engine, throw_if_exists=throw_if_exists, should_commit=should_commit
+        )
 
     def persist_filescheme(self, filescheme, throw_if_exists=True, should_commit=True):
-        return self.fileschemeDB.persist(filescheme, throw_if_exists=throw_if_exists, should_commit=should_commit)
+        return self.fileschemeDB.persist(
+            filescheme, throw_if_exists=throw_if_exists, should_commit=should_commit
+        )
 
     def get_filescheme(self, fsid) -> FileScheme:
         return cast(FileScheme, self.fileschemeDB.get(fsid))
@@ -141,8 +182,7 @@ class ConfigManager:
 
     def query_tasks(self, status, env):
         tids: [TaskRow] = self.taskDB.get_all_tasks()
-        ms: List[Tuple[TaskRow, TaskManager]] = [(t, TaskManager.from_path(t.outputdir, self)) for t in tids]
+        ms: List[Tuple[TaskRow, TaskManager]] = [
+            (t, TaskManager.from_path(t.outputdir, self)) for t in tids
+        ]
         return [t.tid for (t, m) in ms if m.has(status=status, environment=env)]
-
-
-

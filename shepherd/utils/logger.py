@@ -7,21 +7,21 @@ from shepherd.utils.dateutil import DateUtil
 
 
 class _bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 class LogLevel:
-    CRITICAL = 2    # RED
-    WARNING = 3     # YELLOW
-    INFO = 4        # WHITE
-    DEBUG = 5       # GREY
+    CRITICAL = 2  # RED
+    WARNING = 3  # YELLOW
+    INFO = 4  # WHITE
+    DEBUG = 5  # GREY
 
     @staticmethod
     def get_color(level: int):
@@ -42,18 +42,18 @@ class LogLevel:
     @staticmethod
     def get_str(level: int):
         if level == LogLevel.CRITICAL:
-            return 'CRITICAL'
+            return "CRITICAL"
 
         if level == LogLevel.WARNING:
             return "WARN"
 
         if level == LogLevel.INFO:
-            return 'INFO'
+            return "INFO"
 
         if level == LogLevel.DEBUG:
-            return 'DEBUG'
+            return "DEBUG"
 
-        return ''
+        return ""
 
 
 class Logger:
@@ -117,7 +117,11 @@ class Logger:
         if Logger.CONSOLE_LEVEL is not None and level <= Logger.CONSOLE_LEVEL:
             print(LogLevel.get_color(level) + m + _bcolors.ENDC)
 
-        if Logger.WRITE_LEVEL is not None and level <= Logger.WRITE_LEVEL and Logger.__WRITE_POINTER is not None:
+        if (
+            Logger.WRITE_LEVEL is not None
+            and level <= Logger.WRITE_LEVEL
+            and Logger.__WRITE_POINTER is not None
+        ):
             Logger.__WRITE_POINTER.write(m + "\n")
 
     @staticmethod
@@ -140,5 +144,5 @@ class Logger:
     def get_prefix(level: int):
         return "{date} [{level}]".format(
             date=DateUtil.now().replace(microsecond=0).isoformat(),
-            level=LogLevel.get_str(level)
+            level=LogLevel.get_str(level),
         )

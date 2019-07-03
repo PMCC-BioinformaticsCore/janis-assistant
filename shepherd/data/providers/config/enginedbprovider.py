@@ -12,5 +12,3 @@ class EngineDbProvider(KeyValueDbProviderBase):
 
     def get_type_from_args(self, args) -> Archivable:
         return get_engine_type(args["engtype"])
-
-

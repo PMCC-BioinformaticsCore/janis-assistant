@@ -5,7 +5,10 @@ import unittest
 from shepherd.data.models.filescheme import SSHFileScheme
 
 
-@unittest.skipUnless(os.getenv("unittest_ssh_location") is not None, "These tests only work with pretty specific ")
+@unittest.skipUnless(
+    os.getenv("unittest_ssh_location") is not None,
+    "These tests only work with pretty specific ",
+)
 class TestSSHFileScheme(unittest.TestCase):
     """
     These tests will only work on mfranklin's computer, and only when there's an ssh shortcut called fs.
@@ -40,4 +43,3 @@ class TestSSHFileScheme(unittest.TestCase):
         self.assertTrue(os.path.exists(local2_path))
         with open(local2_path) as f:
             self.assertEqual(contents, f.readline())
-

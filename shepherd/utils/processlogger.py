@@ -16,11 +16,16 @@ class ProcessLogger(threading.Thread):
 
     def run(self):
         try:
-            for c in iter(self.process.stdout.readline, 'b'):  # replace '' with b'' for Python 3
-                if self.should_terminate: return
-                if not c: continue
+            for c in iter(
+                self.process.stdout.readline, "b"
+            ):  # replace '' with b'' for Python 3
+                if self.should_terminate:
+                    return
+                if not c:
+                    continue
                 line = c.decode("utf-8").rstrip()
-                if not line: continue
+                if not line:
+                    continue
                 Logger.log(self.prefix + line)
         except KeyboardInterrupt:
             self.should_terminate = True

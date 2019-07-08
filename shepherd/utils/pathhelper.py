@@ -43,6 +43,8 @@ def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
 
 
 def get_file_from_searchname(name, cwd):
+    if cwd == ".":
+        cwd = os.getcwd()
     Logger.log(f"Searching for a file called '{name}'")
     if os.path.exists(name):
         Logger.log(f"Found file called '{name}'")

@@ -1,7 +1,8 @@
 import abc
-import subprocess, os
+import os
+import subprocess
 from enum import Enum
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable
 
 from shepherd.management import Archivable
 from shepherd.utils.logger import Logger

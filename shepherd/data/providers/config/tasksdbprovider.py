@@ -1,4 +1,5 @@
-from typing import Tuple, List, Optional
+from typing import Tuple, Optional
+
 from shepherd.data.dbproviderbase import DbProviderBase
 
 

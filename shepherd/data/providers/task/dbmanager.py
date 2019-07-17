@@ -40,7 +40,7 @@ class TaskDbManager:
                                 (key text PRIMARY KEY)"""
         )
 
-    ## getters and setters
+    # getters and setters
 
     # info
 

@@ -44,6 +44,7 @@ class KeyValueDbProviderBase(DbProviderBase, abc.ABC):
         ).fetchall()
         arged = {k: v for k, v in args}
 
+        # noinspection PyPep8Naming
         T = self.get_type_from_args(arged)
 
         arged["identifier"] = identifier

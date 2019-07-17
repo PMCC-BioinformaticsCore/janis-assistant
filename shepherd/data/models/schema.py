@@ -17,7 +17,7 @@ class TaskStatus(Enum):
     TERMINATED = 5
 
     @staticmethod
-    def ALL():
+    def all():
         return [
             TaskStatus.PROCESSING,
             TaskStatus.QUEUED,
@@ -28,7 +28,7 @@ class TaskStatus(Enum):
         ]
 
     @staticmethod
-    def FINAL_STATES():
+    def final_states():
         return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
 
     def __str__(self):

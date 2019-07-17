@@ -1,3 +1,4 @@
 requests
 black
 pre-commit
+python-dotenv

@@ -1,7 +1,11 @@
 from setuptools import setup, find_packages
-from shepherd import __version__
 
 modules = ["shepherd." + p for p in sorted(find_packages("./shepherd"))]
+
+vsn = {}
+with open("./shepherd/__meta__.py") as fp:
+    exec(fp.read(), vsn)
+__version__ = vsn["__version__"]
 
 setup(
     name="shepherd",

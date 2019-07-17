@@ -1,4 +1,3 @@
-import argparse
 from dotenv import load_dotenv
 
 # from shepherd.management.configmanager import ConfigManager
@@ -17,5 +16,4 @@ from shepherd.engines import Cromwell, CWLTool, Toil, CromwellConfiguration
 from shepherd.management.taskmanager import TaskManager, TaskStatus
 from shepherd.environments.environment import Environment
 from shepherd.validation import ValidationRequirements
-
-__version__ = "v0.0.2"
+from shepherd.__meta__ import __version__

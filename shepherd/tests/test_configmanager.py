@@ -1,6 +1,6 @@
 import unittest
 
-from shepherd import ConfigManager
+from shepherd.management.configmanager import ConfigManager
 from shepherd.data.models.filescheme import LocalFileScheme, SSHFileScheme
 
 

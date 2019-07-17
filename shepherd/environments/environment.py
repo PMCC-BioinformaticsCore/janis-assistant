@@ -16,7 +16,7 @@ class Environment(Archivable):
     """
 
     @staticmethod
-    def DEFAULTS():
+    def defaults():
         return [
             Environment("local", Cromwell("local"), LocalFileScheme()),
             Environment(
@@ -68,7 +68,7 @@ class Environment(Archivable):
 
     @staticmethod
     def get_predefined_environment_by_id(envid):
-        envs = {e.id(): e for e in Environment.DEFAULTS()}
-        if not envid in envs:
+        envs = {e.id(): e for e in Environment.defaults()}
+        if envid not in envs:
             raise Exception(f"Couldn't find predefined environment with id: '{envid}'")
         return envs.get(envid)

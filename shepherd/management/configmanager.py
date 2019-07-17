@@ -10,7 +10,7 @@ from shepherd.data.providers.config.enginedbprovider import EngineDbProvider
 from shepherd.data.providers.config.environmentdbprovider import EnvironmentDbProvider
 from shepherd.data.providers.config.fileschemedbprovider import FileschemeDbProvider
 from shepherd.data.providers.config.tasksdbprovider import TasksDbProvider, TaskRow
-from shepherd.engines import get_engine_type
+from shepherd.engines import Engine
 from shepherd.environments.environment import Environment
 from shepherd.management.taskmanager import TaskManager
 from shepherd.utils import Logger, generate_new_id
@@ -132,7 +132,7 @@ class ConfigManager:
         return TaskManager.from_path(path[0], self)
 
     def insert_default_environments(self):
-        for e in Environment.DEFAULTS():
+        for e in Environment.defaults():
             self.persist_engine(
                 engine=e.engine, throw_if_exists=False, should_commit=False
             )
@@ -159,8 +159,8 @@ class ConfigManager:
             raise KeyError(f"Couldn't find environment with id '{envid}'")
 
         (engid, fsid) = envtuple
-        eng = self.engineDB.get(engid)
-        fs = self.fileschemeDB.get(fsid)
+        eng: Engine = self.engineDB.get(engid)
+        fs: FileScheme = self.fileschemeDB.get(fsid)
 
         return Environment(envid, eng, fs)
 

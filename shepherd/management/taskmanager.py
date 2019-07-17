@@ -105,6 +105,7 @@ class TaskManager:
     @staticmethod
     def from_path(path, config_manager):
         """
+        :param config_manager:
         :param path: Path should include the $tid if relevant
         :return: TaskManager after resuming (might include a wait)
         """
@@ -251,9 +252,10 @@ class TaskManager:
         is_validating = bool(self.database.get_meta_info(InfoKeys.validating))
         outdir = self.get_task_path() + "outputs/"
         valdir = self.get_task_path() + "validation/"
-        output_is_validating = lambda o: is_validating and o.split(".")[-1].startswith(
-            "validated_"
-        )
+
+        def output_is_validating(o):
+            return is_validating and o.split(".")[-1].startswith("validated_")
+
         fs = self.environment.filescheme
 
         with open(outdir + "outputs.json", "w+") as oofp:
@@ -285,14 +287,14 @@ class TaskManager:
 
         status = None
 
-        while status not in TaskStatus.FINAL_STATES():
+        while status not in TaskStatus.final_states():
             meta = self.metadata()
             call("clear")
             if meta:
                 print(meta.format())
                 status = meta.status
                 self.database.update_meta_info(InfoKeys.status, status)
-            if status not in TaskStatus.FINAL_STATES():
+            if status not in TaskStatus.final_states():
                 time.sleep(5)
 
         self.database.progress_mark_completed(ProgressKeys.workflowMovedToFinalState)
@@ -384,14 +386,14 @@ class TaskManager:
 
         status = None
 
-        while status not in TaskStatus.FINAL_STATES():
+        while status not in TaskStatus.final_states():
             meta = self.metadata()
             if meta:
                 call("clear")
 
                 print(meta.format())
                 status = meta.status
-            if status not in TaskStatus.FINAL_STATES():
+            if status not in TaskStatus.final_states():
                 time.sleep(2)
 
     def metadata(self) -> TaskMetadata:

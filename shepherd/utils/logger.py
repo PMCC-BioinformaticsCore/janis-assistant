@@ -6,6 +6,7 @@ from typing import Optional, TextIO
 from shepherd.utils.dateutil import DateUtil
 
 
+# noinspection PyPep8Naming
 class _bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"

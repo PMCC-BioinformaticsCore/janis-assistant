@@ -22,6 +22,7 @@ class Archivable(abc.ABC):
     @classmethod
     def db_from_kwargs(cls, **kwargs):
         init_kwargs = cls.get_required_input_params_for_cls(kwargs)
+        # noinspection PyArgumentList
         self = cls(**init_kwargs)
 
         for k, v in kwargs.items():
@@ -32,12 +33,7 @@ class Archivable(abc.ABC):
 
     @classmethod
     def get_required_input_params_for_cls(cls, valuesdict):
-        try:
-            argspec = inspect.getfullargspec(cls.__init__)
-        except:
-            # we're in Python 2
-            argspec = inspect.getargspec(cls.__init__)
-
+        argspec = inspect.getfullargspec(cls.__init__)
         args, defaults = argspec.args, argspec.defaults
         endidx = len(defaults) if defaults else None
         required_param_keys = set(args[1:-endidx]) if endidx else args[1:]

@@ -1,5 +1,5 @@
-from typing import Optional, List
 from datetime import datetime
+
 from dateutil import parser, tz
 
 

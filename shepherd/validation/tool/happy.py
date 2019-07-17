@@ -1,5 +1,5 @@
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import List, Dict, Any
 
 from janis import (
     CommandTool,
@@ -10,15 +10,14 @@ from janis import (
     Int,
     CpuSelector,
     ToolMetadata,
-    Array,
     Filename,
     InputSelector,
     File,
     CaptureType,
 )
-from janis.unix.data_types.tsv import Tsv
 from janis.unix.data_types.csv import Csv
 from janis.unix.data_types.json import JsonFile
+from janis.unix.data_types.tsv import Tsv
 from janis.utils import get_value_for_hints_and_ordered_resource_tuple
 from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed, VcfTabix
 

@@ -13,9 +13,10 @@ from .processlogger import ProcessLogger
 
 def generate_new_id(forbiddenids: Set[str]):
     import uuid
+    import random
 
     def gen_uuid():
-        return str(uuid.uuid4())[:6]
+        return random.choice("abcdef") + str(uuid.uuid4())[:5]
 
     tid = gen_uuid()
     while tid in forbiddenids:

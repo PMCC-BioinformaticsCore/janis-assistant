@@ -1,14 +1,16 @@
 from shepherd.engines.cromwell.configurations import CromwellConfiguration
 from shepherd.engines.cromwell.main import Cromwell
-from shepherd.engines.cwltool.main import CWLTool
 from shepherd.engines.engine import AsyncTask
 
 config = CromwellConfiguration(
-    aws=CromwellConfiguration.AWS(region="ap-southeast-2", auths=[
-        CromwellConfiguration.AWS.Auth(scheme="custom_keys",
-                                       access_key="",
-                                       secret_key="")
-    ]),
+    aws=CromwellConfiguration.AWS(
+        region="ap-southeast-2",
+        auths=[
+            CromwellConfiguration.AWS.Auth(
+                scheme="custom_keys", access_key="", secret_key=""
+            )
+        ],
+    ),
     engine=CromwellConfiguration.Engine(s3=True)
     # backend=CromwellConfiguration.Backend(
     #     default="singularity",
@@ -20,7 +22,7 @@ with open(path, "w+") as f:
     print("Configuration: \n" + "\n\t".join(config.output().splitlines()))
     f.write(config.output())
 
-c = Cromwell(config_path=path)
+c = Cromwell(config_path=path, identifier="test")
 # c = CWLTool()
 c.start_engine()
 
@@ -89,12 +91,10 @@ requirements:
 def onerror(task):
     c.stop_engine()
 
+
 print("starting async task")
 AsyncTask(
-    engine=c,
-    source=wdl_aws,
-    handler=handler,
-    onerror=onerror
+    tid="simple", engine=c, source=wdl_aws, handler=handler, onerror=onerror
 ).start()
 print("Task has been scheduled")
 

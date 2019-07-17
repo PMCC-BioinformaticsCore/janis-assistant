@@ -37,6 +37,8 @@ class CWLTool(Engine):
     def create_task(self, source=None, inputs=None, dependencies=None) -> str:
         import uuid
 
+        print(self.id())
+
         return str(uuid.uuid4())
 
     def poll_task(self, identifier) -> TaskStatus:
@@ -69,8 +71,9 @@ class CWLTool(Engine):
         :param identifier:
         :return:
         """
-        return None
-        # raise NotImplementedError("metadata needs to be implemented in CWLTool, may require rework of tool")
+        raise NotImplementedError(
+            "metadata needs to be implemented in CWLTool, may require rework of tool"
+        )
 
     def start_from_task(self, task: TaskBase):
         task.identifier = self.create_task(None, None, None)

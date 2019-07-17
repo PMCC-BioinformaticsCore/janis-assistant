@@ -141,19 +141,20 @@ class Cromwell(Engine):
     def url_create(self):
         return self.url_base()
 
-    def url_poll(self, id):
-        return self.url_base() + f"/{id}/status"
+    def url_poll(self, identifier):
+        return self.url_base() + f"/{identifier}/status"
 
-    def url_outputs(self, id):
-        return self.url_base() + f"/{id}/outputs"
+    def url_outputs(self, identifier):
+        return self.url_base() + f"/{identifier}/outputs"
 
-    def url_metadata(self, id, expand_subworkflows=True):
+    def url_metadata(self, identifier, expand_subworkflows=True):
         return (
-            self.url_base() + f"/{id}/metadata?expandSubWorkflows={expand_subworkflows}"
+            self.url_base()
+            + f"/{identifier}/metadata?expandSubWorkflows={expand_subworkflows}"
         )
 
-    def url_abort(self, id):
-        return self.url_base() + f"/{id}/abort"
+    def url_abort(self, identifier):
+        return self.url_base() + f"/{identifier}/abort"
 
     def create_task(self, tid, source, inputs: list, dependencies, workflow_type=None):
         # curl \
@@ -175,7 +176,12 @@ class Cromwell(Engine):
         files = {
             "workflowSource": source,
             "labels": json.dumps({"taskid": tid}),
-            "workflowOptions": json.dumps({"google_labels": {"taskid": tid}}),
+            "workflowOptions": json.dumps(
+                {
+                    "google_labels": {"taskid": tid},
+                    "monitoring_image": "quay.io/dinvlad/cromwell-monitor",
+                }
+            ),
         }
 
         if dependencies:
@@ -201,13 +207,13 @@ class Cromwell(Engine):
         return task_id
 
     def poll_task(self, identifier) -> TaskStatus:
-        url = self.url_poll(id=identifier)
+        url = self.url_poll(identifier=identifier)
         r = requests.get(url)
         res = r.json()
         return cromwell_status_to_status(res["status"])
 
     def outputs_task(self, identifier):
-        url = self.url_outputs(id=identifier)
+        url = self.url_outputs(identifier=identifier)
         r = requests.get(url)
         if not r.ok:
             return Logger.warn(
@@ -235,6 +241,7 @@ class Cromwell(Engine):
     ):
         """
         This does NOT watch, it purely schedule the jobs
+        :param tid:
         :param source_path:
         :param input_path:
         :param deps_path:
@@ -289,7 +296,7 @@ class Cromwell(Engine):
         Logger.log("Task is now processing")
         task.task_start = DateUtil.now()
 
-        while task.status not in TaskStatus.FINAL_STATES():
+        while task.status not in TaskStatus.final_states():
             status = self.poll_task(task.identifier)
             if status != task.status:
                 Logger.info(
@@ -299,7 +306,7 @@ class Cromwell(Engine):
                 )
             task.status = status
 
-            if task.status not in TaskStatus.FINAL_STATES():
+            if task.status not in TaskStatus.final_states():
                 time.sleep(1)
 
         task.task_finish = DateUtil.now()
@@ -317,7 +324,9 @@ class Cromwell(Engine):
     def raw_metadata(
         self, identifier, expand_subworkflows=True
     ) -> Optional[CromwellMetadata]:
-        url = self.url_metadata(id=identifier, expand_subworkflows=expand_subworkflows)
+        url = self.url_metadata(
+            identifier=identifier, expand_subworkflows=expand_subworkflows
+        )
         Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
         r = requests.get(url)
         try:

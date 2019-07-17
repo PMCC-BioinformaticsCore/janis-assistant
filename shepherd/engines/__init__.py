@@ -7,11 +7,11 @@ from .engine import SyncTask, AsyncTask, Engine
 from janis import SupportedTranslations
 
 
-def get_ideal_specification_for_engine(engine: Engine):
-    if isinstance(engine, Cromwell):
+def get_ideal_specification_for_engine(eng: Engine):
+    if isinstance(eng, Cromwell):
         return SupportedTranslations.WDL
 
-    elif isinstance(engine, Toil):
+    elif isinstance(eng, Toil):
         return SupportedTranslations.CWL
 
     return SupportedTranslations.CWL

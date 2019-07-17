@@ -1,5 +1,5 @@
-import json
 from typing import Tuple, Any, Dict, Union
+
 from shepherd.utils.logger import Logger
 
 
@@ -277,6 +277,7 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                 )
                 return slurm
 
+            # noinspection PyPep8
             @classmethod
             def torque(cls):
                 """

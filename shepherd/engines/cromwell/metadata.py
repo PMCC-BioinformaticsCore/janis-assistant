@@ -1,12 +1,9 @@
 import json
-from datetime import datetime
 from typing import Union
 
-from shepherd.utils.dateutil import DateUtil
-
-from shepherd.utils import dateutil
-from shepherd.utils.logger import Logger
 from shepherd.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
+from shepherd.utils.dateutil import DateUtil
+from shepherd.utils.logger import Logger
 
 
 def cromwell_status_to_status(status: str) -> TaskStatus:

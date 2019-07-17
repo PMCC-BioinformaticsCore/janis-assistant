@@ -1,7 +1,5 @@
-import json
 import os
 import subprocess
-
 from typing import Dict, Any, Optional
 
 from shepherd.data.models.schema import TaskMetadata, TaskStatus
@@ -74,4 +72,6 @@ class Toil(Engine):
         pass
 
     def metadata(self, identifier) -> TaskMetadata:
-        return None
+        raise NotImplementedError(
+            "metadata needs to be implemented in Toil, may require rework of tool"
+        )

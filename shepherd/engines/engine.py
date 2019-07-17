@@ -118,6 +118,7 @@ class TaskBase:
 class AsyncTask(threading.Thread, TaskBase):
     def __init__(
         self,
+        tid: str,
         engine: Engine,
         source=None,
         source_path=None,
@@ -136,6 +137,7 @@ class AsyncTask(threading.Thread, TaskBase):
         threading.Thread.__init__(self)
         TaskBase.__init__(
             self,
+            tid=tid,
             engine=engine,
             source=source,
             source_path=source_path,
@@ -164,6 +166,7 @@ class AsyncTask(threading.Thread, TaskBase):
 class SyncTask(TaskBase):
     def __init__(
         self,
+        tid: str,
         engine: Engine,
         source=None,
         source_path=None,
@@ -180,6 +183,7 @@ class SyncTask(TaskBase):
     ):
         TaskBase.__init__(
             self,
+            tid=tid,
             engine=engine,
             source=source,
             source_path=source_path,

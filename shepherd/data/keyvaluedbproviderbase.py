@@ -45,7 +45,14 @@ class KeyValueDbProviderBase(DbProviderBase, abc.ABC):
         arged = {k: v for k, v in args}
 
         # noinspection PyPep8Naming
-        T = self.get_type_from_args(arged)
+        try:
+            T = self.get_type_from_args(arged)
+        except KeyError as e:
+            classname = self.__class__.__name__
+            raise KeyError(
+                f"Couldn't get the type when instantiating '{classname}' with "
+                f"identifier '{identifier}', received KeyError: {e}"
+            )
 
         arged["identifier"] = identifier
 

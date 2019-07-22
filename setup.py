@@ -1,14 +1,16 @@
 from setuptools import setup, find_packages
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
-modules = ["shepherd." + p for p in sorted(find_packages("./shepherd"))]
+modules = ["janis_runner." + p for p in sorted(find_packages("./janis_runner"))]
 
 vsn = {}
-with open("./shepherd/__meta__.py") as fp:
+with open("./janis_runner/__meta__.py") as fp:
     exec(fp.read(), vsn)
 __version__ = vsn["__version__"]
 
 setup(
-    name="shepherd",
+    name="janis_runner",
     version=__version__,
     description="Easier way to run workflows, configurable across environments",
     long_description=open("./README.md").read(),
@@ -16,17 +18,19 @@ setup(
     author="Michael Franklin",
     author_email="michael.franklin@petermac.org",
     license="MIT",
-    keywords=["shepherd"],
-    entry_points={"console_scripts": ["shepherd=shepherd.cli:process_args"]},
+    keywords=["janis.runner"],
+    entry_points={
+        "console_scripts": ["janis=janis_runner.cli:process_args"],
+        "janis.extension": ["runner=runner"]
+    },
     install_requires=[
-        "janis-pipelines[bioinformatics]>=v0.2.17",
         "requests",
         "path.py",
         "ruamel.yaml",
         "python-dotenv",
         "python-dateutil",
     ],
-    packages=["shepherd"] + modules,
+    packages=["janis_runner"] + modules,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Scientific/Engineering",
@@ -34,4 +38,8 @@ setup(
         "Intended Audience :: Science/Research",
         "Environment :: Console",
     ],
+    cmdclass={
+        # 'develop': PostDevelopCommand,
+        # 'install': PostInstallCommand
+    }
 )

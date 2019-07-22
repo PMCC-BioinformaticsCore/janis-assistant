@@ -1,8 +1,8 @@
 import unittest
 from abc import ABC
 
-from shepherd.engines.cromwell.main import Cromwell
-from shepherd.engines.engine import SyncTask, TaskStatus
+from janis.runner.engines.cromwell.main import Cromwell
+from janis.runner.engines.engine import SyncTask, TaskStatus
 
 
 class TestWorkflowCase(ABC, unittest.TestCase):

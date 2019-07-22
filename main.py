@@ -1,6 +1,6 @@
-from shepherd.engines.cromwell.configurations import CromwellConfiguration
-from shepherd.engines.cromwell.main import Cromwell
-from shepherd.engines.engine import AsyncTask
+from janis_runner.engines.cromwell.configurations import CromwellConfiguration
+from janis_runner.engines.cromwell.main import Cromwell
+from janis_runner.engines.engine import AsyncTask
 
 config = CromwellConfiguration(
     aws=CromwellConfiguration.AWS(

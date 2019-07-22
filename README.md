@@ -1,10 +1,30 @@
-# Welcome to Shepherd
+# Welcome to Janis-Runner
 
-## Project Goals
+This project aims to make the processing of running workflows easier, when your workflow 
+is built with [Janis](https://github.com/PMCC-BioinformaticsCore/janis).
 
-As a shepherd tends to his sheep, so does `Shepherd` tends and gathers pipelines. 
+## Quick start
 
-### Pipeline shepherd
+```bash
+pip3 install janis_runner 
+```
+
+## How to run a workflow
+
+You can either run a workflow from the command line, or there are a few exposed methods.
+
+### Command Line
+
+```bash
+janis run --environment local /path/to/myworkflow.py
+```
+
+Extra parameters:
+
+> Put help guide here
+
+
+## Environments
 
 This is the first step. Can we take a workflow written in CWL or WDL, Spin up an instance of 
 [Cromwell](https://github.com/broadinstitute/cromwell), run the workflow with any required tools and give back the user the result.

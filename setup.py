@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
-from setuptools.command.develop import develop
-from setuptools.command.install import install
+# from setuptools.command.develop import develop
+# from setuptools.command.install import install
 
 modules = ["janis_runner." + p for p in sorted(find_packages("./janis_runner"))]
 
@@ -10,7 +10,7 @@ with open("./janis_runner/__meta__.py") as fp:
 __version__ = vsn["__version__"]
 
 setup(
-    name="janis_runner",
+    name="janis-pipelines.runner",
     version=__version__,
     description="Easier way to run workflows, configurable across environments",
     long_description=open("./README.md").read(),
@@ -18,12 +18,13 @@ setup(
     author="Michael Franklin",
     author_email="michael.franklin@petermac.org",
     license="MIT",
-    keywords=["janis.runner"],
+    keywords=["janis", "workflows", "enginerunner"],
     entry_points={
         "console_scripts": ["janis=janis_runner.cli:process_args"],
-        "janis.extension": ["runner=runner"]
+        "janis.extension": ["runner=janis_runner"]
     },
     install_requires=[
+        "janis-pipelines.core"
         "requests",
         "path.py",
         "ruamel.yaml",

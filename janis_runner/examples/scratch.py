@@ -1,34 +1,19 @@
 import unittest
 
-from janis import CaptureType
-from janis.examples.simplewrapped import SimpleWorkflow
+from janis_core import CaptureType
 
 from janis_runner.data.models.filescheme import LocalFileScheme
 from janis_runner.engines.toil.main import Toil
 from janis_runner.environments.environment import Environment
 from janis_runner.main import fromjanis
 from janis_runner.management.configmanager import ConfigManager
-from janis_runner.management.taskmanager import TaskManager
-from janis_runner.validation import (
-    generate_validation_workflow_from_janis,
-    ValidationRequirements,
-)
+from janis_runner.validation import ValidationRequirements
 
 
-class TestFromJanisValidator:
-    def test_validate_from_janis_workflow_generation(self):
-        reqs = ValidationRequirements("truth.vcf", "reference.fasta", ["out"])
-        w = generate_validation_workflow_from_janis(SimpleWorkflow(), reqs)
-        w.translate("wdl")
-
-    # def test_from_janis_run(self):
-    #     wf = SimpleWorkflow()
-    #     wf._inputs[
-    #         0
-    #     ].input.value = "/Users/franklinmichael/Desktop/workflows-for-testing/03-simple/inputs/hello.tar"
-    #     TaskManager.from_janis(
-    #         wf, Environment.get_predefined_environment_by_id("local"), None
-    #     )
+# class TestFromJanisValidator:
+#     def test_validate_from_janis_workflow_generation(self):
+#         reqs = ValidationRequirements("truth.vcf", "reference.fasta", ["out"])
+#         w = generate_validation_workflow_from_janis(SimpleWorkflow(), reqs)
 
 
 class TestFromJanisIntegration(unittest.TestCase):

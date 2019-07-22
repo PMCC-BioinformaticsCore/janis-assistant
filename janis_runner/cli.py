@@ -65,7 +65,7 @@ def add_abort_args(parser):
 
 
 def add_janis_args(parser):
-    from janis import HINTS, HintEnum
+    from janis_core import HINTS, HintEnum
 
     parser.add_argument("workflow", help="Run the workflow defined in this file")
     parser.add_argument(

@@ -1,6 +1,6 @@
 from typing import List, Dict, Optional
 
-from janis import Tool, Workflow, DataType, ToolOutput, String
+from janis_core import Tool, Workflow, DataType, ToolOutput, String
 from janis_bioinformatics.data_types import Vcf, Bed
 
 from janis_runner.utils.logger import Logger
@@ -24,7 +24,7 @@ class ValidationRequirements:
 def generate_validation_workflow_from_janis(
     tool: Workflow, validreqs: ValidationRequirements
 ):
-    from janis import Workflow, Input, Step, Output
+    from janis_core import Workflow, Input, Step, Output
     from janis_bioinformatics.data_types import FastaWithDict
 
     failed_outputs, untyped_outputs = ensure_outputs_are_in_workflow_and_are_compatible(

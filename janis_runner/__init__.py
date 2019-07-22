@@ -1,8 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-print("RUNNER __NAME__: " + __name__)
-
 from janis_runner.main import fromjanis
 from janis_runner.data.models.filescheme import (
     FileScheme,

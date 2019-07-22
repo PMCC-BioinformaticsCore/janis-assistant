@@ -1,7 +1,7 @@
 import os
 import tempfile
 from path import Path
-from janis import Workflow
+from janis_core import Workflow
 from typing import List, Tuple
 from inspect import isclass, isabstract
 

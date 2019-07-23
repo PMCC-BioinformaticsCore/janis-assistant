@@ -24,7 +24,7 @@ setup(
         "janis.extension": ["runner=janis_runner"]
     },
     install_requires=[
-        "janis-pipelines.core"
+        "janis-pipelines.core",
         "requests",
         "path.py",
         "ruamel.yaml",

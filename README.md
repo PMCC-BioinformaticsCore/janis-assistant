@@ -1,5 +1,8 @@
 # Welcome to Janis-Runner
 
+[![Build Status](https://travis-ci.org/PMCC-BioinformaticsCore/janis-runner.svg?branch=master)](https://travis-ci.org/PMCC-BioinformaticsCore/janis-runner)
+[![PyPI version](https://badge.fury.io/py/janis-pipelines.runner.svg)](https://badge.fury.io/py/janis-pipelines.bioinformatics)
+
 This project aims to make the processing of running workflows easier, when your workflow 
 is built with [Janis](https://github.com/PMCC-BioinformaticsCore/janis).
 

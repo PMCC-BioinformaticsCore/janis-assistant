@@ -4,7 +4,7 @@ from janis_runner.data.models.schema import TaskStatus
 
 from janis_runner.main import fromjanis
 from janis_runner.management.configmanager import ConfigManager
-from janis_runner.utils.logger import Logger
+from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
 
 environments = ConfigManager.manager().environmentDB.get_env_ids()
@@ -13,7 +13,6 @@ environments = ConfigManager.manager().environmentDB.get_env_ids()
 def process_args():
     cmds = {
         "version": do_version,
-        "janis": do_janis,
         "run": do_run,
         "watch": do_watch,
         "abort": do_abort,
@@ -23,13 +22,14 @@ def process_args():
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
-    subparsers = parser.add_subparsers(help="subcommand help", dest="command")
-    parser.add_argument("-d", "--debug", action="store_true")
+    add_logger_args(parser)
+    parser.add_argument("-v", "--version", action="store_true")
 
+    subparsers = parser.add_subparsers(help="subcommand help", dest="command")
     subparsers.add_parser("version")
     add_watch_args(subparsers.add_parser("watch"))
     add_abort_args(subparsers.add_parser("abort"))
-    add_janis_args(subparsers.add_parser("janis"))
+    add_run_args(subparsers.add_parser("run"))
     add_metadata_args(subparsers.add_parser("metadata"))
     add_reconnect_args(subparsers.add_parser("reconnect"))
     add_environment_args(subparsers.add_parser("environment"))
@@ -37,7 +37,43 @@ def process_args():
     # add_workflow_args(subparsers.add_parser("run-workflow"))
 
     args = parser.parse_args()
+
+    if args.version:
+        return do_version(args)
+
+    check_logger_args(args)
+
     return cmds[args.command](args)
+
+
+def add_logger_args(parser):
+    parser.add_argument("-d", "--debug", help="log debug", dest='debug', action='store_true')
+    parser.add_argument("--logDebug", help="log debug", dest='debug', action='store_true')
+    parser.add_argument("--logInfo", help="log info", action='store_true')
+    parser.add_argument("--logWarn", help="log warning", action='store_true')
+    parser.add_argument("--logCritical", help="log critical", action='store_true')
+    parser.add_argument("--logNone", help="log nothing", action='store_true')
+    parser.add_argument("-L", "--logLevel", choices=["DEBUG", "INFO", "WARN", "CRITICAL", "NONE"])
+
+    return parser
+
+
+def check_logger_args(args):
+    level = LogLevel.INFO
+    if args.debug:
+        level = LogLevel.DEBUG
+    if args.logInfo:
+        level = LogLevel.INFO
+    if args.logWarn:
+        level = LogLevel.WARNING
+    if args.logCritical:
+        level = LogLevel.CRITICAL
+    if args.logNone:
+        level = None
+    if args.logLevel:
+        level = LogLevel.from_str(args.logLevel)
+
+    Logger.set_console_level(level)
 
 
 def add_watch_args(parser):
@@ -64,7 +100,7 @@ def add_abort_args(parser):
 #     return parser
 
 
-def add_janis_args(parser):
+def add_run_args(parser):
     from janis_core import HINTS, HintEnum
 
     parser.add_argument("workflow", help="Run the workflow defined in this file")
@@ -100,10 +136,7 @@ def add_janis_args(parser):
     # add hints
     for HintType in HINTS:
         if issubclass(HintType, HintEnum):
-            print("Adding " + HintType.key())
             parser.add_argument("--hint-" + HintType.key(), choices=HintType.symbols())
-        else:
-            print("Skipping " + HintType.key())
 
     return parser
 
@@ -129,14 +162,8 @@ def add_query_args(parser):
 
 
 def do_version(_):
-    print("v0.0.2")
-
-
-def do_run(args):
-    Logger.info("Run the shepherd-shepherd with the CommandLine arguments")
-    print(args)
-    raise NotImplementedError("This path hasn't been implemented yet, raise an issue.")
-
+    from janis_runner.__meta__ import __version__
+    print(__version__)
 
 def do_watch(args):
     tid = args.tid
@@ -167,9 +194,7 @@ def do_abort(args):
     tm.abort()
 
 
-def do_janis(args):
-    print(args)
-
+def do_run(args):
     v = None
 
     if args.validation_fields:
@@ -202,7 +227,7 @@ def do_environment(args):
     method = args.method
 
     if method == "list":
-        return print(ConfigManager.manager().environmentDB.get_env_ids())
+        return print(", ".join(ConfigManager.manager().environmentDB.get_env_ids()))
 
     raise NotImplementedError(f"No implementation for '{method}' yet")
 

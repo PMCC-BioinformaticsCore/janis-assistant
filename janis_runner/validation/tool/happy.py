@@ -2,10 +2,9 @@ from datetime import datetime
 from typing import List, Dict, Any
 
 import janis as j
-# from janis.unix.data_types.csv import Csv
-# from janis.unix.data_types.json import JsonFile
-# from janis.unix.data_types.tsv import Tsv
-# from janis.utils import get_value_for_hints_and_ordered_resource_tuple
+from janis_unix.data_types.csv import Csv
+from janis_unix.data_types.json import JsonFile
+from janis_unix.data_types.tsv import Tsv
 from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed, VcfTabix
 
 CORES_TUPLE = [
@@ -43,6 +42,10 @@ class HapPyValidator(j.CommandTool):
     @staticmethod
     def docker():
         return "pkrusche/hap.py:v0.3.9"
+
+    @staticmethod
+    def version():
+        return "v0.3.9"
 
     @staticmethod
     def base_command():
@@ -387,7 +390,7 @@ class HapPyValidator(j.CommandTool):
             ),
             j.ToolInput(
                 "logfile",
-                Filename(suffix="-log", extension=".txt"),
+                j.Filename(suffix="-log", extension=".txt"),
                 prefix="--logfile",
                 doc="Write logging information into file rather than to stderr",
             ),
@@ -452,7 +455,7 @@ class HapPyValidator(j.CommandTool):
         ]
 
     def metadata(self):
-        return ToolMetadata(
+        return j.ToolMetadata(
             creator=None,
             maintainer="Michael Franklin",
             maintainerEmail=None,

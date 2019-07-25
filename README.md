@@ -9,7 +9,7 @@ is built with [Janis](https://github.com/PMCC-BioinformaticsCore/janis).
 ## Quick start
 
 ```bash
-pip3 install janis_runner 
+pip3 install janis-pipelines.runner 
 ```
 
 ## How to run a workflow

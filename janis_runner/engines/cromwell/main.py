@@ -180,6 +180,7 @@ class Cromwell(Engine):
                 {
                     "google_labels": {"taskid": tid},
                     "monitoring_image": "quay.io/dinvlad/cromwell-monitor",
+                    "workflow_failure_mode": "ContinueWhilePossible"
                 }
             ),
         }

@@ -4,6 +4,8 @@ from enum import Enum
 class InfoKeys(Enum):
     taskId = "taskId"
     engineId = "engineId"
+    fileschemeId = "fileschemeId"
+
     name = "name"
     status = "status"
     start = "start"

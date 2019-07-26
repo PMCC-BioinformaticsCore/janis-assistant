@@ -2,7 +2,10 @@ import sqlite3
 from typing import Tuple, List
 
 from janis_runner.data.enums import InfoKeys, ProgressKeys
-
+from janis_runner.data.models.filescheme import FileScheme
+from janis_runner.data.providers.config.enginedbprovider import EngineDbProvider
+from janis_runner.data.providers.config.fileschemedbprovider import FileschemeDbProvider
+from janis_runner.engines import Engine
 from janis_runner.utils.logger import Logger
 
 
@@ -14,6 +17,8 @@ class TaskDbManager:
 
         self.create_info_table_if_required()
         self.create_progress_table_if_required()
+        self.engineDB = EngineDbProvider(self.connection, self.cursor)
+        self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
 
     def get_sql_path(self):
         return self.exec_path + "task.db"
@@ -99,3 +104,21 @@ class TaskDbManager:
         self.connection.close()
         self.cursor = None
         self.connection = None
+
+    # engines
+
+    def persist_engine(self, engine: Engine):
+        return self.engineDB.persist(engine)
+
+    def get_engine(self):
+        engid = self.get_meta_info(InfoKeys.engineId)
+        return self.engineDB.get(engid)
+
+    # fileschemes
+
+    def persist_filescheme(self, filescheme: FileScheme):
+        return self.fileschemeDB.persist(filescheme)
+
+    def get_filescheme(self):
+        fsid = self.get_meta_info(InfoKeys.fileschemeId)
+        return self.fileschemeDB.get(fsid)

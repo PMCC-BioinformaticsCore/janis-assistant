@@ -42,10 +42,6 @@ class TaskManager:
         self.create_output_structure()
 
         self.database = TaskDbManager(self.get_task_path_safe())
-
-        if not isinstance(environment, Environment):
-            raise Exception("TaskManager requires an Environment")
-
         self.environment = environment
 
         if not self.tid:
@@ -75,6 +71,8 @@ class TaskManager:
 
         # output directory has been created
 
+        environment.identifier += "_" + tid
+
         tm = TaskManager(tid=tid, outdir=outdir, environment=environment)
         tm.database.add_meta_infos(
             [
@@ -82,11 +80,14 @@ class TaskManager:
                 (InfoKeys.status, TaskStatus.PROCESSING),
                 (InfoKeys.validating, validation_requirements is not None),
                 (InfoKeys.engineId, environment.engine.id()),
+                (InfoKeys.fileschemeId, environment.filescheme.identifier),
                 (InfoKeys.environment, environment.id()),
                 (InfoKeys.name, wf.id()),
                 (InfoKeys.start, datetime.now().isoformat()),
             ]
         )
+        tm.database.persist_engine(environment.engine)
+        tm.database.persist_filescheme(environment.filescheme)
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = janis.translations.get_translator(spec)
@@ -114,9 +115,13 @@ class TaskManager:
 
         path = TaskManager.get_task_path_for(path)
         db = TaskDbManager(path)
+
         tid = db.get_meta_info(InfoKeys.taskId)
         envid = db.get_meta_info(InfoKeys.environment)
-        env = config_manager.get_environment(envid)
+        eng = db.get_engine()
+        fs = db.get_filescheme()
+        env = Environment(envid, eng, fs)
+
         db.close()
 
         tm = TaskManager(outdir=path, tid=tid, environment=env)

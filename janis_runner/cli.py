@@ -10,7 +10,7 @@ from janis_runner.validation import ValidationRequirements
 environments = ConfigManager.manager().environmentDB.get_env_ids()
 
 
-def process_args():
+def process_args(sysargs=None):
     cmds = {
         "version": do_version,
         "run": do_run,
@@ -36,7 +36,7 @@ def process_args():
     add_query_args(subparsers.add_parser("query"))
     # add_workflow_args(subparsers.add_parser("run-workflow"))
 
-    args = parser.parse_args()
+    args = parser.parse_args(sysargs)
 
     if args.version:
         return do_version(args)
@@ -47,13 +47,19 @@ def process_args():
 
 
 def add_logger_args(parser):
-    parser.add_argument("-d", "--debug", help="log debug", dest='debug', action='store_true')
-    parser.add_argument("--logDebug", help="log debug", dest='debug', action='store_true')
-    parser.add_argument("--logInfo", help="log info", action='store_true')
-    parser.add_argument("--logWarn", help="log warning", action='store_true')
-    parser.add_argument("--logCritical", help="log critical", action='store_true')
-    parser.add_argument("--logNone", help="log nothing", action='store_true')
-    parser.add_argument("-L", "--logLevel", choices=["DEBUG", "INFO", "WARN", "CRITICAL", "NONE"])
+    parser.add_argument(
+        "-d", "--debug", help="log debug", dest="debug", action="store_true"
+    )
+    parser.add_argument(
+        "--logDebug", help="log debug", dest="debug", action="store_true"
+    )
+    parser.add_argument("--logInfo", help="log info", action="store_true")
+    parser.add_argument("--logWarn", help="log warning", action="store_true")
+    parser.add_argument("--logCritical", help="log critical", action="store_true")
+    parser.add_argument("--logNone", help="log nothing", action="store_true")
+    parser.add_argument(
+        "-L", "--logLevel", choices=["DEBUG", "INFO", "WARN", "CRITICAL", "NONE"]
+    )
 
     return parser
 
@@ -105,6 +111,13 @@ def add_run_args(parser):
 
     parser.add_argument("workflow", help="Run the workflow defined in this file")
     parser.add_argument(
+        "-n",
+        "--name",
+        help="If you have multiple workflows in your file, you may want to "
+             "help Janis out to select the right workflow to run",
+    )
+
+    parser.add_argument(
         "--inputs",
         help="File of inputs (matching the workflow) to override, these inputs will "
         "take precedence over inputs declared in the workflow",
@@ -116,7 +129,29 @@ def add_run_args(parser):
         help="The output directory to which tasks are saved in, defaults to $HOME.",
     )
 
-    parser.add_argument("-e", "--environment", choices=environments, required=True)
+    parser.add_argument(
+        "-e",
+        "--environment",
+        choices=environments,
+        help="Select a preconfigured environment (takes precendence over engine and filescheme)",
+    )
+    parser.add_argument(
+        "--engine", choices=["cromwell", "cwltool"], default="cwltool", help="Choose an engine to start"
+    )
+    parser.add_argument(
+        "-f",
+        "--filescheme",
+        choices=["local", "ssh"],
+        default="local",
+        help="Choose the filescheme required to retrieve the output files where your engine is located. "
+        "By selecting SSH, Janis will SCP the files using the --filescheme-ssh-binding SSH shortcut.",
+    )
+    parser.add_argument(
+        "--filescheme-ssh-binding",
+        help="Only valid if you've selected the ssh filescheme. "
+        "(eg: scp cluster:/path/to/output local/output/dir)",
+    )
+    parser.add_argument("--cromwell-url", help="Location to Cromwell")
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
@@ -163,7 +198,9 @@ def add_query_args(parser):
 
 def do_version(_):
     from janis_runner.__meta__ import __version__
+
     print(__version__)
+
 
 def do_watch(args):
     tid = args.tid
@@ -214,12 +251,17 @@ def do_run(args):
 
     return fromjanis(
         args.workflow,
+        name=args.name,
         validation_reqs=v,
         env=args.environment,
+        engine=args.engine,
+        filescheme=args.filescheme,
         hints=hints,
         output_dir=args.output_dir,
         dryrun=args.dryrun,
         inputs=args.inputs,
+        filescheme_ssh_binding=args.filescheme_ssh_binding,
+        cromwell_url=args.cromwell_url,
     )
 
 

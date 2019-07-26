@@ -46,9 +46,10 @@ def get_file_from_searchname(name, cwd):
     if cwd == ".":
         cwd = os.getcwd()
     Logger.log(f"Searching for a file called '{name}'")
-    if os.path.exists(name):
+    resolved = os.path.expanduser(name)
+    if os.path.exists(resolved):
         Logger.log(f"Found file called '{name}'")
-        return name
+        return resolved
 
     Logger.log(f"Searching for file '{name}' in the cwd, '{cwd}'")
     with Path(cwd):
@@ -100,12 +101,12 @@ def try_parse_dict(file: str):
     return None
 
 
-def get_janis_workflow_from_searchname(name, cwd):
-    file = get_file_from_searchname(name, cwd)
-    return get_workflow_from_file(file)
+def get_janis_workflow_from_searchname(searchpath, cwd, name: str=None):
+    file = get_file_from_searchname(searchpath, cwd)
+    return get_workflow_from_file(file, name)
 
 
-def get_workflow_from_file(file):
+def get_workflow_from_file(file, name):
     # How to import a module given the full path
     # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     import importlib.util
@@ -114,14 +115,18 @@ def get_workflow_from_file(file):
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
     ptypes = get_workflows_from_module_spec(foo)
+
+    if name:
+        ptypes = [(k, v) for (k, v) in ptypes if k == name]
+
     if len(ptypes) == 0:
         raise Exception(f"Couldn't find any valid workflows in '{file}'.")
     if len(ptypes) > 1:
         raise Exception(
-            f"Too many workflows detected ({len(ptypes)}) in '{file}': "
+            f"More than one workflow ({len(ptypes)}) detected in '{file}' (please specify a name): "
             + ",".join(str(x) for x in ptypes)
         )
-    return ptypes[0]
+    return ptypes[0][1]
 
 
 def get_workflows_from_module_spec(spec):
@@ -130,11 +135,9 @@ def get_workflows_from_module_spec(spec):
     :return: List of all the subclasses of a workflow
     """
     potentials = []
-    for ptype in spec.__dict__.values():
+    for k, ptype in spec.__dict__.items():
         if isinstance(ptype, Workflow):
-            Logger.warn(
-                f"Detected instance of 'Workflow' (id: '{ptype.id()}'), only subclasses are supported"
-            )
+            potentials.append((k, ptype))
             continue
         if not callable(ptype):
             continue
@@ -148,6 +151,6 @@ def get_workflows_from_module_spec(spec):
             continue
         if ptype.__module__ != "module.name":
             continue
-        potentials.append(ptype)
+        potentials.append((k, ptype()))
 
     return potentials

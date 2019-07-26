@@ -19,36 +19,36 @@ class Environment(Archivable):
     def defaults():
         return [
             Environment("local", Cromwell("local"), LocalFileScheme()),
-            Environment(
-                "local-connect",
-                Cromwell.from_url("local-connect", "localhost:8000"),
-                LocalFileScheme(),
-            ),
-            Environment(
-                "pmac",
-                Cromwell.from_url(
-                    identifier="pmac", url="vmdv-res-seq.unix.petermac.org.au:8000"
-                ),
-                SSHFileScheme("pmac", "cluster"),
-            ),
-            Environment(
-                "pmac-head",
-                Cromwell.from_url(
-                    identifier="pmac-head",
-                    url="vmpr-res-cluster1.unix.petermac.org.au:8000",
-                ),
-                SSHFileScheme("pmac", "cluster"),
-            ),
-            Environment(
-                "gcp",
-                Cromwell.from_url(identifier="gpc-connect", url="35.189.14.233:9000"),
-                GCSFileScheme(),
-            ),
-            Environment(
-                "fs",
-                Cromwell.from_url(identifier="fs-connect", url="localhost:8001"),
-                SSHFileScheme("fs", "fs"),
-            ),
+            # Environment(
+            #     "local-connect",
+            #     Cromwell.from_url("local-connect", "localhost:8000"),
+            #     LocalFileScheme(),
+            # ),
+            # Environment(
+            #     "pmac",
+            #     Cromwell.from_url(
+            #         identifier="pmac", url="vmdv-res-seq.unix.petermac.org.au:8000"
+            #     ),
+            #     SSHFileScheme("pmac", "cluster"),
+            # ),
+            # Environment(
+            #     "pmac-head",
+            #     Cromwell.from_url(
+            #         identifier="pmac-head",
+            #         url="vmpr-res-cluster1.unix.petermac.org.au:8000",
+            #     ),
+            #     SSHFileScheme("pmac", "cluster"),
+            # ),
+            # Environment(
+            #     "gcp",
+            #     Cromwell.from_url(identifier="gpc-connect", url="35.189.14.233:9000"),
+            #     GCSFileScheme(),
+            # ),
+            # Environment(
+            #     "fs",
+            #     Cromwell.from_url(identifier="fs-connect", url="localhost:8001"),
+            #     SSHFileScheme("fs", "fs"),
+            # ),
         ]
 
     def __init__(

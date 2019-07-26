@@ -129,7 +129,7 @@ class Logger:
             # This is a developer error, we should never try to log with no level, it's purely for
             return
 
-        m = Logger.get_prefix(level) + ": " + message
+        m = Logger.get_prefix(level) + ": " + str(message)
         if Logger.CONSOLE_LEVEL is not None and level <= Logger.CONSOLE_LEVEL:
             print(LogLevel.get_color(level) + m + _bcolors.ENDC)
 

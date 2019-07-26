@@ -32,7 +32,7 @@ class Cromwell(Engine):
         )
 
     def __init__(
-        self, identifier, cromwell_loc=None, config_path=None, config=None, host=None
+        self, identifier="cromwell", cromwell_loc=None, config_path=None, config=None, host=None
     ):
 
         super().__init__(identifier, Engine.EngineType.cromwell)
@@ -76,15 +76,15 @@ class Cromwell(Engine):
                 f"Discovered Cromwell instance (pid={self.process}), skipping start"
             )
 
-        Logger.info("Starting cromwell ...")
-
-        cromwell_loc = self.cromwell_loc if self.cromwell_loc else os.getenv("cromwell")
+        Logger.log("Finding cromwell jar")
+        cromwell_loc = self.cromwell_loc if self.cromwell_loc else os.getenv("cromwelljar")
 
         if not cromwell_loc:
             raise Exception(
-                'Couldn\'t get $cromwell from the environment, `export cromwell="path/to/cromwell.jar"`'
+                'Couldn\'t get $cromwelljar from the environment, `export cromwell="path/to/cromwell.jar"`'
             )
 
+        Logger.info("Starting cromwell ...")
         cmd = ["java", "-jar"]
         if self.config_path:
             Logger.log("Using configuration file for Cromwell: " + self.config_path)

@@ -3,10 +3,14 @@ import os
 import shutil
 import subprocess
 import tempfile
+from datetime import datetime
 from typing import Dict, Any
+
+import dateutil
 
 from janis_runner.data.models.schema import TaskMetadata
 from janis_runner.engines.engine import Engine, TaskStatus, TaskBase
+from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
 
 
@@ -14,7 +18,15 @@ class CWLTool(Engine):
 
     taskid_to_process = {}
 
-    def __init__(self, identifier: str, options=None):
+    # This is the bad version of a metadata store, this implementation really needs a rewrite to collect
+    # metadata from CWLTool (and store it somewhere) to be polled by the metadata function and provide status.
+    #
+    # Currently, this class just watches the stdout and looks for the JSON returned by CWLTool.
+    # I don't know the implications of updating this from another thread, because it should really only ever run
+    # one at once (at the moment).
+    metadata_by_task_id = {}        # format: { [tid: string]: { start: DateTime, status: Status, outputs: [] } }
+
+    def __init__(self, identifier: str="cwltool", options=None):
         super().__init__(identifier, Engine.EngineType.cwltool)
         self.options = options if options else []
         self.process = None
@@ -25,6 +37,7 @@ class CWLTool(Engine):
             "Cwltool doesn't run in a server mode, an instance will "
             "automatically be started when a task is created"
         )
+        return self
 
     def stop_engine(self):
         Logger.info(
@@ -33,6 +46,7 @@ class CWLTool(Engine):
                 "be automatically terminated when a task is finished"
             )
         )
+        return self
 
     def create_task(self, source=None, inputs=None, dependencies=None) -> str:
         import uuid
@@ -47,7 +61,19 @@ class CWLTool(Engine):
         return TaskStatus.COMPLETED
 
     def outputs_task(self, identifier) -> Dict[str, Any]:
-        pass
+        if identifier not in self.metadata_by_task_id:
+            raise Exception("Couldn't find status for CWLTool task: " + identifier)
+
+        outs = self.metadata_by_task_id[identifier].get("outputs")
+
+        retval = {}
+        for k, o in outs.items():
+            if 'path' in o:
+                retval[k] = o['path']
+            if 'secondaryFiles' in o:
+                raise Exception("Janis.runner needs some help to handle secondaryFiles")
+
+        return retval
 
     def terminate_task(self, identifier) -> TaskStatus:
         """
@@ -71,12 +97,29 @@ class CWLTool(Engine):
         :param identifier:
         :return:
         """
-        raise NotImplementedError(
-            "metadata needs to be implemented in CWLTool, may require rework of tool"
+        if identifier not in self.metadata_by_task_id:
+            raise Exception("Couldn't find status for CWLTool task: " + identifier)
+
+        meta = self.metadata_by_task_id[identifier]
+
+        return TaskMetadata(
+            identifier,
+            name=identifier,
+            status=meta.get("status"),
+            start=meta.get("start"),
+            finish=meta.get("finish"),
+            outputs=meta.get("outputs") or [],
+            jobs=[],
+            error=None
         )
 
     def start_from_task(self, task: TaskBase):
         task.identifier = self.create_task(None, None, None)
+
+        self.metadata_by_task_id[task.identifier] = {
+            "start": DateUtil.now(),
+            "status": TaskStatus.PROCESSING
+        }
 
         temps = []
         sourcepath, inputpaths, toolspath = (
@@ -132,6 +175,8 @@ class CWLTool(Engine):
             cmd.append(inputpaths[0])
         # if toolspath: cmd.extend(["--basedir", toolspath])
 
+        self.metadata_by_task_id[task.identifier]["status"] = TaskStatus.RUNNING
+
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
@@ -157,10 +202,13 @@ class CWLTool(Engine):
                 break
             except:
                 continue
+
         Logger.info("Workflow has completed execution")
         process.terminate()
-
-        print(json.loads(j))
+        outputs = json.loads(j)
+        Logger.info(outputs)
+        self.metadata_by_task_id[task.identifier]["outputs"] = outputs
+        self.metadata_by_task_id[task.identifier]["status"] = TaskStatus.COMPLETED
 
         # close temp files
         Logger.log(f"Closing {len(temps)} temp files")
@@ -174,6 +222,11 @@ class CWLTool(Engine):
                     os.remove(t)
 
     def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
+        self.metadata_by_task_id[tid] = {
+            "start": DateUtil.now(),
+            "status": TaskStatus.PROCESSING,
+        }
+
         cmd = ["cwltool", *self.options, source_path]
 
         if input_path:
@@ -182,6 +235,7 @@ class CWLTool(Engine):
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
+        self.metadata_by_task_id[tid]["status"] = TaskStatus.RUNNING
         Logger.log("Running command: '" + " ".join(cmd) + "'")
         Logger.info("CWLTool has started with pid=" + str(process.pid))
         self.taskid_to_process[tid] = process.pid
@@ -195,16 +249,26 @@ class CWLTool(Engine):
                 break
         j = ""
         Logger.log("Process has completed")
+        outputs = None
         for c in iter(process.stdout.readline, "s"):  # replace '' with b'' for Python 3
             if not c:
                 continue
             j += c.decode("utf-8")
             try:
-                json.loads(j)
+                outputs = json.loads(j)
                 break
             except:
                 continue
         Logger.info("Workflow has completed execution")
         process.terminate()
 
-        print(json.loads(j))
+        status = TaskStatus.COMPLETED
+        if outputs is None:
+            status = TaskStatus.FAILED
+
+        self.metadata_by_task_id[tid]["outputs"] = outputs
+        self.metadata_by_task_id[tid]["status"] = status
+
+        Logger.info(outputs)
+
+        return tid

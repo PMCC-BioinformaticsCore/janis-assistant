@@ -18,7 +18,7 @@ from janis_runner.data.providers.task.dbmanager import TaskDbManager
 from janis_runner.data.enums import InfoKeys, ProgressKeys
 from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
-from janis_runner.engines import get_ideal_specification_for_engine, Cromwell
+from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
 from janis_runner.engines.cromwell import CromwellFile
 from janis_runner.environments.environment import Environment
 from janis_runner.utils import get_extension, Logger
@@ -233,6 +233,12 @@ class TaskManager:
             meta = self.environment.engine.raw_metadata(self.get_engine_tid()).meta
             with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
                 json.dump(meta, fp)
+
+        elif isinstance(self.environment.engine, CWLTool):
+            import json
+            meta = self.environment.engine.metadata(self.tid)
+            with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
+                json.dump(meta.outputs, fp)
 
         else:
             raise Exception(

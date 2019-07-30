@@ -40,7 +40,7 @@ class HapPyValidator(j.CommandTool):
         return "happy_validator"
 
     @staticmethod
-    def docker():
+    def container():
         return "pkrusche/hap.py:v0.3.9"
 
     @staticmethod

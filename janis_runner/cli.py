@@ -134,7 +134,7 @@ def add_run_args(parser):
         "--environment",
         # choices=environments,
         help="Select a preconfigured environment (takes precendence over engine and filescheme). "
-             "See the list of environments with `janis environments`",
+             "See the list of environments with `janis environment list`",
     )
     parser.add_argument(
         "--engine", choices=["cromwell", "cwltool"], default="cwltool", help="Choose an engine to start"
@@ -191,7 +191,7 @@ def add_query_args(parser):
     parser.add_argument("--status", help="workflow status", choices=TaskStatus.all())
     parser.add_argument(
         "--environment",
-        help="The environment the task is executing in. See the current list of environments with `janis environments`",
+        help="The environment the task is executing in. See the current list of environments with `janis environment list`",
         # choices=environments,
     )
     return parser

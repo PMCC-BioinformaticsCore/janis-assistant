@@ -7,7 +7,7 @@ from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
 
-environments = ConfigManager.manager().environmentDB.get_env_ids()
+# environments = ConfigManager.manager().environmentDB.get_env_ids()
 
 
 def process_args(sysargs=None):
@@ -132,8 +132,9 @@ def add_run_args(parser):
     parser.add_argument(
         "-e",
         "--environment",
-        choices=environments,
-        help="Select a preconfigured environment (takes precendence over engine and filescheme)",
+        # choices=environments,
+        help="Select a preconfigured environment (takes precendence over engine and filescheme). "
+             "See the list of environments with `janis environments`",
     )
     parser.add_argument(
         "--engine", choices=["cromwell", "cwltool"], default="cwltool", help="Choose an engine to start"
@@ -177,7 +178,7 @@ def add_run_args(parser):
 
 
 def add_environment_args(parser):
-    parser.add_argument("method", choices=["list", "create", "delete"])
+    parser.add_argument("method", choices=["list", "create", "delete"], default="list")
     return parser
 
 
@@ -190,8 +191,8 @@ def add_query_args(parser):
     parser.add_argument("--status", help="workflow status", choices=TaskStatus.all())
     parser.add_argument(
         "--environment",
-        help="The environment the task is executing in",
-        choices=environments,
+        help="The environment the task is executing in. See the current list of environments with `janis environments`",
+        # choices=environments,
     )
     return parser
 

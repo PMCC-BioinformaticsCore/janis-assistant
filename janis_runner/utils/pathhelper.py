@@ -1,7 +1,7 @@
 import os
 import tempfile
 from path import Path
-from janis_core import Workflow
+from janis_core import Workflow, CommandTool
 from typing import List, Tuple
 from inspect import isclass, isabstract
 
@@ -114,7 +114,7 @@ def get_workflow_from_file(file, name):
     spec = importlib.util.spec_from_file_location("module.name", file)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    ptypes = get_workflows_from_module_spec(foo)
+    ptypes = get_janis_from_module_spec(foo, bool(name))
 
     if name:
         ptypes = [(k, v) for (k, v) in ptypes if k == name]
@@ -126,14 +126,19 @@ def get_workflow_from_file(file, name):
             f"More than one workflow ({len(ptypes)}) detected in '{file}' (please specify a name): "
             + ",".join(str(x) for x in ptypes)
         )
+
     return ptypes[0][1]
 
 
-def get_workflows_from_module_spec(spec):
+def get_janis_from_module_spec(spec, include_commandtools=False):
     """
     Get all the Janis.Workflow's that are defined in the file (__module__ == 'module.name')
     :return: List of all the subclasses of a workflow
     """
+
+    if include_commandtools:
+        Logger.log("Expanded search to commandtools in " + str(spec))
+
     potentials = []
     for k, ptype in spec.__dict__.items():
         if isinstance(ptype, Workflow):
@@ -145,12 +150,13 @@ def get_workflows_from_module_spec(spec):
             continue
         if not isclass(ptype):
             continue
-        if ptype == Workflow:
-            continue
-        if not issubclass(ptype, Workflow):
-            continue
         if ptype.__module__ != "module.name":
             continue
-        potentials.append((k, ptype()))
+        if ptype == Workflow:
+            continue
+        if issubclass(ptype, Workflow):
+            potentials.append((k, ptype()))
+        if include_commandtools and issubclass(ptype, CommandTool):
+            potentials.append((k, ptype().wrapped_in_wf()))
 
     return potentials

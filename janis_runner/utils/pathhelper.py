@@ -101,12 +101,12 @@ def try_parse_dict(file: str):
     return None
 
 
-def get_janis_workflow_from_searchname(searchpath, cwd, name: str=None):
+def get_janis_workflow_from_searchname(searchpath, cwd, name: str=None, include_commandtools=False):
     file = get_file_from_searchname(searchpath, cwd)
-    return get_workflow_from_file(file, name)
+    return get_workflow_from_file(file, name, include_commandtools=include_commandtools)
 
 
-def get_workflow_from_file(file, name):
+def get_workflow_from_file(file, name, include_commandtools=False):
     # How to import a module given the full path
     # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     import importlib.util
@@ -114,7 +114,7 @@ def get_workflow_from_file(file, name):
     spec = importlib.util.spec_from_file_location("module.name", file)
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
-    ptypes = get_janis_from_module_spec(foo, bool(name))
+    ptypes = get_janis_from_module_spec(foo, include_commandtools)
 
     if name:
         ptypes = [(k, v) for (k, v) in ptypes if k == name]
@@ -157,6 +157,6 @@ def get_janis_from_module_spec(spec, include_commandtools=False):
         if issubclass(ptype, Workflow):
             potentials.append((k, ptype()))
         if include_commandtools and issubclass(ptype, CommandTool):
-            potentials.append((k, ptype().wrapped_in_wf()))
+            potentials.append((k, ptype()))
 
     return potentials

@@ -44,7 +44,7 @@ def translate(
 
     else:
         toolref = get_janis_workflow_from_searchname(
-            tool, ".", name=name, include_commandtools=bool(name)
+            tool, ".", name=name, include_commandtools=True
         )
 
     inputsdict = None
@@ -96,7 +96,7 @@ def fromjanis(
     elif isclass(workflow) and issubclass(workflow, janis.Tool):
         wf = workflow()
     else:
-        wf = get_janis_workflow_from_searchname(workflow, ".", name=name)
+        wf = get_janis_workflow_from_searchname(workflow, ".", name=name, include_commandtools=True)
 
     if isinstance(wf, janis.CommandTool):
         wf = wf.wrapped_in_wf()

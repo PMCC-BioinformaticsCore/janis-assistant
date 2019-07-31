@@ -1,8 +1,9 @@
 import argparse
 
+from janis_core.enums.supportedtranslations import SupportedTranslations
 from janis_runner.data.models.schema import TaskStatus
 
-from janis_runner.main import fromjanis
+from janis_runner.main import fromjanis, translate
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
@@ -19,6 +20,7 @@ def process_args(sysargs=None):
         "metadata": do_metadata,
         "environment": do_environment,
         "query": do_query,
+        "translate": do_translate,
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -34,6 +36,7 @@ def process_args(sysargs=None):
     add_reconnect_args(subparsers.add_parser("reconnect"))
     add_environment_args(subparsers.add_parser("environment"))
     add_query_args(subparsers.add_parser("query"))
+    add_translate_args(subparsers.add_parser("translate"))
     # add_workflow_args(subparsers.add_parser("run-workflow"))
 
     args = parser.parse_args(sysargs)
@@ -95,6 +98,15 @@ def add_metadata_args(parser):
 def add_abort_args(parser):
     parser.add_argument("tid", help="Task id")
     return parser
+
+
+def add_translate_args(parser):
+    parser.add_argument("workflow", help="Path to workflow")
+    parser.add_argument("translation", help="language to translate to", choices=SupportedTranslations.all())
+    parser.add_argument("--name", help="Optional name of workflow if there are multiple workflows in the tool")
+    parser.add_argument("--inputs", help="File that overrides the inputs declared in the workflow.")
+    parser.add_argument("--output-dir", help="output directory to write output to (default=stdout)",
+                        default="./{language}")
 
 
 # def add_workflow_args(parser):
@@ -279,6 +291,16 @@ def do_query(args):
     status = args.status
     environment = args.environment
     ConfigManager.manager().query_tasks(status, environment)
+
+
+def do_translate(args):
+    translate(
+        tool=args.workflow,
+        translation=args.translation,
+        name=args.name,
+        inputs=args.inputs,
+        output_dir=args.output_dir
+    )
 
 
 if __name__ == "__main__":

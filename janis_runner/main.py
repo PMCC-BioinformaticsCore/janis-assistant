@@ -6,12 +6,17 @@
 
 
 """
+import sys
 from inspect import isclass
 
 import janis
 from typing import Optional, Dict, Union, Type
 
-from janis_runner.data.models.filescheme import FileScheme, LocalFileScheme, SSHFileScheme
+from janis_runner.data.models.filescheme import (
+    FileScheme,
+    LocalFileScheme,
+    SSHFileScheme,
+)
 from janis_runner.engines import Engine, get_engine_type, Cromwell
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configmanager import ConfigManager
@@ -22,9 +27,56 @@ from janis_runner.utils import (
 )
 
 
+def translate(
+    tool: Union[str, janis.CommandTool, Type[janis.CommandTool]],
+    translation: str,
+    name: str = None,
+    hints: Optional[Dict[str, str]] = None,
+    output_dir: Optional[str] = None,
+    inputs: Union[str, dict] = None,
+    **kwargs,
+):
+
+    if isinstance(tool, janis.Workflow) or isinstance(tool, janis.CommandTool):
+        toolref = tool
+    elif isclass(tool) and (issubclass(tool, janis.Workflow) or issubclass(tool, janis.CommandTool)):
+        toolref = tool()
+
+    else:
+        toolref = get_janis_workflow_from_searchname(
+            tool, ".", name=name, include_commandtools=bool(name)
+        )
+
+    inputsdict = None
+    if inputs:
+        inputsfile = get_file_from_searchname(inputs, ".")
+        inputsdict = try_parse_dict(inputsfile)
+
+    if isinstance(toolref, janis.Workflow):
+        wfstr, _, _ = toolref.translate(
+            translation,
+            to_console=False,
+            to_disk=bool(output_dir),
+            export_path=output_dir or "./{language}",
+            hints=hints,
+            additional_inputs=inputsdict,
+        )
+    elif isinstance(toolref, janis.CommandTool):
+        wfstr = toolref.translate(
+            translation=translation,
+            to_console=False,
+            to_disk=bool(output_dir),
+            export_path=output_dir or "./{language}"
+        )
+    else:
+        raise Exception("Unsupported tool type: " + toolref.__name__)
+
+    print(wfstr, file=sys.stdout)
+
+
 def fromjanis(
     workflow: Union[str, janis.Tool, Type[janis.Tool]],
-    name: str=None,
+    name: str = None,
     env: Union[str, Environment] = None,
     engine: Union[str, Engine] = None,
     filescheme: Union[str, FileScheme] = None,
@@ -36,7 +88,6 @@ def fromjanis(
     watch=True,
     **kwargs,
 ):
-
     cm = ConfigManager.manager()
 
     wf = None
@@ -46,6 +97,9 @@ def fromjanis(
         wf = workflow()
     else:
         wf = get_janis_workflow_from_searchname(workflow, ".", name=name)
+
+    if isinstance(wf, janis.CommandTool):
+        wf = wf.wrapped_in_wf()
 
     inputsdict = None
     if inputs:
@@ -94,10 +148,13 @@ def get_filescheme_from_fs(fs, **kwargs):
     elif fs == "ssh":
         con = kwargs.get("filescheme_ssh_binding")
         if not con:
-            raise Exception("'filescheme_ssh_binding' was not provided with custom environment")
+            raise Exception(
+                "'filescheme_ssh_binding' was not provided with custom environment"
+            )
         return SSHFileScheme(con + "_connection", con)
 
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
+
 
 def validate_and_run_janis(wf, **kwargs):
     pass

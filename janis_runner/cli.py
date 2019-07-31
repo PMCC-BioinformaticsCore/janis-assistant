@@ -105,8 +105,7 @@ def add_translate_args(parser):
     parser.add_argument("translation", help="language to translate to", choices=SupportedTranslations.all())
     parser.add_argument("--name", help="Optional name of workflow if there are multiple workflows in the tool")
     parser.add_argument("--inputs", help="File that overrides the inputs declared in the workflow.")
-    parser.add_argument("--output-dir", help="output directory to write output to (default=stdout)",
-                        default="./{language}")
+    parser.add_argument("--output-dir", help="output directory to write output to (default=stdout)")
 
 
 # def add_workflow_args(parser):

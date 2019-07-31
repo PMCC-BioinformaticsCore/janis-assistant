@@ -21,7 +21,10 @@ class Engine(Archivable, ABC):
         self.engtype = engtype
 
     def db_to_kwargs(self, keys: List[str] = None):
-        return super(Engine, self).db_to_kwargs(["engtype", *keys])
+        k = ["engtype"]
+        if keys:
+            k.extend(keys)
+        return super(Engine, self).db_to_kwargs(k)
 
     def id(self):
         return self.identifier

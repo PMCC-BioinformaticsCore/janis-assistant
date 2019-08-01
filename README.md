@@ -17,6 +17,35 @@ You can run a workflow in CWLTool with the following command line:
 janis run myWorkflow.py --engine cwltool
 ```
 
+## Configuration
+
+It's possible to configure a number of attributes of `janis.runner`. 
+You can provide a YAML configuration file in two ways:
+
+- CLI: `--config /path/to/config.yml`
+- Environment variable `JANIS_CONFIGPATH=/path/to/config.yml`
+- Default: `$(HOME)/.janis/janis.conf` - will additionally look for a config here.
+
+> Configurations aren't currently cascaded, but the intention is they will.
+
+### Options
+
+Defaults: [`janis_runner/management/configuration.py`](https://github.com/PMCC-BioinformaticsCore/janis-runner/blob/master/janis_runner/management/configuration.py#L68)
+
+- Config / DB directory: `configDir: /path/to/configir/`
+    - Second priority to environment variable: `JANIS_CONFIGDIR`
+    - Default: `(HOME)/.janis/`
+    - Database: `{configDir}/janis.db` - Janis global database
+    
+- Execution directory: `executionDir`
+    - Second priority to environment variable: `JANIS_EXCECUTIONDIR`
+    - Default: `(HOME)/janis/execution/`
+    
+- Search paths: `searchPaths`
+    - Will additionally add from environment variable: `JANIS_SEARCHPATH`
+    - Default: `(HOME)/janis/`
+
+
 ## Engines
 
 There are currently 2 engines that `janis.runner` supports:
@@ -71,7 +100,7 @@ engine (+ parameters).
 Environment information is used as a template, in which the task stores its own copy of the filesystem and engine.
 This was chosen as it allows a task's output to be relocated without losing workflow metadata.
 
-> Adding and deleting environments are currently UNAVAILABLE.
+> Adding and deleting environments is currently UNAVAILABLE.
 
 Actions:
 
@@ -82,7 +111,7 @@ Actions:
 ### Filesystem
 
 There is a weak concept of a filesystem for where your workflow is executed. This tool is really only developed
-for using the `LocalFileSystem`. However if you run your GCP
+for using the `LocalFileSystem`.
 
 Supported filesystems:
 
@@ -92,12 +121,9 @@ Supported filesystems:
     database. Janis uses the connection string like so: `scp connectionstring:/path/to/output /local/persist/path`
 
 
-## Data structure 
+## Datbases
 
-Janis stores an SQLite database of environments and task pointers at `~/.janis/janis.db` (this value is currently 
-not overrideable). When a task is started, a database and workflow files are copied to a generated output folder 
-(default: `~/janis-runner/${tid}/task.db`).
-
-There's work required for cleaning up this 
-
+Janis stores a global SQLite database at `{configDir}/janis.db` of environments and task pointers 
+(default: `~/.janis/janis.db`). When a task is started, a database and workflow files are copied 
+to a generated output folder  (default: `~/janis/execution/{workflowName}/${yyyymmdd_hhMM}_{tid}/task.db`).
  

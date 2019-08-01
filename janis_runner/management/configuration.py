@@ -7,7 +7,7 @@ import ruamel.yaml
 class EnvVariables(Enum):
     config_path = "JANIS_CONFIGPATH"
     config_dir = "JANIS_CONFIGDIR"
-    exec_dir = "JANIS_OUTPUTDIR"
+    exec_dir = "JANIS_EXCECUTIONDIR"
     search_path = "JANIS_SEARCHPATH"
 
     def __str__(self):
@@ -30,26 +30,48 @@ class EnvVariables(Enum):
 
 
 class JanisConfiguration:
+    class Keys(Enum):
+        ConfigDir = "configDir"
+        ExecutionDir = "executionDir"
+        SearchPaths = "searchPaths"
+        Environment = "environment"
+
     class JanisConfigurationEnvironment:
+        class Keys(Enum):
+            Default = "default"
+
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
 
-            self.default = d.get("default", default["default"])
+            self.default = d.get(self.Keys.Default, default[self.Keys.Default])
 
     def __init__(self, d: dict = None):
         default = self.default()
         d = d if d else {}
 
-        self.configdir = d.get("configdir", default["configdir"])
+        self.configdir = d.get(
+            JanisConfiguration.Keys.ConfigDir,
+            default[JanisConfiguration.Keys.ConfigDir],
+        )
         self.dbpath = os.path.join(self.configdir, "janis.db")
-        self.outputdir = d.get("outputdir", default["outputdir"])
-
-        self.environment = JanisConfiguration.JanisConfigurationEnvironment(
-            d.get("environment"), default["environment"]
+        self.outputdir = d.get(
+            JanisConfiguration.Keys.ExecutionDir,
+            default[JanisConfiguration.Keys.ExecutionDir],
         )
 
-        sp = d.get("searchpaths", default["searchpaths"])
+        self.environment = JanisConfiguration.JanisConfigurationEnvironment(
+            d.get(JanisConfiguration.Keys.Environment),
+            default[JanisConfiguration.Keys.Environment],
+        )
+
+        sp = d.get(
+            JanisConfiguration.Keys.SearchPaths,
+            default[JanisConfiguration.Keys.SearchPaths],
+        )
         self.searchpaths = sp if isinstance(sp, list) else [sp]
+        env_sp = EnvVariables.search_path.resolve(False)
+        if env_sp and env_sp not in self.searchpaths:
+            self.searchpaths.append(env_sp)
 
     @staticmethod
     def from_path(path: Optional[str]):
@@ -68,8 +90,10 @@ class JanisConfiguration:
     def default():
 
         return {
-            "configdir": EnvVariables.config_dir.resolve(True),
-            "environment": {"default": None},
-            "outputdir": EnvVariables.exec_dir.resolve(True),
-            "searchpaths": [os.path.expanduser("~/janis/")],
+            JanisConfiguration.Keys.ConfigDir: EnvVariables.config_dir.resolve(True),
+            JanisConfiguration.Keys.ExecutionDir: EnvVariables.exec_dir.resolve(True),
+            JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
+            JanisConfiguration.Keys.Environment: {
+                JanisConfiguration.JanisConfigurationEnvironment.Keys.Default: None
+            },
         }

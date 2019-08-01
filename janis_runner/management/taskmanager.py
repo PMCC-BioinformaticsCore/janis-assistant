@@ -125,9 +125,6 @@ class TaskManager:
         db.close()
 
         tm = TaskManager(outdir=path, tid=tid, environment=env)
-        Logger.log(
-            "You should call 'resume_if_possible' if you want the job to keep executing"
-        )
         return tm
 
     def resume_if_possible(self):
@@ -291,9 +288,13 @@ class TaskManager:
     def wait_if_required(self):
 
         if self.database.progress_has_completed(ProgressKeys.workflowMovedToFinalState):
-            meta = self.metadata()
-            if meta:
-                print(meta.format())
+            try:
+                meta = self.metadata()
+                if meta:
+                    print(meta.format())
+            except:
+                print("Failed to get metadata, but skipping because task has finished")
+
             return Logger.log(f"Workflow '{self.tid}' has already finished, skipping")
 
         status = None
@@ -308,6 +309,7 @@ class TaskManager:
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
+        self.database.add_meta_info(InfoKeys.finish, datetime.now().isoformat())
         self.database.progress_mark_completed(ProgressKeys.workflowMovedToFinalState)
 
     def log_dbmetadata(self):

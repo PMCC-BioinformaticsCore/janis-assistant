@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional, cast, List, Tuple
 
@@ -12,44 +13,41 @@ from janis_runner.data.providers.config.fileschemedbprovider import FileschemeDb
 from janis_runner.data.providers.config.tasksdbprovider import TasksDbProvider, TaskRow
 from janis_runner.engines import Engine
 from janis_runner.environments.environment import Environment
+from janis_runner.management.configuration import EnvVariables, JanisConfiguration
 from janis_runner.management.taskmanager import TaskManager
 from janis_runner.utils import Logger, generate_new_id
 from janis_runner.validation import ValidationRequirements
 
 
-class EnvVariables(Enum):
-    config_dir = "JANIS_CONFIGDIR"
-    exec_dir = "JANIS_OUTPUTDIR"
-    search_path = "JANIS_SEARCHPATH"
-
-    def __str__(self):
-        return self.value
-
-    def default(self):
-        import os
-
-        if self == EnvVariables.config_dir:
-            return os.getenv("HOME") + "/.janis/"
-        elif self == EnvVariables.exec_dir:
-            return os.getenv("HOME") + "/janis-runner/"
-
-        raise Exception(f"Couldn't determine default() for '{self.value}'")
-
-
 class ConfigManager:
 
+    _configpath = None
     _manager = None
 
     @staticmethod
     def manager():
         if not ConfigManager._manager:
-            ConfigManager._manager = ConfigManager()
+            ConfigManager._manager = ConfigManager(ConfigManager._configpath)
         return ConfigManager._manager
 
-    def __init__(self):
-        self._path = self.get_db_path()
+    @staticmethod
+    def set_config_path(path):
+        if path and path != ConfigManager._configpath:
+            Logger.log("Setting config path to: " + path)
+            ConfigManager._manager = None
+            ConfigManager._configpath = path
+        else:
+            Logger.log("Ignoring set config path: " + str(path))
 
-        self.is_new = not os.path.exists(self._path)
+    def __init__(self, configpath=None):
+
+        self.config = JanisConfiguration.from_path(configpath)
+
+        self.is_new = not os.path.exists(self.config.dbpath)
+
+        cp = os.path.dirname(self.config.dbpath)
+        os.makedirs(cp, exist_ok=True)
+        os.makedirs(self.config.outputdir, exist_ok=True)
 
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
@@ -62,26 +60,9 @@ class ConfigManager:
         if self.is_new:
             self.insert_default_environments()
 
-    @staticmethod
-    def get_db_path():
-        Logger.log(
-            f"Looking for db_path in environment variable: '${EnvVariables.config_dir}'"
-        )
-        dbpath = os.getenv(EnvVariables.config_dir.value)
-        if not dbpath:
-            Logger.log("Couldn't find environment variable, defaulting $HOME")
-            dbpath = EnvVariables.config_dir.default()
-
-        if not os.path.exists(dbpath):
-            os.makedirs(dbpath)
-
-        extra_slash = "" if dbpath.endswith("/") else "/"
-
-        return dbpath + extra_slash + "janis.db"
-
     def db_connection(self):
-        Logger.log("Opening database connection to: " + self._path)
-        return sqlite3.connect(self._path)
+        Logger.log("Opening database connection to: " + self.config.dbpath)
+        return sqlite3.connect(self.config.dbpath)
 
     def commit(self):
         return self.connection.commit()
@@ -98,17 +79,20 @@ class ConfigManager:
         watch=True,
     ) -> TaskManager:
 
-        od = outdir if outdir else EnvVariables.exec_dir.default()
+        od = outdir if outdir else os.path.join(self.config.outputdir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT tid FROM tasks").fetchall()
         )
-        forbiddenids = forbiddenids.union(set(os.listdir(od)))
+
+        if os.path.exists(od):
+            forbiddenids = forbiddenids.union(set(os.listdir(od)))
 
         tid = generate_new_id(forbiddenids)
         Logger.info(f"Starting task with id = '{tid}'")
 
-        task_path = od + ("" if outdir else (tid + "/"))
+        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+        task_path = os.path.join(od, "" if outdir else f"{dt}_{tid}/")
         self.taskDB.insert_task(TaskRow(tid, task_path))
 
         return TaskManager.from_janis(

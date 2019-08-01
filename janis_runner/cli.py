@@ -24,10 +24,13 @@ def process_args(sysargs=None):
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
+
     add_logger_args(parser)
+    parser.add_argument("-c", "--config", help="Path to config file")
     parser.add_argument("-v", "--version", action="store_true")
 
     subparsers = parser.add_subparsers(help="subcommand help", dest="command")
+
     subparsers.add_parser("version")
     add_watch_args(subparsers.add_parser("watch"))
     add_abort_args(subparsers.add_parser("abort"))
@@ -37,7 +40,6 @@ def process_args(sysargs=None):
     add_environment_args(subparsers.add_parser("environment"))
     add_query_args(subparsers.add_parser("query"))
     add_translate_args(subparsers.add_parser("translate"))
-    # add_workflow_args(subparsers.add_parser("run-workflow"))
 
     args = parser.parse_args(sysargs)
 
@@ -45,6 +47,9 @@ def process_args(sysargs=None):
         return do_version(args)
 
     check_logger_args(args)
+
+    if args.config:
+        ConfigManager.set_config_path(args.config)
 
     return cmds[args.command](args)
 
@@ -106,15 +111,6 @@ def add_translate_args(parser):
     parser.add_argument("--name", help="Optional name of workflow if there are multiple workflows in the tool")
     parser.add_argument("--inputs", help="File that overrides the inputs declared in the workflow.")
     parser.add_argument("--output-dir", help="output directory to write output to (default=stdout)")
-
-
-# def add_workflow_args(parser):
-#     parser.add_argument("workflow")
-#     parser.add_argument("-i", "--inputs", help="workflow inputs")
-#     parser.add_argument("-p", "--tools", help="required dependencies")
-#     parser.add_argument("-e", "--environment", choices=["local", "local-connect", "pmac"], default="local-connect")
-#
-#     return parser
 
 
 def add_run_args(parser):

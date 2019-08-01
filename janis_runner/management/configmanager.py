@@ -47,7 +47,7 @@ class ConfigManager:
 
         cp = os.path.dirname(self.config.dbpath)
         os.makedirs(cp, exist_ok=True)
-        os.makedirs(self.config.outputdir, exist_ok=True)
+        os.makedirs(self.config.executiondir, exist_ok=True)
 
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
@@ -79,7 +79,7 @@ class ConfigManager:
         watch=True,
     ) -> TaskManager:
 
-        od = outdir if outdir else os.path.join(self.config.outputdir, wf.id())
+        od = outdir if outdir else os.path.join(self.config.executiondir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT tid FROM tasks").fetchall()

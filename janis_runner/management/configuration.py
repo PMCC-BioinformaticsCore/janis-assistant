@@ -3,8 +3,16 @@ from enum import Enum
 from typing import Optional
 import ruamel.yaml
 
+from janis_runner.utils import Logger
 
-class EnvVariables(Enum):
+
+class HashableEnum(str, Enum):
+    pass
+    # def __hash__(self):
+    #     return self.value.__hash__()
+
+
+class EnvVariables(HashableEnum):
     config_path = "JANIS_CONFIGPATH"
     config_dir = "JANIS_CONFIGDIR"
     exec_dir = "JANIS_EXCECUTIONDIR"
@@ -30,55 +38,54 @@ class EnvVariables(Enum):
 
 
 class JanisConfiguration:
-    class Keys(Enum):
+    class Keys(HashableEnum):
         ConfigDir = "configDir"
         ExecutionDir = "executionDir"
         SearchPaths = "searchPaths"
         Environment = "environment"
 
     class JanisConfigurationEnvironment:
-        class Keys(Enum):
+        class Keys(HashableEnum):
             Default = "default"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
 
-            self.default = d.get(self.Keys.Default, default[self.Keys.Default])
+            self.default = JanisConfiguration.get_value_for_key(d, self.Keys.Default, default)
 
     def __init__(self, d: dict = None):
         default = self.default()
         d = d if d else {}
 
-        self.configdir = d.get(
-            JanisConfiguration.Keys.ConfigDir,
-            default[JanisConfiguration.Keys.ConfigDir],
-        )
+        self.configdir = self.get_value_for_key(d, JanisConfiguration.Keys.ConfigDir, default)
         self.dbpath = os.path.join(self.configdir, "janis.db")
-        self.outputdir = d.get(
-            JanisConfiguration.Keys.ExecutionDir,
-            default[JanisConfiguration.Keys.ExecutionDir],
-        )
+        self.executiondir = self.get_value_for_key(d, JanisConfiguration.Keys.ExecutionDir, default)
 
         self.environment = JanisConfiguration.JanisConfigurationEnvironment(
             d.get(JanisConfiguration.Keys.Environment),
             default[JanisConfiguration.Keys.Environment],
         )
 
-        sp = d.get(
-            JanisConfiguration.Keys.SearchPaths,
-            default[JanisConfiguration.Keys.SearchPaths],
-        )
+        sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
         self.searchpaths = sp if isinstance(sp, list) else [sp]
         env_sp = EnvVariables.search_path.resolve(False)
         if env_sp and env_sp not in self.searchpaths:
             self.searchpaths.append(env_sp)
 
     @staticmethod
-    def from_path(path: Optional[str]):
-        if path:
-            path = os.path.expanduser(path)
-        p = path or EnvVariables.config_path.resolve(True)
+    def get_value_for_key(d, key, default):
+        val = d.get(key)
+        if not val:
+            return default[key]
 
+        Logger.log(f"Got value '{val}' for key '{key}'")
+        return val
+
+    @staticmethod
+    def from_path(path: Optional[str]):
+        p = path or EnvVariables.config_path.resolve(True)
+        if p:
+            p = os.path.expanduser(p)
         if p and os.path.exists(p):
             with open(os.path.expanduser(p)) as cp:
                 y = ruamel.yaml.load(cp, Loader=ruamel.yaml.Loader)

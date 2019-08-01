@@ -412,6 +412,7 @@ class TaskManager:
     def metadata(self) -> TaskMetadata:
         meta = self.environment.engine.metadata(self.get_engine_tid())
         if meta:
+            meta.name = self.database.get_meta_info(InfoKeys.name)
             meta.tid = self.tid
             meta.outdir = self.path
             meta.engine_name = str(self.environment.engine.engtype)

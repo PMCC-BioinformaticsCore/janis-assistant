@@ -1,10 +1,10 @@
 from typing import List, Dict, Optional
 
+from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
 from janis_core import Tool, Workflow, DataType, ToolOutput, String
 from janis_bioinformatics.data_types import Vcf, Bed
 
 from janis_runner.utils.logger import Logger
-from janis_runner.validation.tool.happy import HapPyValidator
 
 
 class ValidationRequirements:
@@ -69,7 +69,7 @@ def generate_validation_workflow_from_janis(
     for o in validreqs.fields:
 
         sid = "validator_" + o
-        val = Step(sid, HapPyValidator())
+        val = Step(sid, HapPyValidator_0_3_9())
         w.add_edges(
             [
                 (f"{tool.id()}/{o}", val.compareVCF),

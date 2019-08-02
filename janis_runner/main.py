@@ -9,7 +9,7 @@
 import sys
 from inspect import isclass
 
-import janis
+import janis_core as j
 from typing import Optional, Dict, Union, Type
 
 from janis_runner.data.models.filescheme import (
@@ -28,7 +28,7 @@ from janis_runner.utils import (
 
 
 def translate(
-    tool: Union[str, janis.CommandTool, Type[janis.CommandTool]],
+    tool: Union[str, j.CommandTool, Type[j.CommandTool]],
     translation: str,
     name: str = None,
     hints: Optional[Dict[str, str]] = None,
@@ -37,9 +37,9 @@ def translate(
     **kwargs,
 ):
 
-    if isinstance(tool, janis.Workflow) or isinstance(tool, janis.CommandTool):
+    if isinstance(tool, j.Workflow) or isinstance(tool, j.CommandTool):
         toolref = tool
-    elif isclass(tool) and (issubclass(tool, janis.Workflow) or issubclass(tool, janis.CommandTool)):
+    elif isclass(tool) and (issubclass(tool, j.Workflow) or issubclass(tool, j.CommandTool)):
         toolref = tool()
 
     else:
@@ -52,7 +52,7 @@ def translate(
         inputsfile = get_file_from_searchname(inputs, ".")
         inputsdict = try_parse_dict(inputsfile)
 
-    if isinstance(toolref, janis.Workflow):
+    if isinstance(toolref, j.Workflow):
         wfstr, _, _ = toolref.translate(
             translation,
             to_console=False,
@@ -61,7 +61,7 @@ def translate(
             hints=hints,
             additional_inputs=inputsdict,
         )
-    elif isinstance(toolref, janis.CommandTool):
+    elif isinstance(toolref, j.CommandTool):
         wfstr = toolref.translate(
             translation=translation,
             to_console=False,
@@ -75,7 +75,7 @@ def translate(
 
 
 def fromjanis(
-    workflow: Union[str, janis.Tool, Type[janis.Tool]],
+    workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
     env: Union[str, Environment] = None,
     engine: Union[str, Engine] = None,
@@ -91,14 +91,22 @@ def fromjanis(
     cm = ConfigManager.manager()
 
     wf = None
-    if isinstance(workflow, janis.Tool):
+    if isinstance(workflow, j.Tool):
         wf = workflow
-    elif isclass(workflow) and issubclass(workflow, janis.Tool):
+    elif isclass(workflow) and issubclass(workflow, j.Tool):
         wf = workflow()
     else:
         wf = get_janis_workflow_from_searchname(workflow, ".", name=name, include_commandtools=True)
 
-    if isinstance(wf, janis.CommandTool):
+    if not wf:
+        v = None
+        if ":" in workflow:
+            ps = workflow.split(":")
+            workflow, v = ps[0], ps[1]
+
+        wf = j.JanisShed.get_tool(workflow, v)
+
+    if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
 
     inputsdict = None

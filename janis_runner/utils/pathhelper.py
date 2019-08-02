@@ -72,10 +72,12 @@ def get_file_from_searchname(name, cwd):
     else:
         Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
 
-    raise Exception(
+
+    Logger.log(
         f"Couldn't find a file with filename '{name}' in any of the following: "
         f"full path, current working directory ({cwd}) or the search path."
     )
+    return None
 
 
 def try_parse_dict(file: str):
@@ -103,6 +105,8 @@ def try_parse_dict(file: str):
 
 def get_janis_workflow_from_searchname(searchpath, cwd, name: str=None, include_commandtools=False):
     file = get_file_from_searchname(searchpath, cwd)
+    if not file:
+        return None
     return get_workflow_from_file(file, name, include_commandtools=include_commandtools)
 
 
@@ -120,7 +124,7 @@ def get_workflow_from_file(file, name, include_commandtools=False):
         ptypes = [(k, v) for (k, v) in ptypes if k == name]
 
     if len(ptypes) == 0:
-        raise Exception(f"Couldn't find any valid workflows in '{file}'.")
+        return None
     if len(ptypes) > 1:
         raise Exception(
             f"More than one workflow ({len(ptypes)}) detected in '{file}' (please specify a name): "

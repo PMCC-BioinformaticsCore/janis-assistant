@@ -271,6 +271,11 @@ class CWLTool(Engine):
                     finalstatus = TaskStatus.TERMINATED
                 break
 
+            elif process.poll() is None:
+                finalstatus = TaskStatus.TERMINATED
+                Logger.warn(f"CWLTool finished with rc={process.returncode} but janis "
+                            f"was unable to capture the workflow status")
+
         j = ""
         Logger.log("Process has completed")
         outputs = None

@@ -66,6 +66,9 @@ class CWLTool(Engine):
 
         outs = self.metadata_by_task_id[identifier].get("outputs")
 
+        if not outs:
+            return {}
+
         retval = {}
         for k, o in outs.items():
             if 'path' in o:
@@ -240,35 +243,50 @@ class CWLTool(Engine):
         Logger.info("CWLTool has started with pid=" + str(process.pid))
         self.taskid_to_process[tid] = process.pid
 
+        finalstatus = None
+        errors = []
         for c in iter(process.stderr.readline, "b"):  # replace '' with b'' for Python 3
             line = c.decode("utf-8").rstrip()
             if not line.strip():
                 continue
-            Logger.log("cwltool: " + line)
-            if b"Final process status is success" in c:
+
+            lowline = line.lower().lstrip()
+            if lowline.startswith("[1;30merror"):
+
+                Logger.critical("cwltool: " + line)
+                errors.append(line)
+            elif lowline.startswith("[1;30mwarn"):
+                Logger.warn("cwltool: " + line)
+            elif lowline.startswith("[1;30minfo"):
+                Logger.info("cwltool: " + line)
+            else:
+                Logger.log("cwltool: " + line)
+
+            if "final process status is" in lowline:
+                if 'fail' in line.lower():
+                    finalstatus = TaskStatus.FAILED
+                elif 'success' in line.lower():
+                    finalstatus = TaskStatus.COMPLETED
+                else:
+                    finalstatus = TaskStatus.TERMINATED
                 break
+
         j = ""
         Logger.log("Process has completed")
         outputs = None
-        for c in iter(process.stdout.readline, "s"):  # replace '' with b'' for Python 3
-            if not c:
-                continue
-            j += c.decode("utf-8")
-            try:
-                outputs = json.loads(j)
-                break
-            except:
-                continue
-        Logger.info("Workflow has completed execution")
+        if finalstatus == TaskStatus.COMPLETED:
+            for c in iter(process.stdout.readline, "s"):  # replace '' with b'' for Python 3
+                if not c:
+                    continue
+                j += c.decode("utf-8")
+                try:
+                    outputs = json.loads(j)
+                    break
+                except:
+                    continue
         process.terminate()
 
-        status = TaskStatus.COMPLETED
-        if outputs is None:
-            status = TaskStatus.FAILED
-
         self.metadata_by_task_id[tid]["outputs"] = outputs
-        self.metadata_by_task_id[tid]["status"] = status
-
-        Logger.info(outputs)
+        self.metadata_by_task_id[tid]["status"] = finalstatus
 
         return tid

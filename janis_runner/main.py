@@ -27,8 +27,39 @@ from janis_runner.utils import (
 )
 
 
+def resolve_tool(
+    tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
+    name=None,
+    from_toolshed=False,
+):
+    wf = None
+    if isinstance(tool, j.Tool):
+        return tool
+    elif isclass(tool) and (
+        issubclass(tool, j.Workflow) or issubclass(tool, j.CommandTool)
+    ):
+        return tool()
+
+    wf = get_janis_workflow_from_searchname(
+        tool, ".", name=name, include_commandtools=True
+    )
+
+    if wf:
+        return wf
+
+    if from_toolshed:
+        v = None
+        if ":" in tool:
+            ps = tool.split(":")
+            workflow, v = ps[0], ps[1]
+
+        wf = j.JanisShed.get_tool(tool, v)
+
+    return wf
+
+
 def translate(
-    tool: Union[str, j.CommandTool, Type[j.CommandTool]],
+    tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
     translation: str,
     name: str = None,
     hints: Optional[Dict[str, str]] = None,
@@ -37,15 +68,7 @@ def translate(
     **kwargs,
 ):
 
-    if isinstance(tool, j.Workflow) or isinstance(tool, j.CommandTool):
-        toolref = tool
-    elif isclass(tool) and (issubclass(tool, j.Workflow) or issubclass(tool, j.CommandTool)):
-        toolref = tool()
-
-    else:
-        toolref = get_janis_workflow_from_searchname(
-            tool, ".", name=name, include_commandtools=True
-        )
+    toolref = resolve_tool(tool, name, from_toolshed=True)
 
     inputsdict = None
     if inputs:
@@ -66,12 +89,21 @@ def translate(
             translation=translation,
             to_console=False,
             to_disk=bool(output_dir),
-            export_path=output_dir or "./{language}"
+            export_path=output_dir or "./{language}",
         )
     else:
         raise Exception("Unsupported tool type: " + toolref.__name__)
 
     print(wfstr, file=sys.stdout)
+
+
+def generate_inputs(tool: Union[str, j.CommandTool, j.Workflow], name=None):
+    toolref = resolve_tool(tool, name, from_toolshed=True)
+
+    if not toolref:
+        raise Exception("Couldn't find workflow with name: " + str(toolref))
+
+    return toolref.generate_inputs_override()
 
 
 def fromjanis(
@@ -90,29 +122,12 @@ def fromjanis(
 ):
     cm = ConfigManager.manager()
 
-    wf = None
-    if isinstance(workflow, j.Tool):
-        wf = workflow
-    elif isclass(workflow) and issubclass(workflow, j.Tool):
-        wf = workflow()
-    else:
-        wf = get_janis_workflow_from_searchname(workflow, ".", name=name, include_commandtools=True)
-
-    if not wf:
-        v = None
-        if ":" in workflow:
-            ps = workflow.split(":")
-            workflow, v = ps[0], ps[1]
-
-        wf = j.JanisShed.get_tool(workflow, v)
-
+    wf = resolve_tool(tool=workflow, name=name, from_toolshed=True)
     if not wf:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
     if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
-
-
 
     inputsdict = None
     if inputs:
@@ -144,12 +159,14 @@ def fromjanis(
 
 def get_engine_from_eng(eng, **kwargs):
     if isinstance(eng, Engine):
-        return eng
+        return eng.start_engine()
 
     if eng == "cromwell":
-        return Cromwell(cromwell_loc=kwargs.get("cromwell_url"))
+        return Cromwell(
+            host=kwargs.get("cromwell_url"), cromwelljar=kwargs.get("cromwell_jar")
+        ).start_engine()
 
-    return get_engine_type(eng)()
+    return get_engine_type(eng)().start_engine()
 
 
 def get_filescheme_from_fs(fs, **kwargs):

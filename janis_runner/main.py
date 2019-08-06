@@ -106,8 +106,13 @@ def fromjanis(
 
         wf = j.JanisShed.get_tool(workflow, v)
 
+    if not wf:
+        raise Exception("Couldn't find workflow with name: " + str(workflow))
+
     if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
+
+
 
     inputsdict = None
     if inputs:

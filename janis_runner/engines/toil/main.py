@@ -32,6 +32,7 @@ class Toil(Engine):
             "Toil doesn't run in a server mode, an instance will "
             "automatically be started when a task is created"
         )
+        return self
 
     def stop_engine(self):
         Logger.info(

@@ -137,6 +137,7 @@ class TaskManager:
         self.wait_if_required()
         self.save_metadata_if_required()
         self.copy_outputs_if_required()
+        self.environment.engine.stop_engine()
 
         print(
             f"Finished managing task '{self.tid}'. View the task outputs: file://{self.get_task_path()}"
@@ -238,6 +239,7 @@ class TaskManager:
 
         elif isinstance(self.environment.engine, CWLTool):
             import json
+
             meta = self.environment.engine.metadata(self.tid)
             with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
                 json.dump(meta.outputs, fp)
@@ -424,7 +426,9 @@ class TaskManager:
         return meta
 
     def abort(self) -> bool:
-        return bool(self.environment.engine.terminate_task(self.get_engine_tid()))
+        status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
+        self.environment.engine.stop_engine()
+        return status
 
     @staticmethod
     def _create_dir_if_needed(path):

@@ -17,6 +17,7 @@ class EnvVariables(HashableEnum):
     config_dir = "JANIS_CONFIGDIR"
     exec_dir = "JANIS_EXCECUTIONDIR"
     search_path = "JANIS_SEARCHPATH"
+    cromwelljar = "JANIS_CROMWELLJAR"
 
     def __str__(self):
         return self.value
@@ -43,6 +44,16 @@ class JanisConfiguration:
         ExecutionDir = "executionDir"
         SearchPaths = "searchPaths"
         Environment = "environment"
+        Cromwell = "cromwell"
+
+    _managed = None  # type: JanisConfiguration
+
+    @staticmethod
+    def manager():
+        """
+        :return: JanisConfiguration
+        """
+        return JanisConfiguration._managed
 
     class JanisConfigurationEnvironment:
         class Keys(HashableEnum):
@@ -51,19 +62,41 @@ class JanisConfiguration:
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
 
-            self.default = JanisConfiguration.get_value_for_key(d, self.Keys.Default, default)
+            self.default = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Default, default
+            )
+
+    class JanisConfigurationCromwell:
+        class Keys(HashableEnum):
+            JarPath = "jar"
+
+        def __init__(self, d: dict, default: dict):
+            d = d if d else {}
+
+            self.jarpath = JanisConfiguration.get_value_for_key(
+                d, self.Keys.JarPath, default
+            )
 
     def __init__(self, d: dict = None):
         default = self.default()
         d = d if d else {}
 
-        self.configdir = self.get_value_for_key(d, JanisConfiguration.Keys.ConfigDir, default)
+        self.configdir = self.get_value_for_key(
+            d, JanisConfiguration.Keys.ConfigDir, default
+        )
         self.dbpath = os.path.join(self.configdir, "janis.db")
-        self.executiondir = self.get_value_for_key(d, JanisConfiguration.Keys.ExecutionDir, default)
+        self.executiondir = self.get_value_for_key(
+            d, JanisConfiguration.Keys.ExecutionDir, default
+        )
 
         self.environment = JanisConfiguration.JanisConfigurationEnvironment(
             d.get(JanisConfiguration.Keys.Environment),
             default[JanisConfiguration.Keys.Environment],
+        )
+
+        self.cromwell = JanisConfiguration.JanisConfigurationCromwell(
+            d.get(JanisConfiguration.Keys.Cromwell),
+            default[JanisConfiguration.Keys.Cromwell],
         )
 
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
@@ -71,6 +104,8 @@ class JanisConfiguration:
         env_sp = EnvVariables.search_path.resolve(False)
         if env_sp and env_sp not in self.searchpaths:
             self.searchpaths.append(env_sp)
+
+        JanisConfiguration._managed = self
 
     @staticmethod
     def get_value_for_key(d, key, default):
@@ -102,5 +137,9 @@ class JanisConfiguration:
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
             JanisConfiguration.Keys.Environment: {
                 JanisConfiguration.JanisConfigurationEnvironment.Keys.Default: None
+            },
+            JanisConfiguration.Keys.Cromwell: {
+                # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
+                JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None
             },
         }

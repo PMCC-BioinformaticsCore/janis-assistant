@@ -1,5 +1,8 @@
 import os
 import tempfile
+import progressbar
+import urllib.request
+from glob import glob
 from typing import Optional
 
 import json
@@ -8,7 +11,9 @@ import signal
 import subprocess
 import time
 
+from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.schema import TaskMetadata
+from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import ProcessLogger, write_files_into_buffered_zip
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
@@ -22,22 +27,27 @@ from .configurations import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
 
 
+CROMWELL_RELEASES = (
+    "https://api.github.com/repos/broadinstitute/cromwell/releases/latest"
+)
+
+
 class Cromwell(Engine):
-
-    environment_map = {"default": "localhost:8000"}
-
     def db_to_kwargs(self, keys: [str] = None):
         return super(Cromwell, self).db_to_kwargs(
-            ["host", "cromwell_loc", "config_path"]
+            [*(keys or []), "host", "process_id", "config_path"]
         )
 
     def __init__(
-        self, identifier="cromwell", cromwell_loc=None, config_path=None, config=None, host=None
+        self,
+        identifier="cromwell",
+        host=None,
+        cromwelljar=None,
+        config_path=None,
+        config=None,
     ):
 
         super().__init__(identifier, Engine.EngineType.cromwell)
-
-        self.cromwell_loc = cromwell_loc
 
         if config and not config_path:
             f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".conf", delete=False)
@@ -48,7 +58,9 @@ class Cromwell(Engine):
             f.seek(0)
             config_path = f.name
 
+        self.cromwelljar = cromwelljar
         self.connect_to_instance = True if host else False
+        self.is_started = self.connect_to_instance
         self.host = host if host else "localhost:8000"
 
         self.config_path = config_path
@@ -66,30 +78,30 @@ class Cromwell(Engine):
 
     def start_engine(self):
 
+        if self.is_started:
+            return Logger.info("Engine has already been started")
+
         if self.connect_to_instance:
+            self.is_started = True
             return Logger.info(
                 "Cromwell environment discovered, skipping local instance"
             )
 
         if self.process:
+            self.is_started = True
             return Logger.info(
                 f"Discovered Cromwell instance (pid={self.process}), skipping start"
             )
 
         Logger.log("Finding cromwell jar")
-        cromwell_loc = self.cromwell_loc if self.cromwell_loc else os.getenv("cromwelljar")
-
-        if not cromwell_loc:
-            raise Exception(
-                'Couldn\'t get $cromwelljar from the environment, `export cromwell="path/to/cromwell.jar"`'
-            )
+        cromwell_loc = self.resolve_jar(self.cromwelljar)
 
         Logger.info("Starting cromwell ...")
-        cmd = ["java", "-jar"]
+        cmd = ["java", "-DLOG_MODE=pretty"]
         if self.config_path:
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)
-        cmd.extend([cromwell_loc, "server"])
+        cmd.extend(["-jar", cromwell_loc, "server"])
 
         Logger.log(f"Starting Cromwell with command: '{' '.join(cmd)}'")
         self.process = subprocess.Popen(
@@ -109,27 +121,30 @@ class Cromwell(Engine):
             Logger.log("Cromwell: " + cd)
             # self.stdout.append(str(c))
             if "service started on" in cd:
+                self.process_id = self.process.pid
                 Logger.info(
                     "Service successfully started with pid=" + str(self.process.pid)
                 )
                 break
 
-        Logger.log("Waiting 1 second for Cromwell to get ready")
-        time.sleep(3)
-        Logger.log("Proceeding after intention Cromwell delay")
+        self.is_started = True
 
         if self.process:
             self.logger = ProcessLogger(self.process, "Cromwell: ")
         return self
 
     def stop_engine(self):
-        self.logger.terminate()
-        if not self.process:
+        if self.logger:
+            self.logger.terminate()
+        if not self.process_id:
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return
         Logger.info("Stopping cromwell")
-        os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+        process = os.getpgid(int(self.process_id))
+        if process:
+            os.killpg(process, signal.SIGTERM)
         Logger.log("Stopped cromwell")
+        self.is_started = False
 
     # API
 
@@ -180,7 +195,7 @@ class Cromwell(Engine):
                 {
                     "google_labels": {"taskid": tid},
                     "monitoring_image": "quay.io/dinvlad/cromwell-monitor",
-                    "workflow_failure_mode": "ContinueWhilePossible"
+                    "workflow_failure_mode": "ContinueWhilePossible",
                 }
             ),
         }
@@ -206,6 +221,65 @@ class Cromwell(Engine):
 
         task_id = res["id"]
         return task_id
+
+    def resolve_jar(self, cromwelljar):
+        man = JanisConfiguration.manager()
+        if not man:
+            raise Exception(
+                f"No configuration was initialised. This is "
+                f"likely an error, and you should raise an issue at {ISSUE_URL}"
+            )
+
+        potentials = []
+
+        if cromwelljar:
+            potentials.append(os.path.expanduser(cromwelljar))
+        if man.cromwell.jarpath:
+            potentials.append(os.path.expanduser(cromwelljar))
+        potentials.extend(
+            reversed(sorted(glob(os.path.join(man.configdir + "cromwell-*.jar"))))
+        )
+
+        valid_paths = [p for p in potentials if os.path.exists(p)]
+        if len(potentials) > 0:
+            if len(valid_paths) == 0:
+                raise Exception(
+                    "Couldn't find cromwelljar at any of the required paths: "
+                    + ", ".join(potentials)
+                )
+            cromwelljar = valid_paths[0]
+
+        if not cromwelljar:
+
+            pbar = None
+
+            def show_progress(block_num, block_size, total_size):
+                nonlocal pbar
+                if pbar is None:
+                    pbar = progressbar.ProgressBar(maxval=total_size)
+                downloaded = block_num * block_size
+                if downloaded < total_size:
+                    pbar.update(downloaded)
+                else:
+                    pbar.finish()
+                    pbar = None
+
+            cromwellurl, cromwellfilename = self.get_latest_cromwell_url()
+            Logger.info(
+                f"Couldn't find cromwell at any of the usual spots, downloading '{cromwellfilename}' now"
+            )
+            cromwelljar = os.path.join(man.configdir, cromwellfilename)
+            urllib.request.urlretrieve(cromwellurl, cromwelljar, show_progress)
+            Logger.info(f"Downloaded {cromwellfilename}")
+
+        return cromwelljar
+
+    @staticmethod
+    def get_latest_cromwell_url():
+        data = urllib.request.urlopen(CROMWELL_RELEASES).read()
+        releases = json.loads(data)
+        asset = releases.get("assets")[0]
+        return asset.get("browser_download_url"), asset.get("name")
 
     def poll_task(self, identifier) -> TaskStatus:
         url = self.url_poll(identifier=identifier)
@@ -329,8 +403,8 @@ class Cromwell(Engine):
             identifier=identifier, expand_subworkflows=expand_subworkflows
         )
         Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
-        r = requests.get(url)
         try:
+            r = requests.get(url)
             r.raise_for_status()
             return CromwellMetadata(r.json())
 

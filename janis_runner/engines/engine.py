@@ -19,6 +19,8 @@ class Engine(Archivable, ABC):
     def __init__(self, identifier: str, engtype: EngineType):
         self.identifier = identifier
         self.engtype = engtype
+        self.is_started = False
+        self.process_id = None
 
     def db_to_kwargs(self, keys: List[str] = None):
         k = ["engtype"]

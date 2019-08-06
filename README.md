@@ -1,7 +1,7 @@
 # Welcome to Janis-Runner
 
 [![Build Status](https://travis-ci.org/PMCC-BioinformaticsCore/janis-runner.svg?branch=master)](https://travis-ci.org/PMCC-BioinformaticsCore/janis-runner)
-[![PyPI version](https://badge.fury.io/py/janis-pipelines.runner.svg)](https://badge.fury.io/py/janis-pipelines.bioinformatics)
+[![PyPI version](https://badge.fury.io/py/janis-pipelines.runner.svg)](https://badge.fury.io/py/janis-pipelines.runner)
 
 [Janis](https://github.com/PMCC-BioinformaticsCore/janis). is a workflow assistant designed 
 to make the process of building and running workflows easier. 

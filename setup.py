@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+
 # from setuptools.command.develop import develop
 # from setuptools.command.install import install
 
@@ -21,10 +22,10 @@ setup(
     keywords=["janis", "workflows", "enginerunner"],
     entry_points={
         "console_scripts": ["janis=janis_runner.cli:process_args"],
-        "janis.extension": ["runner=janis_runner"]
+        "janis.extension": ["runner=janis_runner"],
     },
     install_requires=[
-        "janis-pipelines.core>=0.5.0",
+        "janis-pipelines.core>=0.5.2",
         "requests",
         "path.py",
         "python-dotenv",
@@ -41,5 +42,5 @@ setup(
     cmdclass={
         # 'develop': PostDevelopCommand,
         # 'install': PostInstallCommand
-    }
+    },
 )

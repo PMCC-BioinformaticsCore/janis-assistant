@@ -13,6 +13,7 @@ from subprocess import call
 from typing import Optional, List, Dict
 
 import janis
+from janis_core.translations.translationbase import TranslatorBase
 
 from janis_runner.data.providers.task.dbmanager import TaskDbManager
 from janis_runner.data.enums import InfoKeys, ProgressKeys
@@ -64,6 +65,8 @@ class TaskManager:
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
+        max_cores=None,
+        max_memory=None,
     ):
 
         # create output folder
@@ -92,7 +95,13 @@ class TaskManager:
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = janis.translations.get_translator(spec)
         wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
-            wf, spec_translator, validation_requirements, hints, inputs_dict
+            workflow=wf,
+            translator=spec_translator,
+            validation=validation_requirements,
+            hints=hints,
+            additional_inputs=inputs_dict,
+            max_cores=max_cores,
+            max_memory=max_memory,
         )
 
         if not dryrun:
@@ -147,10 +156,12 @@ class TaskManager:
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
         workflow,
-        translator,
+        translator: TranslatorBase,
         validation: ValidationRequirements,
         hints: Dict[str, str],
         additional_inputs: dict,
+        max_cores=None,
+        max_memory=None,
     ):
         if self.database.progress_has_completed(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.tid}', skipping.")
@@ -167,6 +178,8 @@ class TaskManager:
             write_inputs_file=True,
             export_path=self.outdir_workflow,
             additional_inputs=additional_inputs,
+            max_cores=max_cores,
+            max_mem=max_memory,
         )
 
         Logger.log(
@@ -202,6 +215,8 @@ class TaskManager:
                 write_inputs_file=True,
                 export_path=self.outdir_workflow,
                 additional_inputs=adjusted_inputs,
+                max_cores=max_cores,
+                max_mem=max_memory,
             )
 
         self.database.progress_mark_completed(ProgressKeys.saveWorkflow)

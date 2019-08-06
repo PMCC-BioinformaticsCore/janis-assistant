@@ -118,6 +118,8 @@ def fromjanis(
     dryrun: bool = False,
     inputs: Union[str, dict] = None,
     watch=True,
+    max_cores=None,
+    max_memory=None,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -152,6 +154,8 @@ def fromjanis(
         inputs_dict=inputsdict,
         dryrun=dryrun,
         watch=watch,
+        max_cores=max_cores,
+        max_memory=max_memory,
     )
 
     return tm.tid

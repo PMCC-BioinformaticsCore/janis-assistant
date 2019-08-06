@@ -214,6 +214,17 @@ def add_run_args(parser):
         action="store_true",
     )
 
+    parser.add_argument(
+        "--max-cores",
+        type=int,
+        help="maximum number of cores to use when generating resource overrides",
+    )
+    parser.add_argument(
+        "--max-memory",
+        type=int,
+        help="maximum GB of memory to use when generating resource overrides",
+    )
+
     # add hints
     for HintType in HINTS:
         if issubclass(HintType, HintEnum):
@@ -309,6 +320,8 @@ def do_run(args):
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,
         watch=not args.no_watch,
+        max_cores=args.max_cores,
+        max_mem=args.max_memory,
     )
 
 

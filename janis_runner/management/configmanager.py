@@ -8,7 +8,9 @@ import janis
 
 from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.providers.config.enginedbprovider import EngineDbProvider
-from janis_runner.data.providers.config.environmentdbprovider import EnvironmentDbProvider
+from janis_runner.data.providers.config.environmentdbprovider import (
+    EnvironmentDbProvider,
+)
 from janis_runner.data.providers.config.fileschemedbprovider import FileschemeDbProvider
 from janis_runner.data.providers.config.tasksdbprovider import TasksDbProvider, TaskRow
 from janis_runner.engines import Engine
@@ -77,6 +79,8 @@ class ConfigManager:
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
+        max_cores=None,
+        max_memory=None,
     ) -> TaskManager:
 
         od = outdir if outdir else os.path.join(self.config.executiondir, wf.id())
@@ -105,6 +109,8 @@ class ConfigManager:
             validation_requirements=validation_requirements,
             dryrun=dryrun,
             watch=watch,
+            max_cores=max_cores,
+            max_memory=max_memory,
         )
 
     def from_tid(self, tid):

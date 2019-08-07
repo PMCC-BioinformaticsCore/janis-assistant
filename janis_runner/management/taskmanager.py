@@ -65,6 +65,7 @@ class TaskManager:
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
+        show_metadata=True,
         max_cores=None,
         max_memory=None,
     ):
@@ -108,7 +109,7 @@ class TaskManager:
             # this happens for all workflows no matter what type
             tm.submit_workflow_if_required(wf_evaluate, spec_translator)
             if watch:
-                tm.resume_if_possible()
+                tm.resume_if_possible(show_metadata=show_metadata)
 
         return tm
 
@@ -136,14 +137,14 @@ class TaskManager:
         tm = TaskManager(outdir=path, tid=tid, environment=env)
         return tm
 
-    def resume_if_possible(self):
+    def resume_if_possible(self, show_metadata=True):
         # check status and see if we can resume
         if not self.database.progress_has_completed(ProgressKeys.submitWorkflow):
             return Logger.critical(
                 f"Can't resume workflow with id '{self.tid}' as the workflow "
                 "was not submitted to the engine"
             )
-        self.wait_if_required()
+        self.wait_if_required(show_metadata=show_metadata)
         self.save_metadata_if_required()
         self.copy_outputs_if_required()
         self.environment.engine.stop_engine()
@@ -302,7 +303,7 @@ class TaskManager:
 
         self.database.progress_mark_completed(ProgressKeys.copiedOutputs)
 
-    def wait_if_required(self):
+    def wait_if_required(self, show_metadata=True):
 
         if self.database.progress_has_completed(ProgressKeys.workflowMovedToFinalState):
             try:
@@ -318,9 +319,10 @@ class TaskManager:
 
         while status not in TaskStatus.final_states():
             meta = self.metadata()
-            call("clear")
             if meta:
-                print(meta.format())
+                if show_metadata:
+                    call("clear")
+                    print(meta.format())
                 status = meta.status
                 self.database.update_meta_info(InfoKeys.status, status)
             if status not in TaskStatus.final_states():

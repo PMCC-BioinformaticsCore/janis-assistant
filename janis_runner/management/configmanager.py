@@ -79,6 +79,7 @@ class ConfigManager:
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
+        show_metadata=True,
         max_cores=None,
         max_memory=None,
     ) -> TaskManager:
@@ -109,6 +110,7 @@ class ConfigManager:
             validation_requirements=validation_requirements,
             dryrun=dryrun,
             watch=watch,
+            show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
         )

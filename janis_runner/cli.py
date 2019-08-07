@@ -195,6 +195,11 @@ def add_run_args(parser):
         "(eg: scp cluster:/path/to/output local/output/dir)",
     )
     parser.add_argument("--cromwell-url", help="Location to Cromwell")
+    parser.add_argument(
+        "--no-metadata",
+        help="Turn off the metadata polling (that would clear the screen).",
+        action="store_true",
+    )
 
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
@@ -320,6 +325,7 @@ def do_run(args):
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,
         watch=not args.no_watch,
+        show_metadata=not args.no_metadata,
         max_cores=args.max_cores,
         max_mem=args.max_memory,
     )

@@ -118,6 +118,7 @@ def fromjanis(
     dryrun: bool = False,
     inputs: Union[str, dict] = None,
     watch=True,
+    show_metadata=True,
     max_cores=None,
     max_memory=None,
     **kwargs,
@@ -156,6 +157,7 @@ def fromjanis(
             inputs_dict=inputsdict,
             dryrun=dryrun,
             watch=watch,
+            show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
         )

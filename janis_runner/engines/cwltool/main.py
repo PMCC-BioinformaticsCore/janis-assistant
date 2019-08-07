@@ -24,9 +24,11 @@ class CWLTool(Engine):
     # Currently, this class just watches the stdout and looks for the JSON returned by CWLTool.
     # I don't know the implications of updating this from another thread, because it should really only ever run
     # one at once (at the moment).
-    metadata_by_task_id = {}        # format: { [tid: string]: { start: DateTime, status: Status, outputs: [] } }
+    metadata_by_task_id = (
+        {}
+    )  # format: { [tid: string]: { start: DateTime, status: Status, outputs: [] } }
 
-    def __init__(self, identifier: str="cwltool", options=None):
+    def __init__(self, identifier: str = "cwltool", options=None):
         super().__init__(identifier, Engine.EngineType.cwltool)
         self.options = options if options else []
         self.process = None
@@ -71,10 +73,13 @@ class CWLTool(Engine):
 
         retval = {}
         for k, o in outs.items():
-            if 'path' in o:
-                retval[k] = o['path']
-            if 'secondaryFiles' in o:
-                raise Exception("Janis.runner needs some help to handle secondaryFiles")
+            if "path" in o:
+                retval[k] = o["path"]
+            if "secondaryFiles" in o:
+                for s in o["secondaryFiles"]:
+                    path = s["path"]
+                    ext = path.rpartition(".")[-1]
+                    retval[f"{k}_{ext}"] = path
 
         return retval
 
@@ -113,7 +118,7 @@ class CWLTool(Engine):
             finish=meta.get("finish"),
             outputs=meta.get("outputs") or [],
             jobs=[],
-            error=None
+            error=None,
         )
 
     def start_from_task(self, task: TaskBase):
@@ -121,7 +126,7 @@ class CWLTool(Engine):
 
         self.metadata_by_task_id[task.identifier] = {
             "start": DateUtil.now(),
-            "status": TaskStatus.PROCESSING
+            "status": TaskStatus.PROCESSING,
         }
 
         temps = []
@@ -263,9 +268,9 @@ class CWLTool(Engine):
                 Logger.log("cwltool: " + line)
 
             if "final process status is" in lowline:
-                if 'fail' in line.lower():
+                if "fail" in line.lower():
                     finalstatus = TaskStatus.FAILED
-                elif 'success' in line.lower():
+                elif "success" in line.lower():
                     finalstatus = TaskStatus.COMPLETED
                 else:
                     finalstatus = TaskStatus.TERMINATED
@@ -273,14 +278,18 @@ class CWLTool(Engine):
 
             elif process.poll() is not None:
                 finalstatus = TaskStatus.TERMINATED
-                Logger.warn(f"CWLTool finished with rc={process.returncode} but janis "
-                            f"was unable to capture the workflow status")
+                Logger.warn(
+                    f"CWLTool finished with rc={process.returncode} but janis "
+                    f"was unable to capture the workflow status"
+                )
 
         j = ""
         Logger.log("Process has completed")
         outputs = None
         if finalstatus == TaskStatus.COMPLETED:
-            for c in iter(process.stdout.readline, "s"):  # replace '' with b'' for Python 3
+            for c in iter(
+                process.stdout.readline, "s"
+            ):  # replace '' with b'' for Python 3
                 if not c:
                     continue
                 j += c.decode("utf-8")

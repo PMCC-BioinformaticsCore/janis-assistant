@@ -1,6 +1,7 @@
 """
     Logger - Controls logging of the application
 """
+import sys
 from typing import Optional, TextIO
 
 from janis_runner.utils.dateutil import DateUtil
@@ -68,8 +69,10 @@ class LogLevel:
         if level == "NONE":
             return None
 
-        raise KeyError(f"Couldn't detect LogLevel type '{level}', expected one of: "
-                       f"CRITICAL, WARN, INFO, DEBUG, NONE")
+        raise KeyError(
+            f"Couldn't detect LogLevel type '{level}', expected one of: "
+            f"CRITICAL, WARN, INFO, DEBUG, NONE"
+        )
 
 
 class Logger:
@@ -131,7 +134,7 @@ class Logger:
 
         m = Logger.get_prefix(level) + ": " + str(message)
         if Logger.CONSOLE_LEVEL is not None and level <= Logger.CONSOLE_LEVEL:
-            print(LogLevel.get_color(level) + m + _bcolors.ENDC)
+            print(LogLevel.get_color(level) + m + _bcolors.ENDC, file=sys.stderr)
 
         if (
             Logger.WRITE_LEVEL is not None

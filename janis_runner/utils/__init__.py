@@ -5,7 +5,7 @@ from .pathhelper import (
     get_janis_workflow_from_searchname,
     get_workflow_from_file,
     get_file_from_searchname,
-    try_parse_dict,
+    parse_dict,
     write_files_into_buffered_zip,
 )
 from .processlogger import ProcessLogger

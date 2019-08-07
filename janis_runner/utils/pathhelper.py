@@ -72,7 +72,6 @@ def get_file_from_searchname(name, cwd):
     else:
         Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
 
-
     Logger.log(
         f"Couldn't find a file with filename '{name}' in any of the following: "
         f"full path, current working directory ({cwd}) or the search path."
@@ -80,9 +79,11 @@ def get_file_from_searchname(name, cwd):
     return None
 
 
-def try_parse_dict(file: str):
+def parse_dict(file: str):
     import ruamel.yaml as ryaml
     import json
+
+    err = []
 
     with open(file) as openfile:
         try:
@@ -91,19 +92,23 @@ def try_parse_dict(file: str):
             if isinstance(yaml_dict, dict):
                 return yaml_dict
         except Exception as e:
-            print(e)
+            err.append(str(e))
 
         try:
             json_dict = json.load(openfile)
             if isinstance(json_dict, dict):
                 return json_dict
         except Exception as e:
-            print(e)
+            err.append(str(e))
 
-    return None
+    if err:
+        raise Exception(",".join(err))
+    raise Exception("Couldn't deserialize " + str(file))
 
 
-def get_janis_workflow_from_searchname(searchpath, cwd, name: str=None, include_commandtools=False):
+def get_janis_workflow_from_searchname(
+    searchpath, cwd, name: str = None, include_commandtools=False
+):
     file = get_file_from_searchname(searchpath, cwd)
     if not file:
         return None

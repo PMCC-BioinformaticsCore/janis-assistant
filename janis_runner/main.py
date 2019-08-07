@@ -22,7 +22,7 @@ from janis_runner.environments.environment import Environment
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import (
     get_janis_workflow_from_searchname,
-    try_parse_dict,
+    parse_dict,
     get_file_from_searchname,
 )
 
@@ -73,7 +73,7 @@ def translate(
     inputsdict = None
     if inputs:
         inputsfile = get_file_from_searchname(inputs, ".")
-        inputsdict = try_parse_dict(inputsfile)
+        inputsdict = parse_dict(inputsfile)
 
     if isinstance(toolref, j.Workflow):
         wfstr, _, _ = toolref.translate(
@@ -134,7 +134,7 @@ def fromjanis(
     inputsdict = None
     if inputs:
         inputsfile = get_file_from_searchname(inputs, ".")
-        inputsdict = try_parse_dict(inputsfile)
+        inputsdict = parse_dict(inputsfile)
 
     environment = None
 

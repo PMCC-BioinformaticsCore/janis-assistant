@@ -17,6 +17,78 @@ You can run a workflow in CWLTool with the following command line:
 janis run myWorkflow.py --engine cwltool
 ```
 
+## CLI options:
+
+- `run` - Run a janis workflow
+- `watch` - Watch an existing execution
+- `abort` - Issue an abort request to an existing execution
+- `inputs` - Generate an inputs file for a workflow
+- `translate` - Translate a workflow into CWL / WDL
+- `metadata` - Get the available metadata on an execution
+- `version` - Print the version of `janis_runner`
+
+### `run`
+
+You can run a workflow with the `run` method, here's an example to run the hello world example:
+
+```bash
+janis run hello
+```
+
+View the help guide 
+
+```
+positional arguments:
+  workflow              Run the workflow defined in this file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n NAME, --name NAME  If you have multiple workflows in your file, you may
+                        want to help Janis out to select the right workflow to
+                        run
+  --inputs INPUTS       File of inputs (matching the workflow) to override,
+                        these inputs will take precedence over inputs declared
+                        in the workflow
+  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                        The output directory to which tasks are saved in,
+                        defaults to $HOME.
+  -e ENVIRONMENT, --environment ENVIRONMENT
+                        Select a preconfigured environment (takes precendence
+                        over engine and filescheme). See the list of
+                        environments with `janis environment list`
+  --engine {cromwell,cwltool}
+                        Choose an engine to start
+  -f {local,ssh}, --filescheme {local,ssh}
+                        Choose the filescheme required to retrieve the output
+                        files where your engine is located. By selecting SSH,
+                        Janis will SCP the files using the --filescheme-ssh-
+                        binding SSH shortcut.
+  --filescheme-ssh-binding FILESCHEME_SSH_BINDING
+                        Only valid if you've selected the ssh filescheme. (eg:
+                        scp cluster:/path/to/output local/output/dir)
+  --cromwell-url CROMWELL_URL
+                        Location to Cromwell
+  --validation-reference VALIDATION_REFERENCE
+                        reference file for validation
+  --validation-truth-vcf VALIDATION_TRUTH_VCF
+                        truthVCF for validation
+  --validation-intervals VALIDATION_INTERVALS
+                        intervals to validate between
+  --validation-fields VALIDATION_FIELDS [VALIDATION_FIELDS ...]
+                        outputs from the workflow to validate
+  --dryrun              convert workflow, and do everything except submit the
+                        workflow
+  --no-watch            Submit the workflow and return the task id
+  --max-cores MAX_CORES
+                        maximum number of cores to use when generating
+                        resource overrides
+  --max-memory MAX_MEMORY
+                        maximum GB of memory to use when generating resource
+                        overrides
+  --hint-captureType {targeted,exome,chromosome,30x,90x,300x}
+  --hint-engine {cromwell}
+```
+
 ## Configuration
 
 It's possible to configure a number of attributes of `janis.runner`. 
@@ -68,9 +140,11 @@ Cromwell can be run in two modes:
 1. Connect to an existing instance (well supported) - include the `--cromwell-url` argument with the port to 
     allow Janis.runner to correctly connect to this instance.
     
-2. Run and manage it's own instance (very limited) - Currently not very well supported, the main problem is for reporting, 
-janis will spin up a server instance of Cromwell, but can sometimes lose the Cromwell instance (The process id is logged on start, or you can find it with `pgrep java`).
-
+2. Run and manage it's own instance. When the task is started, the `process_id` of the started Cromwell instance
+    is stored in the `taskdb`, when the task finishes execution, the process is manually stopped. You are able to
+    disconnect from the task, but note that the Cromwell instance will be kept running until you `watch` the task
+    again, it recognises that it has finished and then manually shuts it down.
+    
 Both of these options provide reporting and progress tracking due to Cromwell's extensive metadata endpoint. The TaskID
 (6 hex characters) is included as a label on the workflow. You can disconnect from a job and reconnect with this TaskID
 through the command:

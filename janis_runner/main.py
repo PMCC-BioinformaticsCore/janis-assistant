@@ -145,20 +145,31 @@ def fromjanis(
         fs = get_filescheme_from_fs(filescheme, **kwargs)
         environment = Environment(f"custom_{wf.id()}", eng, fs)
 
-    tm = cm.create_task(
-        wf=wf,
-        environment=environment,
-        validation_requirements=validation_reqs,
-        outdir=output_dir,
-        hints=hints,
-        inputs_dict=inputsdict,
-        dryrun=dryrun,
-        watch=watch,
-        max_cores=max_cores,
-        max_memory=max_memory,
-    )
+    try:
 
-    return tm.tid
+        tm = cm.create_task(
+            wf=wf,
+            environment=environment,
+            validation_requirements=validation_reqs,
+            outdir=output_dir,
+            hints=hints,
+            inputs_dict=inputsdict,
+            dryrun=dryrun,
+            watch=watch,
+            max_cores=max_cores,
+            max_memory=max_memory,
+        )
+
+        return tm.tid
+
+    except KeyboardInterrupt:
+        pass
+
+    except Exception as e:
+        # Have to make sure we stop the engine if something happens when creating the task that causes
+        # janis to exit early
+        environment.engine.stop_engine()
+        raise e
 
 
 def get_engine_from_eng(eng, **kwargs):

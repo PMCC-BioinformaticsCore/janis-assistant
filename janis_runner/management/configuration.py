@@ -53,6 +53,8 @@ class JanisConfiguration:
         """
         :return: JanisConfiguration
         """
+        if not JanisConfiguration._managed:
+            JanisConfiguration._managed = JanisConfiguration()
         return JanisConfiguration._managed
 
     class JanisConfigurationEnvironment:

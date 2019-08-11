@@ -6,7 +6,7 @@
 
 
 """
-import sys
+import sys, os
 from inspect import isclass
 
 import janis_core as j
@@ -20,7 +20,9 @@ from janis_runner.data.models.filescheme import (
 from janis_runner.engines import Engine, get_engine_type, Cromwell
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configmanager import ConfigManager
+from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import (
+    Logger,
     get_janis_workflow_from_searchname,
     parse_dict,
     get_file_from_searchname,
@@ -31,6 +33,7 @@ def resolve_tool(
     tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
     name=None,
     from_toolshed=False,
+    force=False,
 ):
     wf = None
     if isinstance(tool, j.Tool):
@@ -39,6 +42,27 @@ def resolve_tool(
         issubclass(tool, j.Workflow) or issubclass(tool, j.CommandTool)
     ):
         return tool()
+
+    if not isinstance(tool, str):
+        raise TypeError(
+            f"Janis is not sure how to resolve a workflow of type: '{type(tool)}'"
+        )
+
+    potential_resolve_type = FileScheme.get_type_by_prefix(tool.lower())
+    if potential_resolve_type:
+        Logger.info(
+            f"Detected remote workflow to localise from '{potential_resolve_type.__name__}'"
+        )
+        fn = os.path.basename(tool)
+        outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
+        os.makedirs(outdir, exist_ok=True)
+        dest = os.path.join(outdir, fn)
+        Logger.log(f"Localising '{tool}' to '{dest}'")
+
+        potential_resolve_type("internal").cp_from(
+            tool.lower(), dest, lambda progress: print(f"Download progress: {progress}")
+        )
+        tool = dest
 
     wf = get_janis_workflow_from_searchname(
         tool, ".", name=name, include_commandtools=True

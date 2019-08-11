@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Optional, Callable
 
 from janis_runner.management import Archivable
+from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils.logger import Logger
 
 
@@ -14,6 +15,7 @@ class FileScheme(Archivable, abc.ABC):
         ssh = "ssh"
         gcs = "gcs"
         s3 = "s3"
+        http = "http"
 
         def __str__(self):
             return self.value
@@ -38,6 +40,22 @@ class FileScheme(Archivable, abc.ABC):
     @abc.abstractmethod
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def is_valid_prefix(prefix: str):
+        pass
+
+    @staticmethod
+    def get_type_by_prefix(prefix: str):
+        prefix = prefix.lower()
+        types = [HTTPFileScheme, GCSFileScheme, S3FileScheme]
+
+        for T in types:
+            if T.is_valid_prefix(prefix):
+                return T
+
+        return None
 
     @staticmethod
     def get_type(identifier):
@@ -86,11 +104,49 @@ class LocalFileScheme(FileScheme):
             # if this fails, it should error
             copyfile(source, dest)
 
+    @staticmethod
+    def is_valid_prefix(prefix: str):
+        return True
+
+
+class HTTPFileScheme(FileScheme):
+    def __init__(self, identifier, credentials: any = None):
+        super().__init__(identifier, FileScheme.FileSchemeType.http)
+        self._credentials = credentials
+
+    @staticmethod
+    def is_valid_prefix(prefix: str):
+        return prefix.startswith("http://") or prefix.startswith("https://")
+
+    def cp_from(
+        self,
+        source,
+        dest,
+        report_progress: Optional[Callable[[float], None]],
+        force=None,
+    ):
+        import urllib.request
+
+        if os.path.exists(dest):
+            if not force:
+                return Logger.info(f"File already exists, skipping download ('{dest}')")
+
+            os.remove(dest)
+
+        return urllib.request.urlretrieve(url=source, filename=dest)
+
+    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+        raise NotImplementedError("Not implemented")
+
 
 class SSHFileScheme(FileScheme):
     def __init__(self, identifier, connectionstring):
         super().__init__(identifier, FileScheme.FileSchemeType.ssh)
         self.connectionstring = connectionstring
+
+    @staticmethod
+    def is_valid_prefix(prefix: str):
+        return True
 
     def makedir(self, location):
         args = ["ssh", self.connectionstring, "mkdir -p " + location]
@@ -129,6 +185,10 @@ class GCSFileScheme(FileScheme):
     def __init__(self):
         super().__init__("gcp", fstype=FileScheme.FileSchemeType.gcs)
 
+    @staticmethod
+    def is_valid_prefix(prefix: str):
+        return prefix.lower().startswith("gs://")
+
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         pass
 
@@ -141,5 +201,9 @@ class S3FileScheme(FileScheme):
     Placeholder for S3 File schema, almost for sure going to need the 'aws' package,
     probably a credentials file to access the files. Should call the report_progress param on cp
     """
+
+    @staticmethod
+    def is_valid_prefix(prefix: str):
+        return prefix.lower().startswith("s3://")
 
     pass

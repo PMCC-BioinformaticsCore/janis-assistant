@@ -53,7 +53,7 @@ def resolve_tool(
         Logger.info(
             f"Detected remote workflow to localise from '{potential_resolve_type.__name__}'"
         )
-        fn = os.path.basename(tool)
+        fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
         outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
         os.makedirs(outdir, exist_ok=True)
         dest = os.path.join(outdir, fn)

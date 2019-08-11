@@ -28,6 +28,8 @@ from janis_runner.utils import (
     get_file_from_searchname,
 )
 
+import hashlib
+
 
 def resolve_tool(
     tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
@@ -60,7 +62,10 @@ def resolve_tool(
         Logger.log(f"Localising '{tool}' to '{dest}'")
 
         potential_resolve_type("internal").cp_from(
-            tool.lower(), dest, lambda progress: print(f"Download progress: {progress}")
+            tool.lower(),
+            dest,
+            lambda progress: print(f"Download progress: {progress}"),
+            force=force,
         )
         tool = dest
 
@@ -121,8 +126,10 @@ def translate(
     print(wfstr, file=sys.stdout)
 
 
-def generate_inputs(tool: Union[str, j.CommandTool, j.Workflow], name=None):
-    toolref = resolve_tool(tool, name, from_toolshed=True)
+def generate_inputs(
+    tool: Union[str, j.CommandTool, j.Workflow], name=None, force=False
+):
+    toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
 
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(toolref))
@@ -145,11 +152,12 @@ def fromjanis(
     show_metadata=True,
     max_cores=None,
     max_memory=None,
+    force=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
 
-    wf = resolve_tool(tool=workflow, name=name, from_toolshed=True)
+    wf = resolve_tool(tool=workflow, name=name, from_toolshed=True, force=force)
     if not wf:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 

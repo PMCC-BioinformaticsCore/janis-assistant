@@ -129,6 +129,11 @@ def add_translate_args(parser):
     parser.add_argument(
         "--output-dir", help="output directory to write output to (default=stdout)"
     )
+    parser.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
 
 
 def add_inputs_args(parser):
@@ -141,6 +146,11 @@ def add_inputs_args(parser):
         "-n",
         "--name",
         help="If you have multiple workflows in your file, help Janis out to select the right workflow to run",
+    )
+    parser.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
     )
     return parser
 
@@ -228,6 +238,11 @@ def add_run_args(parser):
         "--max-memory",
         type=int,
         help="maximum GB of memory to use when generating resource overrides",
+    )
+    parser.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
     )
 
     # add hints
@@ -328,11 +343,12 @@ def do_run(args):
         show_metadata=not args.no_metadata,
         max_cores=args.max_cores,
         max_mem=args.max_memory,
+        force=args.no_cache,
     )
 
 
 def do_inputs(args):
-    outd = generate_inputs(args.workflow, name=args.name)
+    outd = generate_inputs(args.workflow, name=args.name, force=args.no_cache)
 
     if args.json:
         outs = json.dumps(outd, sort_keys=True, indent=4, separators=(",", ": "))
@@ -368,6 +384,7 @@ def do_translate(args):
         name=args.name,
         inputs=args.inputs,
         output_dir=args.output_dir,
+        force=args.no_cache,
     )
 
 

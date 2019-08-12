@@ -120,10 +120,16 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     # https://stackoverflow.com/questions/67631/how-to-import-a-module-given-the-full-path
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("module.name", file)
-    foo = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(foo)
-    ptypes = get_janis_from_module_spec(foo, include_commandtools)
+    try:
+        spec = importlib.util.spec_from_file_location("module.name", file)
+        foo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(foo)
+        ptypes = get_janis_from_module_spec(foo, include_commandtools)
+
+    except Exception as e:
+        raise Exception(
+            f"Unrecognised python file when getting worfklow / command tool: {file} :: {e}"
+        )
 
     if name:
         ptypes = [(k, v) for (k, v) in ptypes if k == name]

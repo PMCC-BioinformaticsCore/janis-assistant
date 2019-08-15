@@ -1,11 +1,10 @@
 import os
 import sqlite3
 from datetime import datetime
-from enum import Enum
+
 from typing import Dict, Optional, cast, List, Tuple
 
-import janis
-
+from janis_core import Workflow
 from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.providers.config.enginedbprovider import EngineDbProvider
 from janis_runner.data.providers.config.environmentdbprovider import (
@@ -71,7 +70,7 @@ class ConfigManager:
 
     def create_task(
         self,
-        wf: janis.Workflow,
+        wf: Workflow,
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],

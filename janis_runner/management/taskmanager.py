@@ -12,7 +12,8 @@ from datetime import datetime
 from subprocess import call
 from typing import Optional, List, Dict
 
-import janis
+from janis_core.workflow.workflow import Workflow
+from janis_core.translations import get_translator
 from janis_core.translations.translationbase import TranslatorBase
 
 from janis_runner.data.providers.task.dbmanager import TaskDbManager
@@ -58,7 +59,7 @@ class TaskManager:
     def from_janis(
         tid: str,
         outdir: str,
-        wf: janis.Workflow,
+        wf: Workflow,
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
@@ -94,7 +95,7 @@ class TaskManager:
         tm.database.persist_filescheme(environment.filescheme)
 
         spec = get_ideal_specification_for_engine(environment.engine)
-        spec_translator = janis.translations.get_translator(spec)
+        spec_translator = get_translator(spec)
         wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
             workflow=wf,
             translator=spec_translator,

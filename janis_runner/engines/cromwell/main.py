@@ -1,6 +1,6 @@
 import os
+import sys
 import tempfile
-import progressbar
 import urllib.request
 from glob import glob
 from typing import Optional
@@ -96,7 +96,7 @@ class Cromwell(Engine):
         Logger.log("Finding cromwell jar")
         cromwell_loc = self.resolve_jar(self.cromwelljar)
 
-        Logger.info("Starting cromwell ...")
+        Logger.info(f"Starting cromwell ({os.path.basename(cromwell_loc)})...")
         cmd = ["java", "-DLOG_MODE=pretty"]
         if self.config_path:
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
@@ -251,18 +251,37 @@ class Cromwell(Engine):
 
         if not cromwelljar:
 
+            progress_is_loaded = False
+            try:
+                import progressbar
+
+                progress_is_loaded = True
+            except:
+                Logger.critical("Couldn't find progressbar module")
+
             pbar = None
 
             def show_progress(block_num, block_size, total_size):
                 nonlocal pbar
-                if pbar is None:
+                if pbar is None and progress_is_loaded:
                     pbar = progressbar.ProgressBar(maxval=total_size)
                 downloaded = block_num * block_size
                 if downloaded < total_size:
-                    pbar.update(downloaded)
+                    if pbar:
+                        pbar.update(downloaded)
+                    else:
+                        print(
+                            f"\rProgress: {round(downloaded * 100 / total_size)}%",
+                            end="",
+                            file=sys.stderr,
+                        )
+
                 else:
-                    pbar.finish()
-                    pbar = None
+                    if pbar:
+                        pbar.finish()
+                        pbar = None
+                    else:
+                        print("\rCompleted download of cromwell", file=sys.stderr)
 
             cromwellurl, cromwellfilename = self.get_latest_cromwell_url()
             Logger.info(

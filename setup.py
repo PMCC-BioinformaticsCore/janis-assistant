@@ -30,6 +30,7 @@ setup(
         "path.py",
         "python-dotenv",
         "python-dateutil",
+        # "progressbar2",
     ],
     packages=["janis_runner"] + modules,
     classifiers=[

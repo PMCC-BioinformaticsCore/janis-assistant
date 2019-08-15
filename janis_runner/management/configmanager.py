@@ -22,33 +22,25 @@ from janis_runner.validation import ValidationRequirements
 
 class ConfigManager:
 
-    _configpath = None
     _manager = None
 
     @staticmethod
     def manager():
         if not ConfigManager._manager:
-            ConfigManager._manager = ConfigManager(ConfigManager._configpath)
+            ConfigManager._manager = ConfigManager()
         return ConfigManager._manager
 
-    @staticmethod
-    def set_config_path(path):
-        if path and path != ConfigManager._configpath:
-            Logger.log("Setting config path to: " + path)
-            ConfigManager._manager = None
-            ConfigManager._configpath = path
-        else:
-            Logger.log("Ignoring set config path: " + str(path))
+    def __init__(self):
 
-    def __init__(self, configpath=None):
+        # Before the manager() is called, someone (the CLI definitely) MUST call
+        # JanisConfiguration.inital_configuration(potential_config_paths), this
+        # will search os.env for potential configs
+        config = JanisConfiguration.manager()
+        self.is_new = not os.path.exists(config.dbpath)
 
-        self.config = JanisConfiguration.from_path(configpath)
-
-        self.is_new = not os.path.exists(self.config.dbpath)
-
-        cp = os.path.dirname(self.config.dbpath)
+        cp = os.path.dirname(config.dbpath)
         os.makedirs(cp, exist_ok=True)
-        os.makedirs(self.config.executiondir, exist_ok=True)
+        os.makedirs(config.executiondir, exist_ok=True)
 
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
@@ -62,8 +54,9 @@ class ConfigManager:
             self.insert_default_environments()
 
     def db_connection(self):
-        Logger.log("Opening database connection to: " + self.config.dbpath)
-        return sqlite3.connect(self.config.dbpath)
+        config = JanisConfiguration.manager()
+        Logger.log("Opening database connection to: " + config.dbpath)
+        return sqlite3.connect(config.dbpath)
 
     def commit(self):
         return self.connection.commit()
@@ -82,8 +75,8 @@ class ConfigManager:
         max_cores=None,
         max_memory=None,
     ) -> TaskManager:
-
-        od = outdir if outdir else os.path.join(self.config.executiondir, wf.id())
+        config = JanisConfiguration.manager()
+        od = outdir if outdir else os.path.join(config.executiondir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT tid FROM tasks").fetchall()

@@ -4,6 +4,8 @@ import json
 import ruamel.yaml
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
+from janis_runner.management.configuration import JanisConfiguration
+
 from janis_runner.data.models.schema import TaskStatus
 
 from janis_runner.main import fromjanis, translate, generate_inputs
@@ -55,8 +57,7 @@ def process_args(sysargs=None):
 
     check_logger_args(args)
 
-    if args.config:
-        ConfigManager.set_config_path(args.config)
+    JanisConfiguration.initial_configuration(args.config)
 
     return cmds[args.command](args)
 

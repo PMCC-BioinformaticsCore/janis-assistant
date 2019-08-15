@@ -57,6 +57,8 @@ class Cromwell(Engine):
             f.writelines(lines)
             f.seek(0)
             config_path = f.name
+        else:
+            config_path = JanisConfiguration.manager().cromwell.configpath
 
         self.cromwelljar = cromwelljar
         self.connect_to_instance = True if host else False

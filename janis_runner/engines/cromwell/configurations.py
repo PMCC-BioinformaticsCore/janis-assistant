@@ -4,6 +4,8 @@ from janis_runner.utils.logger import Logger
 
 
 class Serializable:
+    parse_types = {}
+
     def output(self):
         d = self.to_dict()
         tl = [(k + ": " + json.dumps(d[k], indent=2)) for k in d]
@@ -46,6 +48,24 @@ class Serializable:
 
     def to_dict(self):
         return self.serialize_dict(vars(self))
+
+    @classmethod
+    def from_dict(cls, d):
+        import inspect
+
+        kwargs = {}
+        argspec = inspect.getfullargspec(cls.__init__)
+        ptypes = cls.parse_types or {}
+
+        for k in argspec.args:
+            if k not in d:
+                continue
+            if k in ptypes:
+                kwargs[k] = ptypes[k].from_dict(d[k])
+            else:
+                kwargs[k] = d[k]
+
+        return cls.__init__(**kwargs)
 
 
 class CromwellConfiguration(Serializable):

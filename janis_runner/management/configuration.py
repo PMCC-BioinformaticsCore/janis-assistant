@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Union
 import ruamel.yaml
 
 from janis_runner.utils import Logger
@@ -48,6 +48,8 @@ class JanisConfiguration:
 
     _managed = None  # type: JanisConfiguration
 
+    _configpath = None
+
     @staticmethod
     def manager():
         """
@@ -55,6 +57,37 @@ class JanisConfiguration:
         """
         if not JanisConfiguration._managed:
             JanisConfiguration._managed = JanisConfiguration()
+        return JanisConfiguration._managed
+
+    @staticmethod
+    def initial_configuration(potential_paths: Optional[Union[str, List[str]]]):
+
+        paths_to_check = []
+        if potential_paths:
+            if isinstance(potential_paths, list):
+                paths_to_check.extend(potential_paths)
+            else:
+                paths_to_check.append(potential_paths)
+
+        default_path = EnvVariables.config_path.resolve(False)
+        if default_path:
+            paths_to_check.append(default_path)
+        paths_to_check.append(EnvVariables.config_path.default())
+
+        for p in paths_to_check:
+            if p:
+                p = os.path.expanduser(p)
+            if not os.path.exists(p):
+                continue
+
+            with open(os.path.expanduser(p)) as cp:
+                y = ruamel.yaml.safe_load(cp)
+                JanisConfiguration._managed = JanisConfiguration(y)
+                break
+
+        if not JanisConfiguration._managed:
+            JanisConfiguration._managed = JanisConfiguration()
+
         return JanisConfiguration._managed
 
     class JanisConfigurationEnvironment:
@@ -71,6 +104,7 @@ class JanisConfiguration:
     class JanisConfigurationCromwell:
         class Keys(HashableEnum):
             JarPath = "jar"
+            ConfigPath = "configPath"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -78,10 +112,16 @@ class JanisConfiguration:
             self.jarpath = JanisConfiguration.get_value_for_key(
                 d, self.Keys.JarPath, default
             )
+            self.configpath = JanisConfiguration.get_value_for_key(
+                d, self.Keys.ConfigPath, default
+            )
 
     def __init__(self, d: dict = None):
         default = self.default()
         d = d if d else {}
+
+        extra = "" if d is None else " from loaded config"
+        Logger.log("Instantiating JanisConfiguration" + extra)
 
         self.configdir = self.get_value_for_key(
             d, JanisConfiguration.Keys.ConfigDir, default
@@ -142,6 +182,7 @@ class JanisConfiguration:
             },
             JanisConfiguration.Keys.Cromwell: {
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
-                JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None
+                JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
+                JanisConfiguration.JanisConfigurationCromwell.Keys.ConfigPath: None,
             },
         }

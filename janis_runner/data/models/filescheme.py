@@ -1,7 +1,9 @@
 import abc
 import os
+
 import subprocess
 from enum import Enum
+from shutil import copyfile
 from typing import Optional, Callable
 
 from janis_runner.management import Archivable
@@ -76,11 +78,9 @@ class LocalFileScheme(FileScheme):
         super().__init__("local", FileScheme.FileSchemeType.local)
 
     def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        Logger.info(f"Hard linking {source} to {dest}")
         self.link_copy_or_fail(source, dest)
 
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        Logger.info(f"Hard linking {source} to {dest}")
         self.link_copy_or_fail(source, dest)
 
     @staticmethod
@@ -92,16 +92,13 @@ class LocalFileScheme(FileScheme):
         :return:
         """
         try:
-            import os
-
+            Logger.info(f"Hard linking {source} → {dest}")
             os.link(source, dest)
         except Exception as e:
-            Logger.warn(f"Couldn't link file: {source} > {dest}")
-            Logger.log(str(e))
-
-            from shutil import copyfile
+            Logger.warn("Couldn't link file: " + str(e))
 
             # if this fails, it should error
+            Logger.info(f"Copying file {source} → {dest}")
             copyfile(source, dest)
 
     @staticmethod

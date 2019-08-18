@@ -156,6 +156,7 @@ def fromjanis(
     **kwargs,
 ):
     cm = ConfigManager.manager()
+    jc = JanisConfiguration.manager()
 
     wf = resolve_tool(tool=workflow, name=name, from_toolshed=True, force=force)
     if not wf:
@@ -169,11 +170,16 @@ def fromjanis(
         inputsfile = get_file_from_searchname(inputs, ".")
         inputsdict = parse_dict(inputsfile)
 
+    env_raw = env or jc.environment.default
     environment = None
 
-    if env:
-        environment = cm.get_environment(env) if isinstance(env, str) else env
+    if env_raw:
+        environment = (
+            cm.get_environment(env_raw) if isinstance(env_raw, str) else env_raw
+        )
     else:
+        engine = engine or jc.engine
+
         eng = get_engine_from_eng(engine)
         fs = get_filescheme_from_fs(filescheme, **kwargs)
         environment = Environment(f"custom_{wf.id()}", eng, fs)

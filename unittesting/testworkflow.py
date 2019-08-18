@@ -1,8 +1,8 @@
 import unittest
 from abc import ABC
 
-from janis.runner.engines.cromwell.main import Cromwell
-from janis.runner.engines.engine import SyncTask, TaskStatus
+from janis_runner.engines.cromwell.main import Cromwell
+from janis_runner.engines.engine import SyncTask, TaskStatus
 
 
 class TestWorkflowCase(ABC, unittest.TestCase):
@@ -23,15 +23,21 @@ class TestWorkflowCase(ABC, unittest.TestCase):
 
 
 class TestDependencies(TestWorkflowCase):
-
     def test_bwamem(self):
-        task = SyncTask(engine=self.engine, source=TestDependencies.bwamem, inputs=TestDependencies.inps)
+        task = SyncTask(
+            engine=self.engine,
+            source=TestDependencies.bwamem,
+            inputs=TestDependencies.inps,
+        )
         print(task.outputs)
         self.assertBamEqual(task.outputs, "check")
 
     def test_deps(self):
-        task = SyncTask(engine=self.engine, source=TestDependencies.wdl_w_deps,
-                        dependencies=TestDependencies.wdl_dep)
+        task = SyncTask(
+            engine=self.engine,
+            source=TestDependencies.wdl_w_deps,
+            dependencies=TestDependencies.wdl_dep,
+        )
         print(task.outputs)
         self.assertEqual(task.status, TaskStatus.COMPLETED)
         self.assertTrue(True)
@@ -283,7 +289,10 @@ workflow test {
   call T.hello
 }"""
 
-    wdl_dep = [("tools/test.wdl", """
+    wdl_dep = [
+        (
+            "tools/test.wdl",
+            """
 task hello {
   String name = "World!"
 
@@ -296,7 +305,9 @@ task hello {
   output {
     File response = stdout()
   }
-}""")]
+}""",
+        )
+    ]
 
 
 if __name__ == "__main__":

@@ -1,21 +1,13 @@
 import threading
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Dict, Any, Optional, List
 
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management import Archivable
 from janis_runner.data.models.schema import TaskStatus, TaskMetadata
 
 
 class Engine(Archivable, ABC):
-    class EngineType(Enum):
-        cromwell = "cromwell"
-        cwltool = "cwltool"
-        toil = "toil"
-
-        def __str__(self):
-            return self.value
-
     def __init__(self, identifier: str, engtype: EngineType):
         self.identifier = identifier
         self.engtype = engtype

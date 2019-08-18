@@ -4,6 +4,8 @@ import json
 import ruamel.yaml
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
+
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 
 from janis_runner.data.models.schema import TaskStatus
@@ -188,8 +190,7 @@ def add_run_args(parser):
     )
     parser.add_argument(
         "--engine",
-        choices=["cromwell", "cwltool"],
-        default="cwltool",
+        choices=[EngineType.cwltool, EngineType.cromwell],
         help="Choose an engine to start",
     )
     parser.add_argument(

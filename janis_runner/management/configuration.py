@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Optional, List, Union
 import ruamel.yaml
 
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.utils import Logger
 
 
@@ -43,6 +44,7 @@ class JanisConfiguration:
         ConfigDir = "configDir"
         ExecutionDir = "executionDir"
         SearchPaths = "searchPaths"
+        Engine = "engine"
         Environment = "environment"
         Cromwell = "cromwell"
 
@@ -136,6 +138,7 @@ class JanisConfiguration:
             default[JanisConfiguration.Keys.Environment],
         )
 
+        self.engine = self.get_value_for_key(d, JanisConfiguration.Keys.Engine, default)
         self.cromwell = JanisConfiguration.JanisConfigurationCromwell(
             d.get(JanisConfiguration.Keys.Cromwell),
             default[JanisConfiguration.Keys.Cromwell],
@@ -180,6 +183,7 @@ class JanisConfiguration:
             JanisConfiguration.Keys.Environment: {
                 JanisConfiguration.JanisConfigurationEnvironment.Keys.Default: None
             },
+            JanisConfiguration.Keys.Engine: EngineType.cwltool,
             JanisConfiguration.Keys.Cromwell: {
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
                 JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,

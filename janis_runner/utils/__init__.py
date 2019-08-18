@@ -1,3 +1,4 @@
+import os.path
 from typing import Set
 
 from .logger import Logger
@@ -26,12 +27,13 @@ def generate_new_id(forbiddenids: Set[str]):
 
 
 def get_extension(fn):
-    if "." not in fn:
+    last_path_component = os.path.basename(fn)
+    if "." not in last_path_component:
         return None
-    idx = fn[::-1].index(".")
+    idx = last_path_component[::-1].index(".")
     if idx <= 0:
         return None
-    return fn[-idx:]
+    return last_path_component[-idx:]
 
 
 def second_formatter(secs):

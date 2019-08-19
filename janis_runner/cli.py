@@ -29,6 +29,7 @@ def process_args(sysargs=None):
         "metadata": do_metadata,
         "environment": do_environment,
         "query": do_query,
+        "config": do_configs,
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -51,6 +52,7 @@ def process_args(sysargs=None):
     add_metadata_args(subparsers.add_parser("metadata"))
     add_environment_args(subparsers.add_parser("environment"))
     add_query_args(subparsers.add_parser("query"))
+    add_config_args(subparsers.add_parser("config"))
 
     args = parser.parse_args(sysargs)
 
@@ -112,6 +114,11 @@ def add_metadata_args(parser):
 
 def add_abort_args(parser):
     parser.add_argument("tid", help="Task id")
+    return parser
+
+
+def add_config_args(parser):
+    # No options at the moment
     return parser
 
 
@@ -273,6 +280,13 @@ def add_query_args(parser):
         # choices=environments,
     )
     return parser
+
+
+def do_configs(parser):
+    outd = JanisConfiguration.default()
+    outs = ruamel.yaml.dump(outd, default_flow_style=False)
+
+    print(outs, file=sys.stdout)
 
 
 def do_version(_):

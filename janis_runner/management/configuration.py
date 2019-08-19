@@ -3,11 +3,17 @@ from enum import Enum
 from typing import Optional, List, Union
 import ruamel.yaml
 
-from janis_runner.engines.enginetypes import EngineType
+# from janis_runner.engines.enginetypes import EngineType
 from janis_runner.utils import Logger
 
 
 class HashableEnum(str, Enum):
+    def __str__(self):
+        return self.value
+
+    def to_yaml(self):
+        return self.value
+
     pass
     # def __hash__(self):
     #     return self.value.__hash__()
@@ -176,17 +182,30 @@ class JanisConfiguration:
     @staticmethod
     def default():
 
-        return {
+        deflt = {
             JanisConfiguration.Keys.ConfigDir: EnvVariables.config_dir.resolve(True),
             JanisConfiguration.Keys.ExecutionDir: EnvVariables.exec_dir.resolve(True),
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
             JanisConfiguration.Keys.Environment: {
                 JanisConfiguration.JanisConfigurationEnvironment.Keys.Default: None
             },
-            JanisConfiguration.Keys.Engine: EngineType.cwltool,
+            JanisConfiguration.Keys.Engine: "cwltool",
             JanisConfiguration.Keys.Cromwell: {
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
                 JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
                 JanisConfiguration.JanisConfigurationCromwell.Keys.ConfigPath: None,
             },
         }
+        return stringify_dict_keys_or_return_value(deflt)
+
+
+def stringify_dict_keys_or_return_value(d):
+    if isinstance(d, list):
+        return [stringify_dict_keys_or_return_value(dd) for dd in d]
+    if not isinstance(d, dict):
+        return d
+
+    out = {}
+    for k, v in d.items():
+        out[str(k)] = stringify_dict_keys_or_return_value(v)
+    return out

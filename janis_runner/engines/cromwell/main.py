@@ -132,8 +132,8 @@ class Cromwell(Engine):
                     "Service successfully started with pid=" + str(self.process.pid)
                 )
                 break
-            elif ansi_escape.mat:
-                raise Exception(cd)
+            # elif ansi_escape.match():
+            #     raise Exception(cd)
 
         self.is_started = True
 

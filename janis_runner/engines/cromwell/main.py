@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import tempfile
 import urllib.request
@@ -13,7 +14,7 @@ import time
 
 from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.schema import TaskMetadata
-from janis_runner.engines import EngineType
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import ProcessLogger, write_files_into_buffered_zip
 from janis_runner.utils.dateutil import DateUtil
@@ -31,6 +32,8 @@ from ..engine import Engine, TaskStatus, TaskBase
 CROMWELL_RELEASES = (
     "https://api.github.com/repos/broadinstitute/cromwell/releases/latest"
 )
+
+ansi_escape = re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]")
 
 
 class Cromwell(Engine):
@@ -129,6 +132,8 @@ class Cromwell(Engine):
                     "Service successfully started with pid=" + str(self.process.pid)
                 )
                 break
+            elif ansi_escape.mat:
+                raise Exception(cd)
 
         self.is_started = True
 

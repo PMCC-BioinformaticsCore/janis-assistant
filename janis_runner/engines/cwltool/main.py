@@ -9,7 +9,7 @@ from typing import Dict, Any
 import dateutil
 
 from janis_runner.data.models.schema import TaskMetadata
-from janis_runner.engines import EngineType
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine, TaskStatus, TaskBase
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger

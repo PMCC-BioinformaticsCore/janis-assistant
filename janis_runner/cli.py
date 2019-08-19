@@ -196,9 +196,7 @@ def add_run_args(parser):
         "See the list of environments with `janis environment list`",
     )
     parser.add_argument(
-        "--engine",
-        choices=[EngineType.cwltool, EngineType.cromwell],
-        help="Choose an engine to start",
+        "--engine", choices=EngineType.engines(), help="Choose an engine to start"
     )
     parser.add_argument(
         "-f",

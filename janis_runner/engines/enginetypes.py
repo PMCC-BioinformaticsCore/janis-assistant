@@ -8,3 +8,7 @@ class EngineType(Enum):
 
     def __str__(self):
         return self.value
+
+    @staticmethod
+    def engines():
+        return [EngineType.cwltool.value, EngineType.cromwell.value]

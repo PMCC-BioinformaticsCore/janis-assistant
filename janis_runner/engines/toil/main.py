@@ -3,7 +3,7 @@ import subprocess
 from typing import Dict, Any, Optional
 
 from janis_runner.data.models.schema import TaskMetadata, TaskStatus
-from janis_runner.engines import EngineType
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine
 from janis_runner.utils import Logger
 

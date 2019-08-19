@@ -3,6 +3,7 @@ import subprocess
 from typing import Dict, Any, Optional
 
 from janis_runner.data.models.schema import TaskMetadata, TaskStatus
+from janis_runner.engines import EngineType
 from janis_runner.engines.engine import Engine
 from janis_runner.utils import Logger
 
@@ -22,7 +23,7 @@ def read_stdout(process):
 
 class Toil(Engine):
     def __init__(self, tid, scale=None, loglevel=None):
-        super(Toil, self).__init__("toil-" + tid, Engine.EngineType.toil)
+        super(Toil, self).__init__("toil-" + tid, EngineType.toil)
         self.tid = tid
         self.scale: Optional[float] = scale
         self.loglevel = loglevel

@@ -59,7 +59,7 @@ class TasksDbProvider(DbProviderBase):
         if len(row) == 0:
             return None
 
-        return TaskRow.from_row(row[0])
+        return TaskRow.from_row(row)
 
     def get_all_tasks(self) -> [TaskRow]:
         return [
@@ -82,5 +82,5 @@ class TasksDbProvider(DbProviderBase):
 
     def remove_by_id(self, tid: str) -> None:
         self.cursor.execute(
-            f"DELETE {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+            f"DELETE FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
         )

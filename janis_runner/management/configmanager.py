@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
+from shutil import rmtree
 
 from typing import Dict, Optional, cast, List, Tuple, Union
 
@@ -61,17 +62,18 @@ class ConfigManager:
     def commit(self):
         return self.connection.commit()
 
-    def remove_task(self, task: Union[str, TaskRow]):
+    def remove_task(self, task: Union[str, TaskRow], keep_output: bool):
         if isinstance(task, str):
             task = self.taskDB.get_by_tid(task)
 
-        try:
-            TaskManager.from_path(task.outputdir, self)
-            return False
-        except:
-            pass
-        finally:
-            self.taskDB.remove_by_id(task.tid)
+        if not keep_output and os.path.exists(task.outputdir):
+            Logger.info("Removing " + task.outputdir)
+            rmtree(task.outputdir)
+        else:
+            Logger.info("Skipping output dir deletion, can't find: " + task.outputdir)
+
+        self.taskDB.remove_by_id(task.tid)
+        Logger.info("Deleted task: " + task.tid)
 
     def create_task(
         self,

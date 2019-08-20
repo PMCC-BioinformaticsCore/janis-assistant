@@ -32,6 +32,7 @@ def process_args(sysargs=None):
         "environment": do_environment,
         "query": do_query,
         "config": do_configs,
+        "rm": do_rm,
         "cleanup": do_cleanup,
     }
 
@@ -47,6 +48,7 @@ def process_args(sysargs=None):
 
     add_watch_args(subparsers.add_parser("watch"))
     add_abort_args(subparsers.add_parser("abort"))
+    add_rm_args(subparsers.add_parser("rm"))
 
     add_run_args(subparsers.add_parser("run"))
     add_translate_args(subparsers.add_parser("translate"))
@@ -118,6 +120,12 @@ def add_metadata_args(parser):
 
 def add_abort_args(parser):
     parser.add_argument("tid", help="Task id")
+    return parser
+
+
+def add_rm_args(parser):
+    parser.add_argument("tid", help="Task id to remove")
+    parser.add_argument("--keep", help="Keep output files", action="store_true")
     return parser
 
 
@@ -326,6 +334,10 @@ def do_abort(args):
     tid = args.tid
     tm = ConfigManager.manager().from_tid(tid)
     tm.abort()
+
+
+def do_rm(args):
+    ConfigManager.manager().remove_task(args.tid, keep_output=args.keep)
 
 
 def do_run(args):

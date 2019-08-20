@@ -71,13 +71,16 @@ class TaskDbManager:
                 value = [value]
             for v in value:
                 self.cursor.execute(
-                    "UPDATE info SET value = ? WHERE key = ?", (str(key), str(v))
+                    "UPDATE info SET value = ? WHERE key = ?", (str(v), str(key))
                 )
         self.commit()
 
     def get_meta_info(self, key: InfoKeys):
         self.cursor.execute("SELECT value FROM info WHERE key = ?", (str(key),))
-        return self.cursor.fetchone()[0]
+        only_one_row = self.cursor.fetchone()
+        if not only_one_row:
+            return None
+        return only_one_row[0]
 
     def get_all_meta_info(self):
         results = self.cursor.execute("SELECT key, value FROM info").fetchall()

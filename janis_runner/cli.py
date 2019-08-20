@@ -399,16 +399,19 @@ def do_query(args):
     prepared = [
         (
             tid,
+            t.database.get_meta_info(InfoKeys.status),
             t.database.get_meta_info(InfoKeys.name),
             t.database.get_meta_info(InfoKeys.start),
             t.path,
         )
         for tid, t in tasks.items()
     ]
-    prepared.sort(key=lambda p: p[2])
+    prepared.sort(key=lambda p: p[3])
 
     print(
-        tabulate.tabulate(prepared, headers=["TaskID", "start date", "name", "path"]),
+        tabulate.tabulate(
+            prepared, headers=["TaskID", "status", "name", "start date", "path"]
+        ),
         file=sys.stdout,
     )
 

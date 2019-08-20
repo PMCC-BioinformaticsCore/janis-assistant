@@ -117,9 +117,12 @@ class TaskManager:
 
         if not dryrun:
             # this happens for all workflows no matter what type
+            tm.database.update_meta_info(InfoKeys.status, TaskStatus.QUEUED)
             tm.submit_workflow_if_required(wf_evaluate, spec_translator)
             if watch:
                 tm.resume_if_possible(show_metadata=show_metadata)
+        else:
+            tm.database.update_meta_info(InfoKeys.status, "DRY-RUN")
 
         return tm
 
@@ -267,6 +270,7 @@ class TaskManager:
             import json
 
             meta = self.environment.engine.metadata(self.tid)
+            self.database.update_meta_info(InfoKeys.status, meta.status)
             with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
                 json.dump(meta.outputs, fp)
 
@@ -453,6 +457,7 @@ class TaskManager:
         return meta
 
     def abort(self) -> bool:
+        self.database.update_meta_info(InfoKeys.status, TaskStatus.TERMINATED)
         status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
         self.environment.engine.stop_engine()
         return status

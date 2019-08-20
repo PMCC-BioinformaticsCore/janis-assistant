@@ -2,7 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 
-from typing import Dict, Optional, cast, List, Tuple
+from typing import Dict, Optional, cast, List, Tuple, Union
 
 from janis_core import Workflow
 from janis_runner.data.models.filescheme import FileScheme
@@ -60,6 +60,18 @@ class ConfigManager:
 
     def commit(self):
         return self.connection.commit()
+
+    def remove_task(self, task: Union[str, TaskRow]):
+        if isinstance(task, str):
+            task = self.taskDB.get_by_tid(task)
+
+        try:
+            TaskManager.from_path(task.outputdir, self)
+            return False
+        except:
+            pass
+        finally:
+            self.taskDB.remove_by_id(task.tid)
 
     def create_task(
         self,

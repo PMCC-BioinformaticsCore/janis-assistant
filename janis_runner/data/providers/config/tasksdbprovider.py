@@ -79,3 +79,8 @@ class TasksDbProvider(DbProviderBase):
             task.to_row(),
         )
         self.commit()
+
+    def remove_by_id(self, tid: str) -> None:
+        self.cursor.execute(
+            f"DELETE {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+        )

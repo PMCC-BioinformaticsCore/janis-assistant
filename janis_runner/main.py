@@ -241,5 +241,11 @@ def get_filescheme_from_fs(fs, **kwargs):
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
 
 
+def cleanup():
+    raise NotImplementedError("Implementation coming soon")
+    # rows = ConfigManager.manager().taskDB.get_all_tasks()
+    # try:
+
+
 def validate_and_run_janis(wf, **kwargs):
     pass

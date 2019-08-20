@@ -12,7 +12,7 @@ from janis_runner.management.configuration import JanisConfiguration
 
 from janis_runner.data.models.schema import TaskStatus
 
-from janis_runner.main import fromjanis, translate, generate_inputs
+from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
@@ -32,6 +32,7 @@ def process_args(sysargs=None):
         "environment": do_environment,
         "query": do_query,
         "config": do_configs,
+        "cleanup": do_cleanup,
     }
 
     parser = argparse.ArgumentParser(description="Execute a workflow")
@@ -55,6 +56,7 @@ def process_args(sysargs=None):
     add_environment_args(subparsers.add_parser("environment"))
     add_query_args(subparsers.add_parser("query"))
     add_config_args(subparsers.add_parser("config"))
+    add_cleanup_args(subparsers.add_parser("cleanup"))
 
     args = parser.parse_args(sysargs)
 
@@ -121,6 +123,11 @@ def add_abort_args(parser):
 
 def add_config_args(parser):
     # No options at the moment
+    return parser
+
+
+def add_cleanup_args(parser):
+    parser.add_help("Remove janis tasks that can no longer be found")
     return parser
 
 
@@ -415,6 +422,10 @@ def do_translate(args):
         output_dir=args.output_dir,
         force=args.no_cache,
     )
+
+
+def do_cleanup(args):
+    cleanup()
 
 
 if __name__ == "__main__":

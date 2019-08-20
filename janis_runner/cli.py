@@ -56,7 +56,7 @@ def process_args(sysargs=None):
     add_environment_args(subparsers.add_parser("environment"))
     add_query_args(subparsers.add_parser("query"))
     add_config_args(subparsers.add_parser("config"))
-    add_cleanup_args(subparsers.add_parser("cleanup"))
+    # add_cleanup_args(subparsers.add_parser("cleanup"))
 
     args = parser.parse_args(sysargs)
 
@@ -127,7 +127,7 @@ def add_config_args(parser):
 
 
 def add_cleanup_args(parser):
-    parser.add_help("Remove janis tasks that can no longer be found")
+    # parser.add_help("Remove janis tasks that can no longer be found")
     return parser
 
 

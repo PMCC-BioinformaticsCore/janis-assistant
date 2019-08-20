@@ -15,6 +15,8 @@ class ProcessLogger(threading.Thread):
         self.should_terminate = True
 
     def run(self):
+        while True:
+            not self.process.ok
         try:
             for c in iter(
                 self.process.stdout.readline, "b"

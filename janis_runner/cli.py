@@ -2,9 +2,11 @@ import sys
 import argparse
 import json
 import ruamel.yaml
+import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
 
+from janis_runner.data.enums import InfoKeys
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 
@@ -272,11 +274,8 @@ def add_reconnect_args(parser):
 
 def add_query_args(parser):
     parser.add_argument("--status", help="workflow status", choices=TaskStatus.all())
-    parser.add_argument(
-        "--environment",
-        help="The environment the task is executing in. See the current list of environments with `janis environment list`",
-        # choices=environments,
-    )
+    parser.add_argument("--name", help="workflow name")
+
     return parser
 
 
@@ -387,8 +386,24 @@ def do_environment(args):
 
 def do_query(args):
     status = args.status
-    environment = args.environment
-    ConfigManager.manager().query_tasks(status, environment)
+    name = args.name
+    tasks = ConfigManager.manager().query_tasks(status=status, name=name)
+
+    prepared = [
+        (
+            tid,
+            t.database.get_meta_info(InfoKeys.name),
+            t.database.get_meta_info(InfoKeys.start),
+            t.path,
+        )
+        for tid, t in tasks.items()
+    ]
+    prepared.sort(key=lambda p: p[2])
+
+    print(
+        tabulate.tabulate(prepared, headers=["TaskID", "start date", "name", "path"]),
+        file=sys.stdout,
+    )
 
 
 def do_translate(args):

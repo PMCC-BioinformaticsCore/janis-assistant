@@ -49,11 +49,20 @@ class TaskManager:
         if not self.tid:
             self.tid = self.get_engine_tid()
 
-    def has(self, status: Optional[TaskStatus], environment: Optional[str]):
-        if environment and self.environment.identifier != environment:
-            return False
-
-        return True
+    def has(
+        self,
+        status: Optional[TaskStatus],
+        name: Optional[str] = None,
+        environment: Optional[str] = None,
+    ):
+        has = True
+        if status:
+            has = has and self.database.get_meta_info(InfoKeys.status) == status
+        if name:
+            has = has and self.database.get_meta_info(InfoKeys.name).lower().startswith(
+                name.lower()
+            )
+        return has
 
     @staticmethod
     def from_janis(

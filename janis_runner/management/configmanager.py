@@ -164,9 +164,29 @@ class ConfigManager:
     def get_engine(self, engid):
         return self.engineDB.get(engid)
 
-    def query_tasks(self, status, env):
-        tids: [TaskRow] = self.taskDB.get_all_tasks()
-        ms: List[Tuple[TaskRow, TaskManager]] = [
-            (t, TaskManager.from_path(t.outputdir, self)) for t in tids
-        ]
-        return [t.tid for (t, m) in ms if m.has(status=status, environment=env)]
+    def query_tasks(self, status, name) -> Dict[str, TaskManager]:
+        rows: [TaskRow] = self.taskDB.get_all_tasks()
+        ms = {}
+        failed = []
+        for row in rows:
+            try:
+                ms[row.tid] = TaskManager.from_path(row.outputdir, self)
+            except:
+                failed.append(row.tid)
+
+        if failed:
+            failedstr = ", ".join(failed)
+            Logger.info(
+                f"Couldn't get information for tasks: {failedstr}, run"
+                f"'janis cleanup' to clean up your tasks."
+            )
+
+        relevant = []
+
+        if not (status or name):
+            return ms
+
+        for (t, m) in ms.items():
+            if m.has(status=status, name=name):
+                relevant.append(t)
+        return {t: ms[t] for t in relevant}

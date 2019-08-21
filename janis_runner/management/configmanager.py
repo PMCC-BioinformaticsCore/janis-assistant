@@ -64,7 +64,10 @@ class ConfigManager:
 
     def remove_task(self, task: Union[str, TaskRow], keep_output: bool):
         if isinstance(task, str):
+            tid = task
             task = self.taskDB.get_by_tid(task)
+            if task is None:
+                raise Exception("Couldn't find task with ID = " + tid)
 
         if not keep_output and os.path.exists(task.outputdir):
             Logger.info("Removing " + task.outputdir)
@@ -75,20 +78,7 @@ class ConfigManager:
         self.taskDB.remove_by_id(task.tid)
         Logger.info("Deleted task: " + task.tid)
 
-    def create_task(
-        self,
-        wf: Workflow,
-        environment: Environment,
-        hints: Dict[str, str],
-        validation_requirements: Optional[ValidationRequirements],
-        outdir=None,
-        inputs_dict: dict = None,
-        dryrun=False,
-        watch=True,
-        show_metadata=True,
-        max_cores=None,
-        max_memory=None,
-    ) -> TaskManager:
+    def create_task_base(self, wf: Workflow, outdir=None):
         config = JanisConfiguration.manager()
         od = outdir if outdir else os.path.join(config.executiondir, wf.id())
 
@@ -104,12 +94,32 @@ class ConfigManager:
 
         dt = datetime.now().strftime("%Y%m%d_%H%M%S")
         task_path = os.path.join(od, "" if outdir else f"{dt}_{tid}/")
-        self.taskDB.insert_task(TaskRow(tid, task_path))
+        row = TaskRow(tid, task_path)
+        TaskManager.create_dir_structure(task_path)
+        self.taskDB.insert_task(row)
+
+        return row
+
+    def start_task(
+        self,
+        tid: str,
+        wf: Workflow,
+        task_path: str,
+        environment: Environment,
+        hints: Dict[str, str],
+        validation_requirements: Optional[ValidationRequirements],
+        inputs_dict: dict = None,
+        dryrun=False,
+        watch=True,
+        show_metadata=True,
+        max_cores=None,
+        max_memory=None,
+    ) -> TaskManager:
 
         return TaskManager.from_janis(
             tid,
-            outdir=task_path,
             wf=wf,
+            outdir=task_path,
             environment=environment,
             hints=hints,
             inputs_dict=inputs_dict,

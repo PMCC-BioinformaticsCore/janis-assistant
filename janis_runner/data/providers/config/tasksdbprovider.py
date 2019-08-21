@@ -4,6 +4,9 @@ from janis_runner.data.dbproviderbase import DbProviderBase
 
 
 # different to archivable
+from janis_runner.utils import Logger
+
+
 class TaskRow:
     def __init__(self, tid, outputdir):
         self.tid = tid
@@ -56,7 +59,7 @@ class TasksDbProvider(DbProviderBase):
         row = self.cursor.execute(
             f"SELECT * FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
         ).fetchone()
-        if len(row) == 0:
+        if row is None or len(row) == 0:
             return None
 
         return TaskRow.from_row(row)
@@ -81,6 +84,8 @@ class TasksDbProvider(DbProviderBase):
         self.commit()
 
     def remove_by_id(self, tid: str) -> None:
+        Logger.info(f"Removing '{tid}' from database")
         self.cursor.execute(
             f"DELETE FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
         )
+        self.commit()

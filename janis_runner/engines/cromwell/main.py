@@ -16,7 +16,11 @@ from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.schema import TaskMetadata
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
-from janis_runner.utils import ProcessLogger, write_files_into_buffered_zip
+from janis_runner.utils import (
+    ProcessLogger,
+    write_files_into_buffered_zip,
+    find_free_port,
+)
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
 from janis_runner.engines.cromwell.metadata import (
@@ -69,7 +73,41 @@ class Cromwell(Engine):
         self.cromwelljar = cromwelljar
         self.connect_to_instance = True if host else False
         self.is_started = self.connect_to_instance
-        self.host = host if host else "localhost:8000"
+
+        self.host = host
+        self.port = None
+
+        if not self.is_started:
+
+            # To avoid conflicts between version of Cromwell, we'll find an open
+            # port, and allow Cromwell to bind there.
+            self.port = find_free_port()
+            self.host = f"localhost:{self.port}"
+
+            jc = JanisConfiguration.manager()
+            localized_conf_path = os.path.join(confdir, "cromwell.conf")
+            if config:
+                lines = config
+                if isinstance(config, CromwellConfiguration):
+                    lines = config.output()
+                with open(localized_conf_path) as f:
+                    f.writelines(lines)
+
+            elif config_path:
+                shutil.copyfile(config_path, localized_conf_path)
+
+            elif jc.cromwell.config:
+                tmpl = jc.cromwell.config.get("template")
+                if not tmpl:
+                    raise Exception(
+                        "When configuring cromwell via janis config, a template is required"
+                    )
+                template = from_template(tmpl, jc.cromwell.config)
+                with open(localized_conf_path) as f:
+                    f.writelines(template.output())
+
+            elif jc.cromwell.configpath:
+                shutil.copyfile(jc.cromwell.configpath, localized_conf_path)
 
         self.config_path = config_path
         self.process = None
@@ -106,6 +144,10 @@ class Cromwell(Engine):
 
         Logger.info(f"Starting cromwell ({os.path.basename(cromwell_loc)})...")
         cmd = ["java", "-DLOG_MODE=pretty"]
+
+        if self.port:
+            cmd.append(f"-Dwebservice.port={self.port}")
+
         if self.config_path:
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)

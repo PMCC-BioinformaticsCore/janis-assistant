@@ -1,14 +1,16 @@
 import threading
+from typing import IO
 
 from janis_runner.utils.logger import Logger
 
 
 class ProcessLogger(threading.Thread):
-    def __init__(self, process, prefix):
+    def __init__(self, process, prefix, logfp):
         threading.Thread.__init__(self)
         self.should_terminate = False
         self.process = process
         self.prefix = prefix
+        self.logfp: IO = logfp
         self.start()
 
     def terminate(self):
@@ -26,6 +28,8 @@ class ProcessLogger(threading.Thread):
                 line = c.decode("utf-8").rstrip()
                 if not line:
                     continue
+                if self.logfp:
+                    self.logfp.write(line + "\n")
                 Logger.log(self.prefix + line)
         except KeyboardInterrupt:
             self.should_terminate = True

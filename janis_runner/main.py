@@ -165,6 +165,8 @@ def fromjanis(
     if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
 
+    row = cm.create_task_base(wf, outdir=output_dir)
+
     inputsdict = None
     if inputs:
         inputsfile = get_file_from_searchname(inputs, ".")
@@ -180,17 +182,22 @@ def fromjanis(
     else:
         engine = engine or jc.engine
 
-        eng = get_engine_from_eng(engine)
+        eng = get_engine_from_eng(
+            engine,
+            confdir=os.path.join(row.outputdir, "configuration"),
+            logfile=os.path.join(row.outputdir, "logs/engine.log"),
+        )
         fs = get_filescheme_from_fs(filescheme, **kwargs)
         environment = Environment(f"custom_{wf.id()}", eng, fs)
 
     try:
 
-        tm = cm.create_task(
+        tm = cm.start_task(
+            tid=row.tid,
             wf=wf,
             environment=environment,
             validation_requirements=validation_reqs,
-            outdir=output_dir,
+            task_path=row.outputdir,
             hints=hints,
             inputs_dict=inputsdict,
             dryrun=dryrun,
@@ -212,16 +219,19 @@ def fromjanis(
         raise e
 
 
-def get_engine_from_eng(eng, **kwargs):
+def get_engine_from_eng(eng, logfile, confdir, **kwargs):
     if isinstance(eng, Engine):
         return eng.start_engine()
 
     if eng == "cromwell":
         return Cromwell(
-            host=kwargs.get("cromwell_url"), cromwelljar=kwargs.get("cromwell_jar")
+            logfile=logfile,
+            confdir=confdir,
+            host=kwargs.get("cromwell_url"),
+            cromwelljar=kwargs.get("cromwell_jar"),
         ).start_engine()
 
-    return get_engine_type(eng)().start_engine()
+    return get_engine_type(eng)(logfile=logfile, confdir=confdir).start_engine()
 
 
 def get_filescheme_from_fs(fs, **kwargs):

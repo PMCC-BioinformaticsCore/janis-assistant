@@ -29,8 +29,8 @@ class CWLTool(Engine):
         {}
     )  # format: { [tid: string]: { start: DateTime, status: Status, outputs: [] } }
 
-    def __init__(self, identifier: str = "cwltool", options=None):
-        super().__init__(identifier, EngineType.cwltool)
+    def __init__(self, logfile, identifier: str = "cwltool", options=None):
+        super().__init__(identifier, EngineType.cwltool, logfile=logfile)
         self.options = options if options else []
         self.process = None
         self.pid = None
@@ -197,6 +197,7 @@ class CWLTool(Engine):
             line = c.decode("utf-8").rstrip()
             if not line.strip():
                 continue
+            self.logfp.write(line + "\n")
             Logger.log("cwltool: " + line)
             if b"Final process status is success" in c:
                 break

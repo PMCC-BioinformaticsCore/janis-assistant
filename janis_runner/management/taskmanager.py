@@ -41,7 +41,7 @@ class TaskManager:
         self.outdir_workflow = (
             self.get_task_path() + "workflow/"
         )  # handy to have as reference
-        self.create_output_structure()
+        self.create_dir_structure(self.path)
 
         self.database = TaskDbManager(self.get_task_path_safe())
         self.environment = environment
@@ -79,9 +79,6 @@ class TaskManager:
         max_cores=None,
         max_memory=None,
     ):
-
-        # create output folder
-        # create structure
 
         # output directory has been created
 
@@ -396,21 +393,29 @@ class TaskManager:
 
     @staticmethod
     def get_task_path_for(outdir: str):
-        extraback = "" if outdir.endswith("/") else "/"
-        return outdir + extraback
+        return outdir
 
     def get_task_path_safe(self):
         path = self.get_task_path()
         TaskManager._create_dir_if_needed(path)
         return path
 
-    def create_output_structure(self):
-        outputdir = self.get_task_path_safe()
-        folders = ["workflow", "metadata", "validation", "outputs", "logs"]
+    @staticmethod
+    def create_dir_structure(path):
+        outputdir = TaskManager.get_task_path_for(path)
+        folders = [
+            "workflow",
+            "metadata",
+            "validation",
+            "outputs",
+            "logs",
+            "configuration",
+        ]
+        TaskManager._create_dir_if_needed(path)
 
         # workflow folder
         for f in folders:
-            self._create_dir_if_needed(outputdir + f)
+            TaskManager._create_dir_if_needed(os.path.join(outputdir, f))
 
     def copy_logs_if_required(self):
         if not self.database.progress_has_completed(ProgressKeys.savedLogs):

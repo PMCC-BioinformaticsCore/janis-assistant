@@ -44,6 +44,8 @@ class Cromwell(Engine):
 
     def __init__(
         self,
+        logfile,
+        confdir,
         identifier="cromwell",
         host=None,
         cromwelljar=None,
@@ -51,7 +53,7 @@ class Cromwell(Engine):
         config=None,
     ):
 
-        super().__init__(identifier, EngineType.cromwell)
+        super().__init__(identifier, EngineType.cromwell, logfile=logfile)
 
         if config and not config_path:
             f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".conf", delete=False)
@@ -124,7 +126,9 @@ class Cromwell(Engine):
 
             if not cd:
                 continue
+
             Logger.log("Cromwell: " + cd)
+
             # self.stdout.append(str(c))
             if "service started on" in cd:
                 self.process_id = self.process.pid
@@ -138,7 +142,7 @@ class Cromwell(Engine):
         self.is_started = True
 
         if self.process:
-            self.logger = ProcessLogger(self.process, "Cromwell: ")
+            self.logger = ProcessLogger(self.process, "Cromwell: ", self.logfp)
         return self
 
     def stop_engine(self):

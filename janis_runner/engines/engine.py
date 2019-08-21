@@ -8,11 +8,15 @@ from janis_runner.data.models.schema import TaskStatus, TaskMetadata
 
 
 class Engine(Archivable, ABC):
-    def __init__(self, identifier: str, engtype: EngineType):
+    def __init__(self, identifier: str, engtype: EngineType, logfile=None):
         self.identifier = identifier
         self.engtype = engtype
         self.is_started = False
         self.process_id = None
+        self.logfile = logfile
+        self.logfp = None
+        if self.logfile:
+            self.logfp = open(self.logfile, "w+")
 
     def db_to_kwargs(self, keys: List[str] = None):
         k = ["engtype"]

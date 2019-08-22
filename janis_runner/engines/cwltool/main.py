@@ -29,7 +29,7 @@ class CWLTool(Engine):
         {}
     )  # format: { [tid: string]: { start: DateTime, status: Status, outputs: [] } }
 
-    def __init__(self, logfile, identifier: str = "cwltool", options=None):
+    def __init__(self, logfile=None, identifier: str = "cwltool", options=None):
         super().__init__(identifier, EngineType.cwltool, logfile=logfile)
         self.options = options if options else []
         self.process = None

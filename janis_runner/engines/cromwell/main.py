@@ -50,8 +50,8 @@ class Cromwell(Engine):
 
     def __init__(
         self,
-        logfile,
-        confdir,
+        logfile=None,
+        confdir=None,
         identifier="cromwell",
         host=None,
         cromwelljar=None,
@@ -86,6 +86,10 @@ class Cromwell(Engine):
             self.host = f"localhost:{self.port}"
 
             jc = JanisConfiguration.manager()
+
+            if not confdir:
+                confdir = tempfile.TemporaryDirectory().name
+
             self.config_path = os.path.join(confdir, "cromwell.conf")
             if config:
                 lines = config

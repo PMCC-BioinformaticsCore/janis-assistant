@@ -113,6 +113,7 @@ class JanisConfiguration:
         class Keys(HashableEnum):
             JarPath = "jar"
             ConfigPath = "configPath"
+            Config = "config"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -122,6 +123,10 @@ class JanisConfiguration:
             )
             self.configpath = JanisConfiguration.get_value_for_key(
                 d, self.Keys.ConfigPath, default
+            )
+
+            self.config = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Config, default
             )
 
     def __init__(self, d: dict = None):
@@ -194,6 +199,7 @@ class JanisConfiguration:
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
                 JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
                 JanisConfiguration.JanisConfigurationCromwell.Keys.ConfigPath: None,
+                JanisConfiguration.JanisConfigurationCromwell.Keys.Config: None,
             },
         }
         return stringify_dict_keys_or_return_value(deflt)

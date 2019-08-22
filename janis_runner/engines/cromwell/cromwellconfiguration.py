@@ -1,3 +1,4 @@
+import json
 from typing import Tuple, Any, Dict, Union
 
 from janis_runner.utils.logger import Logger
@@ -185,9 +186,10 @@ class CromwellConfiguration(Serializable):
                     default_runtime_attributes=None,
                     filesystems=None,
                     run_in_background=None,
+                    root=None,
                     **kwargs,
                 ):
-
+                    self.root = root
                     self.default_runtime_attributes = (
                         "default-runtime-attributes",
                         default_runtime_attributes,
@@ -232,14 +234,14 @@ class CromwellConfiguration(Serializable):
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
-                        runtime_attributes="""
-Int runtime_minutes = 600
-Int cpus = 2
-Int requested_memory_mb_per_core = 8000
-String? queue""".strip(),
+                        runtime_attributes="""\
+Int runtime_minutes = 1440
+Int? cpu = 1
+Int memory_mb = 3500
+String? docker""".strip(),
                         submit="""
     sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} ${"-p " + queue} \
-        ${"-n " + cpus} \
+        ${"-n " + cpu} \
         --mem-per-cpu=${requested_memory_mb_per_core} \
         --wrap "/usr/bin/env bash ${script}" """,
                         kill="scancel ${job_id}",
@@ -249,28 +251,60 @@ String? queue""".strip(),
                 )
 
             @classmethod
-            def slurm_singularity(cls):
+            def slurm_singularity(
+                cls,
+                singularityloadinstructions,
+                singularitycontainerdir,
+                buildinstructions,
+                jobemail,
+                jobqueues,
+            ):
                 slurm = cls.slurm()
+
+                emailextra = (
+                    f"--mail-user ${jobemail} --mail-type END" if jobemail else ""
+                )
 
                 slurm.config.runtime_attributes = (
                     slurm.config.runtime_attributes[0],
-                    """
-Int runtime_minutes = 600
-Int cpus = 2
-Int requested_memory_mb_per_core = 8000
-String? queue
+                    """\
+Int runtime_minutes = 1440
+Int? cpu = 1
+Int memory_mb = 3500
 String? docker""",
                 )
                 slurm.config.submit = None
                 slurm.config.submit_docker = (
                     "submit-docker",
-                    """
-module load Singularity/3.0.3-spartan_gcc-6.2.0
-IMAGE=${cwd}/${docker}.sif
-singularity build $IMAGE docker://${docker}
-sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \
-    -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \
-    --wrap "singularity exec -B ${cwd}:${docker_cwd} $IMAGE ${job_shell} ${script}" """,
+                    f"""
+            {singularityloadinstructions}
+            
+            docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
+            image={singularitycontainerdir}/$docker_subbed.sif
+            lock_path={singularitycontainerdir}/$docker_subbed.lock
+
+            if [ ! -f "$image" ]; then
+              (
+              flock --exclusive 200 1>&2
+              if [ ! -f "$image" ]; then
+                {buildinstructions}
+              fi
+              ) 200>$lock_path
+            fi
+
+            # Submit the script to SLURM
+            sbatch \\
+                -p {','.join(jobqueues)} \\
+                -J ${{job_name}}-cpu-${{cpu}}-mem-${{memory_mb}} \\
+                -D ${{cwd}} \\
+                -o ${{cwd}}/execution/stdout \\
+                -e ${{cwd}}/execution/stderr \\
+                -t ${{runtime_minutes}} \\
+                --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
+                --mem=${{memory_mb}} \\
+                {emailextra} \\
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}"
+              """,
                 )
                 return slurm
 
@@ -282,7 +316,7 @@ sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/s
                     slurm.config.runtime_attributes[0],
                     """
 Int runtime_minutes = 600
-Int cpus = 2
+Int cpu = 2
 Int requested_memory_mb_per_core = 8000
 String? queue
 String? docker""",
@@ -292,7 +326,7 @@ String? docker""",
                     slurm.config.submit_docker[0],
                     """
 sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
-    -t ${runtime_minutes} ${"-c " + cpus} --mem-per-cpu=${requested_memory_mb_per_core} \\
+    -t ${runtime_minutes} ${"-c " + cpu} --mem-per-cpu=${requested_memory_mb_per_core} \\
     --wrap "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" """,
                 )
                 return slurm
@@ -548,8 +582,6 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
 
 
 if __name__ == "__main__":
-    import json
-
     # config = CromwellConfiguration.udocker_slurm()
     # config = CromwellConfiguration.udocker_torque()
     config = CromwellConfiguration(
@@ -611,14 +643,14 @@ backend {
       config {
         runtime-attributes = \"""
         Int runtime_minutes = 600
-        Int cpus = 2
+        Int cpu = 2
         Int requested_memory_mb_per_core = 8000
         String queue = "short"
         ""\"
         
         submit = \"""
             sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} -p ${queue} \
-            ${"-c " + cpus} \
+            ${"-c " + cpu} \
             --mem-per-cpu=${requested_memory_mb_per_core} \
             --wrap "/bin/bash ${script}"
         ""\"

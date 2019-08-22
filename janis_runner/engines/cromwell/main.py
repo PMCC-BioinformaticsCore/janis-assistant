@@ -11,9 +11,11 @@ import requests
 import signal
 import subprocess
 import time
+import shutil
 
 from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.schema import TaskMetadata
+from janis_runner.engines.cromwell.configtemplates import from_template
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import (
@@ -29,7 +31,7 @@ from janis_runner.engines.cromwell.metadata import (
 )
 
 from .data_types import CromwellFile
-from .configurations import CromwellConfiguration
+from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
 
 
@@ -59,16 +61,11 @@ class Cromwell(Engine):
 
         super().__init__(identifier, EngineType.cromwell, logfile=logfile)
 
-        if config and not config_path:
-            f = tempfile.NamedTemporaryFile(mode="w+t", suffix=".conf", delete=False)
-            lines = config
-            if isinstance(config, CromwellConfiguration):
-                lines = config.output()
-            f.writelines(lines)
-            f.seek(0)
-            config_path = f.name
-        else:
-            config_path = JanisConfiguration.manager().cromwell.configpath
+        # Heirarchy of configs:
+        #   - Passed in config
+        #   - Passed in configPath
+        #   - Config available from JanisConfiguration
+        #   - ConfigPath available from JanisConfiguration
 
         self.cromwelljar = cromwelljar
         self.connect_to_instance = True if host else False
@@ -76,6 +73,10 @@ class Cromwell(Engine):
 
         self.host = host
         self.port = None
+        self.config_path = None
+        self.process = None
+        self.logger = None
+        self.stdout = []
 
         if not self.is_started:
 
@@ -85,16 +86,16 @@ class Cromwell(Engine):
             self.host = f"localhost:{self.port}"
 
             jc = JanisConfiguration.manager()
-            localized_conf_path = os.path.join(confdir, "cromwell.conf")
+            self.config_path = os.path.join(confdir, "cromwell.conf")
             if config:
                 lines = config
                 if isinstance(config, CromwellConfiguration):
                     lines = config.output()
-                with open(localized_conf_path) as f:
+                with open(self.config_path, "w+") as f:
                     f.writelines(lines)
 
             elif config_path:
-                shutil.copyfile(config_path, localized_conf_path)
+                shutil.copyfile(config_path, self.config_path)
 
             elif jc.cromwell.config:
                 tmpl = jc.cromwell.config.get("template")
@@ -103,16 +104,11 @@ class Cromwell(Engine):
                         "When configuring cromwell via janis config, a template is required"
                     )
                 template = from_template(tmpl, jc.cromwell.config)
-                with open(localized_conf_path) as f:
+                with open(self.config_path, "w+") as f:
                     f.writelines(template.output())
 
             elif jc.cromwell.configpath:
-                shutil.copyfile(jc.cromwell.configpath, localized_conf_path)
-
-        self.config_path = config_path
-        self.process = None
-        self.logger = None
-        self.stdout = []
+                shutil.copyfile(jc.cromwell.configpath, self.config_path)
 
     @staticmethod
     def from_url(identifier, url):

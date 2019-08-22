@@ -78,7 +78,7 @@ class Cromwell(Engine):
         self.logger = None
         self.stdout = []
 
-        if not self.is_started:
+        if not self.connect_to_instance:
 
             # To avoid conflicts between version of Cromwell, we'll find an open
             # port, and allow Cromwell to bind there.

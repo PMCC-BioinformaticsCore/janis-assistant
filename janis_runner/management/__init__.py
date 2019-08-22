@@ -21,7 +21,7 @@ class Archivable(abc.ABC):
 
     @classmethod
     def db_from_kwargs(cls, **kwargs):
-        init_kwargs = cls.get_required_input_params_for_cls(kwargs)
+        init_kwargs = cls.get_bound_init_params_for_cls(kwargs)
         # noinspection PyArgumentList
         self = cls(**init_kwargs)
 
@@ -30,6 +30,29 @@ class Archivable(abc.ABC):
                 continue
             self.__setattr__(k, v)
         return self
+
+    @classmethod
+    def get_bound_init_params_for_cls(cls, valuesdict):
+        argspec = inspect.getfullargspec(cls.__init__)
+        args, defaults = argspec.args, argspec.defaults
+
+        inspect_ignore_keys = {"self", "args", "kwargs"}
+        valid_args = [a for a in args if a not in inspect_ignore_keys]
+
+        kwargs = {}
+        nargs = len(valid_args)
+        nargs_that_are_missing_defaults = nargs - (len(defaults) if defaults else 0)
+
+        for i in range(nargs):
+            a = valid_args[i]
+            if a in valuesdict:
+                kwargs[a] = valuesdict[a]
+            elif a not in inspect_ignore_keys and i < nargs_that_are_missing_defaults:
+                raise Exception(
+                    f"The argument '{a}' was required by the initialiser for '{cls.__name__}' but was "
+                    "not present in the valuesdict during deserailization"
+                )
+        return kwargs
 
     @classmethod
     def get_required_input_params_for_cls(cls, valuesdict):

@@ -35,6 +35,6 @@ class ProcessLogger(threading.Thread):
             self.should_terminate = True
             print("Detected keyboard interrupt")
             # raise
-        except Exception:
+        except Exception as e:
             print("Detected another error")
-            # raise
+            raise e

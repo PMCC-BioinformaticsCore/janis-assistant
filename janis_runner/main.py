@@ -231,7 +231,7 @@ def get_engine_from_eng(eng, logfile, confdir, **kwargs):
             cromwelljar=kwargs.get("cromwell_jar"),
         ).start_engine()
 
-    return get_engine_type(eng)(logfile=logfile, confdir=confdir).start_engine()
+    return get_engine_type(eng)(logfile=logfile).start_engine()
 
 
 def get_filescheme_from_fs(fs, **kwargs):

@@ -41,8 +41,8 @@ def pmac(options: dict) -> CromwellConfiguration:
     ].config
     backend.root = exec_dir
     backend.filesystems = {
-        "local.localization": ["cached-copy", "hard-link", "soft-link", "copy"],
-        "caching.hashing-strategy": "path+modtime",
+        "local": {"localization": ["cached-copy", "hard-link", "soft-link", "copy"]},
+        "caching": {"hashing-strategy": "path+modtime"},
     }
 
     return config

@@ -463,8 +463,16 @@ class TaskManager:
 
     def abort(self) -> bool:
         self.database.update_meta_info(InfoKeys.status, TaskStatus.TERMINATED)
-        status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
-        self.environment.engine.stop_engine()
+        status = False
+        try:
+            status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
+        except Exception as e:
+            Logger.critical("Couldn't abort task from engine: " + str(e))
+        try:
+            self.environment.engine.stop_engine()
+        except Exception as e:
+            Logger.critical("Couldn't stop engine: " + str(e))
+
         return status
 
     @staticmethod

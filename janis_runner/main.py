@@ -142,7 +142,7 @@ def fromjanis(
     name: str = None,
     env: Union[str, Environment] = None,
     engine: Union[str, Engine] = None,
-    filescheme: Union[str, FileScheme] = None,
+    filescheme: Union[str, FileScheme] = LocalFileScheme(),
     validation_reqs=None,
     hints: Optional[Dict[str, str]] = None,
     output_dir: Optional[str] = None,
@@ -225,10 +225,13 @@ def get_engine_from_eng(eng, logfile, confdir, **kwargs):
         return eng.start_engine()
 
     if eng == "cromwell":
+        url = kwargs.get("cromwell_url")
+        if url:
+            Logger.info("Found cromwell_url: " + url)
         return Cromwell(
             logfile=logfile,
             confdir=confdir,
-            host=kwargs.get("cromwell_url"),
+            host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
         ).start_engine()
 

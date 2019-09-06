@@ -132,19 +132,20 @@ class Cromwell(Engine):
     def start_engine(self):
 
         if self.is_started:
-            return Logger.info("Engine has already been started")
+            Logger.info("Engine has already been started")
+            return self
 
         if self.connect_to_instance:
             self.is_started = True
-            return Logger.info(
-                "Cromwell environment discovered, skipping local instance"
-            )
+            Logger.info("Cromwell environment discovered, skipping local instance")
+            return self
 
         if self.process:
             self.is_started = True
-            return Logger.info(
+            Logger.info(
                 f"Discovered Cromwell instance (pid={self.process}), skipping start"
             )
+            return self
 
         Logger.log("Finding cromwell jar")
         cromwell_loc = self.resolve_jar(self.cromwelljar)
@@ -155,7 +156,7 @@ class Cromwell(Engine):
         if self.port:
             cmd.append(f"-Dwebservice.port={self.port}")
 
-        if self.config_path:
+        if self.config_path and os.path.exists(self.config_path):
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)
         cmd.extend(["-jar", cromwell_loc, "server"])

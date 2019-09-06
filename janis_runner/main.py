@@ -186,6 +186,7 @@ def fromjanis(
             engine,
             confdir=os.path.join(row.outputdir, "configuration"),
             logfile=os.path.join(row.outputdir, "logs/engine.log"),
+            **kwargs,
         )
         fs = get_filescheme_from_fs(filescheme, **kwargs)
         environment = Environment(f"custom_{wf.id()}", eng, fs)

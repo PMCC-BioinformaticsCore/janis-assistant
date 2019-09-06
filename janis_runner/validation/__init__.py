@@ -24,7 +24,7 @@ class ValidationRequirements:
 def generate_validation_workflow_from_janis(
     tool: Workflow, validreqs: ValidationRequirements
 ):
-    from janis_core import Workflow, Input, Step, Output
+    from janis_core import Workflow
     from janis_bioinformatics.data_types import FastaWithDict
 
     failed_outputs, untyped_outputs = ensure_outputs_are_in_workflow_and_are_compatible(
@@ -45,44 +45,34 @@ def generate_validation_workflow_from_janis(
 
     w = Workflow(tool.id() + "_validated")
 
-    reference = Input("validatorReference", FastaWithDict(), validreqs.reference)
-    truth = Input("validatorTruthVCF", Vcf(), validreqs.truthVCF)
-    intervals = Input("validatorIntervals", Bed(optional=True), validreqs.intervals)
+    w.input("validatorReference", FastaWithDict, default=validreqs.reference)
+    w.input("validatorTruthVCF", Vcf, default=validreqs.truthVCF)
+    w.input("validatorIntervals", Bed(optional=True), default=validreqs.intervals)
 
-    inps = [
-        Input(
-            i.id(),
-            i.input.data_type,
-            value=i.input.value,
-            label=i.input.label,
-            include_in_inputs_file_if_none=i.input.include_in_inputs_file_if_none,
-        )
-        for i in tool._inputs
-    ]
-    otps = [Output(o.id(), o.output.data_type) for o in tool._outputs]
+    inpdict = {
+        i.id(): w.input(i.id(), i.datatype, default=i.default)
+        for i in tool.input_nodes.values()
+    }
+    toolstp = w.step(tool.id(), tool, **inpdict)
 
-    w.add_items(Step(tool.id(), tool))
-
-    w.add_edges([(i, f"{tool.id()}/{i.id()}") for i in inps])
-    w.add_edges([(f"{tool.id()}/{o.id()}", o) for o in otps])
+    [w.output(o.id(), source=toolstp[o.id()]) for o in tool.output_nodes.values()]
 
     for o in validreqs.fields:
 
         sid = "validator_" + o
-        val = Step(sid, HapPyValidator_0_3_9())
-        w.add_edges(
-            [
-                (f"{tool.id()}/{o}", val.compareVCF),
-                (reference, val.reference),
-                (truth, val.truthVCF),
-                (Input(o + "validation_prefix", String(), o), val.reportPrefix),
-                (intervals, val.intervals),
-            ]
+        valstp = w.step(
+            sid,
+            HapPyValidator_0_3_9,
+            compareVCF=toolstp[o],
+            reportPrefix=o,  # this will generate an input node with format validator_{o}_reportPrefix
+            reference=w.validatorReference,
+            truthVCF=w.validatorTruthVCF,
+            intervals=w.validatorIntervals,
         )
 
         # Connect all the outputs of the validator to an output
-        for vo in val.tool().outputs():
-            w.add_edge(f"{sid}/{vo.id()}", Output(f"validated_{o}_{vo.id()}"))
+        for vo in valstp.tool.outputs():
+            w.output(f"validated_{o}_{vo.id()}", source=valstp[vo.id()])
 
     return w
 

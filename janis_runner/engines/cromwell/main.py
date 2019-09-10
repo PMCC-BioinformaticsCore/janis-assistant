@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-import tempfile
 import urllib.request
 from glob import glob
 from typing import Optional
@@ -93,9 +92,6 @@ class Cromwell(Engine):
             self.host = f"localhost:{self.port}"
 
             jc = JanisConfiguration.manager()
-
-            if not confdir:
-                confdir = tempfile.TemporaryDirectory().name
 
             self.config_path = os.path.join(confdir, "cromwell.conf")
             if config:

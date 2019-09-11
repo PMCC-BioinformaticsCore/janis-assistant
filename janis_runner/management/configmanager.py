@@ -80,6 +80,14 @@ class ConfigManager:
 
     def create_task_base(self, wf: Workflow, outdir=None):
         config = JanisConfiguration.manager()
+
+        if (
+            outdir
+            and os.path.exists(outdir)
+            and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
+        ):
+            raise Exception("The specified output director '{outdir}' was not empty")
+
         od = outdir if outdir else os.path.join(config.executiondir, wf.id())
 
         forbiddenids = set(

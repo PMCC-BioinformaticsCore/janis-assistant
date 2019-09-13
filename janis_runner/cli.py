@@ -152,7 +152,7 @@ def add_inputs_args(parser):
         "-r",
         "--resources",
         action="store_true",
-        doc="Add resource overrides into inputs file",
+        help="Add resource overrides into inputs file",
     )
     parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
@@ -221,6 +221,12 @@ def add_run_args(parser):
         "--no-metadata",
         help="Turn off the metadata polling (that would clear the screen).",
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--keep-intermediate-files",
+        action="store_true",
+        help="Do not remove execution directory on successful complete",
     )
 
     parser.add_argument("--validation-reference", help="reference file for validation")
@@ -327,12 +333,12 @@ def do_metadata(args):
         for t in tasks:
             try:
                 print("--- TASKID = " + t.tid + " ---")
-                ConfigManager.manager().from_tid(t.tid).log_dbmetadata()
+                ConfigManager.manager().from_tid(t.tid).log_dbtaskinfo()
             except Exception as e:
                 print("\tThe following error ocurred: " + str(e))
     else:
         tm = ConfigManager.manager().from_tid(tid)
-        tm.log_dbmetadata()
+        tm.log_dbtaskinfo()
     Logger.unmute()
 
 
@@ -382,6 +388,7 @@ def do_run(args):
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
+        keep_intermediate_files=args.keep_intermediate_files,
     )
 
 

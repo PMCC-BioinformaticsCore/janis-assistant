@@ -13,6 +13,8 @@ class InfoKeys(Enum):
     environment = "environment"
     validating = "validating"
     engine_tid = "engineTid"
+    executiondir = "executionDir"
+    keepExecDir = "keepExecutionDir"
 
     def __str__(self):
         return self.value

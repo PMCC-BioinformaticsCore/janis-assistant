@@ -91,31 +91,8 @@ class Cromwell(Engine):
             self.port = find_free_port()
             self.host = f"localhost:{self.port}"
 
-            jc = JanisConfiguration.manager()
-
             self.config_path = os.path.join(confdir, "cromwell.conf")
-            if config:
-                lines = config
-                if isinstance(config, CromwellConfiguration):
-                    lines = config.output()
-                with open(self.config_path, "w+") as f:
-                    f.writelines(lines)
-
-            elif config_path:
-                shutil.copyfile(config_path, self.config_path)
-
-            elif jc.cromwell.config:
-                tmpl = jc.cromwell.config.get("template")
-                if not tmpl:
-                    raise Exception(
-                        "When configuring cromwell via janis config, a template is required"
-                    )
-                template = from_template(tmpl, jc.cromwell.config)
-                with open(self.config_path, "w+") as f:
-                    f.writelines(template.output())
-
-            elif jc.cromwell.configpath:
-                shutil.copyfile(jc.cromwell.configpath, self.config_path)
+            self.find_or_generate_config(config=config, config_path=config_path)
 
     @staticmethod
     def from_url(identifier, url):
@@ -472,6 +449,32 @@ class Cromwell(Engine):
         if task.status == TaskStatus.COMPLETED:
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
+
+    def find_or_generate_config(self, config, config_path):
+        jc = JanisConfiguration.manager()
+
+        if config:
+            lines = config
+            if isinstance(config, CromwellConfiguration):
+                lines = config.output()
+            with open(self.config_path, "w+") as f:
+                f.writelines(lines)
+
+        elif config_path:
+            shutil.copyfile(config_path, self.config_path)
+
+        elif jc.cromwell.config:
+            tmpl = jc.cromwell.config.get("template")
+            if not tmpl:
+                raise Exception(
+                    "When configuring cromwell via janis config, a template is required"
+                )
+            template = from_template(tmpl, jc.cromwell.config)
+            with open(self.config_path, "w+") as f:
+                f.writelines(template.output())
+
+        elif jc.cromwell.configpath:
+            shutil.copyfile(jc.cromwell.configpath, self.config_path)
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True

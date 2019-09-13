@@ -9,6 +9,7 @@ class ProgressKeys(Enum):
     copiedOutputs = "copiedOutputs"
     savedMetadata = "savedMetadata"
     savedLogs = "savedLogs"
+    cleanedUp = "cleanedUp"
 
     def __str__(self):
         return self.value

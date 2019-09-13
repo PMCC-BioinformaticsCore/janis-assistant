@@ -117,6 +117,7 @@ class CromwellMetadata:
             outputs=[],
             jobs=jobs,
             error=self.get_caused_by_text(),
+            executiondir=self.meta.get("workflowRoot"),
         )
 
     def get_caused_by_text(self):

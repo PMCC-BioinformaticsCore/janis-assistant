@@ -65,6 +65,7 @@ class TaskMetadata:
         outputs: List,
         jobs: List,
         error: Optional[str],
+        executiondir: Optional[str],
     ):
         self.tid = None  # needs to be set by taskManager
         self.outdir: str = None  # provided by TaskManager
@@ -79,6 +80,7 @@ class TaskMetadata:
         self.finish: datetime = finish
         self.outputs = outputs
         self.error = error
+        self.executionDir = executiondir
 
         self.jobs: List[JobMetadata] = jobs
 
@@ -95,7 +97,8 @@ WID:        {self.wid}
 Name:       {self.name}
 {((f"{nl}Engine:     " + self.engine_name) if self.engine_name else '')}{(f"{nl}Engine url: " + self.engine_url) if self.engine_url else ''}
 
-Path:       {self.outdir}
+Task Dir:   {self.outdir}
+Exec Dir:   {self.executionDir}
 
 Status:     {self.status}
 Duration:   {second_formatter(duration)}

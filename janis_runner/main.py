@@ -156,6 +156,7 @@ def fromjanis(
     max_cores=None,
     max_memory=None,
     force=False,
+    keep_intermediate_files=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -187,6 +188,7 @@ def fromjanis(
 
         eng = get_engine_from_eng(
             engine,
+            execdir=os.path.join(row.outputdir, "execution"),
             confdir=os.path.join(row.outputdir, "configuration"),
             logfile=os.path.join(row.outputdir, "logs/engine.log"),
             **kwargs,
@@ -209,6 +211,7 @@ def fromjanis(
             show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
+            keep_intermediate_files=keep_intermediate_files,
         )
 
         return tm.tid

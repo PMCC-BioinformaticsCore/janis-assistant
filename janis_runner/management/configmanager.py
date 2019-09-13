@@ -90,7 +90,7 @@ class ConfigManager:
             and os.path.exists(outdir)
             and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
         ):
-            raise Exception("The specified output director '{outdir}' was not empty")
+            raise Exception(f"The specified output director '{outdir}' was not empty")
 
         od = outdir if outdir else os.path.join(config.executiondir, wf.id())
 

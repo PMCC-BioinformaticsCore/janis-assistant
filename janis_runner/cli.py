@@ -90,24 +90,6 @@ def add_logger_args(parser):
     return parser
 
 
-def check_logger_args(args):
-    level = LogLevel.INFO
-    if args.debug:
-        level = LogLevel.DEBUG
-    if args.logInfo:
-        level = LogLevel.INFO
-    if args.logWarn:
-        level = LogLevel.WARNING
-    if args.logCritical:
-        level = LogLevel.CRITICAL
-    if args.logNone:
-        level = None
-    if args.logLevel:
-        level = LogLevel.from_str(args.logLevel)
-
-    Logger.set_console_level(level)
-
-
 def add_watch_args(parser):
     parser.add_argument("tid", help="Task id")
     return parser
@@ -166,6 +148,12 @@ def add_translate_args(parser):
 def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
+    parser.add_argument(
+        "-r",
+        "--resources",
+        action="store_true",
+        doc="Add resource overrides into inputs file",
+    )
     parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
     )
@@ -294,6 +282,24 @@ def add_query_args(parser):
     return parser
 
 
+def check_logger_args(args):
+    level = LogLevel.INFO
+    if args.debug:
+        level = LogLevel.DEBUG
+    if args.logInfo:
+        level = LogLevel.INFO
+    if args.logWarn:
+        level = LogLevel.WARNING
+    if args.logCritical:
+        level = LogLevel.CRITICAL
+    if args.logNone:
+        level = None
+    if args.logLevel:
+        level = LogLevel.from_str(args.logLevel)
+
+    Logger.set_console_level(level)
+
+
 def do_configs(parser):
     outd = JanisConfiguration.default()
     outs = ruamel.yaml.dump(outd, default_flow_style=False)
@@ -380,7 +386,12 @@ def do_run(args):
 
 
 def do_inputs(args):
-    outd = generate_inputs(args.workflow, name=args.name, force=args.no_cache)
+    outd = generate_inputs(
+        args.workflow,
+        name=args.name,
+        force=args.no_cache,
+        with_resources=args.resources,
+    )
 
     if args.json:
         outs = json.dumps(outd, sort_keys=True, indent=4, separators=(",", ": "))

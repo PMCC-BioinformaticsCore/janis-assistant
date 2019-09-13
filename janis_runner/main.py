@@ -37,7 +37,6 @@ def resolve_tool(
     from_toolshed=False,
     force=False,
 ):
-    wf = None
     if isinstance(tool, j.Tool):
         return tool
     elif isclass(tool) and (
@@ -50,18 +49,19 @@ def resolve_tool(
             f"Janis is not sure how to resolve a workflow of type: '{type(tool)}'"
         )
 
-    potential_resolve_type = FileScheme.get_type_by_prefix(tool.lower())
-    if potential_resolve_type:
+    fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
+    if fileschemewherelocated:
         Logger.info(
-            f"Detected remote workflow to localise from '{potential_resolve_type.__name__}'"
+            f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
         )
+        # Get some unique name for the workflow
         fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
         outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
         os.makedirs(outdir, exist_ok=True)
         dest = os.path.join(outdir, fn)
         Logger.log(f"Localising '{tool}' to '{dest}'")
 
-        potential_resolve_type("internal").cp_from(
+        fileschemewherelocated("internal").cp_from(
             tool.lower(),
             dest,
             lambda progress: print(f"Download progress: {progress}"),
@@ -127,14 +127,17 @@ def translate(
 
 
 def generate_inputs(
-    tool: Union[str, j.CommandTool, j.Workflow], name=None, force=False
+    tool: Union[str, j.CommandTool, j.Workflow],
+    name=None,
+    force=False,
+    with_resources=False,
 ):
     toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
 
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(toolref))
 
-    return toolref.generate_inputs_override()
+    return toolref.generate_inputs_override(with_resource_overrides=with_resources)
 
 
 def fromjanis(

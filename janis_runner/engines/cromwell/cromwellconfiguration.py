@@ -271,7 +271,9 @@ String? docker""".strip(),
 Int runtime_minutes = 1440
 Int? cpu = 1
 Int memory_mb = 3500
-String? docker""",
+String? docker
+String id = sub(sub(${cwd},".*-call",""),"\/","-")
+""",
                 )
                 slurm.config.submit = None
                 slurm.config.submit_docker = (
@@ -295,7 +297,7 @@ String? docker""",
             # Submit the script to SLURM
             sbatch \\
                 -p {','.join(jobqueues)} \\
-                -J ${{job_name}}-cpu-${{cpu}}-mem-${{memory_mb}} \\
+                -J ${{id}}-cpu-${{cpu}}-mem-${{memory_mb}} \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
                 -e ${{cwd}}/execution/stderr \\

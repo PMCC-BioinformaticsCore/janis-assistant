@@ -201,3 +201,7 @@ Janis stores a global SQLite database at `{configDir}/janis.db` of environments 
 (default: `~/.janis/janis.db`). When a task is started, a database and workflow files are copied 
 to a generated output folder  (default: `~/janis/execution/{workflowName}/${yyyymmdd_hhMM}_{tid}/task.db`).
  
+## v0.6.0
+
+Version v0.6.0 brings new backwards-incompatible changes to the metadata structure, as well as significant changes
+to the Janis API.

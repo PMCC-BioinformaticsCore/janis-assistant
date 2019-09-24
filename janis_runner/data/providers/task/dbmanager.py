@@ -10,6 +10,32 @@ from janis_runner.utils.logger import Logger
 
 
 class TaskDbManager:
+    """
+    v0.6.0 refactor.
+
+    The TaskDbManager is split into two major connections to the same database.
+
+    - Sqlite
+        - For any row data like: Jobs, Outputs, JobStatuses, etc
+        - Regular SQL data
+        - Need to define schema, so better for regular occuring data
+
+
+    - SqliteDict
+        - For KV data, like task metadata.
+        - Takes care of object serialisation (through Pickle)
+        - Stores everything as Blob in database, which means it's unreadable through database viewer
+        - Don't need to define schema.
+
+        As this is still regularly expected data, we'll create an object and override the setters / getters
+        to get from database. We could even use caching to avoid direct DB hits. We'll try to share this
+        object when getting metadata.
+
+
+    Every object here should have a class equivalent that the rest of the program interacts with.
+
+    """
+
     def __init__(self, path):
         self.exec_path = path
         self.connection = self.db_connection()

@@ -240,7 +240,8 @@ Int? cpu = 1
 Int memory_mb = 3500
 String? docker""".strip(),
                         submit="""
-    sbatch -J ${job_name} -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} ${"-p " + queue} \
+    jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
+    sbatch -J $jobname -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} ${"-p " + queue} \
         ${"-n " + cpu} \
         --mem-per-cpu=${requested_memory_mb_per_core} \
         --wrap "/usr/bin/env bash ${script}" """,
@@ -272,7 +273,6 @@ Int runtime_minutes = 1440
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker
-String id = sub(sub(${cwd},".*-call",""),"\/","-")
 """,
                 )
                 slurm.config.submit = None
@@ -295,9 +295,10 @@ String id = sub(sub(${cwd},".*-call",""),"\/","-")
             fi
 
             # Submit the script to SLURM
+            jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
             sbatch \\
                 -p {','.join(jobqueues)} \\
-                -J ${{id}}-cpu-${{cpu}}-mem-${{memory_mb}} \\
+                -J $jobname \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
                 -e ${{cwd}}/execution/stderr \\
@@ -305,7 +306,10 @@ String id = sub(sub(${cwd},".*-call",""),"\/","-")
                 --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
                 --mem=${{memory_mb}} \\
                 {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}"
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}")
+            # submit my afternotok dep
+            # >&2 echo $jobid
+
               """,
                 )
                 return slurm

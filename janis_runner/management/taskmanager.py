@@ -362,7 +362,7 @@ class TaskManager:
             and status == str(TaskStatus.COMPLETED)
         ):
             execdir = self.database.get_meta_info(InfoKeys.executiondir)
-            if execdir:
+            if execdir and execdir != "None":
                 Logger.info("Cleaning up execution directory")
                 self.environment.filescheme.rm_dir(execdir)
                 self.database.progress_mark_completed(ProgressKeys.cleanedUp)

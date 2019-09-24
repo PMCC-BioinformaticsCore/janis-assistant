@@ -130,14 +130,21 @@ def generate_inputs(
     tool: Union[str, j.CommandTool, j.Workflow],
     name=None,
     force=False,
+    additional_inputs=None,
     with_resources=False,
 ):
     toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
+    inputsdict = None
+    if additional_inputs:
+        inputsfile = get_file_from_searchname(additional_inputs, ".")
+        inputsdict = parse_dict(inputsfile)
 
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(toolref))
 
-    return toolref.generate_inputs_override(with_resource_overrides=with_resources)
+    return toolref.generate_inputs_override(
+        additional_inputs=inputsdict, with_resource_overrides=with_resources
+    )
 
 
 def fromjanis(
@@ -173,8 +180,11 @@ def fromjanis(
 
     inputsdict = None
     if inputs:
-        inputsfile = get_file_from_searchname(inputs, ".")
-        inputsdict = parse_dict(inputsfile)
+        if isinstance(inputs, dict):
+            inputsdict = inputs
+        else:
+            inputsfile = get_file_from_searchname(inputs, ".")
+            inputsdict = parse_dict(inputsfile)
 
     env_raw = env or jc.environment.default
     environment = None

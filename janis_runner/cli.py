@@ -157,6 +157,7 @@ def add_inputs_args(parser):
     parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
     )
+    parser.add_argument("--inputs", help="additional inputs to pull values from")
     parser.add_argument(
         "-n",
         "--name",
@@ -397,6 +398,7 @@ def do_inputs(args):
         args.workflow,
         name=args.name,
         force=args.no_cache,
+        additional_inputs=args.inputs,
         with_resources=args.resources,
     )
 

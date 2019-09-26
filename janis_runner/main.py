@@ -158,6 +158,7 @@ def fromjanis(
     output_dir: Optional[str] = None,
     dryrun: bool = False,
     inputs: Union[str, dict] = None,
+    required_inputs: dict = None,
     watch=True,
     show_metadata=True,
     max_cores=None,
@@ -176,15 +177,26 @@ def fromjanis(
     if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
 
-    row = cm.create_task_base(wf, outdir=output_dir)
-
-    inputsdict = None
+    # organise inputs
+    inputsdict = {}
     if inputs:
         if isinstance(inputs, dict):
             inputsdict = inputs
         else:
             inputsfile = get_file_from_searchname(inputs, ".")
             inputsdict = parse_dict(inputsfile)
+
+    if required_inputs:
+        reqkeys = set(required_inputs.keys())
+        inkeys = set(i.id() for i in wf.inputs())
+        invalid_keys = reqkeys - inkeys
+        if len(invalid_keys) > 0:
+            raise Exception(
+                f"There were unrecognised keys when creating inputs for {wf.id()}"
+            )
+        inputsdict.update(required_inputs)
+
+    row = cm.create_task_base(wf, outdir=output_dir)
 
     env_raw = env or jc.environment.default
     environment = None

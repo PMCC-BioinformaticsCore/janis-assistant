@@ -14,6 +14,7 @@ from janis_runner.data.models.schema import TaskStatus
 
 from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
+from janis_runner.utils import parse_additional_arguments
 from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
 
@@ -269,6 +270,8 @@ def add_run_args(parser):
         if issubclass(HintType, HintEnum):
             parser.add_argument("--hint-" + HintType.key(), choices=HintType.symbols())
 
+    parser.add_argument("extra_inputs", nargs=argparse.REMAINDER)
+
     return parser
 
 
@@ -371,6 +374,10 @@ def do_run(args):
         if k.startswith("hint_") and v is not None
     }
 
+    # the args.extra_inputs parameter are inputs that we MUST match
+    # we'll need to parse them manually and then pass them to fromjanis as requiring a match
+    required_inputs = parse_additional_arguments(args.extra_inputs)
+
     return fromjanis(
         args.workflow,
         name=args.name,
@@ -382,6 +389,7 @@ def do_run(args):
         output_dir=args.output_dir,
         dryrun=args.dryrun,
         inputs=args.inputs,
+        required_inputs=required_inputs,
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,
         watch=not args.no_watch,

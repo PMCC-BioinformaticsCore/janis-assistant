@@ -69,6 +69,10 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find task with ID = " + tid)
 
+        tm = TaskManager.from_path(task.tid, self)
+        tm.remove_exec_dir()
+        tm.database.close()
+
         if not keep_output and os.path.exists(task.outputdir):
             Logger.info("Removing " + task.outputdir)
             rmtree(task.outputdir)
@@ -80,6 +84,14 @@ class ConfigManager:
 
     def create_task_base(self, wf: Workflow, outdir=None):
         config = JanisConfiguration.manager()
+
+        if (
+            outdir
+            and os.path.exists(outdir)
+            and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
+        ):
+            raise Exception(f"The specified output director '{outdir}' was not empty")
+
         od = outdir if outdir else os.path.join(config.executiondir, wf.id())
 
         forbiddenids = set(
@@ -114,6 +126,7 @@ class ConfigManager:
         show_metadata=True,
         max_cores=None,
         max_memory=None,
+        keep_intermediate_files=False,
     ) -> TaskManager:
 
         return TaskManager.from_janis(
@@ -129,6 +142,7 @@ class ConfigManager:
             show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
+            keep_intermediate_files=keep_intermediate_files,
         )
 
     def from_tid(self, tid):

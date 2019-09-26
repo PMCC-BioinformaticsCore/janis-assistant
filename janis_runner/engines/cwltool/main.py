@@ -120,6 +120,7 @@ class CWLTool(Engine):
             outputs=meta.get("outputs") or [],
             jobs=[],
             error=None,
+            executiondir=None,
         )
 
     def start_from_task(self, task: TaskBase):
@@ -237,7 +238,7 @@ class CWLTool(Engine):
             "status": TaskStatus.PROCESSING,
         }
 
-        cmd = ["cwltool", *self.options, source_path]
+        cmd = ["cwltool", *self.options, "--disable-color", source_path]
 
         if input_path:
             cmd.append(input_path)
@@ -258,13 +259,13 @@ class CWLTool(Engine):
                 continue
 
             lowline = line.lower().lstrip()
-            if lowline.startswith("[1;30merror"):
+            if lowline.startswith("error"):
 
                 Logger.critical("cwltool: " + line)
                 errors.append(line)
-            elif lowline.startswith("[1;30mwarn"):
+            elif lowline.startswith("warn"):
                 Logger.warn("cwltool: " + line)
-            elif lowline.startswith("[1;30minfo"):
+            elif lowline.startswith("info"):
                 Logger.info("cwltool: " + line)
             else:
                 Logger.log("cwltool: " + line)

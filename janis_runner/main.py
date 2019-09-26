@@ -37,7 +37,6 @@ def resolve_tool(
     from_toolshed=False,
     force=False,
 ):
-    wf = None
     if isinstance(tool, j.Tool):
         return tool
     elif isclass(tool) and (
@@ -50,18 +49,19 @@ def resolve_tool(
             f"Janis is not sure how to resolve a workflow of type: '{type(tool)}'"
         )
 
-    potential_resolve_type = FileScheme.get_type_by_prefix(tool.lower())
-    if potential_resolve_type:
+    fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
+    if fileschemewherelocated:
         Logger.info(
-            f"Detected remote workflow to localise from '{potential_resolve_type.__name__}'"
+            f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
         )
+        # Get some unique name for the workflow
         fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
         outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
         os.makedirs(outdir, exist_ok=True)
         dest = os.path.join(outdir, fn)
         Logger.log(f"Localising '{tool}' to '{dest}'")
 
-        potential_resolve_type("internal").cp_from(
+        fileschemewherelocated("internal").cp_from(
             tool.lower(),
             dest,
             lambda progress: print(f"Download progress: {progress}"),
@@ -127,14 +127,24 @@ def translate(
 
 
 def generate_inputs(
-    tool: Union[str, j.CommandTool, j.Workflow], name=None, force=False
+    tool: Union[str, j.CommandTool, j.Workflow],
+    name=None,
+    force=False,
+    additional_inputs=None,
+    with_resources=False,
 ):
     toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
+    inputsdict = None
+    if additional_inputs:
+        inputsfile = get_file_from_searchname(additional_inputs, ".")
+        inputsdict = parse_dict(inputsfile)
 
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(toolref))
 
-    return toolref.generate_inputs_override()
+    return toolref.generate_inputs_override(
+        additional_inputs=inputsdict, with_resource_overrides=with_resources
+    )
 
 
 def fromjanis(
@@ -142,17 +152,19 @@ def fromjanis(
     name: str = None,
     env: Union[str, Environment] = None,
     engine: Union[str, Engine] = None,
-    filescheme: Union[str, FileScheme] = None,
+    filescheme: Union[str, FileScheme] = LocalFileScheme(),
     validation_reqs=None,
     hints: Optional[Dict[str, str]] = None,
     output_dir: Optional[str] = None,
     dryrun: bool = False,
     inputs: Union[str, dict] = None,
+    required_inputs: dict = None,
     watch=True,
     show_metadata=True,
     max_cores=None,
     max_memory=None,
     force=False,
+    keep_intermediate_files=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -165,12 +177,26 @@ def fromjanis(
     if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
 
-    row = cm.create_task_base(wf, outdir=output_dir)
-
-    inputsdict = None
+    # organise inputs
+    inputsdict = {}
     if inputs:
-        inputsfile = get_file_from_searchname(inputs, ".")
-        inputsdict = parse_dict(inputsfile)
+        if isinstance(inputs, dict):
+            inputsdict = inputs
+        else:
+            inputsfile = get_file_from_searchname(inputs, ".")
+            inputsdict = parse_dict(inputsfile)
+
+    if required_inputs:
+        reqkeys = set(required_inputs.keys())
+        inkeys = set(i.id() for i in wf.inputs())
+        invalid_keys = reqkeys - inkeys
+        if len(invalid_keys) > 0:
+            raise Exception(
+                f"There were unrecognised keys when creating inputs for {wf.id()}"
+            )
+        inputsdict.update(required_inputs)
+
+    row = cm.create_task_base(wf, outdir=output_dir)
 
     env_raw = env or jc.environment.default
     environment = None
@@ -184,8 +210,10 @@ def fromjanis(
 
         eng = get_engine_from_eng(
             engine,
+            execdir=os.path.join(row.outputdir, "execution"),
             confdir=os.path.join(row.outputdir, "configuration"),
             logfile=os.path.join(row.outputdir, "logs/engine.log"),
+            **kwargs,
         )
         fs = get_filescheme_from_fs(filescheme, **kwargs)
         environment = Environment(f"custom_{wf.id()}", eng, fs)
@@ -205,6 +233,7 @@ def fromjanis(
             show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
+            keep_intermediate_files=keep_intermediate_files,
         )
 
         return tm.tid
@@ -224,10 +253,13 @@ def get_engine_from_eng(eng, logfile, confdir, **kwargs):
         return eng.start_engine()
 
     if eng == "cromwell":
+        url = kwargs.get("cromwell_url")
+        if url:
+            Logger.info("Found cromwell_url: " + url)
         return Cromwell(
             logfile=logfile,
             confdir=confdir,
-            host=kwargs.get("cromwell_url"),
+            host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
         ).start_engine()
 

@@ -78,6 +78,7 @@ class TaskManager:
         show_metadata=True,
         max_cores=None,
         max_memory=None,
+        keep_intermediate_files=False,
     ):
 
         # output directory has been created
@@ -95,6 +96,8 @@ class TaskManager:
                 (InfoKeys.environment, environment.id()),
                 (InfoKeys.name, wf.id()),
                 (InfoKeys.start, datetime.now().isoformat()),
+                (InfoKeys.executiondir, None),
+                (InfoKeys.keepExecDir, keep_intermediate_files),
             ]
         )
         tm.database.persist_engine(environment.engine)
@@ -157,6 +160,7 @@ class TaskManager:
         self.wait_if_required(show_metadata=show_metadata)
         self.save_metadata_if_required()
         self.copy_outputs_if_required()
+        self.remove_exec_dir()
         self.environment.engine.stop_engine()
 
         print(
@@ -335,14 +339,35 @@ class TaskManager:
                     call("clear")
                     print(meta.format())
                 status = meta.status
-                self.database.update_meta_info(InfoKeys.status, status)
+                infos = [(InfoKeys.status, status)]
+                if meta.executionDir:
+                    infos.append((InfoKeys.executiondir, meta.executionDir))
+                self.database.update_meta_infos(infos)
+
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
         self.database.add_meta_info(InfoKeys.finish, datetime.now().isoformat())
         self.database.progress_mark_completed(ProgressKeys.workflowMovedToFinalState)
 
-    def log_dbmetadata(self):
+    def remove_exec_dir(self):
+        status = self.database.get_meta_info(InfoKeys.status)
+
+        keep_intermediate = (
+            self.database.get_meta_info(InfoKeys.keepExecDir).lower() == "true"
+        )
+        if (
+            not keep_intermediate
+            and status is not None
+            and status == str(TaskStatus.COMPLETED)
+        ):
+            execdir = self.database.get_meta_info(InfoKeys.executiondir)
+            if execdir and execdir != "None":
+                Logger.info("Cleaning up execution directory")
+                self.environment.filescheme.rm_dir(execdir)
+                self.database.progress_mark_completed(ProgressKeys.cleanedUp)
+
+    def log_dbtaskinfo(self):
         import tabulate
 
         # log all the metadata we have:
@@ -410,6 +435,7 @@ class TaskManager:
             "outputs",
             "logs",
             "configuration",
+            "execution",
         ]
         TaskManager._create_dir_if_needed(path)
 
@@ -463,8 +489,16 @@ class TaskManager:
 
     def abort(self) -> bool:
         self.database.update_meta_info(InfoKeys.status, TaskStatus.TERMINATED)
-        status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
-        self.environment.engine.stop_engine()
+        status = False
+        try:
+            status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
+        except Exception as e:
+            Logger.critical("Couldn't abort task from engine: " + str(e))
+        try:
+            self.environment.engine.stop_engine()
+        except Exception as e:
+            Logger.critical("Couldn't stop engine: " + str(e))
+
         return status
 
     @staticmethod

@@ -14,6 +14,7 @@ from janis_runner.data.models.schema import TaskStatus
 
 from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
+from janis_runner.utils import parse_additional_arguments
 from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
 
@@ -90,24 +91,6 @@ def add_logger_args(parser):
     return parser
 
 
-def check_logger_args(args):
-    level = LogLevel.INFO
-    if args.debug:
-        level = LogLevel.DEBUG
-    if args.logInfo:
-        level = LogLevel.INFO
-    if args.logWarn:
-        level = LogLevel.WARNING
-    if args.logCritical:
-        level = LogLevel.CRITICAL
-    if args.logNone:
-        level = None
-    if args.logLevel:
-        level = LogLevel.from_str(args.logLevel)
-
-    Logger.set_console_level(level)
-
-
 def add_watch_args(parser):
     parser.add_argument("tid", help="Task id")
     return parser
@@ -167,8 +150,15 @@ def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
     parser.add_argument(
+        "-r",
+        "--resources",
+        action="store_true",
+        help="Add resource overrides into inputs file",
+    )
+    parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
     )
+    parser.add_argument("--inputs", help="additional inputs to pull values from")
     parser.add_argument(
         "-n",
         "--name",
@@ -235,6 +225,12 @@ def add_run_args(parser):
         action="store_true",
     )
 
+    parser.add_argument(
+        "--keep-intermediate-files",
+        action="store_true",
+        help="Do not remove execution directory on successful complete",
+    )
+
     parser.add_argument("--validation-reference", help="reference file for validation")
     parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
     parser.add_argument("--validation-intervals", help="intervals to validate between")
@@ -274,6 +270,8 @@ def add_run_args(parser):
         if issubclass(HintType, HintEnum):
             parser.add_argument("--hint-" + HintType.key(), choices=HintType.symbols())
 
+    parser.add_argument("extra_inputs", nargs=argparse.REMAINDER)
+
     return parser
 
 
@@ -292,6 +290,24 @@ def add_query_args(parser):
     parser.add_argument("--name", help="workflow name")
 
     return parser
+
+
+def check_logger_args(args):
+    level = LogLevel.INFO
+    if args.debug:
+        level = LogLevel.DEBUG
+    if args.logInfo:
+        level = LogLevel.INFO
+    if args.logWarn:
+        level = LogLevel.WARNING
+    if args.logCritical:
+        level = LogLevel.CRITICAL
+    if args.logNone:
+        level = None
+    if args.logLevel:
+        level = LogLevel.from_str(args.logLevel)
+
+    Logger.set_console_level(level)
 
 
 def do_configs(parser):
@@ -321,12 +337,12 @@ def do_metadata(args):
         for t in tasks:
             try:
                 print("--- TASKID = " + t.tid + " ---")
-                ConfigManager.manager().from_tid(t.tid).log_dbmetadata()
+                ConfigManager.manager().from_tid(t.tid).log_dbtaskinfo()
             except Exception as e:
                 print("\tThe following error ocurred: " + str(e))
     else:
         tm = ConfigManager.manager().from_tid(tid)
-        tm.log_dbmetadata()
+        tm.log_dbtaskinfo()
     Logger.unmute()
 
 
@@ -358,6 +374,10 @@ def do_run(args):
         if k.startswith("hint_") and v is not None
     }
 
+    # the args.extra_inputs parameter are inputs that we MUST match
+    # we'll need to parse them manually and then pass them to fromjanis as requiring a match
+    required_inputs = parse_additional_arguments(args.extra_inputs)
+
     return fromjanis(
         args.workflow,
         name=args.name,
@@ -369,6 +389,7 @@ def do_run(args):
         output_dir=args.output_dir,
         dryrun=args.dryrun,
         inputs=args.inputs,
+        required_inputs=required_inputs,
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,
         watch=not args.no_watch,
@@ -376,11 +397,18 @@ def do_run(args):
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
+        keep_intermediate_files=args.keep_intermediate_files,
     )
 
 
 def do_inputs(args):
-    outd = generate_inputs(args.workflow, name=args.name, force=args.no_cache)
+    outd = generate_inputs(
+        args.workflow,
+        name=args.name,
+        force=args.no_cache,
+        additional_inputs=args.inputs,
+        with_resources=args.resources,
+    )
 
     if args.json:
         outs = json.dumps(outd, sort_keys=True, indent=4, separators=(",", ": "))

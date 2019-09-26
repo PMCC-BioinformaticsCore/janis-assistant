@@ -1,10 +1,12 @@
 import abc
 import os
+import shutil
 
 import subprocess
 from enum import Enum
 from shutil import copyfile
 from typing import Optional, Callable
+import urllib.request
 
 from janis_runner.management import Archivable
 from janis_runner.management.configuration import JanisConfiguration
@@ -41,6 +43,10 @@ class FileScheme(Archivable, abc.ABC):
 
     @abc.abstractmethod
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+        pass
+
+    @abc.abstractmethod
+    def rm_dir(self, directory):
         pass
 
     @staticmethod
@@ -83,6 +89,10 @@ class LocalFileScheme(FileScheme):
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         self.link_copy_or_fail(source, dest)
 
+    def rm_dir(self, directory):
+        Logger.info(f"Removing local directory '{directory}'")
+        return shutil.rmtree(directory)
+
     @staticmethod
     def link_copy_or_fail(source, dest):
         """
@@ -122,7 +132,6 @@ class HTTPFileScheme(FileScheme):
         report_progress: Optional[Callable[[float], None]],
         force=None,
     ):
-        import urllib.request
 
         if os.path.exists(dest):
             if not force:
@@ -134,6 +143,12 @@ class HTTPFileScheme(FileScheme):
 
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         raise NotImplementedError("Not implemented")
+
+    def rm_dir(self, directory):
+        import requests
+
+        Logger.info(f"Issuing HTTP.DELETE request for directory '{directory}'")
+        return requests.delete(directory)
 
 
 class SSHFileScheme(FileScheme):
@@ -170,6 +185,13 @@ class SSHFileScheme(FileScheme):
             f"Secure copying (SCP) from local:{source} to {self.connectionstring}:{dest}"
         )
         args = ["scp", source, self.connectionstring + ":" + dest]
+        subprocess.call(args)
+
+    def rm_dir(self, directory):
+        args = ["ssh", self.connectionstring, "rm -r " + directory]
+        Logger.info(
+            f"Secure deleting directory {self.connectionstring}:{directory} through ssh"
+        )
         subprocess.call(args)
 
 

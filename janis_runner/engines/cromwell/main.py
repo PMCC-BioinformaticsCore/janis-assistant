@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-import tempfile
 import urllib.request
 from glob import glob
 from typing import Optional
@@ -92,34 +91,8 @@ class Cromwell(Engine):
             self.port = find_free_port()
             self.host = f"localhost:{self.port}"
 
-            jc = JanisConfiguration.manager()
-
-            if not confdir:
-                confdir = tempfile.TemporaryDirectory().name
-
             self.config_path = os.path.join(confdir, "cromwell.conf")
-            if config:
-                lines = config
-                if isinstance(config, CromwellConfiguration):
-                    lines = config.output()
-                with open(self.config_path, "w+") as f:
-                    f.writelines(lines)
-
-            elif config_path:
-                shutil.copyfile(config_path, self.config_path)
-
-            elif jc.cromwell.config:
-                tmpl = jc.cromwell.config.get("template")
-                if not tmpl:
-                    raise Exception(
-                        "When configuring cromwell via janis config, a template is required"
-                    )
-                template = from_template(tmpl, jc.cromwell.config)
-                with open(self.config_path, "w+") as f:
-                    f.writelines(template.output())
-
-            elif jc.cromwell.configpath:
-                shutil.copyfile(jc.cromwell.configpath, self.config_path)
+            self.find_or_generate_config(config=config, config_path=config_path)
 
     @staticmethod
     def from_url(identifier, url):
@@ -132,19 +105,20 @@ class Cromwell(Engine):
     def start_engine(self):
 
         if self.is_started:
-            return Logger.info("Engine has already been started")
+            Logger.info("Engine has already been started")
+            return self
 
         if self.connect_to_instance:
             self.is_started = True
-            return Logger.info(
-                "Cromwell environment discovered, skipping local instance"
-            )
+            Logger.info("Cromwell environment discovered, skipping local instance")
+            return self
 
         if self.process:
             self.is_started = True
-            return Logger.info(
+            Logger.info(
                 f"Discovered Cromwell instance (pid={self.process}), skipping start"
             )
+            return self
 
         Logger.log("Finding cromwell jar")
         cromwell_loc = self.resolve_jar(self.cromwelljar)
@@ -155,7 +129,7 @@ class Cromwell(Engine):
         if self.port:
             cmd.append(f"-Dwebservice.port={self.port}")
 
-        if self.config_path:
+        if self.config_path and os.path.exists(self.config_path):
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)
         cmd.extend(["-jar", cromwell_loc, "server"])
@@ -475,6 +449,32 @@ class Cromwell(Engine):
         if task.status == TaskStatus.COMPLETED:
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
+
+    def find_or_generate_config(self, config, config_path):
+        jc = JanisConfiguration.manager()
+
+        if config:
+            lines = config
+            if isinstance(config, CromwellConfiguration):
+                lines = config.output()
+            with open(self.config_path, "w+") as f:
+                f.writelines(lines)
+
+        elif config_path:
+            shutil.copyfile(config_path, self.config_path)
+
+        elif jc.cromwell.config:
+            tmpl = jc.cromwell.config.get("template")
+            if not tmpl:
+                raise Exception(
+                    "When configuring cromwell via janis config, a template is required"
+                )
+            template = from_template(tmpl, jc.cromwell.config)
+            with open(self.config_path, "w+") as f:
+                f.writelines(template.output())
+
+        elif jc.cromwell.configpath:
+            shutil.copyfile(jc.cromwell.configpath, self.config_path)
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True

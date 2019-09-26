@@ -25,7 +25,7 @@ setup(
         "janis.extension": ["runner=janis_runner"],
     },
     install_requires=[
-        "janis-pipelines.core>=0.5.2",
+        "janis-pipelines.core>=0.6.0",
         "requests",
         "path.py",
         "python-dotenv",

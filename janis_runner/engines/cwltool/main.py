@@ -259,7 +259,7 @@ class CWLTool(Engine):
                 continue
 
             lowline = line.lower().lstrip()
-            if lowline.startswith("[1;30merror"):
+            if lowline.startswith("error"):
 
                 Logger.critical("cwltool: " + line)
                 errors.append(line)

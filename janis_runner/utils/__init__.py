@@ -1,6 +1,6 @@
 import socket
 import os.path
-from typing import Set
+from typing import Set, List, Union
 
 from .logger import Logger
 from .pathhelper import (
@@ -67,3 +67,65 @@ def find_free_port():
     s = socket.socket()
     s.bind(("", 0))  # Bind to a free port provided by the host.
     return s.getsockname()[1]  # Return the port number assigned.
+
+
+def convert_prefix_to_argname(prefix: str):
+    if not prefix:
+        return None
+    return prefix.lstrip("-").replace("-", "_")
+
+
+def try_parse_primitive_type(value: Union[str, list]):
+    if not value:
+        return value
+    if isinstance(value, list):
+        return [try_parse_primitive_type(val) for val in value]
+
+    vl = value.lower()
+    if vl == "true":
+        return True
+    if vl == "false":
+        return False
+
+    if vl.isdigit():
+        return int(vl)
+    if vl.startswith("-") and vl[1:].isdigit():
+        return -int(vl[1:])
+    try:
+        return float(vl)
+    except:
+        return value
+
+
+def parse_additional_arguments(largs: List[str]):
+    parsed = {}
+    if not largs:
+        return parsed
+
+    curprefix = None
+    curvalue = None
+
+    for arg in largs:
+        if arg.startswith("-"):
+            if curprefix:
+                parsed[curprefix] = (
+                    try_parse_primitive_type(curvalue) if curvalue else True
+                )
+                curvalue = None
+
+            curprefix = convert_prefix_to_argname(arg)
+        else:
+            parg = try_parse_primitive_type(arg)
+            if not curvalue:
+                curvalue = parg
+            elif curvalue:
+                curvalue = (
+                    (curvalue + [parg])
+                    if isinstance(curvalue, list)
+                    else [curvalue, parg]
+                )
+
+    if curprefix:
+        parsed[curprefix] = curvalue if curvalue else True
+
+    return parsed

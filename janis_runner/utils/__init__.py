@@ -78,6 +78,8 @@ def convert_prefix_to_argname(prefix: str):
 def try_parse_primitive_type(value: Union[str, list]):
     if not value:
         return value
+    if value == "None" or value == "null":
+        return None
     if isinstance(value, list):
         return [try_parse_primitive_type(val) for val in value]
 

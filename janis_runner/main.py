@@ -180,11 +180,14 @@ def fromjanis(
     # organise inputs
     inputsdict = {}
     if inputs:
-        if isinstance(inputs, dict):
-            inputsdict = inputs
-        else:
-            inputsfile = get_file_from_searchname(inputs, ".")
-            inputsdict = parse_dict(inputsfile)
+        if not isinstance(inputs, list):
+            inputs = [inputs]
+        for inp in inputs:
+            if isinstance(inp, dict):
+                inputsdict.update(inp)
+            else:
+                inputsfile = get_file_from_searchname(inp, ".")
+                inputsdict.update(parse_dict(inputsfile))
 
     if required_inputs:
         reqkeys = set(required_inputs.keys())

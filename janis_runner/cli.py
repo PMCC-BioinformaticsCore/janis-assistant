@@ -187,6 +187,7 @@ def add_run_args(parser):
         "--inputs",
         help="File of inputs (matching the workflow) to override, these inputs will "
         "take precedence over inputs declared in the workflow",
+        action="append",
     )
 
     parser.add_argument(
@@ -270,7 +271,7 @@ def add_run_args(parser):
         if issubclass(HintType, HintEnum):
             parser.add_argument("--hint-" + HintType.key(), choices=HintType.symbols())
 
-    parser.add_argument("extra_inputs", nargs=argparse.REMAINDER)
+    parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
 
     return parser
 

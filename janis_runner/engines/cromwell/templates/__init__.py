@@ -6,7 +6,7 @@ from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfigur
 from janis_runner.utils import try_parse_primitive_type
 
 templates = {"pmac": pmac}
-inspect_ignore_keys = {"self", "args", "kwargs"}
+inspect_ignore_keys = {"self", "args", "kwargs", "cls"}
 
 
 class TemplateInput:
@@ -26,59 +26,49 @@ def from_template(name, options) -> CromwellConfiguration:
         raise Exception(
             f"Couldn't find CromwellConfiguration template with name: '{name}'"
         )
-    return template(**template_kwarg_parser(template, options))
+    validate_template_params(template, options)
+
+    return template(**options)
 
 
 def get_schema_for_template(template):
-    argspec = inspect.getfullargspec(template)
+    argspec = inspect.signature(template)
 
-    args, defaults, annotations = argspec.args, argspec.defaults, argspec.annotations
-    ndefaults = len(defaults) if defaults is not None else 0
-    defaultsdict = (
-        {args[-i]: defaults[-i] for i in range(ndefaults)} if ndefaults else {}
-    )
     ins = []
-    for i in range(len(args)):
-        key = args[i]
-        if key in inspect_ignore_keys:
-            continue
+    for inp in argspec.parameters.values():
+        fdefault = inp.default
+        optional = fdefault is not inspect.Parameter.empty
+        default = fdefault if optional else None
+        ins.append(TemplateInput(inp.name, inp.annotation, optional, default))
 
-        default = defaultsdict.get(key)
-        optional = key in defaultsdict
-        intype = annotations.get(key, type(default) if default else None)
-        ins.append(TemplateInput(key, intype, optional, default))
     return ins
 
 
-def template_kwarg_parser(template, options: dict):
-    parsed_options = {}
+def validate_template_params(template, options: dict):
+    """
+    Ensure all the required params are provided, then just bind the args in the
+    template and the optionsdict. No need to worry about defaults.
 
-    argspec = inspect.getfullargspec(template)
+    :param template: Function
+    :param options: dict of values to provide
+    :return:
+    """
+    ins = get_schema_for_template(template)
 
-    args, defaults, annotations = argspec.args, argspec.defaults, argspec.annotations
-    ndefaults = len(defaults) if defaults is not None else 0
+    recognised_params = {i.id() for i in ins}
+    required_params = {i.id() for i in ins if not i.optional}
 
-    provided_keys = set(options.keys())
-    required_keys = set(args[1:-ndefaults]) if ndefaults > 0 else args[1:]
-    defaultsdict = (
-        {args[-i]: defaults[-i] for i in range(ndefaults)} if ndefaults else {}
-    )
+    provided_params = set(options.keys())
+    missing_params = required_params - provided_params
+    extra_params = provided_params - recognised_params
 
-    missing_keys = required_keys - provided_keys
-    if len(missing_keys) > 0:
+    if len(missing_params) > 0:
         raise Exception(
-            f"template: {template.__name__} is missing params: {', '.join(missing_keys)}"
+            f"Couldn't construct the template '{template.__name__}', missing the params: {', '.join(missing_params)}"
+        )
+    if len(extra_params) > 0:
+        raise Exception(
+            f"Couldn't construct the template '{template.__name__}', unrecognised params: {', '.join(extra_params)}"
         )
 
-    for i in range(len(args)):
-        key = args[i]
-        if key in inspect_ignore_keys:
-            continue
-
-        default = defaultsdict.get(key)
-        value = try_parse_primitive_type(options.get(key, default))
-        # Function should check if value is None, we've merely shown that
-        # there is a value there
-        parsed_options[key] = value
-
-    return parsed_options
+    return True

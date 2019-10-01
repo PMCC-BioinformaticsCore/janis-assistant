@@ -14,7 +14,7 @@ import shutil
 
 from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.schema import TaskMetadata
-from janis_runner.engines.cromwell.configtemplates import from_template
+from janis_runner.engines.cromwell.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import (

@@ -6,7 +6,7 @@ from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfigur
 from janis_runner.utils import try_parse_primitive_type
 
 templates = {"pmac": pmac}
-inspect_ignore_keys = {"self", "args", "kwargs", "cls"}
+inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}
 
 
 class TemplateInput:
@@ -36,6 +36,8 @@ def get_schema_for_template(template):
 
     ins = []
     for inp in argspec.parameters.values():
+        if inp.name in inspect_ignore_keys:
+            continue
         fdefault = inp.default
         optional = fdefault is not inspect.Parameter.empty
         default = fdefault if optional else None
@@ -55,7 +57,7 @@ def validate_template_params(template, options: dict):
     """
     ins = get_schema_for_template(template)
 
-    recognised_params = {i.id() for i in ins}
+    recognised_params = {i.id() for i in ins}.union({"template"})
     required_params = {i.id() for i in ins if not i.optional}
 
     provided_params = set(options.keys())

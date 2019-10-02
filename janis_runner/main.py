@@ -195,7 +195,7 @@ def fromjanis(
         invalid_keys = reqkeys - inkeys
         if len(invalid_keys) > 0:
             raise Exception(
-                f"There were unrecognised keys when creating inputs for {wf.id()}"
+                f"There were unrecognised keys when creating inputs for {wf.id()}, {', '.join(invalid_keys)}"
             )
         inputsdict.update(required_inputs)
 

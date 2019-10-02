@@ -26,9 +26,12 @@ def from_template(name, options) -> CromwellConfiguration:
         raise Exception(
             f"Couldn't find CromwellConfiguration template with name: '{name}'"
         )
-    validate_template_params(template, options)
 
-    return template(**options)
+    validate_template_params(template, options)
+    newoptions = {**options}
+    newoptions.pop("template")
+
+    return template(**newoptions)
 
 
 def get_schema_for_template(template):

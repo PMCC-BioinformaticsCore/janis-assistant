@@ -14,6 +14,7 @@ import shutil
 
 from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.schema import TaskMetadata
+from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.cromwell.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
@@ -24,7 +25,7 @@ from janis_runner.utils import (
 )
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
-from janis_runner.engines.cromwell.metadata import (
+from janis_runner.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
 )
@@ -492,7 +493,7 @@ class Cromwell(Engine):
             print(e)
             return None
 
-    def metadata(self, identifier, expand_subworkflows=True) -> Optional[TaskMetadata]:
+    def metadata(self, identifier, expand_subworkflows=True) -> Optional[WorkflowModel]:
         raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
         return raw.standard() if raw else raw
 
@@ -500,4 +501,4 @@ class Cromwell(Engine):
         url = self.url_abort(identifier)
         r = requests.post(url)
         Logger.log("Cromwell (Abort): " + str(r))
-        return TaskStatus.TERMINATED
+        return TaskStatus.ABORTED

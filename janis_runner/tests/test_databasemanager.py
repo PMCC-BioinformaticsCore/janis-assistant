@@ -3,7 +3,7 @@ import os
 from shutil import rmtree
 from unittest import TestCase
 
-from janis_runner.data.providers.task.dbmanager import TaskDbManager
+from janis_runner.data.providers.task.workflowdbmanager import WorkflowDbManager
 from janis_runner.data.enums import InfoKeys, ProgressKeys
 
 
@@ -15,7 +15,7 @@ class TestDatabaseManager(TestCase):
         if os.path.exists(self.path):
             rmtree(self.path)
         os.makedirs(self.path)
-        self.db = TaskDbManager(self.path)
+        self.db = WorkflowDbManager(self.path)
 
     def tearDown(self):
         from shutil import rmtree

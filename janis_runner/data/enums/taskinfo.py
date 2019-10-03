@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class InfoKeys(Enum):
-    taskId = "taskId"
+    workflowId = "wid"
     engineId = "engineId"
     fileschemeId = "fileschemeId"
 

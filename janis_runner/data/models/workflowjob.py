@@ -1,0 +1,135 @@
+from datetime import datetime
+from typing import Optional, Union, List, Tuple
+
+from janis_runner import TaskStatus
+from janis_runner.utils.dateutil import DateUtil
+from janis_runner.utils.logger import _bcolors
+
+
+class WorkflowJobModel:
+    def __init__(
+        self,
+        jid: str,
+        parentjid: Optional[str],
+        name: str,
+        batchid: str,
+        shard: Optional[int],
+        container: Optional[str],
+        start: Union[str, datetime],
+        finish: Optional[Union[str, datetime]],
+        backend: Optional[str],
+        cached: bool,
+        stdout: Optional[str],
+        stderr: Optional[str],
+    ):
+        self.jid = jid
+        self.parentjid = parentjid
+        self.name = name
+        self.batchid = batchid
+        self.shard = shard
+        self.container = container
+
+        self.backend = backend
+        self.cached = cached
+
+        self.stderr = stderr
+        self.stdout = stdout
+
+        self.start = start
+        self.finish = finish
+        if start and isinstance(start, str):
+            self.start = DateUtil.parse_iso(start)
+        if finish and isinstance(finish, str):
+            self.finish = DateUtil.parse_iso(finish)
+
+        self.jobs = None
+        self.events = None
+
+    @staticmethod
+    def from_row(row):
+        return WorkflowJobModel(*row)
+
+    def format(self, pre):
+
+        tb = "    "
+        fin = self.finish if self.finish else DateUtil.now()
+        time = (
+            round(DateUtil.secs_difference(self.start, fin)) if self.start else "N/A "
+        )
+        # percentage = (
+        #     (round(1000 * time / self.supertime) / 10)
+        #     if (self.start and self.supertime)
+        #     else None
+        # )
+        status = (
+            sorted(self.events, key=lambda e: e.timestamp)[-1].status
+            if self.events
+            else TaskStatus.PROCESSING
+        )
+
+        shard = f"-shard-{self.shard}" if self.shard is not None else ""
+        standard = pre + f"[{status.symbol()}] {self.name}{shard} ({time}s :: {0} %)"
+
+        col = ""
+
+        if status == TaskStatus.FAILED:
+            col = _bcolors.FAIL
+        elif status == TaskStatus.COMPLETED:
+            col = _bcolors.OKGREEN
+        # else:
+        # col = _bcolors.UNDERLINE
+
+        if self.jobs:
+            ppre = pre + tb
+            subs: List[WorkflowJobModel] = sorted(
+                self.jobs, key=lambda j: j.start if j.start else 0, reverse=False
+            )
+
+            return (
+                col
+                + standard
+                + "".join(["\n" + j.format(ppre) for j in subs])
+                + _bcolors.ENDC
+            )
+
+        fields: List[Tuple[str, str]] = []
+
+        if status == TaskStatus.COMPLETED:
+            if not self.finish:
+                raise Exception(f"Finish was null for completed task: {self.name}")
+            if self.cached:
+                fields.append(("from cache", str(self.cached)))
+
+        elif status == TaskStatus.RUNNING:
+            fields.extend([("jid", self.jid), ("backend", self.backend)])
+
+        elif status == TaskStatus.FAILED:
+            fields.extend([("stdout", self.stdout), ("stderr", self.stderr)])
+        elif status == TaskStatus.PROCESSING:
+            pass
+        elif status == TaskStatus.QUEUED:
+            pass
+
+        else:
+            return (
+                standard
+                + f" :: Unimplemented status: '{status}' for task: '{self.name}'"
+            )
+
+        ppre = "\n" + " " * len(pre) + 2 * tb
+        retval = standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
+
+        return col + retval + _bcolors.ENDC
+
+
+class WorkflowJobEventModel:
+    def __init__(self, jid: str, status: TaskStatus, timestamp: str):
+        self.jid = jid
+        self.status = status
+        self.timestamp = timestamp
+        if timestamp and isinstance(timestamp, str):
+            self.timestamp = DateUtil.parse_iso(timestamp)
+
+    @staticmethod
+    def from_row(row):
+        return WorkflowJobModel(*row)

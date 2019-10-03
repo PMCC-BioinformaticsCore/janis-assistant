@@ -1,5 +1,7 @@
-janis-pipelines
+janis-pipelines.core
 requests
 black
 pre-commit
 python-dotenv
+sqlitedict
+tabulate

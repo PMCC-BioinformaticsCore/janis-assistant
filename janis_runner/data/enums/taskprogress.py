@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class ProgressKeys(Enum):
+    start = "start"
     createOutputStructure = "createOutputStructure"
     saveWorkflow = "saveWorkflow"
     submitWorkflow = "submitWorkflow"

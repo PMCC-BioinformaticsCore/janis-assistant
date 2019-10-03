@@ -92,22 +92,22 @@ def add_logger_args(parser):
 
 
 def add_watch_args(parser):
-    parser.add_argument("tid", help="Task id")
+    parser.add_argument("wid", help="Task id")
     return parser
 
 
 def add_metadata_args(parser):
-    parser.add_argument("tid", help="Task id")
+    parser.add_argument("wid", help="Task id")
     return parser
 
 
 def add_abort_args(parser):
-    parser.add_argument("tid", help="Task id")
+    parser.add_argument("wid", help="Task id")
     return parser
 
 
 def add_rm_args(parser):
-    parser.add_argument("tid", help="Task id to remove")
+    parser.add_argument("wid", help="Task id to remove")
     parser.add_argument("--keep", help="Keep output files", action="store_true")
     return parser
 
@@ -282,7 +282,7 @@ def add_environment_args(parser):
 
 
 def add_reconnect_args(parser):
-    parser.add_argument("tid", help="task-id to reconnect to")
+    parser.add_argument("wid", help="task-id to reconnect to")
     return parser
 
 

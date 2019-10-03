@@ -270,6 +270,7 @@ String? docker""".strip(),
                     slurm.config.runtime_attributes[0],
                     """\
 Int runtime_minutes = 1440
+String kvruntime_value = ""
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker

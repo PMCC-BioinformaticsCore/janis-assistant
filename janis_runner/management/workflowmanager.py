@@ -6,23 +6,22 @@ A task manager will have reference to a database,
 
 """
 import os
-import json
 import time
 from datetime import datetime
 from subprocess import call
 from typing import Optional, List, Dict
 
-from janis_core.workflow.workflow import Workflow
 from janis_core.translations import get_translator
 from janis_core.translations.translationbase import TranslatorBase
+from janis_core.workflow.workflow import Workflow
 
-from janis_runner.data.providers.task.dbmanager import TaskDbManager
-from janis_runner.data.enums import InfoKeys, ProgressKeys
 from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
+from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
 from janis_runner.engines.cromwell import CromwellFile
 from janis_runner.environments.environment import Environment
+from janis_runner.management.workflowdbmanager import WorkflowDbManager
 from janis_runner.utils import get_extension, Logger
 from janis_runner.validation import (
     generate_validation_workflow_from_janis,
@@ -31,23 +30,23 @@ from janis_runner.validation import (
 
 
 class TaskManager:
-    def __init__(self, outdir: str, tid: str, environment: Environment = None):
+    def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
-        self.tid = tid
+        self.wid = wid
 
         # hydrate from here if required
-        self._engine_tid = None
+        self._engine_wid = None
         self.path = outdir
         self.outdir_workflow = (
             self.get_task_path() + "workflow/"
         )  # handy to have as reference
         self.create_dir_structure(self.path)
 
-        self.database = TaskDbManager(self.get_task_path_safe())
+        self.database = WorkflowDbManager(self.get_task_path_safe())
         self.environment = environment
 
-        if not self.tid:
-            self.tid = self.get_engine_tid()
+        if not self.wid:
+            self.wid = self.get_engine_wid()
 
     def has(
         self,
@@ -57,16 +56,16 @@ class TaskManager:
     ):
         has = True
         if status:
-            has = has and self.database.get_meta_info(InfoKeys.status) == status
+            has = has and self.database.workflowmetadata.status == status
         if name:
-            has = has and self.database.get_meta_info(InfoKeys.name).lower().startswith(
+            has = has and self.database.workflowmetadata.name.lower().startswith(
                 name.lower()
             )
         return has
 
     @staticmethod
     def from_janis(
-        tid: str,
+        wid: str,
         outdir: str,
         wf: Workflow,
         environment: Environment,
@@ -83,25 +82,19 @@ class TaskManager:
 
         # output directory has been created
 
-        environment.identifier += "_" + tid
+        environment.identifier += "_" + wid
 
-        tm = TaskManager(tid=tid, outdir=outdir, environment=environment)
-        tm.database.add_meta_infos(
-            [
-                (InfoKeys.taskId, tid),
-                (InfoKeys.status, TaskStatus.PROCESSING),
-                (InfoKeys.validating, validation_requirements is not None),
-                (InfoKeys.engineId, environment.engine.id()),
-                (InfoKeys.fileschemeId, environment.filescheme.identifier),
-                (InfoKeys.environment, environment.id()),
-                (InfoKeys.name, wf.id()),
-                (InfoKeys.start, datetime.now().isoformat()),
-                (InfoKeys.executiondir, None),
-                (InfoKeys.keepExecDir, keep_intermediate_files),
-            ]
-        )
-        tm.database.persist_engine(environment.engine)
-        tm.database.persist_filescheme(environment.filescheme)
+        tm = TaskManager(wid=wid, outdir=outdir, environment=environment)
+
+        tm.database.workflowmetadata.wid = wid
+        tm.database.workflowmetadata.status = TaskStatus.PROCESSING
+        tm.database.workflowmetadata.engine = environment.engine
+        tm.database.workflowmetadata.filescheme = environment.filescheme
+        tm.database.workflowmetadata.environment = environment.id()
+        tm.database.workflowmetadata.name = wf.id()
+        tm.database.workflowmetadata.start = datetime.now()
+        tm.database.workflowmetadata.executiondir = None
+        tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)
@@ -117,12 +110,12 @@ class TaskManager:
 
         if not dryrun:
             # this happens for all workflows no matter what type
-            tm.database.update_meta_info(InfoKeys.status, TaskStatus.QUEUED)
+            tm.database.workflowmetadata.status = TaskStatus.QUEUED
             tm.submit_workflow_if_required(wf_evaluate, spec_translator)
             if watch:
                 tm.resume_if_possible(show_metadata=show_metadata)
         else:
-            tm.database.update_meta_info(InfoKeys.status, "DRY-RUN")
+            tm.database.workflowmetadata.status = "DRY-RUN"
 
         return tm
 
@@ -130,31 +123,31 @@ class TaskManager:
     def from_path(path, config_manager):
         """
         :param config_manager:
-        :param path: Path should include the $tid if relevant
+        :param path: Path should include the $wid if relevant
         :return: TaskManager after resuming (might include a wait)
         """
         # get everything and pass to constructor
         # database path
 
         path = TaskManager.get_task_path_for(path)
-        db = TaskDbManager(path)
+        db = WorkflowDbManager(path)
 
-        tid = db.get_meta_info(InfoKeys.taskId)
-        envid = db.get_meta_info(InfoKeys.environment)
-        eng = db.get_engine()
-        fs = db.get_filescheme()
+        wid = db.workflowmetadata.wid  # .get_meta_info(InfoKeys.taskId)
+        envid = db.workflowmetadata.environment  # .get_meta_info(InfoKeys.environment)
+        eng = db.workflowmetadata.engine
+        fs = db.workflowmetadata.filesystem
         env = Environment(envid, eng, fs)
 
         db.close()
 
-        tm = TaskManager(outdir=path, tid=tid, environment=env)
+        tm = TaskManager(outdir=path, wid=wid, environment=env)
         return tm
 
     def resume_if_possible(self, show_metadata=True):
         # check status and see if we can resume
-        if not self.database.progress_has_completed(ProgressKeys.submitWorkflow):
+        if not self.database.progressDB.submitWorkflow:
             return Logger.critical(
-                f"Can't resume workflow with id '{self.tid}' as the workflow "
+                f"Can't resume workflow with id '{self.wid}' as the workflow "
                 "was not submitted to the engine"
             )
         self.wait_if_required(show_metadata=show_metadata)
@@ -164,7 +157,7 @@ class TaskManager:
         self.environment.engine.stop_engine()
 
         print(
-            f"Finished managing task '{self.tid}'. View the task outputs: file://{self.get_task_path()}"
+            f"Finished managing task '{self.wid}'. View the task outputs: file://{self.get_task_path()}"
         )
         return self
 
@@ -178,8 +171,8 @@ class TaskManager:
         max_cores=None,
         max_memory=None,
     ):
-        if self.database.progress_has_completed(ProgressKeys.saveWorkflow):
-            return Logger.info(f"Saved workflow from task '{self.tid}', skipping.")
+        if self.database.progressDB.saveWorkflow:
+            return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
 
         Logger.log(f"Saving workflow with id '{workflow.id()}'")
 
@@ -234,44 +227,43 @@ class TaskManager:
                 max_mem=max_memory,
             )
 
-        self.database.progress_mark_completed(ProgressKeys.saveWorkflow)
+        self.database.progressDB.saveWorkflow = True
         return workflow_to_evaluate
 
     def submit_workflow_if_required(self, wf, translator):
-        if self.database.progress_has_completed(ProgressKeys.submitWorkflow):
-            return Logger.log(f"Workflow '{self.tid}' has submitted finished, skipping")
+        if self.database.progressDB.submitWorkflow:
+            return Logger.log(f"Workflow '{self.wid}' has submitted finished, skipping")
 
         fn_wf = self.outdir_workflow + translator.workflow_filename(wf)
         fn_inp = self.outdir_workflow + translator.inputs_filename(wf)
         fn_deps = self.outdir_workflow + translator.dependencies_filename(wf)
 
-        Logger.log(f"Submitting task '{self.tid}' to '{self.environment.engine.id()}'")
-        self._engine_tid = self.environment.engine.start_from_paths(
-            self.tid, fn_wf, fn_inp, fn_deps
+        Logger.log(f"Submitting task '{self.wid}' to '{self.environment.engine.id()}'")
+        self._engine_wid = self.environment.engine.start_from_paths(
+            self.wid, fn_wf, fn_inp, fn_deps
         )
-        self.database.add_meta_info(InfoKeys.engine_tid, self._engine_tid)
+        self.database.workflowmetadata.engine_wid = self._engine_wid
         Logger.log(
-            f"Submitted workflow ({self.tid}), got engine id = '{self.get_engine_tid()}'"
+            f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
         )
-
-        self.database.progress_mark_completed(ProgressKeys.submitWorkflow)
+        self.database.progressDB.submitWorkflow = True
 
     def save_metadata_if_required(self):
-        if self.database.progress_has_completed(ProgressKeys.savedMetadata):
-            return Logger.log(f"Workflow '{self.tid}' has saved metadata, skipping")
+        if self.database.progressDB.savedMetadata:
+            return Logger.log(f"Workflow '{self.wid}' has saved metadata, skipping")
 
         if isinstance(self.environment.engine, Cromwell):
             import json
 
-            meta = self.environment.engine.raw_metadata(self.get_engine_tid()).meta
+            meta = self.environment.engine.raw_metadata(self.get_engine_wid()).meta
             with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
                 json.dump(meta, fp)
 
         elif isinstance(self.environment.engine, CWLTool):
             import json
 
-            meta = self.environment.engine.metadata(self.tid)
-            self.database.update_meta_info(InfoKeys.status, meta.status)
+            meta = self.environment.engine.metadata(self.wid)
+            self.database.workflowmetadata.status = meta.status
             with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
                 json.dump(meta.outputs, fp)
 
@@ -280,47 +272,46 @@ class TaskManager:
                 f"Don't know how to save metadata for engine '{self.environment.engine.id()}'"
             )
 
-        self.database.progress_mark_completed(ProgressKeys.savedMetadata)
+        self.database.progressDB.savedMetadata = True
 
     def copy_outputs_if_required(self):
-        if self.database.progress_has_completed(ProgressKeys.copiedOutputs):
-            return Logger.log(f"Workflow '{self.tid}' has copied outputs, skipping")
+        if self.database.progressDB.copiedOutputs:
+            return Logger.log(f"Workflow '{self.wid}' has copied outputs, skipping")
 
-        outputs = self.environment.engine.outputs_task(self.get_engine_tid())
+        outputs = self.environment.engine.outputs_task(self.get_engine_wid())
         if not outputs:
             return
 
-        is_validating = bool(self.database.get_meta_info(InfoKeys.validating))
-        outdir = self.get_task_path() + "outputs/"
-        valdir = self.get_task_path() + "validation/"
-
-        def output_is_validating(o):
-            return is_validating and o.split(".")[-1].startswith("validated_")
-
-        fs = self.environment.filescheme
-
-        with open(outdir + "outputs.json", "w+") as oofp:
-            json.dump(dict(outputs), oofp)
-
-        for outname, o in outputs.items():
-
-            od = valdir if output_is_validating(outname) else outdir
-
-            if isinstance(o, list):
-                self.copy_sharded_outputs(fs, od, outname, o)
-            elif isinstance(o, CromwellFile):
-                self.copy_cromwell_output(fs, od, outname, o)
-            elif isinstance(o, str):
-                self.copy_output(fs, od, outname, o)
-
-            else:
-                raise Exception(f"Don't know how to handle output with type: {type(o)}")
-
-        self.database.progress_mark_completed(ProgressKeys.copiedOutputs)
+        # outdir = self.get_task_path() + "outputs/"
+        # valdir = self.get_task_path() + "validation/"
+        #
+        # def output_is_validating(o):
+        #     return is_validating and o.split(".")[-1].startswith("validated_")
+        #
+        # fs = self.environment.filescheme
+        #
+        # with open(outdir + "outputs.json", "w+") as oofp:
+        #     json.dump(dict(outputs), oofp)
+        #
+        # for outname, o in outputs.items():
+        #
+        #     od = valdir if output_is_validating(outname) else outdir
+        #
+        #     if isinstance(o, list):
+        #         self.copy_sharded_outputs(fs, od, outname, o)
+        #     elif isinstance(o, CromwellFile):
+        #         self.copy_cromwell_output(fs, od, outname, o)
+        #     elif isinstance(o, str):
+        #         self.copy_output(fs, od, outname, o)
+        #
+        #     else:
+        #         raise Exception(f"Don't know how to handle output with type: {type(o)}")
+        #
+        # self.database.progress_mark_completed(ProgressKeys.copiedOutputs)
 
     def wait_if_required(self, show_metadata=True):
 
-        if self.database.progress_has_completed(ProgressKeys.workflowMovedToFinalState):
+        if self.database.progressDB.workflowMovedToFinalState:
             try:
                 meta = self.metadata()
                 if meta:
@@ -328,52 +319,50 @@ class TaskManager:
             except:
                 print("Failed to get metadata, but skipping because task has finished")
 
-            return Logger.log(f"Workflow '{self.tid}' has already finished, skipping")
+            return Logger.log(f"Workflow '{self.wid}' has already finished, skipping")
 
         status = None
 
         while status not in TaskStatus.final_states():
             meta = self.metadata()
             if meta:
+                self.database.save_metadata(meta)
                 if show_metadata:
                     call("clear")
                     print(meta.format())
                 status = meta.status
-                infos = [(InfoKeys.status, status)]
+                self.database.workflowmetadata.status = status
                 if meta.executionDir:
-                    infos.append((InfoKeys.executiondir, meta.executionDir))
-                self.database.update_meta_infos(infos)
+                    self.database.workflowmetadata.execution_dir = meta.executionDir
 
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
-        self.database.add_meta_info(InfoKeys.finish, datetime.now().isoformat())
-        self.database.progress_mark_completed(ProgressKeys.workflowMovedToFinalState)
+        self.database.workflowmetadata.finish = datetime.now()
+        self.database.progressDB.workflowMovedToFinalState = True
 
     def remove_exec_dir(self):
-        status = self.database.get_meta_info(InfoKeys.status)
+        status = self.database.workflowmetadata.status
 
-        keep_intermediate = (
-            self.database.get_meta_info(InfoKeys.keepExecDir).lower() == "true"
-        )
+        keep_intermediate = self.database.workflowmetadata.keepexecutiondir
         if (
             not keep_intermediate
             and status is not None
             and status == str(TaskStatus.COMPLETED)
         ):
-            execdir = self.database.get_meta_info(InfoKeys.executiondir)
+            execdir = self.database.workflowmetadata.execution_dir
             if execdir and execdir != "None":
                 Logger.info("Cleaning up execution directory")
                 self.environment.filescheme.rm_dir(execdir)
-                self.database.progress_mark_completed(ProgressKeys.cleanedUp)
+                self.database.progressDB.cleanedUp = True
 
     def log_dbtaskinfo(self):
         import tabulate
 
         # log all the metadata we have:
-        results = self.database.get_all_meta_info()
+        results = self.database.workflowmetadata.kvdb.items()
         header = ("Key", "Value")
-        res = tabulate.tabulate([header, ("tid", self.tid), *results.items()])
+        res = tabulate.tabulate([header, ("wid", self.wid), *results])
         print(res)
         return res
 
@@ -408,10 +397,10 @@ class TaskManager:
             for sec in out.secondary_files:
                 TaskManager.copy_output(filescheme, output_dir, filename, sec.location)
 
-    def get_engine_tid(self):
-        if not self._engine_tid:
-            self._engine_tid = self.database.get_meta_info(InfoKeys.engine_tid)
-        return self._engine_tid
+    def get_engine_wid(self):
+        if not self._engine_wid:
+            self._engine_wid = self.database.workflowmetadata.engine_wid
+        return self._engine_wid
 
     def get_task_path(self):
         return TaskManager.get_task_path_for(self.path)
@@ -444,8 +433,8 @@ class TaskManager:
             TaskManager._create_dir_if_needed(os.path.join(outputdir, f))
 
     def copy_logs_if_required(self):
-        if not self.database.progress_has_completed(ProgressKeys.savedLogs):
-            return Logger.log(f"Workflow '{self.tid}' has copied logs, skipping")
+        if not self.database.progressDB.savedLogs:
+            return Logger.log(f"Workflow '{self.wid}' has copied logs, skipping")
 
         meta = self.metadata()
 
@@ -467,17 +456,18 @@ class TaskManager:
             meta = self.metadata()
             if meta:
                 call("clear")
+                self.database.save_metadata(meta)
 
                 print(meta.format())
                 status = meta.status
             if status not in TaskStatus.final_states():
                 time.sleep(2)
 
-    def metadata(self) -> TaskMetadata:
-        meta = self.environment.engine.metadata(self.get_engine_tid())
+    def metadata(self) -> WorkflowModel:
+        meta = self.environment.engine.metadata(self.get_engine_wid())
         if meta:
-            meta.name = self.database.get_meta_info(InfoKeys.name)
-            meta.tid = self.tid
+            meta.name = self.database.workflowmetadata.name
+            meta.wid = self.wid
             meta.outdir = self.path
             meta.engine_name = str(self.environment.engine.engtype)
             meta.engine_url = (
@@ -488,10 +478,10 @@ class TaskManager:
         return meta
 
     def abort(self) -> bool:
-        self.database.update_meta_info(InfoKeys.status, TaskStatus.TERMINATED)
+        self.database.workflowmetadata.status = TaskStatus.ABORTED
         status = False
         try:
-            status = bool(self.environment.engine.terminate_task(self.get_engine_tid()))
+            status = bool(self.environment.engine.terminate_task(self.get_engine_wid()))
         except Exception as e:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:

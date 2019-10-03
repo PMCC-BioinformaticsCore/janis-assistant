@@ -2,6 +2,7 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
 
+from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management import Archivable
 from janis_runner.data.models.schema import TaskStatus, TaskMetadata
@@ -56,7 +57,7 @@ class Engine(Archivable, ABC):
         pass
 
     @abstractmethod
-    def metadata(self, identifier) -> TaskMetadata:
+    def metadata(self, identifier) -> WorkflowModel:
         pass
 
 

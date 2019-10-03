@@ -16,7 +16,7 @@ from janis_runner.data.providers.config.tasksdbprovider import TasksDbProvider, 
 from janis_runner.engines import Engine
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configuration import EnvVariables, JanisConfiguration
-from janis_runner.management.taskmanager import TaskManager
+from janis_runner.management.workflowmanager import WorkflowManager
 from janis_runner.utils import Logger, generate_new_id
 from janis_runner.validation import ValidationRequirements
 
@@ -69,7 +69,7 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find task with ID = " + tid)
 
-        tm = TaskManager.from_path(task.tid, self)
+        tm = WorkflowManager.from_path(task.tid, self)
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -95,7 +95,7 @@ class ConfigManager:
         od = outdir if outdir else os.path.join(config.executiondir, wf.id())
 
         forbiddenids = set(
-            t[0] for t in self.cursor.execute("SELECT tid FROM tasks").fetchall()
+            t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()
         )
 
         if os.path.exists(od):
@@ -107,7 +107,7 @@ class ConfigManager:
         dt = datetime.now().strftime("%Y%m%d_%H%M%S")
         task_path = os.path.join(od, "" if outdir else f"{dt}_{tid}/")
         row = TaskRow(tid, task_path)
-        TaskManager.create_dir_structure(task_path)
+        WorkflowManager.create_dir_structure(task_path)
         self.taskDB.insert_task(row)
 
         return row
@@ -127,9 +127,9 @@ class ConfigManager:
         max_cores=None,
         max_memory=None,
         keep_intermediate_files=False,
-    ) -> TaskManager:
+    ) -> WorkflowManager:
 
-        return TaskManager.from_janis(
+        return WorkflowManager.from_janis(
             tid,
             wf=wf,
             outdir=task_path,
@@ -147,11 +147,11 @@ class ConfigManager:
 
     def from_tid(self, tid):
         path = self.cursor.execute(
-            "SELECT outputdir FROM tasks where tid=?", (tid,)
+            "SELECT outputdir FROM tasks where wid=?", (tid,)
         ).fetchone()
         if not path:
             raise Exception(f"Couldn't find task with id='{tid}'")
-        return TaskManager.from_path(path[0], self)
+        return WorkflowManager.from_path(path[0], self)
 
     def insert_default_environments(self):
         for e in Environment.defaults():
@@ -202,13 +202,13 @@ class ConfigManager:
     def get_engine(self, engid):
         return self.engineDB.get(engid)
 
-    def query_tasks(self, status, name) -> Dict[str, TaskManager]:
+    def query_tasks(self, status, name) -> Dict[str, WorkflowManager]:
         rows: [TaskRow] = self.taskDB.get_all_tasks()
         ms = {}
         failed = []
         for row in rows:
             try:
-                ms[row.tid] = TaskManager.from_path(row.outputdir, self)
+                ms[row.tid] = WorkflowManager.from_path(row.outputdir, self)
             except:
                 failed.append(row.tid)
 

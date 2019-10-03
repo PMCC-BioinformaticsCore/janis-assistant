@@ -1,7 +1,9 @@
 import json
-from typing import Union
+from typing import Union, List
 
-from janis_runner.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
+from janis_runner.data.models.schema import TaskStatus, JobMetadata
+from janis_runner.data.models.workflow import WorkflowModel
+from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
 
@@ -94,7 +96,7 @@ class CromwellMetadata:
 
         return dcalls
 
-    def standard(self):
+    def standard(self) -> WorkflowModel:
         jobs = []
 
         s = DateUtil.parse_iso(self.meta.get("start"))
@@ -104,21 +106,22 @@ class CromwellMetadata:
             ff = f if f else DateUtil.now()
             st = int(DateUtil.secs_difference(s, ff))
 
+        jid = self.meta.get("id")
         for k in self.meta.get("calls"):
 
-            jobs.extend(self.parse_standard_call(k, self.meta["calls"][k], st))
+            jobs.extend(self.parse_standard_call(jid, k, self.meta["calls"][k], st))
 
-        return TaskMetadata(
-            wid=self.meta.get("id"),
+        model = WorkflowModel(
+            engine_wid=jid,
             name=self.meta.get("workflowName"),
+            start=s,
+            finish=f,
+            execution_dir=self.meta.get("workflowRoot"),
             status=cromwell_status_to_status(self.meta.get("status")),
-            start=DateUtil.parse_iso(self.meta.get("start")),
-            finish=DateUtil.parse_iso(self.meta.get("end")),
-            outputs=[],
-            jobs=jobs,
             error=self.get_caused_by_text(),
-            executiondir=self.meta.get("workflowRoot"),
         )
+        model.jobs = jobs
+        return model
 
     def get_caused_by_text(self):
         if "failures" not in self.meta:
@@ -146,11 +149,15 @@ class CromwellMetadata:
         return message
 
     @classmethod
-    def parse_standard_call(cls, name, calls, supertime):
+    def parse_standard_call(
+        cls, parentid, name, calls, supertime
+    ) -> List[WorkflowJobModel]:
         if len(calls) > 1:
             processed_calls = []
             for c in calls:
-                processed_calls.extend(cls.parse_standard_call(name, [c], supertime=0))
+                processed_calls.extend(
+                    cls.parse_standard_call(parentid, name, [c], supertime=0)
+                )
 
             statuses = set(s.status for s in processed_calls)
             status = list(statuses)[0] if len(statuses) == 1 else TaskStatus.RUNNING
@@ -167,8 +174,9 @@ class CromwellMetadata:
                 c.supertime = st
 
             return [
-                JobMetadata(
+                WorkflowJobModel(
                     name=name,
+                    parentjid=parentid,
                     status=status,
                     job_id=None,
                     backend=None,

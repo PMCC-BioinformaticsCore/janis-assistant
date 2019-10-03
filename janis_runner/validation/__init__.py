@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 
 from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
-from janis_core import Tool, Workflow, DataType, ToolOutput, String
+from janis_core import Tool, WorkflowBuilder, DataType, ToolOutput, String
 from janis_bioinformatics.data_types import Vcf, Bed
 
 from janis_runner.utils.logger import Logger
@@ -24,7 +24,6 @@ class ValidationRequirements:
 def generate_validation_workflow_from_janis(
     tool: Workflow, validreqs: ValidationRequirements
 ):
-    from janis_core import Workflow
     from janis_bioinformatics.data_types import FastaWithDict
 
     failed_outputs, untyped_outputs = ensure_outputs_are_in_workflow_and_are_compatible(
@@ -43,7 +42,7 @@ def generate_validation_workflow_from_janis(
             f"compatible with VCF: {', '.join(untyped_outputs)}"
         )
 
-    w = Workflow(tool.id() + "_validated")
+    w = WorkflowBuilder(tool.id() + "_validated")
 
     w.input("validatorReference", FastaWithDict, default=validreqs.reference)
     w.input("validatorTruthVCF", Vcf, default=validreqs.truthVCF)
@@ -55,24 +54,35 @@ def generate_validation_workflow_from_janis(
     }
     toolstp = w.step(tool.id(), tool, **inpdict)
 
-    [w.output(o.id(), source=toolstp[o.id()]) for o in tool.output_nodes.values()]
+    for o in tool.output_nodes:
+        w.output(
+            o.id(),
+            source=toolstp[o.id()],
+            output_tag=o.output_tag,
+            output_prefix=o.output_prefix,
+        )
 
     for o in validreqs.fields:
 
         sid = "validator_" + o
         valstp = w.step(
             sid,
-            HapPyValidator_0_3_9,
-            compareVCF=toolstp[o],
-            reportPrefix=o,  # this will generate an input node with format validator_{o}_reportPrefix
-            reference=w.validatorReference,
-            truthVCF=w.validatorTruthVCF,
-            intervals=w.validatorIntervals,
+            HapPyValidator_0_3_9(
+                compareVCF=toolstp[o],
+                reportPrefix=o,  # this will generate an input node with format validator_{o}_reportPrefix
+                reference=w.validatorReference,
+                truthVCF=w.validatorTruthVCF,
+                intervals=w.validatorIntervals,
+            ),
         )
 
         # Connect all the outputs of the validator to an output
         for vo in valstp.tool.outputs():
-            w.output(f"validated_{o}_{vo.id()}", source=valstp[vo.id()])
+            w.output(
+                f"validated_{o}_{vo.id()}",
+                source=valstp[vo.id()],
+                output_tag="validated",
+            )
 
     return w
 

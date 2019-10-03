@@ -27,7 +27,7 @@ class CWLTool(Engine):
     # one at once (at the moment).
     metadata_by_task_id = (
         {}
-    )  # format: { [tid: string]: { start: DateTime, status: Status, outputs: [] } }
+    )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [] } }
 
     def __init__(self, logfile=None, identifier: str = "cwltool", options=None):
         super().__init__(identifier, EngineType.cwltool, logfile=logfile)
@@ -276,11 +276,11 @@ class CWLTool(Engine):
                 elif "success" in line.lower():
                     finalstatus = TaskStatus.COMPLETED
                 else:
-                    finalstatus = TaskStatus.TERMINATED
+                    finalstatus = TaskStatus.ABORTED
                 break
 
             elif process.poll() is not None:
-                finalstatus = TaskStatus.TERMINATED
+                finalstatus = TaskStatus.ABORTED
                 Logger.warn(
                     f"CWLTool finished with rc={process.returncode} but janis "
                     f"was unable to capture the workflow status"

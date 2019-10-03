@@ -34,7 +34,7 @@ class TaskRow:
             - 'to_row'
             - 'from_row'
         """
-        return "tid", "outputdir"
+        return "wid", "outputdir"
 
 
 class TasksDbProvider(DbProviderBase):
@@ -49,7 +49,7 @@ class TasksDbProvider(DbProviderBase):
     def create_tasks_table_if_required(self) -> None:
         self.cursor.execute(
             f"""CREATE TABLE IF NOT EXISTS {TasksDbProvider.table_name}(
-            tid varchar(6) PRIMARY KEY, 
+            wid varchar(6) PRIMARY KEY, 
             outputdir text
         )"""
         )
@@ -57,7 +57,7 @@ class TasksDbProvider(DbProviderBase):
 
     def get_by_tid(self, tid) -> Optional[TaskRow]:
         row = self.cursor.execute(
-            f"SELECT * FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+            f"SELECT * FROM {TasksDbProvider.table_name} WHERE wid = ?", (tid,)
         ).fetchone()
         if row is None or len(row) == 0:
             return None
@@ -86,6 +86,6 @@ class TasksDbProvider(DbProviderBase):
     def remove_by_id(self, tid: str) -> None:
         Logger.info(f"Removing '{tid}' from database")
         self.cursor.execute(
-            f"DELETE FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+            f"DELETE FROM {TasksDbProvider.table_name} WHERE wid = ?", (tid,)
         )
         self.commit()

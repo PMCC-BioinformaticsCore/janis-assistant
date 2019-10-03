@@ -2,56 +2,11 @@ from enum import Enum
 from datetime import datetime
 from typing import List, Optional, Tuple
 
+from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.utils.dateutil import DateUtil
 
 from janis_runner.utils import second_formatter
 from janis_runner.utils.logger import _bcolors
-
-
-class TaskStatus(Enum):
-    PROCESSING = 0
-    QUEUED = 1
-    RUNNING = 2
-    COMPLETED = 3
-    FAILED = 4
-    TERMINATED = 5
-
-    @staticmethod
-    def all():
-        return [
-            TaskStatus.PROCESSING,
-            TaskStatus.QUEUED,
-            TaskStatus.RUNNING,
-            TaskStatus.COMPLETED,
-            TaskStatus.FAILED,
-            TaskStatus.TERMINATED,
-        ]
-
-    @staticmethod
-    def final_states():
-        return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.TERMINATED]
-
-    def __str__(self):
-        __str = {
-            TaskStatus.PROCESSING.value: "Processing",
-            TaskStatus.QUEUED.value: "Queued",
-            TaskStatus.RUNNING.value: "Running",
-            TaskStatus.COMPLETED.value: "Completed",
-            TaskStatus.FAILED.value: "Failed",
-            TaskStatus.TERMINATED.value: "Terminated",
-        }
-        return __str[self.value]
-
-    def symbol(self):
-        __str = {
-            TaskStatus.PROCESSING.value: "...",
-            TaskStatus.QUEUED.value: " ",
-            TaskStatus.RUNNING.value: "~",
-            TaskStatus.COMPLETED.value: "✓",
-            TaskStatus.FAILED.value: "!",
-            TaskStatus.TERMINATED.value: "T",
-        }
-        return __str[self.value]
 
 
 class TaskMetadata:

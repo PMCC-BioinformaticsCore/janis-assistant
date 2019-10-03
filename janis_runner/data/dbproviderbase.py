@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from sqlite3 import Connection, Cursor
 
 
@@ -8,3 +9,7 @@ class DbProviderBase:
 
     def commit(self):
         return self.db.commit()
+
+    @abstractmethod
+    def create_table(self):
+        pass

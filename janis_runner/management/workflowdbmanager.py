@@ -64,7 +64,27 @@ class WorkflowDbManager:
     def save_metadata(self, metadata: WorkflowModel):
         # Let's just say the actual workflow metadata has to updated separately
         alljobs = self.flatten_jobs(metadata.jobs)
-        # update all jobs
+        self.jobsDB.update_or_insert_many(alljobs)
+        return
+
+    def get_metadata(self):
+        jobs = self.jobsDB.get_all_mapped()
+        return WorkflowModel(
+            wid=self.workflowmetadata.wid,
+            engine_wid=self.workflowmetadata.engine_wid,
+            name=self.workflowmetadata.name,
+            start=self.workflowmetadata.start,
+            finish=self.workflowmetadata.finish,
+            execution_dir=self.workflowmetadata.execution_dir,
+            status=self.workflowmetadata.status,
+            engine=self.workflowmetadata.engine.id(),
+            engine_url=self.workflowmetadata.engine_url,
+            # filesystem=self.workflowmetadata.filesystem.id(),
+            labels=self.workflowmetadata.labels,
+            error=self.workflowmetadata.error,
+            author=self.workflowmetadata.author,
+            jobs=jobs,
+        )
 
     def flatten_jobs(self, jobs: List[WorkflowJobModel]):
         flattened = jobs

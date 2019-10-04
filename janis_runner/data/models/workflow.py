@@ -25,6 +25,7 @@ class WorkflowModel:
         labels: List[str] = None,
         error: str = None,
         author: str = None,
+        jobs: List[WorkflowJobModel] = None,
     ):
         self.wid = wid
         self.engine_wid = engine_wid
@@ -43,7 +44,7 @@ class WorkflowModel:
 
         self.error = error
 
-        self.jobs: List[WorkflowJobModel] = None
+        self.jobs: List[WorkflowJobModel] = jobs or []
         self.outputs = None
 
         self.author = author
@@ -55,24 +56,24 @@ class WorkflowModel:
         fin = self.finish if self.finish else DateUtil.now()
         duration = round((fin - self.start).total_seconds()) if self.start else 0
 
-        return f"""
-    WID:        {self.wid}
-    EngId:      {self.wid}
-    Name:       {self.name}
-    {((f"{nl}Engine:     " + self.engine) if self.engine else '')}{(
-                        f"{nl}Engine url: " + self.engine_url) if self.engine_url else ''}
+        return f"""\
+WID:        {self.wid}
+EngId:      {self.wid}
+Name:       {self.name}
+{((f"{nl}Engine:     " + self.engine) if self.engine else '')}{(
+                    f"{nl}Engine url: " + self.engine_url) if self.engine_url else ''}
 
-    Task Dir:   {""}
-    Exec Dir:   {self.execution_dir}
+Task Dir:   {""}
+Exec Dir:   {self.execution_dir}
 
-    Status:     {self.status}
-    Duration:   {second_formatter(duration)}
-    Start:      {self.start.isoformat() if self.start else 'N/A'}
-    Finish:     {self.finish.isoformat() if self.finish else "N/A"}
+Status:     {self.status}
+Duration:   {second_formatter(duration)}
+Start:      {self.start.isoformat() if self.start else 'N/A'}
+Finish:     {self.finish.isoformat() if self.finish else "N/A"}
 
-    Jobs: 
-    {nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start))}       
+Jobs: 
+{nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start))}       
 
-    {("Outputs:" + nl.join(tb + o for o in self.outputs)) if self.outputs else ''}
-    {("Error: " + self.error) if self.error else ''}
-            """.strip()
+{("Outputs:" + nl.join(tb + o for o in self.outputs)) if self.outputs else ''}
+{("Error: " + self.error) if self.error else ''}
+        """.strip()

@@ -7,7 +7,7 @@ from janis_runner.data.models.outputs import WorkflowOutputModel
 class OutputDbProvider(DbProviderBase):
     CURRENT_SCHEMA_VERSION = 1
 
-    def create_table(self):
+    def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS outputs (
             tag STRING PRIMARY KEY,

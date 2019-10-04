@@ -13,7 +13,9 @@ def groupby(
     q = {}
     if isinstance(selector, str):
         key = selector
-        selector = lambda x: x[key] if hasattr(x, "__getitem__") else x.__getattr__(key)
+        selector = (
+            lambda x: x[key] if hasattr(x, "__getitem__") else x.__getattribute__(key)
+        )
     for i in iterable:
         key = selector(i)
         if key not in q:
@@ -26,7 +28,7 @@ def groupby(
 class JobDbProvider(DbProviderBase):
     CURRENT_SCHEMA_VERSION = 1
 
-    def create_table(self):
+    def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS jobs (
             jid STRING PRIMARY KEY,
@@ -35,6 +37,7 @@ class JobDbProvider(DbProviderBase):
             batchid STRING,
             shard INT,
             container STRING,
+            status STRING,
             start STRING,
             finish NULLABLE STRING,
             backend STRING,
@@ -83,8 +86,8 @@ class JobDbProvider(DbProviderBase):
         rows = self.cursor.fetchall()
         return [WorkflowJobModel.from_row(row) for row in rows]
 
-    def get_all_mapped(self, tag: str) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs", (tag,))
+    def get_all_mapped(self) -> List[WorkflowJobModel]:
+        self.cursor.execute("SELECT * FROM jobs")
         rows = self.cursor.fetchall()
         alljobs = [WorkflowJobModel.from_row(row) for row in rows]
         events = self.eventsDB.get_all()
@@ -93,7 +96,7 @@ class JobDbProvider(DbProviderBase):
         groupedevents = groupby(events, lambda e: e.jid)
 
         for job in alljobs:
-            job.jobs = groupedjobs.get(job.parentjid)
+            job.jobs = groupedjobs.get(job.jid)
             job.events = groupedevents.get(job.jid, [])
 
         return alljobs
@@ -110,24 +113,25 @@ class JobDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO jobs (
-            jid, parentjid, jobname, batchid, shard, container, 
+            jid, parentjid, name, batchid, shard, container, status,
             start, finish, backend, cached, stdout, stderr
         ) VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
     _update_statement = """\
         UPDATE jobs SET
             parentjid=?,
-            jobname=?,
+            name=?,
             batchid=?,
             shard=?,
             container=?,
+            status=?,
             start=?,
             finish=?,
             backend=?,
             cached=?,
             stdout=?,
-            stderr=?,
+            stderr=?
         WHERE jid = ?
         """
 
@@ -139,6 +143,7 @@ class JobDbProvider(DbProviderBase):
             model.batchid,
             model.shard,
             model.container,
+            model.status.value,
             model.start,
             model.finish,
             model.backend,
@@ -154,6 +159,7 @@ class JobDbProvider(DbProviderBase):
             model.batchid,
             model.shard,
             model.container,
+            model.status.value,
             model.start,
             model.finish,
             model.backend,
@@ -165,7 +171,7 @@ class JobDbProvider(DbProviderBase):
 
     def update_or_insert_many(self, jobs: List[WorkflowJobModel]):
         allidsr = self.cursor.execute("SELECT jid FROM jobs").fetchall()
-        allids = set(allidsr)
+        allids = set(r[0] for r in allidsr)
 
         updates = []
         inserts = []
@@ -187,7 +193,9 @@ class JobDbProvider(DbProviderBase):
         if inserts:
             self.cursor.executemany(self._insert_statement, inserts)
 
-        self.eventsDB.update_or_insert_many(events)
+        self.db.commit()
+
+        self.eventsDB.insert_many(events)
 
     def upgrade_schema(self, from_version: int):
         # if from_version < 2:

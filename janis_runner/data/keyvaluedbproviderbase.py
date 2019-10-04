@@ -18,9 +18,9 @@ class KvDB:
     def __setattr__(self, name, value):
 
         if name in self.attributes_to_persist:
-            return self.kvdb.__setattr__(name, value)
+            self.kvdb[name] = value
 
-        return self.__dict__.__setattr__(name, value)
+        self.__dict__[name] = value
 
     def __getattr__(self, key):
 

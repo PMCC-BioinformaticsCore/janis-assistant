@@ -11,6 +11,7 @@ class WorkflowMetadataDbKeys(Enum):
     status = "status"
 
     engine = "engine"
+    engine_url = "engine_url"
     filesystem = "filesystem"
     environment = "environment"
 

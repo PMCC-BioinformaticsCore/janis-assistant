@@ -7,12 +7,13 @@ from typing import Dict, Optional, cast, List, Tuple, Union
 
 from janis_core import Workflow
 from janis_runner.data.models.filescheme import FileScheme
-from janis_runner.data.providers.config.enginedbprovider import EngineDbProvider
-from janis_runner.data.providers.config.environmentdbprovider import (
-    EnvironmentDbProvider,
-)
-from janis_runner.data.providers.config.fileschemedbprovider import FileschemeDbProvider
-from janis_runner.data.providers.config.tasksdbprovider import TasksDbProvider, TaskRow
+
+# from janis_runner.data.providers.config.enginedbprovider import EngineDbProvider
+# from janis_runner.data.providers.config.environmentdbprovider import (
+#     EnvironmentDbProvider,
+# )
+# from janis_runner.data.providers.config.fileschemedbprovider import FileschemeDbProvider
+from janis_runner.data.providers.janisdbprovider import TasksDbProvider, TaskRow
 from janis_runner.engines import Engine
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configuration import EnvVariables, JanisConfiguration
@@ -47,12 +48,12 @@ class ConfigManager:
         self.cursor = self.connection.cursor()
 
         self.taskDB = TasksDbProvider(self.connection, self.cursor)
-        self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
-        self.engineDB = EngineDbProvider(self.connection, self.cursor)
-        self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
+        # self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
+        # self.engineDB = EngineDbProvider(self.connection, self.cursor)
+        # self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
 
-        if self.is_new:
-            self.insert_default_environments()
+        # if self.is_new:
+        #     self.insert_default_environments()
 
     def db_connection(self):
         config = JanisConfiguration.manager()
@@ -64,12 +65,12 @@ class ConfigManager:
 
     def remove_task(self, task: Union[str, TaskRow], keep_output: bool):
         if isinstance(task, str):
-            tid = task
-            task = self.taskDB.get_by_tid(task)
+            wid = task
+            task = self.taskDB.get_by_wid(task)
             if task is None:
-                raise Exception("Couldn't find task with ID = " + tid)
+                raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path(task.tid, self)
+        tm = WorkflowManager.from_path(task.wid, self)
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -79,8 +80,8 @@ class ConfigManager:
         else:
             Logger.info("Skipping output dir deletion, can't find: " + task.outputdir)
 
-        self.taskDB.remove_by_id(task.tid)
-        Logger.info("Deleted task: " + task.tid)
+        self.taskDB.remove_by_id(task.wid)
+        Logger.info("Deleted task: " + task.wid)
 
     def create_task_base(self, wf: Workflow, outdir=None):
         config = JanisConfiguration.manager()
@@ -101,12 +102,12 @@ class ConfigManager:
         if os.path.exists(od):
             forbiddenids = forbiddenids.union(set(os.listdir(od)))
 
-        tid = generate_new_id(forbiddenids)
-        Logger.info(f"Starting task with id = '{tid}'")
+        wid = generate_new_id(forbiddenids)
+        Logger.info(f"Starting task with id = '{wid}'")
 
         dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-        task_path = os.path.join(od, "" if outdir else f"{dt}_{tid}/")
-        row = TaskRow(tid, task_path)
+        task_path = os.path.join(od, "" if outdir else f"{dt}_{wid}/")
+        row = TaskRow(wid, task_path)
         WorkflowManager.create_dir_structure(task_path)
         self.taskDB.insert_task(row)
 
@@ -114,7 +115,7 @@ class ConfigManager:
 
     def start_task(
         self,
-        tid: str,
+        wid: str,
         wf: Workflow,
         task_path: str,
         environment: Environment,
@@ -130,7 +131,7 @@ class ConfigManager:
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
-            tid,
+            wid,
             wf=wf,
             outdir=task_path,
             environment=environment,
@@ -145,62 +146,62 @@ class ConfigManager:
             keep_intermediate_files=keep_intermediate_files,
         )
 
-    def from_tid(self, tid):
+    def from_wid(self, wid):
         path = self.cursor.execute(
-            "SELECT outputdir FROM tasks where wid=?", (tid,)
+            "SELECT outputdir FROM tasks where wid=?", (wid,)
         ).fetchone()
         if not path:
-            raise Exception(f"Couldn't find task with id='{tid}'")
+            raise Exception(f"Couldn't find task with id='{wid}'")
         return WorkflowManager.from_path(path[0], self)
 
-    def insert_default_environments(self):
-        for e in Environment.defaults():
-            self.persist_engine(
-                engine=e.engine, throw_if_exists=False, should_commit=False
-            )
-            self.persist_filescheme(
-                filescheme=e.filescheme, throw_if_exists=False, should_commit=False
-            )
-            self.environmentDB.persist_environment(
-                e, throw_if_exists=False, should_commit=False
-            )
+    # def insert_default_environments(self):
+    #     for e in Environment.defaults():
+    #         self.persist_engine(
+    #             engine=e.engine, throw_if_exists=False, should_commit=False
+    #         )
+    #         self.persist_filescheme(
+    #             filescheme=e.filescheme, throw_if_exists=False, should_commit=False
+    #         )
+    #         self.environmentDB.persist_environment(
+    #             e, throw_if_exists=False, should_commit=False
+    #         )
+    #
+    #     self.commit()
 
-        self.commit()
-
-    def persist_environment_if_required(self, env: Environment):
-        try:
-            envid = self.get_environment(env.id())
-
-        except KeyError:
-            # we didn't find the environment
-            self.get_engine(env.engine)
-
-    def get_environment(self, envid):
-        envtuple = self.environmentDB.get_by_id(envid)
-        if not envtuple:
-            raise KeyError(f"Couldn't find environment with id '{envid}'")
-
-        (engid, fsid) = envtuple
-        eng: Engine = self.engineDB.get(engid)
-        fs: FileScheme = self.fileschemeDB.get(fsid)
-
-        return Environment(envid, eng, fs)
-
-    def persist_engine(self, engine, throw_if_exists=True, should_commit=True):
-        return self.engineDB.persist(
-            engine, throw_if_exists=throw_if_exists, should_commit=should_commit
-        )
-
-    def persist_filescheme(self, filescheme, throw_if_exists=True, should_commit=True):
-        return self.fileschemeDB.persist(
-            filescheme, throw_if_exists=throw_if_exists, should_commit=should_commit
-        )
-
-    def get_filescheme(self, fsid) -> FileScheme:
-        return cast(FileScheme, self.fileschemeDB.get(fsid))
-
-    def get_engine(self, engid):
-        return self.engineDB.get(engid)
+    # def persist_environment_if_required(self, env: Environment):
+    #     try:
+    #         envid = self.get_environment(env.id())
+    #
+    #     except KeyError:
+    #         # we didn't find the environment
+    #         self.get_engine(env.engine)
+    #
+    # def get_environment(self, envid):
+    #     envtuple = self.environmentDB.get_by_id(envid)
+    #     if not envtuple:
+    #         raise KeyError(f"Couldn't find environment with id '{envid}'")
+    #
+    #     (engid, fsid) = envtuple
+    #     eng: Engine = self.engineDB.get(engid)
+    #     fs: FileScheme = self.fileschemeDB.get(fsid)
+    #
+    #     return Environment(envid, eng, fs)
+    #
+    # def persist_engine(self, engine, throw_if_exists=True, should_commit=True):
+    #     return self.engineDB.persist(
+    #         engine, throw_if_exists=throw_if_exists, should_commit=should_commit
+    #     )
+    #
+    # def persist_filescheme(self, filescheme, throw_if_exists=True, should_commit=True):
+    #     return self.fileschemeDB.persist(
+    #         filescheme, throw_if_exists=throw_if_exists, should_commit=should_commit
+    #     )
+    #
+    # def get_filescheme(self, fsid) -> FileScheme:
+    #     return cast(FileScheme, self.fileschemeDB.get(fsid))
+    #
+    # def get_engine(self, engid):
+    #     return self.engineDB.get(engid)
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowManager]:
         rows: [TaskRow] = self.taskDB.get_all_tasks()
@@ -208,9 +209,9 @@ class ConfigManager:
         failed = []
         for row in rows:
             try:
-                ms[row.tid] = WorkflowManager.from_path(row.outputdir, self)
+                ms[row.wid] = WorkflowManager.from_path(row.outputdir, self)
             except:
-                failed.append(row.tid)
+                failed.append(row.wid)
 
         if failed:
             failedstr = ", ".join(failed)

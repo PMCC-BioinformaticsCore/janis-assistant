@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Union, List, Tuple
 
-from janis_runner import TaskStatus
+from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import _bcolors
 
@@ -12,21 +12,31 @@ class WorkflowJobModel:
         jid: str,
         parentjid: Optional[str],
         name: str,
-        batchid: str,
+        batchid: Optional[str],
         shard: Optional[int],
         container: Optional[str],
+        status: TaskStatus,
         start: Union[str, datetime],
         finish: Optional[Union[str, datetime]],
         backend: Optional[str],
         cached: bool,
         stdout: Optional[str],
         stderr: Optional[str],
+        jobs: Optional[list] = None,
     ):
         self.jid = jid
         self.parentjid = parentjid
+        self.status = status if isinstance(status, TaskStatus) else TaskStatus(status)
+
         self.name = name
         self.batchid = batchid
-        self.shard = shard
+        self.shard = None
+        if shard:
+            if isinstance(shard, str) and shard.isdigit:
+                shard = int(shard)
+            if shard >= 0:
+                self.shard = shard
+
         self.container = container
 
         self.backend = backend
@@ -42,7 +52,7 @@ class WorkflowJobModel:
         if finish and isinstance(finish, str):
             self.finish = DateUtil.parse_iso(finish)
 
-        self.jobs = None
+        self.jobs = jobs or None
         self.events = None
 
     @staticmethod
@@ -61,7 +71,7 @@ class WorkflowJobModel:
         #     if (self.start and self.supertime)
         #     else None
         # )
-        status = (
+        status = self.status or (
             sorted(self.events, key=lambda e: e.timestamp)[-1].status
             if self.events
             else TaskStatus.PROCESSING

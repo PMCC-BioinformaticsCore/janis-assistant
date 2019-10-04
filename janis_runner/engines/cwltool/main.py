@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 import dateutil
 
-from janis_runner.data.models.schema import TaskMetadata
+from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine, TaskStatus, TaskBase
 from janis_runner.utils.dateutil import DateUtil
@@ -86,9 +86,9 @@ class CWLTool(Engine):
 
     def terminate_task(self, identifier) -> TaskStatus:
         """
-        This CWLTool implementation is not super great. It should start the process and issue an async task
+        This CWLTool implementation is not super great. It should start the _process and issue an async task
         to watch out for progress and eventually report back to the sqlite database. Then when 'terminate_task'
-        is called, it could kill this process (eventually self.pid | self.process) and cleanup the metadata.
+        is called, it could kill this _process (eventually self.pid | self._process) and cleanup the metadata.
 
         :param identifier:
         :return:
@@ -97,10 +97,10 @@ class CWLTool(Engine):
             "terminate_task needs to be implemented in CWLTool, may require rework of tool"
         )
 
-    def metadata(self, identifier) -> TaskMetadata:
+    def metadata(self, identifier) -> WorkflowModel:
         """
         So CWLTool doesn't really have a metadata thing. See the 'terminate_task' description, but this
-        implementation should instead create a thread to watch for process, and write metadata back to sqlite.
+        implementation should instead create a thread to watch for _process, and write metadata back to sqlite.
         Then this method could just read from the sqlite database.
 
         :param identifier:
@@ -111,16 +111,16 @@ class CWLTool(Engine):
 
         meta = self.metadata_by_task_id[identifier]
 
-        return TaskMetadata(
+        return WorkflowModel(
             identifier,
             name=identifier,
             status=meta.get("status"),
             start=meta.get("start"),
             finish=meta.get("finish"),
-            outputs=meta.get("outputs") or [],
+            # outputs=meta.get("outputs") or [],
             jobs=[],
             error=None,
-            executiondir=None,
+            # executiondir=None,
         )
 
     def start_from_task(self, task: TaskBase):
@@ -198,9 +198,9 @@ class CWLTool(Engine):
             line = c.decode("utf-8").rstrip()
             if not line.strip():
                 continue
-            self.logfp.write(line + "\n")
+            self._logfp.write(line + "\n")
             Logger.log("cwltool: " + line)
-            if b"Final process status is success" in c:
+            if b"Final _process status is success" in c:
                 break
         j = ""
         Logger.log("Process has completed")
@@ -232,8 +232,8 @@ class CWLTool(Engine):
                 else:
                     os.remove(t)
 
-    def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
-        self.metadata_by_task_id[tid] = {
+    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
+        self.metadata_by_task_id[wid] = {
             "start": DateUtil.now(),
             "status": TaskStatus.PROCESSING,
         }
@@ -246,10 +246,10 @@ class CWLTool(Engine):
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
-        self.metadata_by_task_id[tid]["status"] = TaskStatus.RUNNING
+        self.metadata_by_task_id[wid]["status"] = TaskStatus.RUNNING
         Logger.log("Running command: '" + " ".join(cmd) + "'")
         Logger.info("CWLTool has started with pid=" + str(process.pid))
-        self.taskid_to_process[tid] = process.pid
+        self.taskid_to_process[wid] = process.pid
 
         finalstatus = None
         errors = []
@@ -270,7 +270,7 @@ class CWLTool(Engine):
             else:
                 Logger.log("cwltool: " + line)
 
-            if "final process status is" in lowline:
+            if "final _process status is" in lowline:
                 if "fail" in line.lower():
                     finalstatus = TaskStatus.FAILED
                 elif "success" in line.lower():
@@ -303,7 +303,7 @@ class CWLTool(Engine):
                     continue
         process.terminate()
 
-        self.metadata_by_task_id[tid]["outputs"] = outputs
-        self.metadata_by_task_id[tid]["status"] = finalstatus
+        self.metadata_by_task_id[wid]["outputs"] = outputs
+        self.metadata_by_task_id[wid]["status"] = finalstatus
 
-        return tid
+        return wid

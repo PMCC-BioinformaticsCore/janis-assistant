@@ -7,9 +7,12 @@ class DbProviderBase:
         self.db: Connection = db
         self.cursor: Cursor = cursor
 
+        schema = self.table_schema()
+        self.cursor.execute(schema)
+
     def commit(self):
         return self.db.commit()
 
     @abstractmethod
-    def create_table(self):
+    def table_schema(self):
         pass

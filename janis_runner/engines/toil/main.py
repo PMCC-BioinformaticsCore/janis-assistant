@@ -2,7 +2,8 @@ import os
 import subprocess
 from typing import Dict, Any, Optional
 
-from janis_runner.data.models.schema import TaskMetadata, TaskStatus
+from janis_runner.data.models.workflow import WorkflowModel
+from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine
 from janis_runner.utils import Logger
@@ -22,9 +23,9 @@ def read_stdout(process):
 
 
 class Toil(Engine):
-    def __init__(self, tid, scale=None, loglevel=None):
-        super(Toil, self).__init__("toil-" + tid, EngineType.toil)
-        self.tid = tid
+    def __init__(self, wid, scale=None, loglevel=None):
+        super(Toil, self).__init__("toil-" + wid, EngineType.toil)
+        self.wid = wid
         self.scale: Optional[float] = scale
         self.loglevel = loglevel
 
@@ -41,7 +42,7 @@ class Toil(Engine):
             "be automatically terminated when a task is finished"
         )
 
-    def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
+    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         print("TMP: " + os.getenv("TMPDIR"))
         scale = ["--scale", str(self.scale)] if self.scale else []
         loglevel = ["--logLevel=" + self.loglevel] if self.loglevel else []
@@ -73,7 +74,7 @@ class Toil(Engine):
     def terminate_task(self, identifier) -> TaskStatus:
         pass
 
-    def metadata(self, identifier) -> TaskMetadata:
+    def metadata(self, identifier) -> WorkflowModel:
         raise NotImplementedError(
             "metadata needs to be implemented in Toil, may require rework of tool"
         )

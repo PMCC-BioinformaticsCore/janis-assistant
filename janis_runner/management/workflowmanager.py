@@ -16,20 +16,22 @@ from janis_core.translations.translationbase import TranslatorBase
 from janis_core.workflow.workflow import Workflow
 
 from janis_runner.data.models.filescheme import FileScheme
-from janis_runner.data.models.schema import TaskStatus, TaskMetadata, JobMetadata
+from janis_runner.data.enums import TaskStatus
 from janis_runner.data.models.workflow import WorkflowModel
+from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
 from janis_runner.engines.cromwell import CromwellFile
 from janis_runner.environments.environment import Environment
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
 from janis_runner.utils import get_extension, Logger
+from janis_runner.utils.dateutil import DateUtil
 from janis_runner.validation import (
     generate_validation_workflow_from_janis,
     ValidationRequirements,
 )
 
 
-class TaskManager:
+class WorkflowManager:
     def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
         self.wid = wid
@@ -84,7 +86,7 @@ class TaskManager:
 
         environment.identifier += "_" + wid
 
-        tm = TaskManager(wid=wid, outdir=outdir, environment=environment)
+        tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
 
         tm.database.workflowmetadata.wid = wid
         tm.database.workflowmetadata.status = TaskStatus.PROCESSING
@@ -92,7 +94,7 @@ class TaskManager:
         tm.database.workflowmetadata.filescheme = environment.filescheme
         tm.database.workflowmetadata.environment = environment.id()
         tm.database.workflowmetadata.name = wf.id()
-        tm.database.workflowmetadata.start = datetime.now()
+        tm.database.workflowmetadata.start = DateUtil.now()
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
 
@@ -129,7 +131,7 @@ class TaskManager:
         # get everything and pass to constructor
         # database path
 
-        path = TaskManager.get_task_path_for(path)
+        path = WorkflowManager.get_task_path_for(path)
         db = WorkflowDbManager(path)
 
         wid = db.workflowmetadata.wid  # .get_meta_info(InfoKeys.taskId)
@@ -140,7 +142,7 @@ class TaskManager:
 
         db.close()
 
-        tm = TaskManager(outdir=path, wid=wid, environment=env)
+        tm = WorkflowManager(outdir=path, wid=wid, environment=env)
         return tm
 
     def resume_if_possible(self, show_metadata=True):
@@ -329,16 +331,17 @@ class TaskManager:
                 self.database.save_metadata(meta)
                 if show_metadata:
                     call("clear")
-                    print(meta.format())
+                    newmeta = self.database.get_metadata()
+                    print(newmeta.format())
                 status = meta.status
                 self.database.workflowmetadata.status = status
-                if meta.executionDir:
-                    self.database.workflowmetadata.execution_dir = meta.executionDir
+                if meta.execution_dir:
+                    self.database.workflowmetadata.execution_dir = meta.execution_dir
 
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
-        self.database.workflowmetadata.finish = datetime.now()
+        self.database.workflowmetadata.finish = DateUtil.now()
         self.database.progressDB.workflowMovedToFinalState = True
 
     def remove_exec_dir(self):
@@ -370,9 +373,13 @@ class TaskManager:
     def copy_output(filescheme: FileScheme, output_dir, filename, source):
 
         if isinstance(source, list):
-            TaskManager.copy_sharded_outputs(filescheme, output_dir, filename, source)
+            WorkflowManager.copy_sharded_outputs(
+                filescheme, output_dir, filename, source
+            )
         elif isinstance(source, CromwellFile):
-            TaskManager.copy_cromwell_output(filescheme, output_dir, filename, source)
+            WorkflowManager.copy_cromwell_output(
+                filescheme, output_dir, filename, source
+            )
         elif isinstance(source, str):
             ext = get_extension(source)
             extwdot = ("." + ext) if ext else ""
@@ -384,7 +391,7 @@ class TaskManager:
     ):
         for counter in range(len(outputs)):
             sid = f"-shard-{counter}"
-            TaskManager.copy_output(
+            WorkflowManager.copy_output(
                 filescheme, output_dir, filename + sid, outputs[counter]
             )
 
@@ -392,10 +399,12 @@ class TaskManager:
     def copy_cromwell_output(
         filescheme: FileScheme, output_dir: str, filename: str, out: CromwellFile
     ):
-        TaskManager.copy_output(filescheme, output_dir, filename, out.location)
+        WorkflowManager.copy_output(filescheme, output_dir, filename, out.location)
         if out.secondary_files:
             for sec in out.secondary_files:
-                TaskManager.copy_output(filescheme, output_dir, filename, sec.location)
+                WorkflowManager.copy_output(
+                    filescheme, output_dir, filename, sec.location
+                )
 
     def get_engine_wid(self):
         if not self._engine_wid:
@@ -403,7 +412,7 @@ class TaskManager:
         return self._engine_wid
 
     def get_task_path(self):
-        return TaskManager.get_task_path_for(self.path)
+        return WorkflowManager.get_task_path_for(self.path)
 
     @staticmethod
     def get_task_path_for(outdir: str):
@@ -411,12 +420,12 @@ class TaskManager:
 
     def get_task_path_safe(self):
         path = self.get_task_path()
-        TaskManager._create_dir_if_needed(path)
+        WorkflowManager._create_dir_if_needed(path)
         return path
 
     @staticmethod
     def create_dir_structure(path):
-        outputdir = TaskManager.get_task_path_for(path)
+        outputdir = WorkflowManager.get_task_path_for(path)
         folders = [
             "workflow",
             "metadata",
@@ -426,11 +435,11 @@ class TaskManager:
             "configuration",
             "execution",
         ]
-        TaskManager._create_dir_if_needed(path)
+        WorkflowManager._create_dir_if_needed(path)
 
         # workflow folder
         for f in folders:
-            TaskManager._create_dir_if_needed(os.path.join(outputdir, f))
+            WorkflowManager._create_dir_if_needed(os.path.join(outputdir, f))
 
     def copy_logs_if_required(self):
         if not self.database.progressDB.savedLogs:
@@ -439,12 +448,12 @@ class TaskManager:
         meta = self.metadata()
 
     @staticmethod
-    def get_logs_from_jobs_meta(meta: List[JobMetadata]):
+    def get_logs_from_jobs_meta(meta: List[WorkflowJobModel]):
         ms = []
 
         for j in meta:
-            ms.append((f"{j.jobid}-stderr", j.stderr))
-            ms.append((f"{j.jobid}-stdout", j.stderr))
+            ms.append((f"{j.batchid}-stderr", j.stderr))
+            ms.append((f"{j.batchid}-stdout", j.stderr))
 
     def watch(self):
         import time

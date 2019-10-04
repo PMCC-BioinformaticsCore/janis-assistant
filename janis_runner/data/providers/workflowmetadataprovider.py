@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from janis_runner import FileScheme
+from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 from janis_runner.data.keyvaluedbproviderbase import KvDB
 from janis_runner.data.models.workflow import WorkflowModel

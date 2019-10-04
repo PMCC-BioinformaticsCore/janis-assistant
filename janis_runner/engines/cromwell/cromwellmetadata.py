@@ -1,7 +1,7 @@
 import json
 from typing import Union, List
 
-from janis_runner.data.models.schema import TaskStatus, JobMetadata
+from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.utils.dateutil import DateUtil
@@ -152,11 +152,14 @@ class CromwellMetadata:
     def parse_standard_call(
         cls, parentid, name, calls, supertime
     ) -> List[WorkflowJobModel]:
+        jid = parentid + "_" + name
         if len(calls) > 1:
+            # this is a workflow
             processed_calls = []
+
             for c in calls:
                 processed_calls.extend(
-                    cls.parse_standard_call(parentid, name, [c], supertime=0)
+                    cls.parse_standard_call(jid, name, [c], supertime=0)
                 )
 
             statuses = set(s.status for s in processed_calls)
@@ -173,26 +176,28 @@ class CromwellMetadata:
             for c in processed_calls:
                 c.supertime = st
 
-            return [
-                WorkflowJobModel(
-                    name=name,
-                    parentjid=parentid,
-                    status=status,
-                    job_id=None,
-                    backend=None,
-                    runtime_attributes=None,
-                    exec_dir=None,
-                    stdout=None,
-                    stderr=None,
-                    start=start,
-                    finish=finish,
-                    subjobs=processed_calls,
-                    from_cache=False,
-                    shard=None,
-                    outputs=[],
-                    super_time=supertime,
-                )
-            ]
+            j = WorkflowJobModel(
+                jid=jid,
+                name=name,
+                parentjid=parentid,
+                status=status,
+                batchid=None,
+                backend=None,
+                # runtime_attributes=None,
+                # exec_dir=None,
+                stdout=None,
+                stderr=None,
+                start=start,
+                finish=finish,
+                # subjobs=processed_calls,
+                cached=False,
+                shard=None,
+                # outputs=[],
+                # super_time=supertime,
+                container=None,
+            )
+            j.jobs = processed_calls
+            return [j]
 
         call = calls[0]
         sjs = []
@@ -211,26 +216,25 @@ class CromwellMetadata:
             sw = call["subWorkflowMetadata"]
 
             for k in sw.get("calls"):
-                sjs.extend(cls.parse_standard_call(k, sw["calls"][k], st))
+                sjs.extend(cls.parse_standard_call(jid, k, sw["calls"][k], st))
 
-        return [
-            JobMetadata(
-                name=name,
-                status=status,
-                job_id=call.get("jobId"),
-                backend=None,
-                runtime_attributes=None,
-                outputs=call.get("outputs"),
-                exec_dir="",
-                stdout=call.get("stdout"),
-                stderr=call.get("stderr"),
-                start=s,
-                finish=f,
-                super_time=supertime,
-                subjobs=sjs,
-                from_cache=call["callCaching"].get("hit")
-                if "callCaching" in call
-                else False,
-                shard=call.get("shardIndex"),
-            )
-        ]
+        j = WorkflowJobModel(
+            jid=jid,
+            parentjid=parentid,
+            container=call.get("runtimeAttributes", {}).get("docker"),
+            name=name,
+            status=status,
+            batchid=call.get("jobId"),
+            backend=None,
+            # outputs=call.get("outputs"),
+            # exec="",
+            stdout=call.get("stdout"),
+            stderr=call.get("stderr"),
+            start=s,
+            finish=f,
+            # super_time=supertime,
+            jobs=sjs,
+            cached=call["callCaching"].get("hit") if "callCaching" in call else False,
+            shard=call.get("shardIndex"),
+        )
+        return [j]

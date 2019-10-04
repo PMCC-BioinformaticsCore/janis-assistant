@@ -224,7 +224,7 @@ def fromjanis(
     try:
 
         tm = cm.start_task(
-            tid=row.tid,
+            wid=row.wid,
             wf=wf,
             environment=environment,
             validation_requirements=validation_reqs,
@@ -239,7 +239,7 @@ def fromjanis(
             keep_intermediate_files=keep_intermediate_files,
         )
 
-        return tm.tid
+        return tm.wid
 
     except KeyboardInterrupt:
         pass

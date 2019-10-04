@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 
 from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
-from janis_core import Tool, WorkflowBuilder, DataType, ToolOutput, String
+from janis_core import Tool, Workflow, WorkflowBuilder, DataType, ToolOutput, String
 from janis_bioinformatics.data_types import Vcf, Bed
 
 from janis_runner.utils.logger import Logger

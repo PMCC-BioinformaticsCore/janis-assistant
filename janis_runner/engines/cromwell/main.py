@@ -4,6 +4,7 @@ import sys
 import urllib.request
 from glob import glob
 from typing import Optional
+import pickle
 
 import json
 import requests
@@ -13,7 +14,6 @@ import time
 import shutil
 
 from janis_runner.__meta__ import ISSUE_URL
-from janis_runner.data.models.schema import TaskMetadata
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.cromwell.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
@@ -76,13 +76,13 @@ class Cromwell(Engine):
 
         self.cromwelljar = cromwelljar
         self.connect_to_instance = True if host else False
-        self.is_started = self.connect_to_instance
+        self._is_started = self.connect_to_instance
 
         self.host = host
         self.port = None
         self.config_path = None
-        self.process = None
-        self.logger = None
+        self._process = None
+        self._logger = None
         self.stdout = []
 
         if not self.connect_to_instance:
@@ -105,19 +105,19 @@ class Cromwell(Engine):
 
     def start_engine(self):
 
-        if self.is_started:
+        if self._is_started:
             Logger.info("Engine has already been started")
             return self
 
         if self.connect_to_instance:
-            self.is_started = True
+            self._is_started = True
             Logger.info("Cromwell environment discovered, skipping local instance")
             return self
 
-        if self.process:
-            self.is_started = True
+        if self._process:
+            self._is_started = True
             Logger.info(
-                f"Discovered Cromwell instance (pid={self.process}), skipping start"
+                f"Discovered Cromwell instance (pid={self._process}), skipping start"
             )
             return self
 
@@ -136,15 +136,15 @@ class Cromwell(Engine):
         cmd.extend(["-jar", cromwell_loc, "server"])
 
         Logger.log(f"Starting Cromwell with command: '{' '.join(cmd)}'")
-        self.process = subprocess.Popen(
+        self._process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid
         )
-        Logger.log("Cromwell is starting with pid=" + str(self.process.pid))
+        Logger.log("Cromwell is starting with pid=" + str(self._process.pid))
         Logger.log(
             "Cromwell will start the HTTP server, reading logs to determine when this occurs"
         )
         for c in iter(
-            self.process.stdout.readline, "b"
+            self._process.stdout.readline, "b"
         ):  # replace '' with b'' for Python 3
             cd = c.decode("utf-8").rstrip()
 
@@ -155,23 +155,23 @@ class Cromwell(Engine):
 
             # self.stdout.append(str(c))
             if "service started on" in cd:
-                self.process_id = self.process.pid
+                self.process_id = self._process.pid
                 Logger.info(
-                    "Service successfully started with pid=" + str(self.process.pid)
+                    "Service successfully started with pid=" + str(self._process.pid)
                 )
                 break
             # elif ansi_escape.match():
             #     raise Exception(cd)
 
-        self.is_started = True
+        self._is_started = True
 
-        if self.process:
-            self.logger = ProcessLogger(self.process, "Cromwell: ", self.logfp)
+        if self._process:
+            self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 
     def stop_engine(self):
-        if self.logger:
-            self.logger.terminate()
+        if self._logger:
+            self._logger.terminate()
         if not self.process_id:
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return
@@ -180,7 +180,7 @@ class Cromwell(Engine):
         if process:
             os.killpg(process, signal.SIGTERM)
         Logger.log("Stopped cromwell")
-        self.is_started = False
+        self._is_started = False
 
     # API
 
@@ -207,7 +207,7 @@ class Cromwell(Engine):
     def url_abort(self, identifier):
         return self.url_base() + f"/{identifier}/abort"
 
-    def create_task(self, tid, source, inputs: list, dependencies, workflow_type=None):
+    def create_task(self, wid, source, inputs: list, dependencies, workflow_type=None):
         # curl \
         #   -X POST "http://localhost:8000/api/workflows/v1" \
         #   -H "accept: application/json" \
@@ -226,10 +226,10 @@ class Cromwell(Engine):
 
         files = {
             "workflowSource": source,
-            "labels": json.dumps({"taskid": tid}),
+            "labels": json.dumps({"taskid": wid}),
             "workflowOptions": json.dumps(
                 {
-                    "google_labels": {"taskid": tid},
+                    "google_labels": {"taskid": wid},
                     "monitoring_image": "quay.io/dinvlad/cromwell-monitor",
                     "workflow_failure_mode": "ContinueWhilePossible",
                 }
@@ -367,11 +367,11 @@ class Cromwell(Engine):
         }
 
     def start_from_paths(
-        self, tid: str, source_path: str, input_path: str, deps_path: str
+        self, wid: str, source_path: str, input_path: str, deps_path: str
     ):
         """
         This does NOT watch, it purely schedule the jobs
-        :param tid:
+        :param wid:
         :param source_path:
         :param input_path:
         :param deps_path:
@@ -380,7 +380,7 @@ class Cromwell(Engine):
         src = open(source_path, "rb")
         inp = open(input_path, "rb")
         deps = open(deps_path, "rb")
-        engid = self.create_task(tid, src, [inp], deps, workflow_type="wdl")
+        engid = self.create_task(wid, src, [inp], deps, workflow_type="wdl")
 
         src.close()
         inp.close()
@@ -417,7 +417,7 @@ class Cromwell(Engine):
             )
 
         task.identifier = self.create_task(
-            tid=task.tid,
+            wid=task.wid,
             source=task.source if task.source else open(task.source_path, "rb"),
             inputs=ins,
             dependencies=deps,

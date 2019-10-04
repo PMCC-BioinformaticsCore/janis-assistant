@@ -7,7 +7,7 @@ from janis_runner.data.models.workflowjob import WorkflowJobEventModel
 class JobEventDbProvider(DbProviderBase):
     CURRENT_SCHEMA_VERSION = 1
 
-    def create_table(self):
+    def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS jobevents (
             jid STRING NOT NULL,
@@ -48,7 +48,7 @@ class JobEventDbProvider(DbProviderBase):
         """
 
     def insert_many(self, events: List[WorkflowJobEventModel]):
-        pks = self.cursor.execute("SELECT (jid, status) FROM jobevents").fetchall()
+        pks = self.cursor.execute("SELECT jid, status FROM jobevents").fetchall()
         pkset = {f"{jid}-{status}" for (jid, status) in pks}
 
         inserts = []

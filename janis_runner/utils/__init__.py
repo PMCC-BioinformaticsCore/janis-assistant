@@ -20,11 +20,11 @@ def generate_new_id(forbiddenids: Set[str]):
     def gen_uuid():
         return random.choice("abcdef") + str(uuid.uuid4())[:5]
 
-    tid = gen_uuid()
-    while tid in forbiddenids:
-        tid = gen_uuid()
+    wid = gen_uuid()
+    while wid in forbiddenids:
+        wid = gen_uuid()
 
-    return tid
+    return wid
 
 
 def get_extension(fn):

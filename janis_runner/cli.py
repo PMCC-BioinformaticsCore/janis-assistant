@@ -6,11 +6,10 @@ import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
 
-from janis_runner.data.enums import InfoKeys
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 
-from janis_runner.data.models.schema import TaskStatus
+from janis_runner.data.enums.taskstatus import TaskStatus
 
 from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
@@ -92,7 +91,7 @@ def add_logger_args(parser):
 
 
 def add_watch_args(parser):
-    parser.add_argument("wid", help="Task id")
+    parser.add_argument("wid", help="Workflow id")
     return parser
 
 
@@ -325,36 +324,36 @@ def do_version(_):
 
 
 def do_watch(args):
-    tid = args.tid
-    tm = ConfigManager.manager().from_tid(tid)
+    wid = args.wid
+    tm = ConfigManager.manager().from_wid(wid)
     tm.resume_if_possible()
 
 
 def do_metadata(args):
-    tid = args.tid
+    wid = args.wid
     Logger.mute()
-    if tid == "*":
+    if wid == "*":
         tasks = ConfigManager.manager().taskDB.get_all_tasks()
         for t in tasks:
             try:
-                print("--- TASKID = " + t.tid + " ---")
-                ConfigManager.manager().from_tid(t.tid).log_dbtaskinfo()
+                print("--- TASKID = " + t.wid + " ---")
+                ConfigManager.manager().from_wid(t.wid).log_dbtaskinfo()
             except Exception as e:
                 print("\tThe following error ocurred: " + str(e))
     else:
-        tm = ConfigManager.manager().from_tid(tid)
+        tm = ConfigManager.manager().from_wid(wid)
         tm.log_dbtaskinfo()
     Logger.unmute()
 
 
 def do_abort(args):
-    tid = args.tid
-    tm = ConfigManager.manager().from_tid(tid)
+    wid = args.wid
+    tm = ConfigManager.manager().from_wid(wid)
     tm.abort()
 
 
 def do_rm(args):
-    ConfigManager.manager().remove_task(args.tid, keep_output=args.keep)
+    ConfigManager.manager().remove_task(args.wid, keep_output=args.keep)
 
 
 def do_run(args):
@@ -439,13 +438,13 @@ def do_query(args):
 
     prepared = [
         (
-            tid,
-            t.database.get_meta_info(InfoKeys.status),
-            t.database.get_meta_info(InfoKeys.name),
-            t.database.get_meta_info(InfoKeys.start),
+            wid,
+            t.database.workflowmetadata.status,
+            t.database.workflowmetadata.name,
+            t.database.workflowmetadata.start,
             t.path,
         )
-        for tid, t in tasks.items()
+        for wid, t in tasks.items()
     ]
     prepared.sort(key=lambda p: p[3])
 

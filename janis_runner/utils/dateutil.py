@@ -22,7 +22,7 @@ class DateUtil:
     @staticmethod
     def secs_difference(a: datetime, b: datetime):
         if a.tzinfo is None or b.tzinfo is None:
-            aorb = "a" if a.tzinfo is None else "b"
+            aorb = a if a.tzinfo is None else b
             raise Exception(
                 f"input '{aorb}' doesn't have tzinfo, "
                 "please use DateUtil methods to create all dates"

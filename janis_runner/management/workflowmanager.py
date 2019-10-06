@@ -314,29 +314,21 @@ class WorkflowManager:
     def wait_if_required(self, show_metadata=True):
 
         if self.database.progressDB.workflowMovedToFinalState:
-            try:
-                meta = self.metadata()
-                if meta:
-                    print(meta.format())
-            except:
-                print("Failed to get metadata, but skipping because task has finished")
+            meta = self.database.get_metadata()
+            print(meta.format())
 
             return Logger.log(f"Workflow '{self.wid}' has already finished, skipping")
 
         status = None
 
         while status not in TaskStatus.final_states():
-            meta = self.metadata()
+            meta = self.save_metadata()
             if meta:
-                self.database.save_metadata(meta)
                 if show_metadata:
                     call("clear")
                     newmeta = self.database.get_metadata()
                     print(newmeta.format())
                 status = meta.status
-                self.database.workflowmetadata.status = status
-                if meta.execution_dir:
-                    self.database.workflowmetadata.execution_dir = meta.execution_dir
 
             if status not in TaskStatus.final_states():
                 time.sleep(5)
@@ -445,7 +437,7 @@ class WorkflowManager:
         if not self.database.progressDB.savedLogs:
             return Logger.log(f"Workflow '{self.wid}' has copied logs, skipping")
 
-        meta = self.metadata()
+        meta = self.save_metadata()
 
     @staticmethod
     def get_logs_from_jobs_meta(meta: List[WorkflowJobModel]):
@@ -462,7 +454,7 @@ class WorkflowManager:
         status = None
 
         while status not in TaskStatus.final_states():
-            meta = self.metadata()
+            meta = self.save_metadata()
             if meta:
                 call("clear")
                 self.database.save_metadata(meta)
@@ -472,18 +464,18 @@ class WorkflowManager:
             if status not in TaskStatus.final_states():
                 time.sleep(2)
 
-    def metadata(self) -> WorkflowModel:
+    def save_metadata(self) -> Optional[WorkflowModel]:
         meta = self.environment.engine.metadata(self.get_engine_wid())
-        if meta:
-            meta.name = self.database.workflowmetadata.name
-            meta.wid = self.wid
-            meta.outdir = self.path
-            meta.engine_name = str(self.environment.engine.engtype)
-            meta.engine_url = (
-                self.environment.engine.host
-                if isinstance(self.environment.engine, Cromwell)
-                else "N/A"
-            )
+
+        if not meta:
+            return None
+
+        self.database.workflowmetadata.status = meta.status
+        if meta.execution_dir:
+            self.database.workflowmetadata.execution_dir = meta.execution_dir
+
+        self.database.save_metadata(meta)
+
         return meta
 
     def abort(self) -> bool:

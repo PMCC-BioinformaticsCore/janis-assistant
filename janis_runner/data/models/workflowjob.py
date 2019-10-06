@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, Union, List, Tuple
 
 from janis_runner.data.enums.taskstatus import TaskStatus
+from janis_runner.utils import second_formatter
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import _bcolors
 
@@ -14,6 +15,7 @@ class WorkflowJobModel:
         name: str,
         batchid: Optional[str],
         shard: Optional[int],
+        attempt: Optional[int],
         container: Optional[str],
         status: TaskStatus,
         start: Union[str, datetime],
@@ -36,6 +38,12 @@ class WorkflowJobModel:
                 shard = int(shard)
             if shard >= 0:
                 self.shard = shard
+        self.attempt = None
+        if attempt:
+            if isinstance(attempt, str) and attempt.isdigit():
+                attempt = int(attempt)
+            if attempt > 1:
+                self.attempt = attempt
 
         self.container = container
 
@@ -77,8 +85,13 @@ class WorkflowJobModel:
             else TaskStatus.PROCESSING
         )
 
-        shard = f"-shard-{self.shard}" if self.shard is not None else ""
-        standard = pre + f"[{status.symbol()}] {self.name}{shard} ({time}s :: {0} %)"
+        name = self.name
+        if self.shard is not None and self.shard >= 0:
+            name += f"_shard-{self.shard}"
+        if self.attempt and self.attempt > 1:
+            name += f"_attempt-{self.attempt}"
+
+        standard = pre + f"[{status.symbol()}] {name} ({second_formatter(time)})"
 
         col = ""
 
@@ -111,7 +124,7 @@ class WorkflowJobModel:
                 fields.append(("from cache", str(self.cached)))
 
         elif status == TaskStatus.RUNNING:
-            fields.extend([("jid", self.jid), ("backend", self.backend)])
+            fields.extend([("batchid", self.batchid), ("backend", self.backend)])
 
         elif status == TaskStatus.FAILED:
             fields.extend([("stdout", self.stdout), ("stderr", self.stderr)])
@@ -127,7 +140,7 @@ class WorkflowJobModel:
             )
 
         ppre = "\n" + " " * len(pre) + 2 * tb
-        retval = standard + "".join(ppre + f[0] + ": " + f[1] for f in fields if f[1])
+        retval = standard + "".join(f"{ppre}{f[0]}: {f[1]}" for f in fields if f[1])
 
         return col + retval + _bcolors.ENDC
 

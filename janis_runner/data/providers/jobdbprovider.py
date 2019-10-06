@@ -12,9 +12,9 @@ def groupby(
 ) -> Dict[str, T]:
     q = {}
     if isinstance(selector, str):
-        key = selector
+        k = selector
         selector = (
-            lambda x: x[key] if hasattr(x, "__getitem__") else x.__getattribute__(key)
+            lambda x: x[k] if hasattr(x, "__getitem__") else x.__getattribute__(k)
         )
     for i in iterable:
         key = selector(i)
@@ -35,7 +35,8 @@ class JobDbProvider(DbProviderBase):
             parentjid NULLABLE STRING,
             name STRING,
             batchid STRING,
-            shard INT,
+            shard NULLABLE INT,
+            attempt NULLABLE INT,
             container STRING,
             status STRING,
             start STRING,
@@ -99,7 +100,7 @@ class JobDbProvider(DbProviderBase):
             job.jobs = groupedjobs.get(job.jid)
             job.events = groupedevents.get(job.jid, [])
 
-        return alljobs
+        return [j for j in alljobs if j.parentjid is None]
 
     def insert(self, model: WorkflowJobModel):
         return self.cursor.execute(
@@ -113,10 +114,10 @@ class JobDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO jobs (
-            jid, parentjid, name, batchid, shard, container, status,
+            jid, parentjid, name, batchid, shard, attempt, container, status,
             start, finish, backend, cached, stdout, stderr
         ) VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
     _update_statement = """\
         UPDATE jobs SET
@@ -124,6 +125,7 @@ class JobDbProvider(DbProviderBase):
             name=?,
             batchid=?,
             shard=?,
+            attempt=?,
             container=?,
             status=?,
             start=?,
@@ -142,6 +144,7 @@ class JobDbProvider(DbProviderBase):
             model.name,
             model.batchid,
             model.shard,
+            model.attempt,
             model.container,
             model.status.value,
             model.start,
@@ -158,6 +161,7 @@ class JobDbProvider(DbProviderBase):
             model.name,
             model.batchid,
             model.shard,
+            model.attempt,
             model.container,
             model.status.value,
             model.start,
@@ -191,7 +195,10 @@ class JobDbProvider(DbProviderBase):
             self.cursor.executemany(self._update_statement, updates)
 
         if inserts:
-            self.cursor.executemany(self._insert_statement, inserts)
+            try:
+                self.cursor.executemany(self._insert_statement, inserts)
+            except Exception as e:
+                print(e)
 
         self.db.commit()
 

@@ -9,6 +9,8 @@ from janis_runner.utils.logger import Logger
 
 
 def cromwell_status_to_status(status: str) -> TaskStatus:
+    if status is None:
+        return TaskStatus.PROCESSING
     st = status.lower()
     if st == "fail" or st == "starting":
         return TaskStatus.PROCESSING
@@ -107,9 +109,9 @@ class CromwellMetadata:
             st = int(DateUtil.secs_difference(s, ff))
 
         jid = self.meta.get("id")
-        for k in self.meta.get("calls"):
-
-            jobs.extend(self.parse_standard_call(jid, k, self.meta["calls"][k], st))
+        for stepname, call in self.meta.get("calls").items():
+            stepname = ".".join(stepname.split(".")[1:])
+            jobs.extend(self.parse_standard_calls(None, stepname, call))
 
         model = WorkflowModel(
             engine_wid=jid,
@@ -149,92 +151,155 @@ class CromwellMetadata:
         return message
 
     @classmethod
-    def parse_standard_call(
-        cls, parentid, name, calls, supertime
-    ) -> List[WorkflowJobModel]:
-        jid = parentid + "_" + name
-        if len(calls) > 1:
-            # this is a workflow
-            processed_calls = []
+    def parse_standard_call(cls, parentid, stepname, call):
+        jid = f"{parentid}_{stepname}" if parentid else stepname
+        shard = call.get("shardIndex")
+        attempt = call.get("attempt")
 
-            for c in calls:
-                processed_calls.extend(
-                    cls.parse_standard_call(jid, name, [c], supertime=0)
-                )
+        if shard is not None and shard >= 0:
+            jid += f"_shard-{shard}"
+        if attempt and attempt > 1:
+            jid += f"_attempt-{attempt}"
 
-            statuses = set(s.status for s in processed_calls)
-            status = list(statuses)[0] if len(statuses) == 1 else TaskStatus.RUNNING
-            start = min(s.start for s in processed_calls)
-            finishes = [s.finish for s in processed_calls]
-            finish = None if any(f is None for f in finishes) else max(finishes)
+        subjobs = []
+        status = cromwell_status_to_status(
+            call.get("status") or call.get("executionStatus")
+        )
+        start = call.get("start")
+        finish = call.get("end")
 
-            st = 0.01
-            if start:
-                ff = finish if finish else DateUtil.now()
-
-                st = (ff - start).total_seconds()
-            for c in processed_calls:
-                c.supertime = st
-
-            j = WorkflowJobModel(
-                jid=jid,
-                name=name,
-                parentjid=parentid,
-                status=status,
-                batchid=None,
-                backend=None,
-                # runtime_attributes=None,
-                # exec_dir=None,
-                stdout=None,
-                stderr=None,
-                start=start,
-                finish=finish,
-                # subjobs=processed_calls,
-                cached=False,
-                shard=None,
-                # outputs=[],
-                # super_time=supertime,
-                container=None,
-            )
-            j.jobs = processed_calls
-            return [j]
-
-        call = calls[0]
-        sjs = []
-
-        status = cromwell_status_to_status(call.get("executionStatus"))
-
-        s = DateUtil.parse_iso(call.get("start"))
-        f = DateUtil.parse_iso(call.get("end"))
-        st = 0
-        if s:
-            s = s
-            ff = f if f else DateUtil.now()
-            st = int(DateUtil.secs_difference(s, ff))
-
+        # if the call has "subworkflowMetadata", we have a different schema:
         if "subWorkflowMetadata" in call:
-            sw = call["subWorkflowMetadata"]
+            # it's actually a workflow
+            submeta = call.get("subWorkflowMetadata")
+            for sn, subcalls in submeta.get("calls", {}).items():
+                sn = ".".join(sn.split(".")[1:])
+                subjobs.extend(cls.parse_standard_calls(jid, sn, subcalls))
 
-            for k in sw.get("calls"):
-                sjs.extend(cls.parse_standard_call(jid, k, sw["calls"][k], st))
+            start = start or min(s.start for s in subjobs)
+            finish = finish
 
-        j = WorkflowJobModel(
+        return WorkflowJobModel(
             jid=jid,
             parentjid=parentid,
-            container=call.get("runtimeAttributes", {}).get("docker"),
-            name=name,
+            container=call.get(
+                "dockerImageUsed", call.get("runtimeAttributes", {}).get("docker")
+            ),
+            name=stepname,
             status=status,
             batchid=call.get("jobId"),
             backend=None,
-            # outputs=call.get("outputs"),
-            # exec="",
             stdout=call.get("stdout"),
             stderr=call.get("stderr"),
-            start=s,
-            finish=f,
-            # super_time=supertime,
-            jobs=sjs,
-            cached=call["callCaching"].get("hit") if "callCaching" in call else False,
-            shard=call.get("shardIndex"),
+            start=DateUtil.parse_iso(start) if start is not None else DateUtil.now(),
+            finish=DateUtil.parse_iso(finish) if finish is not None else None,
+            jobs=subjobs or None,
+            cached=call.get("callCaching").get("hit")
+            if "callCaching" in call
+            else False,
+            shard=shard,
+            attempt=attempt,
         )
-        return [j]
+
+    @classmethod
+    def parse_standard_calls(cls, parentid, name, calls) -> List[WorkflowJobModel]:
+        return [cls.parse_standard_call(parentid, name, c) for c in calls]
+
+        # jid_temp = parentid + "_" + name
+        #
+        # if len(calls) > 1:
+        #     # This means there are multiple shards / attempts
+        #     processed_calls = []
+        #
+        #     for c in calls:
+        #         jid = jid_temp
+        #         shard = c.get("shardIndex")
+        #         attempt = c.get("attempt")
+        #
+        #         if shard is not None and shard >= 0:
+        #             jid += f"_shard-{shard}"
+        #         if attempt and attempt > 1:
+        #             jid += f"_attempt-{attempt}"
+        #
+        #         processed_calls.extend(
+        #             cls.parse_standard_calls(jid, name, [c], supertime=0)
+        #         )
+        #
+        #     statuses = set(s.status for s in processed_calls)
+        #     status = list(statuses)[0] if len(statuses) == 1 else TaskStatus.RUNNING
+        #     start = min(s.start for s in processed_calls)
+        #     finishes = [s.finish for s in processed_calls]
+        #     finish = None if any(f is None for f in finishes) else max(finishes)
+        #
+        #     st = 0.01
+        #     if start:
+        #         ff = finish if finish else DateUtil.now()
+        #
+        #         st = (ff - start).total_seconds()
+        #     for c in processed_calls:
+        #         c.supertime = st
+        #
+        #     j = WorkflowJobModel(
+        #         jid=jid,
+        #         name=name,
+        #         parentjid=parentid,
+        #         status=status,
+        #         batchid=None,
+        #         backend=None,
+        #         # runtime_attributes=None,
+        #         # exec_dir=None,
+        #         stdout=None,
+        #         stderr=None,
+        #         start=start,
+        #         finish=finish,
+        #         # subjobs=processed_calls,
+        #         cached=False,
+        #         shard=None,
+        #         # outputs=[],
+        #         # super_time=supertime,
+        #         container=None,
+        #     )
+        #     j.jobs = processed_calls
+        #     return [j]
+        #
+        # call = calls[0]
+        # sjs = []
+        #
+        # status = cromwell_status_to_status(call.get("executionStatus"))
+        #
+        # s = DateUtil.parse_iso(call.get("start"))
+        # f = DateUtil.parse_iso(call.get("end"))
+        # st = 0
+        # if s:
+        #     s = s
+        #     ff = f if f else DateUtil.now()
+        #     st = int(DateUtil.secs_difference(s, ff))
+        #
+        # if "subWorkflowMetadata" in call:
+        #     sw = call["subWorkflowMetadata"]
+        #
+        #     for k in sw.get("calls"):
+        #         sjs.extend(cls.parse_standard_calls(jid, k, sw["calls"][k], st))
+        #
+        # j = WorkflowJobModel(
+        #     jid=jid,
+        #     parentjid=parentid,
+        #     container=call.get(
+        #         "dockerImageUsed", call.get("runtimeAttributes", {}).get("docker")
+        #     ),
+        #     name=name,
+        #     status=status,
+        #     batchid=call.get("jobId"),
+        #     backend=None,
+        #     # outputs=call.get("outputs"),
+        #     # exec="",
+        #     stdout=call.get("stdout"),
+        #     stderr=call.get("stderr"),
+        #     start=s,
+        #     finish=f,
+        #     # super_time=supertime,
+        #     jobs=sjs,
+        #     cached=call["callCaching"].get("hit") if "callCaching" in call else False,
+        #     shard=shard,
+        # )
+        # return [j]

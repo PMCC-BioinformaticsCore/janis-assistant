@@ -22,6 +22,9 @@ class Engine(Archivable, ABC):
     def id(self):
         return self.identifier
 
+    def description(self):
+        return self.engtype.value
+
     @abstractmethod
     def start_engine(self):
         pass

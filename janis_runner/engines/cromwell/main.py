@@ -43,17 +43,11 @@ ansi_escape = re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]")
 
 
 class Cromwell(Engine):
-    def db_to_kwargs(self, keys: [str] = None):
-        return super(Cromwell, self).db_to_kwargs(
-            [
-                *(keys or []),
-                "logfile",
-                "host",
-                "config_path",
-                "process_id",
-                "config_path",
-            ]
-        )
+    def description(self):
+        pid = ""
+        if self.process_id:
+            pid = f" [PID={self.process_id}]"
+        return f"cromwell ({self.host}){pid}"
 
     def __init__(
         self,

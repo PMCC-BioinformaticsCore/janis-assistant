@@ -18,6 +18,7 @@ class WorkflowModel:
         start: Union[str, datetime] = None,
         finish: Union[str, datetime] = None,
         execution_dir: str = None,
+        outdir: str = None,
         status: TaskStatus = None,
         engine: str = None,
         engine_url: str = None,
@@ -35,6 +36,7 @@ class WorkflowModel:
         self.start = start
         self.finish = finish
         self.execution_dir = execution_dir
+        self.outdir = outdir
         self.status = status
 
         self.engine = engine
@@ -58,12 +60,11 @@ class WorkflowModel:
 
         return f"""\
 WID:        {self.wid}
-EngId:      {self.wid}
+EngId:      {self.engine_wid}
 Name:       {self.name}
-{((f"{nl}Engine:     " + self.engine) if self.engine else '')}{(
-                    f"{nl}Engine url: " + self.engine_url) if self.engine_url else ''}
+Engine:     {self.engine}
 
-Task Dir:   {""}
+Task Dir:   {self.outdir}
 Exec Dir:   {self.execution_dir}
 
 Status:     {self.status}

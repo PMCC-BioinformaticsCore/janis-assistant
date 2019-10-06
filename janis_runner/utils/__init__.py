@@ -39,10 +39,11 @@ def get_extension(fn):
 
 def second_formatter(secs):
     if not secs:
-        return "0"
+        return "0s"
 
     intervals = []
     ranges = [60, 3600, 86400]
+    extensions = ["s", "m", "h", "d"]
 
     remainder = secs
     under_first_interval = False
@@ -56,9 +57,11 @@ def second_formatter(secs):
 
     intervals.append(remainder)
 
-    outp = str(intervals[0])
-    for ivl in intervals[1:]:
-        outp += ":" + str(ivl).zfill(2)
+    maxintervals = len(intervals) - 1
+    outp = str(intervals[0]) + extensions[maxintervals]
+    for i in range(1, len(intervals)):
+        ivl = intervals[i]
+        outp += ":" + str(ivl).zfill(2) + extensions[maxintervals - i]
 
     return outp
 

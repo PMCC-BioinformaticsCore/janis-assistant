@@ -327,6 +327,12 @@ class WorkflowManager:
         if self.database.progressDB.copiedOutputs:
             return Logger.log(f"Workflow '{self.wid}' has copied outputs, skipping")
 
+        if self.database.workflowmetadata.status != TaskStatus.COMPLETED:
+            return Logger.warn(
+                f"Skipping copying outputs as workflow "
+                f"status was not completed ({self.database.workflowmetadata.status})"
+            )
+
         wf_outputs = self.database.outputsDB.get_all()
         engine_outputs = self.environment.engine.outputs_task(self.get_engine_wid())
         eoutkeys = engine_outputs.keys()
@@ -340,6 +346,17 @@ class WorkflowManager:
                     f"Couldn't find expected output with tag {out.tag}, found outputs ({', '.join(eoutkeys)}"
                 )
                 continue
+            originalfile, newfilepath = self.copy_output(fs, out, eout)
+
+            if isinstance(originalfile, list):
+                originalfile = "|".join(originalfile)
+
+            if isinstance(newfilepath, list):
+                newfilepath = "|".join(newfilepath)
+
+            self.database.outputsDB.update_paths(
+                tag=out.tag, original_path=originalfile, new_path=newfilepath
+            )
 
         self.database.progressDB.copiedOutputs = True
 
@@ -352,9 +369,13 @@ class WorkflowManager:
     ):
 
         if isinstance(engine_output, list):
+            outs = []
+            s = 0
+            prev_shards = shard or []
             for eout in engine_output:
-                self.copy_output(fs, out, eout, shard=0 if shard is None else shard + 1)
-            return
+                outs.append(self.copy_output(fs, out, eout, shard=[*prev_shards, s]))
+                s += 1
+            return [o[0] for o in outs], [o[1] for o in outs]
 
         merged_tags = "/".join(out.tags or ["outputs"])
         outdir = os.path.join(self.path, merged_tags)
@@ -365,30 +386,25 @@ class WorkflowManager:
         outfn = prefix + out.tag
 
         if shard is not None:
-            outfn += f"-shard{shard}"
+            for s in shard:
+                outfn += f"_shard-{s}"
 
         # copy output
 
+        original_filepath = None
         newoutputfilepath = os.path.join(outdir, outfn)
 
         if isinstance(engine_output, WorkflowOutputModel):
+            original_filepath = engine_output.originalpath
             ext = get_extension(engine_output.originalpath)
             outfn += ext
             fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
-            # update value
-            self.database.outputsDB.update_paths(
-                tag=out.tag,
-                original_path=engine_output.originalpath,
-                new_path=newoutputfilepath,
-            )
         else:
             if isinstance(fs, LocalFileScheme):
                 # Write engine_output to outpath
+                original_filepath = engine_output
                 with open(newoutputfilepath, "w+") as outfile:
                     outfile.write(engine_output)
-            self.database.outputsDB.update_paths(
-                tag=out.tag, original_path=engine_output, new_path=newoutputfilepath
-            )
 
         for sec in out.secondaries or []:
             frompath = apply_secondary_file_format_to_filename(
@@ -397,6 +413,8 @@ class WorkflowManager:
             tofn = apply_secondary_file_format_to_filename(outfn, sec)
             topath = os.path.join(outdir, tofn)
             fs.cp_from(frompath, topath, None)
+
+        return [original_filepath, newoutputfilepath]
 
     def wait_if_required(self, show_metadata=True):
 
@@ -499,8 +517,6 @@ class WorkflowManager:
             meta = self.save_metadata()
             if meta:
                 call("clear")
-                self.database.save_metadata(meta)
-
                 print(meta.format())
                 status = meta.status
             if status not in TaskStatus.final_states():

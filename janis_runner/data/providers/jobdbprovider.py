@@ -43,8 +43,8 @@ class JobDbProvider(DbProviderBase):
             finish NULLABLE STRING,
             backend STRING,
             cached BOOLEAN,
-            stderr STRING,
             stdout STRING,
+            stderr STRING,
             FOREIGN KEY (parentjid) REFERENCES jobs
         )
         """

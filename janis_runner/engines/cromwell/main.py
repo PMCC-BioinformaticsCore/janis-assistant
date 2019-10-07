@@ -364,6 +364,9 @@ class Cromwell(Engine):
         if isinstance(value, dict):
             fileloc = value["location"]
 
+        if isinstance(fileloc, list):
+            return newkey, [Cromwell.parse_output(key, f)[1] for f in fileloc]
+
         return (
             newkey,
             WorkflowOutputModel(

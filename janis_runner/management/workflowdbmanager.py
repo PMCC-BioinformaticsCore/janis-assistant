@@ -75,6 +75,7 @@ class WorkflowDbManager:
             name=self.workflowmetadata.name,
             start=self.workflowmetadata.start,
             finish=self.workflowmetadata.finish,
+            outdir=self.exec_path,
             execution_dir=self.workflowmetadata.execution_dir,
             status=self.workflowmetadata.status,
             engine=self.workflowmetadata.engine.description(),

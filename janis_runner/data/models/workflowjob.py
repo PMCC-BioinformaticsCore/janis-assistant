@@ -33,13 +33,13 @@ class WorkflowJobModel:
         self.name = name
         self.batchid = batchid
         self.shard = None
-        if shard:
+        if shard is not None:
             if isinstance(shard, str) and shard.isdigit:
                 shard = int(shard)
             if shard >= 0:
                 self.shard = shard
         self.attempt = None
-        if attempt:
+        if attempt is not None:
             if isinstance(attempt, str) and attempt.isdigit():
                 attempt = int(attempt)
             if attempt > 1:

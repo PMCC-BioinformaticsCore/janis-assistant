@@ -11,7 +11,7 @@ from subprocess import call
 from typing import Optional, List, Dict
 
 from janis_core import InputSelector
-from janis_core.translations import get_translator
+from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 from janis_core.workflow.workflow import Workflow
@@ -231,17 +231,13 @@ class WorkflowManager:
                 max_mem=max_memory,
             )
 
-        self.evaluate_output_params(
-            translator=translator, wf=workflow, additional_inputs=additional_inputs
-        )
+        self.evaluate_output_params(wf=workflow, additional_inputs=additional_inputs)
 
         self.database.progressDB.saveWorkflow = True
         return workflow_to_evaluate
 
-    def evaluate_output_params(
-        self, translator: TranslatorBase, wf: Workflow, additional_inputs: dict
-    ):
-        mapped_inps = translator.build_inputs_file(
+    def evaluate_output_params(self, wf: Workflow, additional_inputs: dict):
+        mapped_inps = CwlTranslator().build_inputs_file(
             wf, recursive=False, additional_inputs=additional_inputs
         )
 
@@ -277,6 +273,7 @@ class WorkflowManager:
             if selector.input_to_select not in inputs:
                 Logger.warn(f"Couldn't find the input {selector.input_to_select}")
                 return None
+            return inputs[selector.input_to_select]
 
         raise Exception(
             f"Janis runner cannot evaluate selecting the output from a {type(selector).__name__} type"
@@ -354,20 +351,25 @@ class WorkflowManager:
 
             # copy output
 
-            outpath = os.path.join(outdir, outfn)
+            newoutputfilepath = os.path.join(outdir, outfn)
+
             if isinstance(eout, WorkflowOutputModel):
-                fs.cp_from(eout.originalpath, outpath, None)
+                ext = get_extension(eout.originalpath)
+                outfn += ext
+                fs.cp_from(eout.originalpath, newoutputfilepath, None)
                 # update value
                 self.database.outputsDB.update_paths(
-                    tag=out.tag, original_path=eout.originalpath, new_path=outpath
+                    tag=out.tag,
+                    original_path=eout.originalpath,
+                    new_path=newoutputfilepath,
                 )
             else:
                 if isinstance(fs, LocalFileScheme):
                     # Write eout to outpath
-                    with open(outpath, "w+") as outfile:
+                    with open(newoutputfilepath, "w+") as outfile:
                         outfile.write(eout)
                 self.database.outputsDB.update_paths(
-                    tag=out.tag, original_path=eout, new_path=outpath
+                    tag=out.tag, original_path=eout, new_path=newoutputfilepath
                 )
 
             for sec in out.secondaries or []:
@@ -376,7 +378,7 @@ class WorkflowManager:
                     eout.originalpath, sec
                 )
                 tofn = apply_secondary_file_format_to_filename(outfn, sec)
-                topath = os.path.join(outpath, tofn)
+                topath = os.path.join(outdir, tofn)
                 fs.cp_from(frompath, topath, None)
 
         self.database.progressDB.copiedOutputs = True

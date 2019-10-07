@@ -8,7 +8,7 @@ A task manager will have reference to a database,
 import os
 import time
 from subprocess import call
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union, Any
 
 from janis_core import InputSelector
 from janis_core.translations import get_translator, CwlTranslator
@@ -341,47 +341,62 @@ class WorkflowManager:
                 )
                 continue
 
-            merged_tags = "/".join(out.tags or ["outputs"])
-            outdir = os.path.join(self.path, merged_tags)
-
-            fs.mkdirs(outdir)
-
-            prefix = (out.prefix + "_") if out.prefix else ""
-            outfn = prefix + out.tag
-
-            # copy output
-
-            newoutputfilepath = os.path.join(outdir, outfn)
-
-            if isinstance(eout, WorkflowOutputModel):
-                ext = get_extension(eout.originalpath)
-                outfn += ext
-                fs.cp_from(eout.originalpath, newoutputfilepath, None)
-                # update value
-                self.database.outputsDB.update_paths(
-                    tag=out.tag,
-                    original_path=eout.originalpath,
-                    new_path=newoutputfilepath,
-                )
-            else:
-                if isinstance(fs, LocalFileScheme):
-                    # Write eout to outpath
-                    with open(newoutputfilepath, "w+") as outfile:
-                        outfile.write(eout)
-                self.database.outputsDB.update_paths(
-                    tag=out.tag, original_path=eout, new_path=newoutputfilepath
-                )
-
-            for sec in out.secondaries or []:
-
-                frompath = apply_secondary_file_format_to_filename(
-                    eout.originalpath, sec
-                )
-                tofn = apply_secondary_file_format_to_filename(outfn, sec)
-                topath = os.path.join(outdir, tofn)
-                fs.cp_from(frompath, topath, None)
-
         self.database.progressDB.copiedOutputs = True
+
+    def copy_output(
+        self,
+        fs: FileScheme,
+        out: WorkflowOutputModel,
+        engine_output: Union[WorkflowOutputModel, Any, List[Any]],
+        shard=None,
+    ):
+
+        if isinstance(engine_output, list):
+            for eout in engine_output:
+                self.copy_output(fs, out, eout, shard=0 if shard is None else shard + 1)
+            return
+
+        merged_tags = "/".join(out.tags or ["outputs"])
+        outdir = os.path.join(self.path, merged_tags)
+
+        fs.mkdirs(outdir)
+
+        prefix = (out.prefix + "_") if out.prefix else ""
+        outfn = prefix + out.tag
+
+        if shard is not None:
+            outfn += f"-shard{shard}"
+
+        # copy output
+
+        newoutputfilepath = os.path.join(outdir, outfn)
+
+        if isinstance(engine_output, WorkflowOutputModel):
+            ext = get_extension(engine_output.originalpath)
+            outfn += ext
+            fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
+            # update value
+            self.database.outputsDB.update_paths(
+                tag=out.tag,
+                original_path=engine_output.originalpath,
+                new_path=newoutputfilepath,
+            )
+        else:
+            if isinstance(fs, LocalFileScheme):
+                # Write engine_output to outpath
+                with open(newoutputfilepath, "w+") as outfile:
+                    outfile.write(engine_output)
+            self.database.outputsDB.update_paths(
+                tag=out.tag, original_path=engine_output, new_path=newoutputfilepath
+            )
+
+        for sec in out.secondaries or []:
+            frompath = apply_secondary_file_format_to_filename(
+                engine_output.originalpath, sec
+            )
+            tofn = apply_secondary_file_format_to_filename(outfn, sec)
+            topath = os.path.join(outdir, tofn)
+            fs.cp_from(frompath, topath, None)
 
     def wait_if_required(self, show_metadata=True):
 
@@ -433,43 +448,6 @@ class WorkflowManager:
         print(res)
         return res
 
-    @staticmethod
-    def copy_output(filescheme: FileScheme, output_dir, filename, source):
-
-        if isinstance(source, list):
-            WorkflowManager.copy_sharded_outputs(
-                filescheme, output_dir, filename, source
-            )
-        elif isinstance(source, CromwellFile):
-            WorkflowManager.copy_cromwell_output(
-                filescheme, output_dir, filename, source
-            )
-        elif isinstance(source, str):
-            ext = get_extension(source)
-            extwdot = ("." + ext) if ext else ""
-            filescheme.cp_from(source, output_dir + filename + extwdot, None)
-
-    @staticmethod
-    def copy_sharded_outputs(
-        filescheme: FileScheme, output_dir, filename, outputs: List[CromwellFile]
-    ):
-        for counter in range(len(outputs)):
-            sid = f"-shard-{counter}"
-            WorkflowManager.copy_output(
-                filescheme, output_dir, filename + sid, outputs[counter]
-            )
-
-    @staticmethod
-    def copy_cromwell_output(
-        filescheme: FileScheme, output_dir: str, filename: str, out: CromwellFile
-    ):
-        WorkflowManager.copy_output(filescheme, output_dir, filename, out.location)
-        if out.secondary_files:
-            for sec in out.secondary_files:
-                WorkflowManager.copy_output(
-                    filescheme, output_dir, filename, sec.location
-                )
-
     def get_engine_wid(self):
         if not self._engine_wid:
             self._engine_wid = self.database.workflowmetadata.engine_wid
@@ -490,15 +468,7 @@ class WorkflowManager:
     @staticmethod
     def create_dir_structure(path):
         outputdir = WorkflowManager.get_task_path_for(path)
-        folders = [
-            "workflow",
-            "metadata",
-            "validation",
-            "outputs",
-            "logs",
-            "configuration",
-            "execution",
-        ]
+        folders = ["workflow", "metadata", "logs", "configuration"]
         WorkflowManager._create_dir_if_needed(path)
 
         # workflow folder

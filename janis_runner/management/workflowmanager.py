@@ -397,7 +397,9 @@ class WorkflowManager:
         if isinstance(engine_output, WorkflowOutputModel):
             original_filepath = engine_output.originalpath
             ext = get_extension(engine_output.originalpath)
-            outfn += ext
+            if ext:
+                outfn += ext
+                newoutputfilepath += "." + ext
             fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
         else:
             if isinstance(fs, LocalFileScheme):

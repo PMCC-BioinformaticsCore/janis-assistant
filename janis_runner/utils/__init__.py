@@ -28,6 +28,11 @@ def generate_new_id(forbiddenids: Set[str]):
 
 
 def get_extension(fn):
+    """
+    Returns the file extension (with no dot) if available, else None
+    :param fn:
+    :return:
+    """
     last_path_component = os.path.basename(fn)
     if "." not in last_path_component:
         return None

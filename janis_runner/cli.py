@@ -18,7 +18,12 @@ from janis_runner.utils import parse_additional_arguments
 from janis_runner.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
 
-# environments = ConfigManager.manager().environmentDB.get_env_ids()
+
+class DefaultHelpArgParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write("error: %s\n" % message)
+        self.print_help()
+        sys.exit(2)
 
 
 def process_args(sysargs=None):
@@ -37,28 +42,47 @@ def process_args(sysargs=None):
         "cleanup": do_cleanup,
     }
 
-    parser = argparse.ArgumentParser(description="Execute a workflow")
+    parser = DefaultHelpArgParser(description="Execute a workflow")
 
     add_logger_args(parser)
     parser.add_argument("-c", "--config", help="Path to config file")
     parser.add_argument("-v", "--version", action="store_true")
 
-    subparsers = parser.add_subparsers(help="subcommand help", dest="command")
+    subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser("version")
+    add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
+    add_translate_args(
+        subparsers.add_parser("translate", help="Translate a janis workflow to ")
+    )
+    add_inputs_args(
+        subparsers.add_parser(
+            "inputs", help="Generate an input job file for a janis workflow"
+        )
+    )
 
-    add_watch_args(subparsers.add_parser("watch"))
-    add_abort_args(subparsers.add_parser("abort"))
-    add_rm_args(subparsers.add_parser("rm"))
+    add_watch_args(
+        subparsers.add_parser("watch", help="Watch an existing Janis workflow")
+    )
+    add_abort_args(
+        subparsers.add_parser("abort", help="Abort a running Janis Workflow")
+    )
+    add_rm_args(
+        subparsers.add_parser("rm", help="Remove the output directory and metadata")
+    )
 
-    add_run_args(subparsers.add_parser("run"))
-    add_translate_args(subparsers.add_parser("translate"))
-    add_inputs_args(subparsers.add_parser("inputs"))
+    add_metadata_args(
+        subparsers.add_parser(
+            "metadata", help="Print all known metadata about a workflow"
+        )
+    )
+    # add_environment_args(subparsers.add_parser("environment"))
+    add_query_args(
+        subparsers.add_parser("query", help="Search known workflows by some criteria")
+    )
 
-    add_metadata_args(subparsers.add_parser("metadata"))
-    add_environment_args(subparsers.add_parser("environment"))
-    add_query_args(subparsers.add_parser("query"))
-    add_config_args(subparsers.add_parser("config"))
+    subparsers.add_parser("version", help="Print the versions of Janis and exit")
+
+    # add_config_args(subparsers.add_parser("config", help=""))
     # add_cleanup_args(subparsers.add_parser("cleanup"))
 
     args = parser.parse_args(sysargs)

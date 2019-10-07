@@ -51,18 +51,22 @@ class OutputDbProvider(DbProviderBase):
 
     @staticmethod
     def _insert_model_obj(model: WorkflowOutputModel):
+        tags = (
+            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.tags) if model.tags else None
+        )
+        secs = (
+            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.secondaries)
+            if model.secondaries
+            else None
+        )
         return (
             model.tag,
             model.originalpath,
             model.newpath,
             model.timestamp,
             model.prefix,
-            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.tags)
-            if model.tags
-            else None,
-            model.secondaries.join(WorkflowOutputModel.ARRAY_SEPARATOR)
-            if model.secondaries
-            else None,
+            tags,
+            secs,
         )
 
     def insert(self, model: WorkflowOutputModel):

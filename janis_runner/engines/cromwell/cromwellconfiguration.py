@@ -263,7 +263,7 @@ String? docker""".strip(),
                 slurm = cls.slurm()
 
                 emailextra = (
-                    f"--mail-user ${jobemail} --mail-type END" if jobemail else ""
+                    f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )
 
                 slurm.config.runtime_attributes = (

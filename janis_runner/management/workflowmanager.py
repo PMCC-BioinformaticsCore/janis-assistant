@@ -7,16 +7,18 @@ A task manager will have reference to a database,
 """
 import os
 import time
-from datetime import datetime
 from subprocess import call
 from typing import Optional, List, Dict
 
+from janis_core import InputSelector
 from janis_core.translations import get_translator
 from janis_core.translations.translationbase import TranslatorBase
+from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 from janis_core.workflow.workflow import Workflow
 
-from janis_runner.data.models.filescheme import FileScheme
+from janis_runner.data.models.filescheme import FileScheme, LocalFileScheme
 from janis_runner.data.enums import TaskStatus
+from janis_runner.data.models.outputs import WorkflowOutputModel
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
@@ -229,8 +231,56 @@ class WorkflowManager:
                 max_mem=max_memory,
             )
 
+        self.evaluate_output_params(
+            translator=translator, wf=workflow, additional_inputs=additional_inputs
+        )
+
         self.database.progressDB.saveWorkflow = True
         return workflow_to_evaluate
+
+    def evaluate_output_params(
+        self, translator: TranslatorBase, wf: Workflow, additional_inputs: dict
+    ):
+        mapped_inps = translator.build_inputs_file(
+            wf, recursive=False, additional_inputs=additional_inputs
+        )
+
+        outputs: List[WorkflowOutputModel] = []
+
+        for o in wf.output_nodes.values():
+            # We'll
+            outputs.append(
+                WorkflowOutputModel(
+                    tag=o.id(),
+                    original_path=None,
+                    new_path=None,
+                    timestamp=None,
+                    prefix=self.evaluate_output_selector(o.output_prefix, mapped_inps),
+                    tags=self.evaluate_output_selector(o.output_tag, mapped_inps),
+                    secondaries=o.datatype.secondary_files(),
+                )
+            )
+
+        return self.database.outputsDB.insert_many(outputs)
+
+    def evaluate_output_selector(self, selector, inputs: dict):
+        if selector is None:
+            return None
+
+        if isinstance(selector, str):
+            return selector
+
+        if isinstance(selector, list):
+            return [self.evaluate_output_selector(s, inputs) for s in selector]
+
+        if isinstance(selector, InputSelector):
+            if selector.input_to_select not in inputs:
+                Logger.warn(f"Couldn't find the input {selector.input_to_select}")
+                return None
+
+        raise Exception(
+            f"Janis runner cannot evaluate selecting the output from a {type(selector).__name__} type"
+        )
 
     def submit_workflow_if_required(self, wf, translator):
         if self.database.progressDB.submitWorkflow:
@@ -280,36 +330,56 @@ class WorkflowManager:
         if self.database.progressDB.copiedOutputs:
             return Logger.log(f"Workflow '{self.wid}' has copied outputs, skipping")
 
-        outputs = self.environment.engine.outputs_task(self.get_engine_wid())
-        if not outputs:
-            return
+        wf_outputs = self.database.outputsDB.get_all()
+        engine_outputs = self.environment.engine.outputs_task(self.get_engine_wid())
+        eoutkeys = engine_outputs.keys()
+        fs = self.environment.filescheme
 
-        # outdir = self.get_task_path() + "outputs/"
-        # valdir = self.get_task_path() + "validation/"
-        #
-        # def output_is_validating(o):
-        #     return is_validating and o.split(".")[-1].startswith("validated_")
-        #
-        # fs = self.environment.filescheme
-        #
-        # with open(outdir + "outputs.json", "w+") as oofp:
-        #     json.dump(dict(outputs), oofp)
-        #
-        # for outname, o in outputs.items():
-        #
-        #     od = valdir if output_is_validating(outname) else outdir
-        #
-        #     if isinstance(o, list):
-        #         self.copy_sharded_outputs(fs, od, outname, o)
-        #     elif isinstance(o, CromwellFile):
-        #         self.copy_cromwell_output(fs, od, outname, o)
-        #     elif isinstance(o, str):
-        #         self.copy_output(fs, od, outname, o)
-        #
-        #     else:
-        #         raise Exception(f"Don't know how to handle output with type: {type(o)}")
-        #
-        # self.database.progress_mark_completed(ProgressKeys.copiedOutputs)
+        for out in wf_outputs:
+            eout = engine_outputs.get(out.tag)
+
+            if eout is None:
+                Logger.warn(
+                    f"Couldn't find expected output with tag {out.tag}, found outputs ({', '.join(eoutkeys)}"
+                )
+                continue
+
+            merged_tags = "/".join(out.tags or ["outputs"])
+            outdir = os.path.join(self.path, merged_tags)
+
+            fs.mkdirs(outdir)
+
+            prefix = (out.prefix + "_") if out.prefix else ""
+            outfn = prefix + out.tag
+
+            # copy output
+
+            outpath = os.path.join(outdir, outfn)
+            if isinstance(eout, WorkflowOutputModel):
+                fs.cp_from(eout.originalpath, outpath, None)
+                # update value
+                self.database.outputsDB.update_paths(
+                    tag=out.tag, original_path=eout.originalpath, new_path=outpath
+                )
+            else:
+                if isinstance(fs, LocalFileScheme):
+                    # Write eout to outpath
+                    with open(outpath, "w+") as outfile:
+                        outfile.write(eout)
+                self.database.outputsDB.update_paths(
+                    tag=out.tag, original_path=eout, new_path=outpath
+                )
+
+            for sec in out.secondaries or []:
+
+                frompath = apply_secondary_file_format_to_filename(
+                    eout.originalpath, sec
+                )
+                tofn = apply_secondary_file_format_to_filename(outfn, sec)
+                topath = os.path.join(outpath, tofn)
+                fs.cp_from(frompath, topath, None)
+
+        self.database.progressDB.copiedOutputs = True
 
     def wait_if_required(self, show_metadata=True):
 

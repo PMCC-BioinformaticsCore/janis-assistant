@@ -4,12 +4,32 @@ from janis_runner.utils.dateutil import DateUtil
 
 
 class WorkflowOutputModel:
-    def __init__(self, tag, originalpath, newpath, prefix, tags, timestamp):
+
+    ARRAY_SEPARATOR = "::"
+
+    def __init__(
+        self, tag, original_path, new_path, timestamp, prefix, tags, secondaries
+    ):
         self.tag = tag
-        self.originalpath = originalpath
-        self.newpath = newpath
+        self.originalpath = original_path
+        self.newpath = new_path
         self.prefix = prefix
-        self.tags = tags
+
+        self.tags = None
+        if tags:
+            if isinstance(tags, str):
+                self.tags = tags.split(WorkflowOutputModel.ARRAY_SEPARATOR)
+            else:
+                self.tags = tags
+
+        self.secondaries = None
+        if secondaries:
+            if isinstance(secondaries, str):
+                self.secondaries = secondaries.split(
+                    WorkflowOutputModel.ARRAY_SEPARATOR
+                )
+            else:
+                self.secondaries = secondaries
 
         if not isinstance(timestamp, datetime.datetime):
             timestamp = DateUtil.parse_iso(timestamp)
@@ -17,4 +37,6 @@ class WorkflowOutputModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowOutputModel(row[0], row[1], row[2], row[3], row[4], row[5])
+        return WorkflowOutputModel(
+            row[0], row[1], row[2], row[3], row[4], row[5], row[6]
+        )

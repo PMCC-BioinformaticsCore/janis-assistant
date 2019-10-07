@@ -2,6 +2,7 @@ from typing import List
 
 from janis_runner.data.dbproviderbase import DbProviderBase
 from janis_runner.data.models.outputs import WorkflowOutputModel
+from janis_runner.utils.dateutil import DateUtil
 
 
 class OutputDbProvider(DbProviderBase):
@@ -13,9 +14,10 @@ class OutputDbProvider(DbProviderBase):
             tag STRING PRIMARY KEY,
             original_path STRING,
             new_path STRING,
-            prefix STRING
-            tags STRING
-            timestamp NULLABLE STRING
+            timestamp NULLABLE STRING,
+            prefix STRING,
+            tags STRING,
+            secondaries STRING
         )
         """
 
@@ -29,49 +31,56 @@ class OutputDbProvider(DbProviderBase):
             raise KeyError("Couldn't find output with tag: " + tag)
         return WorkflowOutputModel.from_row(row)
 
-    def get_all(self, tag: str) -> List[WorkflowOutputModel]:
-        self.cursor.execute("SELECT * FROM outputs", (tag,))
+    def get_all(self) -> List[WorkflowOutputModel]:
+        self.cursor.execute("SELECT * FROM outputs")
         rows = self.cursor.fetchall()
         return [WorkflowOutputModel.from_row(row) for row in rows]
 
-    def insert(self, model: WorkflowOutputModel):
-        self.cursor.execute(
-            """\
-            INSERT INTO outputs
-                (tag, original_path, new_path, prefix, tags, timestamp)
-            VALUES
-                (?, ?, ?, ?, ?)
-            """,
-            (
-                model.tag,
-                model.originalpath,
-                model.newpath,
-                model.prefix,
-                model.tags,
-                model.timestamp,
-            ),
+    _insert_statement = """\
+        INSERT INTO outputs
+            (tag, original_path, new_path, timestamp, prefix, tags, secondaries)
+        VALUES
+            (?, ?, ?, ?, ?, ?, ?)
+    """
+
+    def insert_many(self, outputs: List[WorkflowOutputModel]):
+        self.cursor.executemany(
+            self._insert_statement, [self._insert_model_obj(o) for o in outputs]
+        )
+        self.commit()
+
+    @staticmethod
+    def _insert_model_obj(model: WorkflowOutputModel):
+        return (
+            model.tag,
+            model.originalpath,
+            model.newpath,
+            model.timestamp,
+            model.prefix,
+            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.tags)
+            if model.tags
+            else None,
+            model.secondaries.join(WorkflowOutputModel.ARRAY_SEPARATOR)
+            if model.secondaries
+            else None,
         )
 
-    def update(self, model: WorkflowOutputModel):
+    def insert(self, model: WorkflowOutputModel):
+        self.cursor.execute(self._insert_statement, self._insert_model_obj(model))
+        self.commit()
+
+    def update_paths(self, tag: str, original_path: str, new_path: str):
         self.cursor.execute(
             """\
             UPDATE outputs SET
                 original_path=?,
                 new_path=?,
-                prefix=?,
-                tags=?,
                 timestamp=?
             WHERE tag = ?
             """,
-            (
-                model.originalpath,
-                model.newpath,
-                model.prefix,
-                model.tags,
-                model.timestamp,
-                model.tag,
-            ),
+            (original_path, new_path, DateUtil.now(), tag),
         )
+        self.commit()
 
     def upgrade_schema(self, from_version: int):
         # if from_version < 2:

@@ -1,20 +1,25 @@
 import os
+import json
+import os
 import re
+import shutil
+import signal
+import subprocess
 import sys
+import time
 import urllib.request
 from glob import glob
 from typing import Optional
-import pickle
 
-import json
 import requests
-import signal
-import subprocess
-import time
-import shutil
 
 from janis_runner.__meta__ import ISSUE_URL
+from janis_runner.data.models.outputs import WorkflowOutputModel
 from janis_runner.data.models.workflow import WorkflowModel
+from janis_runner.engines.cromwell.cromwellmetadata import (
+    cromwell_status_to_status,
+    CromwellMetadata,
+)
 from janis_runner.engines.cromwell.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
@@ -25,15 +30,8 @@ from janis_runner.utils import (
 )
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
-from janis_runner.engines.cromwell.cromwellmetadata import (
-    cromwell_status_to_status,
-    CromwellMetadata,
-)
-
-from .data_types import CromwellFile
 from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
-
 
 CROMWELL_RELEASES = (
     "https://api.github.com/repos/broadinstitute/cromwell/releases/latest"
@@ -355,10 +353,29 @@ class Cromwell(Engine):
 
         if not outs:
             return {}
-        return {
-            k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k]
-            for k in outs
-        }
+        parsed = [self.parse_output(k, v) for k, v in outs.items()]
+        return {out[0]: out[1] for out in parsed}
+
+    @staticmethod
+    def parse_output(key, value):
+        newkey = "".join(key.split(".")[1:])
+
+        fileloc = value
+        if isinstance(value, dict):
+            fileloc = value["location"]
+
+        return (
+            newkey,
+            WorkflowOutputModel(
+                tag=newkey,
+                original_path=fileloc,
+                timestamp=DateUtil.now(),
+                new_path=None,
+                tags=None,
+                prefix=None,
+                secondaries=None,
+            ),
+        )
 
     def start_from_paths(
         self, wid: str, source_path: str, input_path: str, deps_path: str

@@ -20,7 +20,7 @@ class WorkflowOutputModel:
             if isinstance(tags, str):
                 self.tags = tags.split(WorkflowOutputModel.ARRAY_SEPARATOR)
             else:
-                self.tags = tags
+                self.tags = [t for t in tags if t is not None]
 
         self.secondaries = None
         if secondaries:

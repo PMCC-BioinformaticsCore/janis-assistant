@@ -503,9 +503,19 @@ class Cromwell(Engine):
             r.raise_for_status()
             return CromwellMetadata(r.json())
 
-        except Exception as e:
-            print(e)
-            return None
+        except requests.HTTPError as e:
+            if e.response.status_code == 404:
+                # Usually means Cromwell hasn't loaded properly yet
+                return None
+
+            try:
+                res = e.response.json()
+                message = res["message"]
+                Logger.warn("Response when getting Cromwell metadata: " + str(message))
+            except Exception as ee:
+                Logger.warn(str(e))
+            finally:
+                return None
 
     def metadata(self, identifier, expand_subworkflows=True) -> Optional[WorkflowModel]:
         raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)

@@ -429,16 +429,22 @@ class WorkflowManager:
         status = None
 
         while status not in TaskStatus.final_states():
-            meta = self.save_metadata()
+            self.save_metadata()
+            meta = self.database.get_metadata()
             if meta:
                 if show_metadata:
                     call("clear")
-                    newmeta = self.database.get_metadata()
-                    print(newmeta.format())
+                    print(meta.format())
                 status = meta.status
 
             if status not in TaskStatus.final_states():
-                time.sleep(5)
+                if not show_metadata:
+                    time.sleep(5)
+                else:
+                    for _ in range(2):
+                        time.sleep(3)
+                        call("clear")
+                        print(meta.format())
 
         self.database.workflowmetadata.finish = DateUtil.now()
         self.database.progressDB.workflowMovedToFinalState = True

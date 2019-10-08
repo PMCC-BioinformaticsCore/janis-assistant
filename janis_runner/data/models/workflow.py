@@ -27,6 +27,7 @@ class WorkflowModel:
         error: str = None,
         author: str = None,
         jobs: List[WorkflowJobModel] = None,
+        last_updated: datetime = None,
     ):
         self.wid = wid
         self.engine_wid = engine_wid
@@ -38,6 +39,7 @@ class WorkflowModel:
         self.execution_dir = execution_dir
         self.outdir = outdir
         self.status = status
+        self.last_updated = last_updated
 
         self.engine = engine
         self.engine_url = engine_url
@@ -58,6 +60,15 @@ class WorkflowModel:
         fin = self.finish if self.finish else DateUtil.now()
         duration = round((fin - self.start).total_seconds()) if self.start else 0
 
+        updated_text = "Unknown"
+        if self.last_updated:
+            secs_ago = int((DateUtil.now() - self.last_updated).total_seconds())
+            if secs_ago > 2:
+                updated_text = second_formatter(secs_ago) + " ago"
+            else:
+                updated_text = "Just now"
+            updated_text += f" ({self.last_updated.replace(microsecond=0).isoformat()})"
+
         return f"""\
 WID:        {self.wid}
 EngId:      {self.engine_wid}
@@ -71,6 +82,7 @@ Status:     {self.status}
 Duration:   {second_formatter(duration)}
 Start:      {self.start.isoformat() if self.start else 'N/A'}
 Finish:     {self.finish.isoformat() if self.finish else "N/A"}
+Updated:    {updated_text}
 
 Jobs: 
 {nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start))}       

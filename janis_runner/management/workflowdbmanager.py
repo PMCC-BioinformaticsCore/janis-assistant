@@ -11,6 +11,7 @@ from janis_runner.data.providers.versionsdbprovider import VersionsDbProvider
 from janis_runner.data.providers.workflowmetadataprovider import (
     WorkflowMetadataDbProvider,
 )
+from janis_runner.utils.dateutil import DateUtil
 from janis_runner.utils.logger import Logger
 
 
@@ -65,6 +66,7 @@ class WorkflowDbManager:
         # Let's just say the actual workflow metadata has to updated separately
         alljobs = self.flatten_jobs(metadata.jobs)
         self.jobsDB.update_or_insert_many(alljobs)
+        self.workflowmetadata.last_updated = DateUtil.now()
         return
 
     def get_metadata(self):
@@ -85,6 +87,7 @@ class WorkflowDbManager:
             error=self.workflowmetadata.error,
             author=self.workflowmetadata.author,
             jobs=jobs,
+            last_updated=self.workflowmetadata.last_updated,
         )
 
     def flatten_jobs(self, jobs: List[WorkflowJobModel]):

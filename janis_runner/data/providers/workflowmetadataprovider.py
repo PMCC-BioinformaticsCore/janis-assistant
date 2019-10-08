@@ -34,6 +34,7 @@ class WorkflowMetadataDbProvider(KvDB):
             self.status = None
             self.start = None
             self.finish = None
+            self.last_updated = None
 
             self.execution_dir = None
             self.keepexecutiondir = None

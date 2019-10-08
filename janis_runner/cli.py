@@ -1,6 +1,8 @@
 import sys
 import argparse
 import json
+
+import pkg_resources
 import ruamel.yaml
 import tabulate
 
@@ -342,9 +344,27 @@ def do_configs(parser):
 
 
 def do_version(_):
-    from janis_runner.__meta__ import __version__
+    from tabulate import tabulate
 
-    print(__version__)
+    from janis_runner.__meta__ import __version__ as jr_version
+    from janis_core.__meta__ import __version__ as jc_version
+    import janis_core.registry.entrypoints as EP
+
+    fields = [["janis-core", jc_version], ["janis-runner", jr_version]]
+    eps = pkg_resources.iter_entry_points(group=EP.EXTENSIONS)
+    skip_eps = {"runner"}
+    for entrypoint in eps:
+        if entrypoint.name in skip_eps:
+            continue
+        try:
+            version = entrypoint.load().__version__
+            if version:
+                fields.append(["janis-" + entrypoint.name, version])
+
+        except Exception as e:
+            Logger.log_ex(e)
+
+    print(tabulate(fields))
 
 
 def do_watch(args):

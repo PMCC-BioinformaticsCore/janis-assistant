@@ -5,7 +5,7 @@ from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.utils.dateutil import DateUtil
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 def cromwell_status_to_status(status: str) -> TaskStatus:

@@ -12,7 +12,7 @@ from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine, TaskStatus, TaskBase
 from janis_runner.utils.dateutil import DateUtil
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class CWLTool(Engine):

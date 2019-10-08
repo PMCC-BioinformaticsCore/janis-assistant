@@ -10,7 +10,7 @@ import urllib.request
 
 from janis_runner.management import Archivable
 from janis_runner.management.configuration import JanisConfiguration
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class FileScheme(Archivable, abc.ABC):

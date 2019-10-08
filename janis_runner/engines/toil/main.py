@@ -6,7 +6,7 @@ from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine
-from janis_runner.utils import Logger
+from janis_core.utils.logger import Logger
 
 
 def read_stdout(process):

@@ -4,7 +4,7 @@ from typing import Optional, Union, List, Tuple
 from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.utils import second_formatter
 from janis_runner.utils.dateutil import DateUtil
-from janis_runner.utils.logger import _bcolors
+from janis_core.utils.logger import _bcolors
 
 
 class WorkflowJobModel:

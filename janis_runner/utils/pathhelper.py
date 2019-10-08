@@ -1,11 +1,9 @@
 import os
 import tempfile
 from path import Path
-from janis_core import Workflow, CommandTool
+from janis_core import Workflow, CommandTool, Logger
 from typing import List, Tuple
 from inspect import isclass, isabstract
-
-from .logger import Logger
 
 
 def write_files_into_buffered_zip(files: List[Tuple[str, str]]):

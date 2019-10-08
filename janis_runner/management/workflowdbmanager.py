@@ -12,7 +12,7 @@ from janis_runner.data.providers.workflowmetadataprovider import (
     WorkflowMetadataDbProvider,
 )
 from janis_runner.utils.dateutil import DateUtil
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class WorkflowDbManager:

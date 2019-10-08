@@ -1,7 +1,7 @@
 import threading
 from typing import IO
 
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class ProcessLogger(threading.Thread):

@@ -2,7 +2,7 @@ import socket
 import os.path
 from typing import Set, List, Union
 
-from .logger import Logger
+from janis_core.utils.logger import Logger
 from .pathhelper import (
     get_janis_workflow_from_searchname,
     get_workflow_from_file,

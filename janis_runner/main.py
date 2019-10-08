@@ -140,7 +140,7 @@ def generate_inputs(
         inputsdict = parse_dict(inputsfile)
 
     if not toolref:
-        raise Exception("Couldn't find workflow with name: " + str(toolref))
+        raise Exception("Couldn't find workflow with name: " + str(tool))
 
     return toolref.generate_inputs_override(
         additional_inputs=inputsdict, with_resource_overrides=with_resources

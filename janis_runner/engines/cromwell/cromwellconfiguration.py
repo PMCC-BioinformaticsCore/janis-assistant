@@ -1,7 +1,7 @@
 import json
 from typing import Tuple, Any, Dict, Union
 
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class Serializable:

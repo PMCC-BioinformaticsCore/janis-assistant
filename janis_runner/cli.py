@@ -16,7 +16,7 @@ from janis_runner.data.enums.taskstatus import TaskStatus
 from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
-from janis_runner.utils.logger import Logger, LogLevel
+from janis_core.utils.logger import Logger, LogLevel
 from janis_runner.validation import ValidationRequirements
 
 

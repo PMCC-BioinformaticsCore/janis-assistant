@@ -4,7 +4,7 @@ from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
 from janis_core import Tool, Workflow, WorkflowBuilder, DataType, ToolOutput, String
 from janis_bioinformatics.data_types import Vcf, Bed
 
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class ValidationRequirements:

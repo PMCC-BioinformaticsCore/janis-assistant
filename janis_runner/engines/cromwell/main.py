@@ -29,7 +29,7 @@ from janis_runner.utils import (
     find_free_port,
 )
 from janis_runner.utils.dateutil import DateUtil
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
 

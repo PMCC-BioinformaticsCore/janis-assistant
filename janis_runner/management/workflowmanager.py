@@ -10,11 +10,10 @@ import time
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
-from janis_core import InputSelector
+from janis_core import InputSelector, Logger, Workflow
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
-from janis_core.workflow.workflow import Workflow
 
 from janis_runner.data.models.filescheme import FileScheme, LocalFileScheme
 from janis_runner.data.enums import TaskStatus
@@ -22,10 +21,10 @@ from janis_runner.data.models.outputs import WorkflowOutputModel
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
-from janis_runner.engines.cromwell import CromwellFile
+
 from janis_runner.environments.environment import Environment
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
-from janis_runner.utils import get_extension, Logger
+from janis_runner.utils import get_extension
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.validation import (
     generate_validation_workflow_from_janis,

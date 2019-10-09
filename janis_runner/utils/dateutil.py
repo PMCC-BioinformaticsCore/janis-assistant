@@ -16,6 +16,10 @@ class DateUtil:
             return None
 
     @staticmethod
+    def as_utc(d):
+        return d.astimezone(tz.UTC) if d else None
+
+    @staticmethod
     def now():
         return datetime.utcnow().replace(tzinfo=tz.UTC)
 

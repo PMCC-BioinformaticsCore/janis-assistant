@@ -487,7 +487,7 @@ def do_query(args):
             wid,
             t.database.workflowmetadata.status,
             t.database.workflowmetadata.name,
-            t.database.workflowmetadata.start,
+            DateUtil.as_utc(t.database.workflowmetadata.start),
             t.path,
         )
         for wid, t in tasks.items()

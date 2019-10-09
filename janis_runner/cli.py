@@ -487,12 +487,12 @@ def do_query(args):
             wid,
             t.database.workflowmetadata.status,
             t.database.workflowmetadata.name,
-            DateUtil.as_utc(t.database.workflowmetadata.start),
+            t.database.workflowmetadata.start,
             t.path,
         )
         for wid, t in tasks.items()
     ]
-    prepared.sort(key=lambda p: p[3] if p[3] else DateUtil.now().max)
+    prepared.sort(key=lambda p: p[3] if p[3] else DateUtil.max())
 
     print(
         tabulate.tabulate(

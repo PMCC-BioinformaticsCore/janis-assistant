@@ -24,6 +24,10 @@ class DateUtil:
         return datetime.utcnow().replace(tzinfo=tz.UTC)
 
     @staticmethod
+    def max():
+        return DateUtil.as_utc(datetime.max)
+
+    @staticmethod
     def secs_difference(a: datetime, b: datetime):
         if a.tzinfo is None or b.tzinfo is None:
             aorb = a if a.tzinfo is None else b

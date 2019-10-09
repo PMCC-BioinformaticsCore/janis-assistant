@@ -5,9 +5,9 @@ from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfigur
 
 def spartan(
     executionDir: str,
+    containerDir: str,
     queues: Union[str, List[str]] = "physical",
     email: str = None,
-    containerDir: str = None,
     singularityVersion="3.2.0-spartan_gcc-6.2.0",
 ) -> CromwellConfiguration:
 
@@ -19,8 +19,7 @@ def spartan(
             default="slurm-spartan",
             providers={
                 "slurm-spartan": CromwellConfiguration.Backend.Provider.slurm_singularity(
-                    singularityloadinstructions=f"module load Singularity/{singularityVersion}"
-                    + singularityVersion,
+                    singularityloadinstructions=f"module load Singularity/{singularityVersion}",
                     singularitycontainerdir=containerDir,
                     buildinstructions=(f"singularity pull $image docker://${{docker}}"),
                     jobemail=email,
@@ -40,3 +39,7 @@ def spartan(
     }
 
     return config
+
+
+if __name__ == "__main__":
+    print(spartan("execDir", email="michael.franklin@petermac.org"))

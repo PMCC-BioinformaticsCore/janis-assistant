@@ -60,7 +60,7 @@ class TasksDbProvider(DbProviderBase):
         return [
             TaskRow.from_row(r)
             for r in self.cursor.execute(
-                f"SELECT wid * FROM {TasksDbProvider.table_name}"
+                f"SELECT * FROM {TasksDbProvider.table_name}"
             ).fetchall()
         ]
 

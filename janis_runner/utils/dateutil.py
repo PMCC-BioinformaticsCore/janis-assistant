@@ -25,7 +25,9 @@ class DateUtil:
 
     @staticmethod
     def max():
-        return DateUtil.as_utc(datetime.max)
+        return DateUtil.as_utc(
+            datetime.max.replace(day=datetime.max.day - 1, tzinfo=tz.UTC)
+        )
 
     @staticmethod
     def secs_difference(a: datetime, b: datetime):

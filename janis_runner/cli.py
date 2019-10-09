@@ -406,7 +406,7 @@ def do_rm(args):
     wids = args.wid
     for wid in wids:
         try:
-            ConfigManager.manager().remove_task(args.wid, keep_output=args.keep)
+            ConfigManager.manager().remove_task(wid, keep_output=args.keep)
         except Exception as e:
             Logger.critical(f"Can't remove {wid}: " + str(e))
 

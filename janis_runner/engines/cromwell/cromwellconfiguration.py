@@ -307,7 +307,7 @@ String? docker
                 --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
                 --mem=${{memory_mb}} \\
                 {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}"
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}"
             # submit my afternotok dep
             # >&2 echo $jobid
 

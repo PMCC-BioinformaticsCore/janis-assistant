@@ -18,7 +18,7 @@ def spartan(
         backend=CromwellConfiguration.Backend(
             default="slurm-spartan",
             providers={
-                "slurm-pmac": CromwellConfiguration.Backend.Provider.slurm_singularity(
+                "slurm-spartan": CromwellConfiguration.Backend.Provider.slurm_singularity(
                     singularityloadinstructions=f"module load Singularity/{singularityVersion}"
                     + singularityVersion,
                     singularitycontainerdir=containerDir,

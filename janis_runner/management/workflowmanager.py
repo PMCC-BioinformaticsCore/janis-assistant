@@ -21,7 +21,6 @@ from janis_runner.data.models.outputs import WorkflowOutputModel
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
-
 from janis_runner.environments.environment import Environment
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
 from janis_runner.utils import get_extension

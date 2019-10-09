@@ -12,7 +12,7 @@ class Engine(Archivable, ABC):
     def __init__(self, identifier: str, engtype: EngineType, logfile=None):
         self.identifier = identifier
         self.engtype = engtype
-        self._is_started = False
+        self.is_started = False
         self.process_id = None
         self.logfile = logfile
         self._logfp = None

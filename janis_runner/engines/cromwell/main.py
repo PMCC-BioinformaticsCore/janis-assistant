@@ -47,6 +47,10 @@ class Cromwell(Engine):
             pid = f" [PID={self.process_id}]"
         return f"cromwell ({self.host}){pid}"
 
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._logger = None
+
     def __init__(
         self,
         logfile=None,
@@ -68,7 +72,7 @@ class Cromwell(Engine):
 
         self.cromwelljar = cromwelljar
         self.connect_to_instance = True if host else False
-        self._is_started = self.connect_to_instance
+        self.is_started = self.connect_to_instance
 
         self.host = host
         self.port = None
@@ -97,17 +101,17 @@ class Cromwell(Engine):
 
     def start_engine(self):
 
-        if self._is_started:
+        if self.is_started:
             Logger.info("Engine has already been started")
             return self
 
         if self.connect_to_instance:
-            self._is_started = True
+            self.is_started = True
             Logger.info("Cromwell environment discovered, skipping local instance")
             return self
 
         if self._process:
-            self._is_started = True
+            self.is_started = True
             Logger.info(
                 f"Discovered Cromwell instance (pid={self._process}), skipping start"
             )
@@ -155,7 +159,7 @@ class Cromwell(Engine):
             # elif ansi_escape.match():
             #     raise Exception(cd)
 
-        self._is_started = True
+        self.is_started = True
 
         if self._process:
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
@@ -172,7 +176,7 @@ class Cromwell(Engine):
         if process:
             os.killpg(process, signal.SIGTERM)
         Logger.log("Stopped cromwell")
-        self._is_started = False
+        self.is_started = False
 
     # API
 

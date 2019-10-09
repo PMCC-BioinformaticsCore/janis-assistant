@@ -4,7 +4,7 @@ from datetime import datetime
 from shutil import rmtree
 from typing import Dict, Optional, Union
 
-from janis_core import Logger
+from janis_core import Workflow, Logger
 
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.providers.janisdbprovider import TasksDbProvider, TaskRow
@@ -161,7 +161,9 @@ class ConfigManager:
             try:
                 metadb = WorkflowManager.has(row.outputdir, name=name, status=status)
                 if metadb:
-                    relevant[row.wid] = metadb.to_model()
+                    model = metadb.to_model()
+                    model.outdir = row.outputdir
+                    relevant[row.wid] = model
             except:
                 failed.append(row.wid)
 

@@ -129,12 +129,12 @@ def add_metadata_args(parser):
 
 
 def add_abort_args(parser):
-    parser.add_argument("wid", help="Task id")
+    parser.add_argument("wid", help="Task id", nargs="+")
     return parser
 
 
 def add_rm_args(parser):
-    parser.add_argument("wid", help="Task id to remove")
+    parser.add_argument("wid", help="Task id to remove", nargs="+")
     parser.add_argument("--keep", help="Keep output files", action="store_true")
     return parser
 
@@ -393,13 +393,22 @@ def do_metadata(args):
 
 
 def do_abort(args):
-    wid = args.wid
-    tm = ConfigManager.manager().from_wid(wid)
-    tm.abort()
+    wids = args.wid
+    for wid in wids:
+        try:
+            tm = ConfigManager.manager().from_wid(wid)
+            tm.abort()
+        except Exception as e:
+            Logger.critical(f"Couldn't abort' {wid}: " + str(e))
 
 
 def do_rm(args):
-    ConfigManager.manager().remove_task(args.wid, keep_output=args.keep)
+    wids = args.wid
+    for wid in wids:
+        try:
+            ConfigManager.manager().remove_task(args.wid, keep_output=args.keep)
+        except Exception as e:
+            Logger.critical(f"Can't remove {wid}: " + str(e))
 
 
 def do_run(args):

@@ -1,4 +1,5 @@
 import sqlite3
+from os.path import join as ospathjoin
 
 from typing import List
 
@@ -54,8 +55,16 @@ class WorkflowDbManager:
         self.jobsDB = JobDbProvider(db=self.connection, cursor=self.cursor)
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath)
 
+    @staticmethod
+    def get_workflow_metadatadb(execpath):
+        return WorkflowMetadataDbProvider(WorkflowDbManager.get_sql_path_base(execpath))
+
+    @staticmethod
+    def get_sql_path_base(exec_path):
+        return ospathjoin(exec_path, "task.db")
+
     def get_sql_path(self):
-        return self.exec_path + "task.db"
+        return self.get_sql_path_base(self.exec_path)
 
     def db_connection(self):
         path = self.get_sql_path()

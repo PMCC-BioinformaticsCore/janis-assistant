@@ -50,20 +50,22 @@ class WorkflowManager:
         if not self.wid:
             self.wid = self.get_engine_wid()
 
+    @staticmethod
     def has(
-        self,
+        outdir: str,
         status: Optional[TaskStatus],
         name: Optional[str] = None,
         environment: Optional[str] = None,
     ):
+        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir)
+
         has = True
-        if status:
-            has = has and self.database.workflowmetadata.status == status
-        if name:
-            has = has and self.database.workflowmetadata.name.lower().startswith(
-                name.lower()
-            )
-        return has
+        if has and status:
+            has = metadb.status == status
+        if has and name:
+            has = metadb.name.lower().startswith(name.lower())
+
+        return metadb if has else False
 
     @staticmethod
     def from_janis(

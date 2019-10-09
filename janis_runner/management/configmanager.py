@@ -2,15 +2,14 @@ import os
 import sqlite3
 from datetime import datetime
 from shutil import rmtree
+from typing import Dict, Optional, Union
 
-from typing import Dict, Optional, cast, List, Tuple, Union
+from janis_core import Logger
 
-from janis_core import Workflow, Logger
-
+from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.providers.janisdbprovider import TasksDbProvider, TaskRow
-
 from janis_runner.environments.environment import Environment
-from janis_runner.management.configuration import EnvVariables, JanisConfiguration
+from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.management.workflowmanager import WorkflowManager
 from janis_runner.utils import generate_new_id
 from janis_runner.validation import ValidationRequirements
@@ -148,78 +147,29 @@ class ConfigManager:
             raise Exception(f"Couldn't find task with id='{wid}'")
         return WorkflowManager.from_path(path[0], self)
 
-    # def insert_default_environments(self):
-    #     for e in Environment.defaults():
-    #         self.persist_engine(
-    #             engine=e.engine, throw_if_exists=False, should_commit=False
-    #         )
-    #         self.persist_filescheme(
-    #             filescheme=e.filescheme, throw_if_exists=False, should_commit=False
-    #         )
-    #         self.environmentDB.persist_environment(
-    #             e, throw_if_exists=False, should_commit=False
-    #         )
-    #
-    #     self.commit()
+    def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 
-    # def persist_environment_if_required(self, env: Environment):
-    #     try:
-    #         envid = self.get_environment(env.id())
-    #
-    #     except KeyError:
-    #         # we didn't find the environment
-    #         self.get_engine(env.engine)
-    #
-    # def get_environment(self, envid):
-    #     envtuple = self.environmentDB.get_by_id(envid)
-    #     if not envtuple:
-    #         raise KeyError(f"Couldn't find environment with id '{envid}'")
-    #
-    #     (engid, fsid) = envtuple
-    #     eng: Engine = self.engineDB.get(engid)
-    #     fs: FileScheme = self.fileschemeDB.get(fsid)
-    #
-    #     return Environment(envid, eng, fs)
-    #
-    # def persist_engine(self, engine, throw_if_exists=True, should_commit=True):
-    #     return self.engineDB.persist(
-    #         engine, throw_if_exists=throw_if_exists, should_commit=should_commit
-    #     )
-    #
-    # def persist_filescheme(self, filescheme, throw_if_exists=True, should_commit=True):
-    #     return self.fileschemeDB.persist(
-    #         filescheme, throw_if_exists=throw_if_exists, should_commit=should_commit
-    #     )
-    #
-    # def get_filescheme(self, fsid) -> FileScheme:
-    #     return cast(FileScheme, self.fileschemeDB.get(fsid))
-    #
-    # def get_engine(self, engid):
-    #     return self.engineDB.get(engid)
-
-    def query_tasks(self, status, name) -> Dict[str, WorkflowManager]:
         rows: [TaskRow] = self.taskDB.get_all_tasks()
-        ms = {}
+
         failed = []
+        relevant = {}
+
         for row in rows:
+            if not os.path.exists(row.outputdir):
+                failed.append(row.wid)
+                continue
             try:
-                ms[row.wid] = WorkflowManager.from_path(row.outputdir, self)
+                metadb = WorkflowManager.has(row.outputdir, name=name, status=status)
+                if metadb:
+                    relevant[row.wid] = metadb.to_model()
             except:
                 failed.append(row.wid)
 
         if failed:
             failedstr = ", ".join(failed)
-            Logger.info(
+            Logger.warn(
                 f"Couldn't get information for tasks: {failedstr}, run"
                 f"'janis cleanup' to clean up your tasks."
             )
 
-        relevant = []
-
-        if not (status or name):
-            return ms
-
-        for (t, m) in ms.items():
-            if m.has(status=status, name=name):
-                relevant.append(t)
-        return {t: ms[t] for t in relevant}
+        return relevant

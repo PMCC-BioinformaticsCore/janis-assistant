@@ -482,16 +482,7 @@ def do_query(args):
     name = args.name
     tasks = ConfigManager.manager().query_tasks(status=status, name=name)
 
-    prepared = [
-        (
-            wid,
-            t.database.workflowmetadata.status,
-            t.database.workflowmetadata.name,
-            t.database.workflowmetadata.start,
-            t.path,
-        )
-        for wid, t in tasks.items()
-    ]
+    prepared = [(wid, t.status, t.name, t.start, t.outdir) for wid, t in tasks.items()]
     prepared.sort(key=lambda p: p[3] if p[3] else DateUtil.max())
 
     print(

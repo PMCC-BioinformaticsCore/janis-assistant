@@ -17,6 +17,8 @@ from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
 from janis_core.utils.logger import Logger, LogLevel
+
+from janis_runner.utils.dateutil import DateUtil
 from janis_runner.validation import ValidationRequirements
 
 
@@ -490,7 +492,7 @@ def do_query(args):
         )
         for wid, t in tasks.items()
     ]
-    prepared.sort(key=lambda p: p[3])
+    prepared.sort(key=lambda p: p[3] if p[3] else DateUtil.now().max)
 
     print(
         tabulate.tabulate(

@@ -28,6 +28,7 @@ class WorkflowModel:
         author: str = None,
         jobs: List[WorkflowJobModel] = None,
         last_updated: datetime = None,
+        tags: List[str] = None,
     ):
         self.wid = wid
         self.engine_wid = engine_wid
@@ -45,6 +46,7 @@ class WorkflowModel:
         self.engine_url = engine_url
         self.filesystem = filesystem
         self.labels = labels
+        self.tags = tags if tags else []
 
         self.error = error
 

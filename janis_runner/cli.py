@@ -95,6 +95,10 @@ def process_args(sysargs=None):
 
     check_logger_args(args)
 
+    if not args.command:
+        parser.print_help()
+        sys.exit(2)
+
     JanisConfiguration.initial_configuration(args.config)
 
     return cmds[args.command](args)

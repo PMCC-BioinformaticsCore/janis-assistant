@@ -118,6 +118,7 @@ def parse_additional_arguments(largs: List[str]):
     for arg in largs:
         if arg.startswith("-"):
             if curprefix:
+                # Todo: Check if curprefix in the already parsed arguments and convert to an array
                 parsed[curprefix] = (
                     try_parse_primitive_type(curvalue) if curvalue else True
                 )

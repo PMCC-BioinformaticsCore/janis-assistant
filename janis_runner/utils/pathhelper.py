@@ -126,7 +126,7 @@ def get_workflow_from_file(file, name, include_commandtools=False):
 
     except Exception as e:
         raise Exception(
-            f"Unrecognised python file when getting worfklow / command tool: {file} :: {e}"
+            f"Unrecognised python file when getting workflow / command tool: {file} :: {e}"
         )
 
     if name:

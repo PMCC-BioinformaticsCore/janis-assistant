@@ -12,7 +12,7 @@ class WorkflowMetadataDbKeys(Enum):
 
     engine = "engine"
     engine_url = "engine_url"
-    filesystem = "filesystem"
+    filescheme = "filescheme"
     environment = "environment"
 
     labels = "labels"

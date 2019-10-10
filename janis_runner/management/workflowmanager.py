@@ -139,7 +139,7 @@ class WorkflowManager:
         wid = db.workflowmetadata.wid  # .get_meta_info(InfoKeys.taskId)
         envid = db.workflowmetadata.environment  # .get_meta_info(InfoKeys.environment)
         eng = db.workflowmetadata.engine
-        fs = db.workflowmetadata.filesystem
+        fs = db.workflowmetadata.filescheme
         env = Environment(envid, eng, fs)
 
         db.close()
@@ -346,7 +346,14 @@ class WorkflowManager:
                     f"Couldn't find expected output with tag {out.tag}, found outputs ({', '.join(eoutkeys)}"
                 )
                 continue
-            originalfile, newfilepath = self.copy_output(fs, out, eout)
+            originalfile, newfilepath = self.copy_output(
+                fs=fs,
+                outputid=out.tag,
+                prefix=out.prefix,
+                tag=out.tags,
+                secondaries=out.secondaries,
+                engine_output=eout,
+            )
 
             if isinstance(originalfile, list):
                 originalfile = "|".join(originalfile)
@@ -363,7 +370,10 @@ class WorkflowManager:
     def copy_output(
         self,
         fs: FileScheme,
-        out: WorkflowOutputModel,
+        outputid,
+        prefix,
+        tag,
+        secondaries,
         engine_output: Union[WorkflowOutputModel, Any, List[Any]],
         shard=None,
     ):
@@ -372,18 +382,65 @@ class WorkflowManager:
             outs = []
             s = 0
             prev_shards = shard or []
-            for eout in engine_output:
-                outs.append(self.copy_output(fs, out, eout, shard=[*prev_shards, s]))
+
+            if prefix and len(prefix) > 0 and len(prefix) != len(engine_output):
+                Logger.warn("...")
+            if tag and len(tag) > 0 and len(tag) != len(engine_output):
+                Logger.warn("...")
+
+            for i in range(len(engine_output)):
+                eout = engine_output[i]
+
+                # choose tag
+                new_tag = tag[i] if (tag and len(tag) > 1) else tag
+                new_prefix = prefix[i] if (prefix and len(prefix) > 1) else prefix
+
+                outs.append(
+                    self.copy_output(
+                        fs,
+                        outputid=outputid,
+                        tag=new_tag,
+                        prefix=new_prefix,
+                        engine_output=eout,
+                        shard=[*prev_shards, s],
+                        secondaries=secondaries,
+                    )
+                )
                 s += 1
             return [o[0] for o in outs], [o[1] for o in outs]
 
-        merged_tags = "/".join(out.tags or ["outputs"])
-        outdir = os.path.join(self.path, merged_tags)
+        final_tag = tag
+        final_prefix = prefix
+
+        if isinstance(final_tag, list):
+            if len(final_tag) == 0:
+                final_tag = None
+            else:
+                if len(final_tag) > 1:
+                    Logger.critical(
+                        f"Expected only one tag for this copy, but found ({', '.join(final_tag)}) [{len(final_tag)}], using the first"
+                    )
+                final_tag = final_tag[0]
+
+        if isinstance(final_prefix, list):
+            if len(final_prefix) > 1:
+                final_prefix = None
+            else:
+                if len(final_prefix) > 1:
+                    Logger.critical(
+                        f"Expected only one prefix for this copy, but found ({', '.join(final_prefix)}) [{len(final_prefix)}], using the first"
+                    )
+                final_prefix = final_prefix[0]
+
+        if not final_tag:
+            final_tag = "output"
+
+        outdir = os.path.join(self.path, final_tag)
 
         fs.mkdirs(outdir)
 
-        prefix = (out.prefix + "_") if out.prefix else ""
-        outfn = prefix + out.tag
+        pr = (final_prefix + "_") if final_prefix else ""
+        outfn = pr + outputid
 
         if shard is not None:
             for s in shard:
@@ -408,7 +465,7 @@ class WorkflowManager:
                 with open(newoutputfilepath, "w+") as outfile:
                     outfile.write(engine_output)
 
-        for sec in out.secondaries or []:
+        for sec in secondaries or []:
             frompath = apply_secondary_file_format_to_filename(
                 engine_output.originalpath, sec
             )

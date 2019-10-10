@@ -40,7 +40,7 @@ class WorkflowMetadataDbProvider(KvDB):
             self.keepexecutiondir = None
 
             self.engine: Engine = None
-            self.filesystem: FileScheme = None
+            self.filescheme: FileScheme = None
             self.labels = None
             self.error = None
 

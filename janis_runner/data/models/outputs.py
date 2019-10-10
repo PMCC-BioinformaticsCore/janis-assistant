@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional, List
 
 from janis_runner.utils.dateutil import DateUtil
 
@@ -13,7 +14,13 @@ class WorkflowOutputModel:
         self.tag = tag
         self.originalpath = original_path
         self.newpath = new_path
-        self.prefix = prefix
+
+        self.prefix: Optional[List[str]] = None
+        if prefix:
+            if isinstance(prefix, str):
+                self.prefix = prefix.split(WorkflowOutputModel.ARRAY_SEPARATOR)
+            else:
+                self.prefix = [t for t in tags if t is not None]
 
         self.tags = None
         if tags:

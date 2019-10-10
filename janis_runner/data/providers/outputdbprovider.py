@@ -51,6 +51,7 @@ class OutputDbProvider(DbProviderBase):
 
     @staticmethod
     def _insert_model_obj(model: WorkflowOutputModel):
+        print(model.tags)
         tags = (
             WorkflowOutputModel.ARRAY_SEPARATOR.join(model.tags) if model.tags else None
         )

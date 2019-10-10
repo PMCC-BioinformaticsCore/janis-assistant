@@ -51,7 +51,7 @@ def process_args(sysargs=None):
     parser.add_argument("-c", "--config", help="Path to config file")
     parser.add_argument("-v", "--version", action="store_true")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
     add_translate_args(

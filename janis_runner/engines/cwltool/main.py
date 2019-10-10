@@ -86,9 +86,9 @@ class CWLTool(Engine):
 
     def terminate_task(self, identifier) -> TaskStatus:
         """
-        This CWLTool implementation is not super great. It should start the _process and issue an async task
+        This CWLTool implementation is not super great. It should start the process and issue an async task
         to watch out for progress and eventually report back to the sqlite database. Then when 'terminate_task'
-        is called, it could kill this _process (eventually self.pid | self._process) and cleanup the metadata.
+        is called, it could kill this process (eventually self.pid | self._process) and cleanup the metadata.
 
         :param identifier:
         :return:
@@ -100,7 +100,7 @@ class CWLTool(Engine):
     def metadata(self, identifier) -> WorkflowModel:
         """
         So CWLTool doesn't really have a metadata thing. See the 'terminate_task' description, but this
-        implementation should instead create a thread to watch for _process, and write metadata back to sqlite.
+        implementation should instead create a thread to watch for process, and write metadata back to sqlite.
         Then this method could just read from the sqlite database.
 
         :param identifier:
@@ -200,7 +200,7 @@ class CWLTool(Engine):
                 continue
             self._logfp.write(line + "\n")
             Logger.log("cwltool: " + line)
-            if b"Final _process status is success" in c:
+            if b"Final process status is success" in c:
                 break
         j = ""
         Logger.log("Process has completed")
@@ -270,7 +270,7 @@ class CWLTool(Engine):
             else:
                 Logger.log("cwltool: " + line)
 
-            if "final _process status is" in lowline:
+            if "final process status is" in lowline:
                 if "fail" in line.lower():
                     finalstatus = TaskStatus.FAILED
                 elif "success" in line.lower():

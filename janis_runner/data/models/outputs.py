@@ -20,7 +20,7 @@ class WorkflowOutputModel:
             if isinstance(prefix, str):
                 self.prefix = prefix.split(WorkflowOutputModel.ARRAY_SEPARATOR)
             else:
-                self.prefix = [t for t in tags if t is not None]
+                self.prefix = [t for t in prefix if t is not None]
 
         self.tags = None
         if tags:

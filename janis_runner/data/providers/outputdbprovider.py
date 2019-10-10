@@ -51,7 +51,11 @@ class OutputDbProvider(DbProviderBase):
 
     @staticmethod
     def _insert_model_obj(model: WorkflowOutputModel):
-        print(model.tags)
+        prefix = (
+            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.prefix)
+            if model.prefix
+            else None
+        )
         tags = (
             WorkflowOutputModel.ARRAY_SEPARATOR.join(model.tags) if model.tags else None
         )
@@ -65,7 +69,7 @@ class OutputDbProvider(DbProviderBase):
             model.originalpath,
             model.newpath,
             model.timestamp,
-            model.prefix,
+            prefix,
             tags,
             secs,
         )

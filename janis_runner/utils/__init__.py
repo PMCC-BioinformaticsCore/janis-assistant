@@ -139,3 +139,12 @@ def parse_additional_arguments(largs: List[str]):
         parsed[curprefix] = curvalue if curvalue else True
 
     return parsed
+
+
+def recursively_join(iterable, separator: str):
+    return separator.join(
+        [
+            (recursively_join(i, separator) if isinstance(i, list) else str(i))
+            for i in iterable
+        ]
+    )

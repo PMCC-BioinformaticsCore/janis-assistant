@@ -5,6 +5,7 @@ from janis_runner.utils import (
     parse_additional_arguments,
     convert_prefix_to_argname,
     try_parse_primitive_type,
+    recursively_join,
 )
 
 
@@ -174,3 +175,28 @@ class TestSimpleArgParser(TestCase):
                 ["--my-mixed-bag", "4.7", "true", "valueish", "0"]
             ),
         )
+
+
+class TestRecursiveJoin(TestCase):
+    def test_empty(self):
+        self.assertEqual("", recursively_join([], ","))
+
+    def test_one_layer(self):
+        ar = ["1", "2", "3"]
+        self.assertEqual("1,2,3", recursively_join(ar, ","))
+
+    def test_one_layer_none(self):
+        ar = ["1", None, "3"]
+        self.assertEqual("1,None,3", recursively_join(ar, ","))
+
+    def test_one_layer_mixed(self):
+        ar = ["1", True, 1.0, 1]
+        self.assertEqual("1,True,1.0,1", recursively_join(ar, ","))
+
+    def test_two_layers(self):
+        ar = [["1", "2"], "3"]
+        self.assertEqual("1,2,3", recursively_join(ar, ","))
+
+    def test_three_layers_mixed(self):
+        ar = [["1", "2", ["3", 4], 5, [[[[[6.0]]], 7]]], "8"]
+        self.assertEqual("1,2,3,4,5,6.0,7,8", recursively_join(ar, ","))

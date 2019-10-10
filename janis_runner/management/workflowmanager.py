@@ -23,7 +23,7 @@ from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
 from janis_runner.environments.environment import Environment
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
-from janis_runner.utils import get_extension
+from janis_runner.utils import get_extension, recursively_join
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.validation import (
     generate_validation_workflow_from_janis,
@@ -356,10 +356,10 @@ class WorkflowManager:
             )
 
             if isinstance(originalfile, list):
-                originalfile = "|".join(originalfile)
+                originalfile = recursively_join(originalfile, "|")
 
             if isinstance(newfilepath, list):
-                newfilepath = "|".join(newfilepath)
+                newfilepath = recursively_join(newfilepath, "|")
 
             self.database.outputsDB.update_paths(
                 tag=out.tag, original_path=originalfile, new_path=newfilepath

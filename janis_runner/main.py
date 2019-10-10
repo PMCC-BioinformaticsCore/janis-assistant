@@ -12,6 +12,8 @@ from inspect import isclass
 import janis_core as j
 from typing import Optional, Dict, Union, Type
 
+from janis_runner.management.workflowmanager import WorkflowManager
+
 from janis_runner.data.models.filescheme import (
     FileScheme,
     LocalFileScheme,
@@ -213,9 +215,18 @@ def fromjanis(
 
         eng = get_engine_from_eng(
             engine,
-            execdir=os.path.join(row.outputdir, "execution"),
-            confdir=os.path.join(row.outputdir, "configuration"),
-            logfile=os.path.join(row.outputdir, "logs/engine.log"),
+            execdir=WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+            ),
+            confdir=WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
+            ),
+            logfile=os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    row.outputdir, WorkflowManager.WorkflowManagerPath.logs
+                ),
+                "engine.log",
+            ),
             **kwargs,
         )
         fs = get_filescheme_from_fs(filescheme, **kwargs)

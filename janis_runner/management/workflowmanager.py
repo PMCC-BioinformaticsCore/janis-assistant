@@ -7,6 +7,7 @@ A task manager will have reference to a database,
 """
 import os
 import time
+from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
@@ -32,6 +33,13 @@ from janis_runner.validation import (
 
 
 class WorkflowManager:
+    class WorkflowManagerPath(Enum):
+        execution = "execution"
+        workflow = "workflow"
+        metadata = "metadata"
+        logs = "logs"
+        configuration = "configuration"
+
     def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
         self.wid = wid
@@ -39,9 +47,6 @@ class WorkflowManager:
         # hydrate from here if required
         self._engine_wid = None
         self.path = outdir
-        self.outdir_workflow = (
-            self.get_task_path() + "workflow/"
-        )  # handy to have as reference
         self.create_dir_structure(self.path)
 
         self.database = WorkflowDbManager(self.get_task_path_safe())
@@ -180,6 +185,7 @@ class WorkflowManager:
 
         Logger.log(f"Saving workflow with id '{workflow.id()}'")
 
+        outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
         translator.translate(
             workflow,
             to_console=False,
@@ -188,15 +194,13 @@ class WorkflowManager:
             merge_resources=True,
             hints=hints,
             write_inputs_file=True,
-            export_path=self.outdir_workflow,
+            export_path=outdir_workflow,
             additional_inputs=additional_inputs,
             max_cores=max_cores,
             max_mem=max_memory,
         )
 
-        Logger.log(
-            f"Saved workflow with id '{workflow.id()}' to '{self.outdir_workflow}'"
-        )
+        Logger.log(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")
 
         workflow_to_evaluate = workflow
         if validation:
@@ -225,7 +229,7 @@ class WorkflowManager:
                 merge_resources=True,
                 hints=hints,
                 write_inputs_file=True,
-                export_path=self.outdir_workflow,
+                export_path=outdir_workflow,
                 additional_inputs=adjusted_inputs,
                 max_cores=max_cores,
                 max_mem=max_memory,
@@ -283,9 +287,11 @@ class WorkflowManager:
         if self.database.progressDB.submitWorkflow:
             return Logger.log(f"Workflow '{self.wid}' has submitted finished, skipping")
 
-        fn_wf = self.outdir_workflow + translator.workflow_filename(wf)
-        fn_inp = self.outdir_workflow + translator.inputs_filename(wf)
-        fn_deps = self.outdir_workflow + translator.dependencies_filename(wf)
+        outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
+
+        fn_wf = os.path.join(outdir_workflow, translator.workflow_filename(wf))
+        fn_inp = os.path.join(outdir_workflow, translator.inputs_filename(wf))
+        fn_deps = os.path.join(outdir_workflow, translator.dependencies_filename(wf))
 
         Logger.log(f"Submitting task '{self.wid}' to '{self.environment.engine.id()}'")
         self._engine_wid = self.environment.engine.start_from_paths(
@@ -301,11 +307,12 @@ class WorkflowManager:
         if self.database.progressDB.savedMetadata:
             return Logger.log(f"Workflow '{self.wid}' has saved metadata, skipping")
 
+        metadir = self.get_path_for_component(self.WorkflowManagerPath.metadata)
         if isinstance(self.environment.engine, Cromwell):
             import json
 
             meta = self.environment.engine.raw_metadata(self.get_engine_wid()).meta
-            with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
+            with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta, fp)
 
         elif isinstance(self.environment.engine, CWLTool):
@@ -313,7 +320,7 @@ class WorkflowManager:
 
             meta = self.environment.engine.metadata(self.wid)
             self.database.workflowmetadata.status = meta.status
-            with open(self.get_task_path() + "metadata/metadata.json", "w+") as fp:
+            with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.outputs, fp)
 
         else:
@@ -577,15 +584,23 @@ class WorkflowManager:
         WorkflowManager._create_dir_if_needed(path)
         return path
 
+    def get_path_for_component(self, component: WorkflowManagerPath):
+        return self.get_path_for_component_and_dir(self.get_task_path_safe(), component)
+
+    @staticmethod
+    def get_path_for_component_and_dir(path, component: WorkflowManagerPath):
+        return os.path.join(path, "janis", component.value)
+
     @staticmethod
     def create_dir_structure(path):
         outputdir = WorkflowManager.get_task_path_for(path)
-        folders = ["workflow", "metadata", "logs", "configuration"]
         WorkflowManager._create_dir_if_needed(path)
 
         # workflow folder
-        for f in folders:
-            WorkflowManager._create_dir_if_needed(os.path.join(outputdir, f))
+        for comp in WorkflowManager.WorkflowManagerPath:
+            WorkflowManager._create_dir_if_needed(
+                WorkflowManager.get_path_for_component_and_dir(outputdir, comp)
+            )
 
     def copy_logs_if_required(self):
         if not self.database.progressDB.savedLogs:

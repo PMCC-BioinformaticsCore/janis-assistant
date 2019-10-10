@@ -61,7 +61,7 @@ class WorkflowDbManager:
 
     @staticmethod
     def get_sql_path_base(exec_path):
-        return ospathjoin(exec_path, "task.db")
+        return ospathjoin(exec_path, "janis/task.db")
 
     def get_sql_path(self):
         return self.get_sql_path_base(self.exec_path)

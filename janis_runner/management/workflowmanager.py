@@ -378,22 +378,54 @@ class WorkflowManager:
         shard=None,
     ):
 
+        # the output_tag is an array of an array, for each
+
         if isinstance(engine_output, list):
             outs = []
             s = 0
+            nshards = len(engine_output)
             prev_shards = shard or []
+
+            # This is a little complicated, we want to output the set of tags that have the same length as we
+            # we have shards. We'll only let this work if there's one element in the array with the appropriate amount
+            # of shards.
+
+            # find the index
+
+            def find_element_where_length_is(iterable, n):
+                if iterable is None:
+                    return None
+                for i in range(len(iterable)):
+                    ii = iterable[i]
+                    if isinstance(ii, list) and len(ii) == n:
+                        return i
+                return None
+
+            def explode_at_index(iterable, index_to_explode, index_to_select):
+                ar = iterable[:index_to_explode] + [
+                    iterable[index_to_explode][index_to_select]
+                ]
+                if index_to_explode + 1 < len(iterable):
+                    ar.extend(iterable[1 + tag_index_to_explode :])
+                return ar
 
             if prefix and len(prefix) > 0 and len(prefix) != len(engine_output):
                 Logger.warn("...")
+
             if tag and len(tag) > 0 and len(tag) != len(engine_output):
                 Logger.warn("...")
 
-            for i in range(len(engine_output)):
+            tag_index_to_explode = find_element_where_length_is(tag, nshards)
+
+            for i in range(nshards):
                 eout = engine_output[i]
 
                 # choose tag
-                new_tag = tag[i] if (tag and len(tag) > 1) else tag
                 new_prefix = prefix[i] if (prefix and len(prefix) > 1) else prefix
+
+                new_tag = tag
+                if tag_index_to_explode is not None:
+                    new_tag = explode_at_index(tag, tag_index_to_explode, i)
 
                 outs.append(
                     self.copy_output(
@@ -409,18 +441,15 @@ class WorkflowManager:
                 s += 1
             return [o[0] for o in outs], [o[1] for o in outs]
 
-        final_tag = tag
+        final_tags = tag
         final_prefix = prefix
 
-        if isinstance(final_tag, list):
-            if len(final_tag) == 0:
-                final_tag = None
-            else:
-                if len(final_tag) > 1:
-                    Logger.critical(
-                        f"Expected only one tag for this copy, but found ({', '.join(final_tag)}) [{len(final_tag)}], using the first"
-                    )
-                final_tag = final_tag[0]
+        if any(isinstance(t, list) for t in final_tags):
+            Logger.critical(
+                f"One of the final output tags {str(final_tags)} was still an array. This is an issue, "
+                f"so we're going to default to the generic 'output' directory"
+            )
+            final_tags = None
 
         if isinstance(final_prefix, list):
             if len(final_prefix) > 1:
@@ -432,10 +461,10 @@ class WorkflowManager:
                     )
                 final_prefix = final_prefix[0]
 
-        if not final_tag:
-            final_tag = "output"
+        if not final_tags:
+            final_tags = ["output"]
 
-        outdir = os.path.join(self.path, final_tag)
+        outdir = os.path.join(self.path, "/".join(final_tags))
 
         fs.mkdirs(outdir)
 

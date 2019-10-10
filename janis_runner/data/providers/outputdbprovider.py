@@ -51,19 +51,10 @@ class OutputDbProvider(DbProviderBase):
 
     @staticmethod
     def _insert_model_obj(model: WorkflowOutputModel):
-        prefix = (
-            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.prefix)
-            if model.prefix
-            else None
-        )
-        tags = (
-            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.tags) if model.tags else None
-        )
-        secs = (
-            WorkflowOutputModel.ARRAY_SEPARATOR.join(model.secondaries)
-            if model.secondaries
-            else None
-        )
+        prefix = WorkflowOutputModel.from_array(model.prefix)
+        tags = WorkflowOutputModel.from_array(model.tags)
+        secs = WorkflowOutputModel.from_array(model.secondaries)
+
         return (
             model.tag,
             model.originalpath,

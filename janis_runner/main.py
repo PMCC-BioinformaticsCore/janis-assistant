@@ -168,6 +168,7 @@ def fromjanis(
     max_memory=None,
     force=False,
     keep_intermediate_files=False,
+    recipe=None,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -182,6 +183,11 @@ def fromjanis(
 
     # organise inputs
     inputsdict = {}
+
+    if recipe:
+        valuesfromrecipe = jc.template.template.get_recipe_for_key(recipe)
+        inputsdict.update(valuesfromrecipe)
+
     if inputs:
         if not isinstance(inputs, list):
             inputs = [inputs]

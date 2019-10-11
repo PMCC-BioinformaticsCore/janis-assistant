@@ -165,9 +165,6 @@ def add_translate_args(parser):
         help="Optional name of workflow if there are multiple workflows in the tool",
     )
     parser.add_argument(
-        "--inputs", help="File that overrides the inputs declared in the workflow."
-    )
-    parser.add_argument(
         "--output-dir", help="output directory to write output to (default=stdout)"
     )
     parser.add_argument(
@@ -180,8 +177,8 @@ def add_translate_args(parser):
 def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
+    parser.add_argument("-r", "--recipes", help="Recipes from template")
     parser.add_argument(
-        "-r",
         "--resources",
         action="store_true",
         help="Add resource overrides into inputs file",
@@ -189,7 +186,7 @@ def add_inputs_args(parser):
     parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
     )
-    parser.add_argument("--inputs", help="additional inputs to pull values from")
+    parser.add_argument("-i", "--inputs", help="additional inputs to pull values from")
     parser.add_argument(
         "-n",
         "--name",
@@ -215,6 +212,7 @@ def add_run_args(parser):
     )
 
     parser.add_argument(
+        "-i",
         "--inputs",
         help="File of inputs (matching the workflow) to override, these inputs will "
         "take precedence over inputs declared in the workflow",
@@ -225,6 +223,9 @@ def add_run_args(parser):
         "-o",
         "--output-dir",
         help="The output directory to which tasks are saved in, defaults to $HOME.",
+    )
+    parser.add_argument(
+        "-r", "--recipe", help="Use a provided recipe from a provided template"
     )
 
     parser.add_argument(
@@ -464,6 +465,7 @@ def do_run(args):
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
+        recipe=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
     )
 
@@ -534,7 +536,6 @@ def do_translate(args):
         tool=args.workflow,
         translation=args.translation,
         name=args.name,
-        inputs=args.inputs,
         output_dir=args.output_dir,
         force=args.no_cache,
     )

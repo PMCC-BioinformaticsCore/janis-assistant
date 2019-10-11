@@ -164,6 +164,11 @@ class JanisConfiguration:
             default[JanisConfiguration.Keys.Cromwell],
         )
 
+        self.template = JanisConfiguration.JanisConfigurationTemplate(
+            d.get(JanisConfiguration.Keys.Template),
+            default[JanisConfiguration.Keys.Template],
+        )
+
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
         self.searchpaths = sp if isinstance(sp, list) else [sp]
         env_sp = EnvVariables.search_path.resolve(False)

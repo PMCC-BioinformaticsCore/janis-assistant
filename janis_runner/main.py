@@ -19,10 +19,11 @@ from janis_runner.data.models.filescheme import (
     LocalFileScheme,
     SSHFileScheme,
 )
-from janis_runner.engines import Engine, get_engine_type, Cromwell
+from janis_runner.engines import Engine, get_engine_type, Cromwell, EngineType
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.management.configuration import JanisConfiguration
+import janis_runner.templates as janistemplates
 from janis_runner.utils import (
     Logger,
     get_janis_workflow_from_searchname,
@@ -148,6 +149,19 @@ def generate_inputs(
     return toolref.generate_inputs_override(
         additional_inputs=inputsdict, with_resource_overrides=with_resources
     )
+
+
+def init_template(templatename):
+    import ruamel.yaml
+
+    schema = janistemplates.get_schema_for_template(
+        janistemplates.templates[templatename]
+    )
+
+    sdict = {s.id(): s.default for s in schema if s.default or not s.optional}
+
+    r = {"engine": EngineType.cromwell.value, "template": {"id": templatename, **sdict}}
+    ruamel.yaml.dump(r, sys.stderr, default_flow_style=False)
 
 
 def fromjanis(

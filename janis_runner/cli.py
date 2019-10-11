@@ -7,13 +7,19 @@ import ruamel.yaml
 import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
-
+from janis_runner.templates.templates import templates as jtemplates
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 
 from janis_runner.data.enums.taskstatus import TaskStatus
 
-from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
+from janis_runner.main import (
+    fromjanis,
+    translate,
+    generate_inputs,
+    cleanup,
+    init_template,
+)
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
 from janis_core.utils.logger import Logger, LogLevel
@@ -43,6 +49,7 @@ def process_args(sysargs=None):
         "config": do_configs,
         "rm": do_rm,
         "cleanup": do_cleanup,
+        "init": do_init,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -54,6 +61,7 @@ def process_args(sysargs=None):
     subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
+    add_init_args(subparsers.add_parser("init", help="Initialise a janis template"))
     add_translate_args(
         subparsers.add_parser("translate", help="Translate a janis workflow to ")
     )
@@ -343,11 +351,19 @@ def check_logger_args(args):
     Logger.set_console_level(level)
 
 
+def add_init_args(args):
+    args.add_argument("template", choices=jtemplates.keys())
+
+
 def do_configs(parser):
     outd = JanisConfiguration.default()
     outs = ruamel.yaml.dump(outd, default_flow_style=False)
 
     print(outs, file=sys.stdout)
+
+
+def do_init(args):
+    init_template(args.template)
 
 
 def do_version(_):

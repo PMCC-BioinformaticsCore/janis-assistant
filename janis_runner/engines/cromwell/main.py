@@ -382,6 +382,7 @@ class Cromwell(Engine):
                 tags=None,
                 prefix=None,
                 secondaries=None,
+                extension=None,
             ),
         )
 

@@ -11,7 +11,7 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
-from janis_core import InputSelector, Logger, Workflow
+from janis_core import InputSelector, Logger, Workflow, File, Array
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
@@ -249,6 +249,12 @@ class WorkflowManager:
 
         for o in wf.output_nodes.values():
             # We'll
+            ext = None
+            innertype = o.datatype
+            while isinstance(innertype, Array):
+                innertype = innertype.subtype()
+            if isinstance(o.datatype, File):
+                ext = o.datatype.extension
             outputs.append(
                 WorkflowOutputModel(
                     tag=o.id(),
@@ -258,6 +264,7 @@ class WorkflowManager:
                     prefix=self.evaluate_output_selector(o.output_prefix, mapped_inps),
                     tags=self.evaluate_output_selector(o.output_tag, mapped_inps),
                     secondaries=o.datatype.secondary_files(),
+                    extension=ext,
                 )
             )
 
@@ -359,6 +366,7 @@ class WorkflowManager:
                 prefix=out.prefix,
                 tag=out.tags,
                 secondaries=out.secondaries,
+                extension=out.extension,
                 engine_output=eout,
             )
 
@@ -381,6 +389,7 @@ class WorkflowManager:
         prefix,
         tag,
         secondaries,
+        extension,
         engine_output: Union[WorkflowOutputModel, Any, List[Any]],
         shard=None,
     ):
@@ -437,6 +446,7 @@ class WorkflowManager:
                         engine_output=eout,
                         shard=[*prev_shards, s],
                         secondaries=secondaries,
+                        extension=extension,
                     )
                 )
                 s += 1
@@ -483,10 +493,11 @@ class WorkflowManager:
 
         if isinstance(engine_output, WorkflowOutputModel):
             original_filepath = engine_output.originalpath
-            ext = get_extension(engine_output.originalpath)
+            ext = extension or get_extension(engine_output.originalpath)
             if ext:
-                outfn += ext
-                newoutputfilepath += "." + ext
+                dot = "" if ext[0] == "." else "."
+                outfn += dot + ext
+                newoutputfilepath += dot + ext
             fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
         else:
             if isinstance(fs, LocalFileScheme):

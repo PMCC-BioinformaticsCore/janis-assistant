@@ -10,7 +10,15 @@ class WorkflowOutputModel:
     ARRAY_SEPARATOR_NESTED = "||"
 
     def __init__(
-        self, tag, original_path, new_path, timestamp, prefix, tags, secondaries
+        self,
+        tag,
+        original_path,
+        new_path,
+        timestamp,
+        prefix,
+        tags,
+        secondaries,
+        extension,
     ):
         self.tag = tag
         self.originalpath = original_path
@@ -40,11 +48,12 @@ class WorkflowOutputModel:
         if not isinstance(timestamp, datetime.datetime):
             timestamp = DateUtil.parse_iso(timestamp)
         self.timestamp = timestamp
+        self.extension = extension
 
     @staticmethod
     def from_row(row):
         return WorkflowOutputModel(
-            row[0], row[1], row[2], row[3], row[4], row[5], row[6]
+            row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]
         )
 
     @staticmethod

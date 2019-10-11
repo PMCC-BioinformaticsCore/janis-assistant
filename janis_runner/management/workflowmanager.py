@@ -23,6 +23,7 @@ from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
 from janis_runner.environments.environment import Environment
+from janis_runner.management.notificationmanager import NotificationManager
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
 from janis_runner.utils import get_extension, recursively_join
 from janis_runner.utils.dateutil import DateUtil
@@ -51,6 +52,8 @@ class WorkflowManager:
 
         self.database = WorkflowDbManager(self.get_task_path_safe())
         self.environment = environment
+
+        self._prev_status = None
 
         if not self.wid:
             self.wid = self.get_engine_wid()
@@ -96,7 +99,7 @@ class WorkflowManager:
         tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
 
         tm.database.workflowmetadata.wid = wid
-        tm.database.workflowmetadata.status = TaskStatus.PROCESSING
+        tm.set_status(TaskStatus.PROCESSING)
         tm.database.workflowmetadata.engine = environment.engine
         tm.database.workflowmetadata.filescheme = environment.filescheme
         tm.database.workflowmetadata.environment = environment.id()
@@ -119,12 +122,12 @@ class WorkflowManager:
 
         if not dryrun:
             # this happens for all workflows no matter what type
-            tm.database.workflowmetadata.status = TaskStatus.QUEUED
+            tm.set_status(TaskStatus.QUEUED)
             tm.submit_workflow_if_required(wf_evaluate, spec_translator)
             if watch:
                 tm.resume_if_possible(show_metadata=show_metadata)
         else:
-            tm.database.workflowmetadata.status = "DRY-RUN"
+            tm.set_status(TaskStatus.DRY_RUN)
 
         return tm
 
@@ -326,7 +329,7 @@ class WorkflowManager:
             import json
 
             meta = self.environment.engine.metadata(self.wid)
-            self.database.workflowmetadata.status = meta.status
+            self.set_status(meta.status)
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.outputs, fp)
 
@@ -636,22 +639,34 @@ class WorkflowManager:
             if status not in TaskStatus.final_states():
                 time.sleep(2)
 
+    def set_status(self, status: TaskStatus, force_notification=False):
+        prev = self.database.workflowmetadata.status
+
+        if prev == status and not force_notification:
+            return
+
+        self.database.workflowmetadata.status = status
+        # send an email here
+
+        NotificationManager.notify_status_change(status, self.database.get_metadata())
+
     def save_metadata(self) -> Optional[WorkflowModel]:
         meta = self.environment.engine.metadata(self.get_engine_wid())
 
         if not meta:
             return None
 
-        self.database.workflowmetadata.status = meta.status
+        self.database.save_metadata(meta)
+
+        self.set_status(meta.status)
+
         if meta.execution_dir:
             self.database.workflowmetadata.execution_dir = meta.execution_dir
-
-        self.database.save_metadata(meta)
 
         return meta
 
     def abort(self) -> bool:
-        self.database.workflowmetadata.status = TaskStatus.ABORTED
+        self.set_status(TaskStatus.ABORTED, force_notification=True)
         status = False
         try:
             status = bool(self.environment.engine.terminate_task(self.get_engine_wid()))

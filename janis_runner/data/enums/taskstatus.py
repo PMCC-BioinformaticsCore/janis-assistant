@@ -8,6 +8,7 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     ABORTED = "aborted"
+    DRY_RUN = "dry-run"
 
     @staticmethod
     def all():
@@ -15,7 +16,12 @@ class TaskStatus(Enum):
 
     @staticmethod
     def final_states():
-        return [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.ABORTED]
+        return [
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.ABORTED,
+            TaskStatus.DRY_RUN,
+        ]
 
     def __str__(self):
         __str = {
@@ -25,6 +31,7 @@ class TaskStatus(Enum):
             TaskStatus.COMPLETED.value: "Completed",
             TaskStatus.FAILED.value: "Failed",
             TaskStatus.ABORTED.value: "Terminated",
+            TaskStatus.DRY_RUN.value: "Dry run",
         }
         return __str[self.value]
 
@@ -36,5 +43,6 @@ class TaskStatus(Enum):
             TaskStatus.COMPLETED.value: "✓",
             TaskStatus.FAILED.value: "!",
             TaskStatus.ABORTED.value: "T",
+            TaskStatus.DRY_RUN.value: "DR",
         }
         return __str[self.value]

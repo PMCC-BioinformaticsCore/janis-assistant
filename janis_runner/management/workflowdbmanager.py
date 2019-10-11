@@ -72,9 +72,13 @@ class WorkflowDbManager:
         return sqlite3.connect(path)
 
     def save_metadata(self, metadata: WorkflowModel):
+
+        # mfranklin: DO NOT UPDATE THE STATUS HERE!
+
         # Let's just say the actual workflow metadata has to updated separately
         alljobs = self.flatten_jobs(metadata.jobs)
         self.jobsDB.update_or_insert_many(alljobs)
+
         self.workflowmetadata.last_updated = DateUtil.now()
         return
 

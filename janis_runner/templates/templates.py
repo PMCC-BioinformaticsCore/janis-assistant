@@ -1,4 +1,9 @@
+from janis_runner.templates.local import LocalTemplate
 from janis_runner.templates.petermac import PeterMacTemplate
 from janis_runner.templates.spartan import SpartanTemplate
 
-templates = {"pmac": PeterMacTemplate, "spartan": SpartanTemplate}
+templates = {
+    "local": LocalTemplate,
+    "pmac": PeterMacTemplate,
+    "spartan": SpartanTemplate,
+}

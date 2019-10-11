@@ -1,3 +1,5 @@
+import ruamel.yaml
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
 
@@ -22,6 +24,7 @@ class PeterMacTemplate(EnvironmentTemplate):
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
         additionalRecipes=None,
+        recipeLocation=None,
         defaultRecipe=None,
     ):
 
@@ -33,6 +36,15 @@ class PeterMacTemplate(EnvironmentTemplate):
         self.email = email
         self.container_dir = containerDir
         self.singularity_version = singularityVersion
+        self.pmac_recipes = None
+        self.recipe_location = recipeLocation
+
+    def get_recipe_for_key(self, key):
+        if not self.pmac_recipes and self.recipe_location:
+            with open(self.recipe_location) as rl:
+                self.pmac_recipes = ruamel.yaml.load(rl, Loader=ruamel.yaml.Loader)
+                self.recipes.update(self.pmac_recipes)
+        return super().get_recipe_for_key(key)
 
     def cromwell(self):
         config = CromwellConfiguration(

@@ -1,6 +1,6 @@
 from typing import Union, List
 
-from janis_runner.engines import EngineType
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
 

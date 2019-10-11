@@ -126,6 +126,7 @@ def translate(
         raise Exception("Unsupported tool type: " + toolref.__name__)
 
     print(wfstr, file=sys.stdout)
+    return wfstr
 
 
 def generate_inputs(

@@ -437,7 +437,15 @@ def do_run(args):
     # we'll need to parse them manually and then pass them to fromjanis as requiring a match
     required_inputs = parse_additional_arguments(args.extra_inputs)
 
-    return fromjanis(
+    inputs = args.inputs
+    if "inputs" in required_inputs:
+        # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
+        # annoying if you forget to put the inputs before the workflow positional argument.
+        # TBH, we could automatically do this for all params, but it's a little trickier
+        ins = required_inputs.pop("inputs")
+        inputs.extend(ins if isinstance(ins, list) else [ins])
+
+    wid = fromjanis(
         args.workflow,
         name=args.name,
         validation_reqs=v,
@@ -458,6 +466,10 @@ def do_run(args):
         force=args.no_cache,
         keep_intermediate_files=args.keep_intermediate_files,
     )
+
+    Logger.info("Exiting")
+    print(wid, file=sys.stdout)
+    raise SystemExit
 
 
 def do_inputs(args):

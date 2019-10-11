@@ -54,7 +54,7 @@ def generate_validation_workflow_from_janis(
     }
     toolstp = w.step(tool.id(), tool, **inpdict)
 
-    for o in tool.output_nodes:
+    for o in tool.output_nodes.values():
         w.output(
             o.id(),
             source=toolstp[o.id()],

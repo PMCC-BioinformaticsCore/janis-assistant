@@ -23,13 +23,11 @@ class TemplateInput:
 def from_template(name, options) -> EnvironmentTemplate:
     template = templates.get(name)
     if not template:
-        raise Exception(
-            f"Couldn't find CromwellConfiguration template with name: '{name}'"
-        )
+        raise Exception(f"Couldn't find Configuration template with name: '{name}'")
 
     validate_template_params(template, options)
     newoptions = {**options}
-    newoptions.pop("template")
+    # newoptions.pop("template")
 
     return template(**newoptions)
 

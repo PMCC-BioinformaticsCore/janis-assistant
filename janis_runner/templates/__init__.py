@@ -1,16 +1,10 @@
 import inspect
 from typing import Type
 
+
+from .base import EnvironmentTemplate
 from .templates import templates
-from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
-from janis_runner.utils import try_parse_primitive_type
 
-
-#  IF YOU'RE LOOKING TO MODIFY THE TEMPLATES:
-#  Go to ./templates.py
-
-
-# No modifications below here should need to be made
 
 inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}
 
@@ -26,7 +20,7 @@ class TemplateInput:
         return self.identifier
 
 
-def from_template(name, options) -> CromwellConfiguration:
+def from_template(name, options) -> EnvironmentTemplate:
     template = templates.get(name)
     if not template:
         raise Exception(
@@ -41,7 +35,7 @@ def from_template(name, options) -> CromwellConfiguration:
 
 
 def get_schema_for_template(template):
-    argspec = inspect.signature(template)
+    argspec = inspect.signature(template.__init__)
 
     ins = []
     for inp in argspec.parameters.values():

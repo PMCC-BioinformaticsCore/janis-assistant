@@ -3,8 +3,10 @@ from enum import Enum
 from typing import Optional, List, Union
 import ruamel.yaml
 
-# from janis_runner.engines.enginetypes import EngineType
+from janis_runner.engines.enginetypes import EngineType
 from janis_core.utils.logger import Logger
+
+from janis_runner.templates import from_template
 
 
 class HashableEnum(str, Enum):
@@ -53,6 +55,7 @@ class JanisConfiguration:
         Engine = "engine"
         Environment = "environment"
         Cromwell = "cromwell"
+        Template = "template"
 
     _managed = None  # type: JanisConfiguration
 
@@ -109,11 +112,21 @@ class JanisConfiguration:
                 d, self.Keys.Default, default
             )
 
+    class JanisConfigurationTemplate:
+        class Keys(HashableEnum):
+            Id = "id"
+
+        def __init__(self, d: dict, default: dict):
+            self.id = JanisConfiguration.get_value_for_key(d, self.Keys.Id, default)
+
+            # remove this id from the dictionary: https://stackoverflow.com/a/15411146/
+            d.pop(self.Keys.Id.value, None)
+            self.template = from_template(self.id, d)
+
     class JanisConfigurationCromwell:
         class Keys(HashableEnum):
             JarPath = "jar"
             ConfigPath = "configPath"
-            Config = "config"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -123,10 +136,6 @@ class JanisConfiguration:
             )
             self.configpath = JanisConfiguration.get_value_for_key(
                 d, self.Keys.ConfigPath, default
-            )
-
-            self.config = JanisConfiguration.get_value_for_key(
-                d, self.Keys.Config, default
             )
 
     def __init__(self, d: dict = None):
@@ -194,12 +203,14 @@ class JanisConfiguration:
             JanisConfiguration.Keys.Environment: {
                 JanisConfiguration.JanisConfigurationEnvironment.Keys.Default: None
             },
-            JanisConfiguration.Keys.Engine: "cwltool",
+            JanisConfiguration.Keys.Engine: EngineType.cwltool.value,
             JanisConfiguration.Keys.Cromwell: {
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
                 JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
                 JanisConfiguration.JanisConfigurationCromwell.Keys.ConfigPath: None,
-                JanisConfiguration.JanisConfigurationCromwell.Keys.Config: None,
+            },
+            JanisConfiguration.Keys.Template: {
+                JanisConfiguration.JanisConfigurationTemplate.Keys.Id: "local"
             },
         }
         return stringify_dict_keys_or_return_value(deflt)

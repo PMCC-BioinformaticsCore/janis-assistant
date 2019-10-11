@@ -416,12 +416,6 @@ class WorkflowManager:
                     ar.extend(iterable[1 + tag_index_to_explode :])
                 return ar
 
-            if prefix and len(prefix) > 0 and len(prefix) != len(engine_output):
-                Logger.warn("...")
-
-            if tag and len(tag) > 0 and len(tag) != len(engine_output):
-                Logger.warn("...")
-
             tag_index_to_explode = find_element_where_length_is(tag, nshards)
 
             for i in range(nshards):
@@ -451,7 +445,7 @@ class WorkflowManager:
         final_tags = tag
         final_prefix = prefix
 
-        if any(isinstance(t, list) for t in final_tags):
+        if final_tags and any(isinstance(t, list) for t in final_tags):
             Logger.critical(
                 f"One of the final output tags {str(final_tags)} was still an array. This is an issue, "
                 f"so we're going to default to the generic 'output' directory"

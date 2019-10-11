@@ -20,9 +20,8 @@ from janis_runner.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
 )
-from janis_runner.engines.cromwell.templates import from_template
+from janis_runner.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
-from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import (
     ProcessLogger,
     write_files_into_buffered_zip,
@@ -255,6 +254,8 @@ class Cromwell(Engine):
         return task_id
 
     def resolve_jar(self, cromwelljar):
+        from janis_runner.management.configuration import JanisConfiguration
+
         man = JanisConfiguration.manager()
         if not man:
             raise Exception(
@@ -470,6 +471,8 @@ class Cromwell(Engine):
             task.outputs = self.outputs_task(task.identifier)
 
     def find_or_generate_config(self, config, config_path):
+        from janis_runner.management.configuration import JanisConfiguration
+
         jc = JanisConfiguration.manager()
 
         if config:
@@ -482,18 +485,15 @@ class Cromwell(Engine):
         elif config_path:
             shutil.copyfile(config_path, self.config_path)
 
-        elif jc.cromwell.config:
-            tmpl = jc.cromwell.config.get("template")
-            if not tmpl:
-                raise Exception(
-                    "When configuring cromwell via janis config, a template is required"
-                )
-            template = from_template(tmpl, jc.cromwell.config)
-            with open(self.config_path, "w+") as f:
-                f.writelines(template.output())
-
         elif jc.cromwell.configpath:
             shutil.copyfile(jc.cromwell.configpath, self.config_path)
+
+        else:
+            tmpl = jc.template.template.engine_config(EngineType.cromwell)
+            if tmpl:
+                template = from_template(tmpl, jc.cromwell.config)
+                with open(self.config_path, "w+") as f:
+                    f.writelines(template.output())
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True

@@ -33,6 +33,7 @@ setup(
         "progressbar2",
         "sqlitedict",
         "tabulate",
+        "ruamel.yaml",
     ],
     packages=["janis_runner"] + modules,
     classifiers=[

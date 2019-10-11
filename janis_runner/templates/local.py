@@ -8,14 +8,15 @@ class LocalTemplate(EnvironmentTemplate):
 
     default_recipes = {}
 
-    def __init__(self, additionalRecipes=None, recipeLocation=None, defaultRecipe=None):
+    def __init__(
+        self, additionalRecipes=None, recipeLocations=None, defaultRecipe=None
+    ):
 
         super().__init__(
-            additionalRecipes=additionalRecipes, default_recipe=defaultRecipe
+            additionalRecipes=additionalRecipes,
+            default_recipe=defaultRecipe,
+            recipe_locations=recipeLocations,
         )
-        # if executionDir:
-        #     self.execution_dir = executionDir
-        self.recipe_location = recipeLocation
 
     def cromwell(self):
         return None

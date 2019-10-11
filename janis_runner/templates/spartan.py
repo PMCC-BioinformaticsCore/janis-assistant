@@ -26,10 +26,13 @@ class SpartanTemplate(EnvironmentTemplate):
         singularityVersion="3.2.0-spartan_gcc-6.2.0",
         additionalRecipes=None,
         defaultRecipe=None,
+        recipeLocations=None,
     ):
 
         super().__init__(
-            additionalRecipes=additionalRecipes, default_recipe=defaultRecipe
+            additionalRecipes=additionalRecipes,
+            default_recipe=defaultRecipe,
+            recipe_locations=recipeLocations,
         )
         self.execution_dir = executionDir
         self.queues = queues

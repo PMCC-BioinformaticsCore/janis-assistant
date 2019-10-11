@@ -46,7 +46,6 @@ def process_args(sysargs=None):
         "metadata": do_metadata,
         "environment": do_environment,
         "query": do_query,
-        "config": do_configs,
         "rm": do_rm,
         "cleanup": do_cleanup,
         "init": do_init,
@@ -93,7 +92,6 @@ def process_args(sysargs=None):
 
     subparsers.add_parser("version", help="Print the versions of Janis and exit")
 
-    # add_config_args(subparsers.add_parser("config", help=""))
     # add_cleanup_args(subparsers.add_parser("cleanup"))
 
     args = parser.parse_args(sysargs)
@@ -148,11 +146,6 @@ def add_abort_args(parser):
 def add_rm_args(parser):
     parser.add_argument("wid", help="Task id to remove", nargs="+")
     parser.add_argument("--keep", help="Keep output files", action="store_true")
-    return parser
-
-
-def add_config_args(parser):
-    # No options at the moment
     return parser
 
 
@@ -353,13 +346,6 @@ def check_logger_args(args):
 
 def add_init_args(args):
     args.add_argument("template", choices=jtemplates.keys())
-
-
-def do_configs(parser):
-    outd = JanisConfiguration.default()
-    outs = ruamel.yaml.dump(outd, default_flow_style=False)
-
-    print(outs, file=sys.stdout)
 
 
 def do_init(args):

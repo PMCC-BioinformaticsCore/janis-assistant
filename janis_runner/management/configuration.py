@@ -155,18 +155,18 @@ class JanisConfiguration:
 
         self.environment = JanisConfiguration.JanisConfigurationEnvironment(
             d.get(JanisConfiguration.Keys.Environment),
-            default[JanisConfiguration.Keys.Environment],
+            default.get(JanisConfiguration.Keys.Environment),
         )
 
         self.engine = self.get_value_for_key(d, JanisConfiguration.Keys.Engine, default)
         self.cromwell = JanisConfiguration.JanisConfigurationCromwell(
             d.get(JanisConfiguration.Keys.Cromwell),
-            default[JanisConfiguration.Keys.Cromwell],
+            default.get(JanisConfiguration.Keys.Cromwell),
         )
 
         self.template = JanisConfiguration.JanisConfigurationTemplate(
             d.get(JanisConfiguration.Keys.Template),
-            default[JanisConfiguration.Keys.Template],
+            default.get(JanisConfiguration.Keys.Template),
         )
 
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
@@ -181,7 +181,7 @@ class JanisConfiguration:
     def get_value_for_key(d, key, default):
         val = d.get(key)
         if not val:
-            return default[key]
+            return default.get(key) if default else None
 
         Logger.log(f"Got value '{val}' for key '{key}'")
         return val
@@ -205,10 +205,7 @@ class JanisConfiguration:
             JanisConfiguration.Keys.ConfigDir: EnvVariables.config_dir.resolve(True),
             JanisConfiguration.Keys.ExecutionDir: EnvVariables.exec_dir.resolve(True),
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
-            JanisConfiguration.Keys.Environment: {
-                JanisConfiguration.JanisConfigurationEnvironment.Keys.Default: None
-            },
-            JanisConfiguration.Keys.Engine: EngineType.cwltool.value,
+            JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
             JanisConfiguration.Keys.Cromwell: {
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
                 JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,

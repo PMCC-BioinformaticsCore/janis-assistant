@@ -154,14 +154,21 @@ def generate_inputs(
 def init_template(templatename):
     import ruamel.yaml
 
-    schema = janistemplates.get_schema_for_template(
-        janistemplates.templates[templatename]
-    )
+    outd = JanisConfiguration.default()
 
-    sdict = {s.id(): s.default for s in schema if s.default or not s.optional}
+    if templatename:
+        schema = janistemplates.get_schema_for_template(
+            janistemplates.templates[templatename]
+        )
+        outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell.value
+        outd[JanisConfiguration.Keys.Template] = {
+            s.id(): s.default for s in schema if s.default or not s.optional
+        }
+        outd[JanisConfiguration.Keys.Template][
+            JanisConfiguration.JanisConfigurationTemplate.Keys.Id.value
+        ] = templatename
 
-    r = {"engine": EngineType.cromwell.value, "template": {"id": templatename, **sdict}}
-    ruamel.yaml.dump(r, sys.stderr, default_flow_style=False)
+    ruamel.yaml.dump(outd, sys.stderr, default_flow_style=False)
 
 
 def fromjanis(

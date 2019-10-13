@@ -26,6 +26,7 @@ class EnvVariables(HashableEnum):
     config_dir = "JANIS_CONFIGDIR"
     exec_dir = "JANIS_EXCECUTIONDIR"
     search_path = "JANIS_SEARCHPATH"
+    recipe_paths = "JANIS_RECIPEPATHS"
     cromwelljar = "JANIS_CROMWELLJAR"
 
     def __str__(self):
@@ -40,6 +41,8 @@ class EnvVariables(HashableEnum):
             return os.path.join(os.getenv("HOME"), "janis/execution/")
         elif self == EnvVariables.config_path:
             return os.path.join(os.getenv("HOME"), ".janis/janis.conf")
+        elif self == EnvVariables.recipe_paths:
+            return []
 
         raise Exception(f"Couldn't determine default() for '{self.value}'")
 
@@ -56,6 +59,7 @@ class JanisConfiguration:
         Environment = "environment"
         Cromwell = "cromwell"
         Template = "template"
+        Recipes = "recipes"
 
     _managed = None  # type: JanisConfiguration
 
@@ -138,6 +142,82 @@ class JanisConfiguration:
                 d, self.Keys.ConfigPath, default
             )
 
+    class JanisConfigurationRecipes:
+        class Keys(HashableEnum):
+            Recipes = "recipes"
+            RecipePaths = "paths"
+
+        def __init__(self, d: dict, default: dict):
+            d = d if d else {}
+
+            self.recipes = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Recipes, default
+            )
+            rps = JanisConfiguration.get_value_for_key(
+                d, self.Keys.RecipePaths, default
+            )
+            self.recipe_paths = rps if isinstance(rps, list) else [rps]
+
+            self._loaded_recipes = False
+
+        def load_recipes(self, force=False):
+            if not force and (self._loaded_recipes or not self.recipe_paths):
+                return
+
+            import ruamel.yaml
+
+            paths = []
+
+            # Do the env first, then ones from the config can cascade over them
+            from_env = EnvVariables.recipe_paths.resolve(True)
+            if from_env:
+                paths.extend(
+                    from_env if isinstance(from_env, list) else from_env.split(",")
+                )
+
+            if self.recipe_paths:
+                paths.extend(self.recipe_paths)
+
+            for recipe_location in paths:
+                try:
+                    with open(recipe_location) as rl:
+                        adr = ruamel.yaml.load(rl, Loader=ruamel.yaml.Loader)
+                        self.recipes.update(adr)
+
+                except Exception as e:
+                    Logger.critical(f"Couldn't load recipe '{recipe_location}': {e}")
+
+            self._loaded_recipes = True
+
+        def get_recipe_for_key(self, key):
+
+            self.load_recipes()
+
+            if key is None:
+                return {}
+            if key in self.recipes:
+                return self.recipes[key] or {}
+
+            raise KeyError(
+                f"Couldn't find recipe '{key}' in recipes, expected one of: {', '.join(self.recipes.keys())}"
+            )
+
+        def get_recipe_for_keys(self, keys: List[str]):
+
+            self.load_recipes()
+
+            if not keys:
+                return {}
+
+            rec = {}
+            for key in keys:
+                if key in self.recipes:
+                    rec.update(self.recipes[key] or {})
+                else:
+                    Logger.critical("Couldn't find '{key}' in known recipes")
+
+            return rec
+
     def __init__(self, d: dict = None):
         default = self.default()
         d = d if d else {}
@@ -167,6 +247,11 @@ class JanisConfiguration:
         self.template = JanisConfiguration.JanisConfigurationTemplate(
             d.get(JanisConfiguration.Keys.Template),
             default.get(JanisConfiguration.Keys.Template),
+        )
+
+        self.recipes = JanisConfiguration.JanisConfigurationRecipes(
+            d.get(JanisConfiguration.Keys.Recipes),
+            default.get(JanisConfiguration.Keys.Recipes),
         )
 
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
@@ -213,6 +298,10 @@ class JanisConfiguration:
             },
             JanisConfiguration.Keys.Template: {
                 JanisConfiguration.JanisConfigurationTemplate.Keys.Id: "local"
+            },
+            JanisConfiguration.Keys.Recipes: {
+                JanisConfiguration.JanisConfigurationRecipes.Keys.Recipes: {},
+                JanisConfiguration.JanisConfigurationRecipes.Keys.RecipePaths: [],
             },
         }
         return stringify_dict_keys_or_return_value(deflt)

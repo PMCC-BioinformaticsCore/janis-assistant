@@ -7,15 +7,15 @@ from janis_runner.templates.base import EnvironmentTemplate
 
 class SpartanTemplate(EnvironmentTemplate):
 
-    default_recipes = {
-        "hg38": {
-            "reference": "/data/projects/punim0755/hg38/assembly_contigs_renamed/Homo_sapiens_assembly38.fasta",
-            "snps_dbsnp": "/data/cephfs/punim0755/hg38/dbsnp_contigs_renamed/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
-            "snps_1000gp": "/data/cephfs/punim0755/hg38/snps_1000GP/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-            "known_indels": "/data/cephfs/punim0755/hg38/known_indels_contigs_renamed/Homo_sapiens_assembly38.known_indels.vcf.gz",
-            "mills_1000gp_indels": "/data/cephfs/punim0755/hg38/mills_indels/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-        }
-    }
+    # default_recipes = {
+    #     "hg38": {
+    #         "reference": "/data/projects/punim0755/hg38/assembly_contigs_renamed/Homo_sapiens_assembly38.fasta",
+    #         "snps_dbsnp": "/data/cephfs/punim0755/hg38/dbsnp_contigs_renamed/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
+    #         "snps_1000gp": "/data/cephfs/punim0755/hg38/snps_1000GP/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+    #         "known_indels": "/data/cephfs/punim0755/hg38/known_indels_contigs_renamed/Homo_sapiens_assembly38.known_indels.vcf.gz",
+    #         "mills_1000gp_indels": "/data/cephfs/punim0755/hg38/mills_indels/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+    #     }
+    # }
 
     def __init__(
         self,
@@ -24,16 +24,9 @@ class SpartanTemplate(EnvironmentTemplate):
         email=None,
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.2.0-spartan_gcc-6.2.0",
-        additionalRecipes=None,
-        defaultRecipe=None,
-        recipeLocations=None,
     ):
 
-        super().__init__(
-            additionalRecipes=additionalRecipes,
-            default_recipe=defaultRecipe,
-            recipe_locations=recipeLocations,
-        )
+        super().__init__()
         self.execution_dir = executionDir
         self.queues = queues
         self.email = email

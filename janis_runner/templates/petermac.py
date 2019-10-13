@@ -5,15 +5,15 @@ from janis_runner.templates.base import EnvironmentTemplate
 
 class PeterMacTemplate(EnvironmentTemplate):
 
-    default_recipes = {
-        "hg38": {
-            "reference": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.fasta",
-            "snps_dbsnp": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
-            "snps_1000gp": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-            "known_indels": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.known_indels.vcf.gz",
-            "mills_indels": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-        }
-    }
+    # default_recipes = {
+    #     "hg38": {
+    #         "reference": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.fasta",
+    #         "snps_dbsnp": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
+    #         "snps_1000gp": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
+    #         "known_indels": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.known_indels.vcf.gz",
+    #         "mills_indels": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
+    #     }
+    # }
 
     def __init__(
         self,
@@ -22,16 +22,9 @@ class PeterMacTemplate(EnvironmentTemplate):
         email=None,
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
-        additionalRecipes=None,
-        recipeLocations=None,
-        defaultRecipe=None,
     ):
 
-        super().__init__(
-            additionalRecipes=additionalRecipes,
-            default_recipe=defaultRecipe,
-            recipe_locations=recipeLocations,
-        )
+        super().__init__()
         self.execution_dir = executionDir
         self.queues = queues or ["prod_short", "prod_med", "prod"]
         self.email = email

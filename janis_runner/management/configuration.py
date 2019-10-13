@@ -60,6 +60,7 @@ class JanisConfiguration:
         Cromwell = "cromwell"
         Template = "template"
         Recipes = "recipes"
+        Notifications = "notifications"
 
     _managed = None  # type: JanisConfiguration
 
@@ -218,6 +219,17 @@ class JanisConfiguration:
 
             return rec
 
+    class JanisConfigurationNotifications:
+        class Keys(HashableEnum):
+            # Events = "events"   # All events currently
+            Email = "email"
+            # Slack = "slack"     # unused
+
+        def __init__(self, d: dict, default: dict):
+            self.email = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Email, default
+            )
+
     def __init__(self, d: dict = None):
         default = self.default()
         d = d if d else {}
@@ -252,6 +264,11 @@ class JanisConfiguration:
         self.recipes = JanisConfiguration.JanisConfigurationRecipes(
             d.get(JanisConfiguration.Keys.Recipes),
             default.get(JanisConfiguration.Keys.Recipes),
+        )
+
+        self.notifications = JanisConfiguration.JanisConfigurationNotifications(
+            d.get(JanisConfiguration.Keys.Notifications),
+            default.get(JanisConfiguration.Keys.Notifications),
         )
 
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)

@@ -10,6 +10,13 @@ from janis_runner.management.configuration import JanisConfiguration
 class NotificationManager:
     @staticmethod
     def notify_status_change(status, metadata: WorkflowModel):
+
+        nots = JanisConfiguration.manager().notifications
+
+        if not nots.email:
+            Logger.log("Skipping notify status change as no email")
+            return
+
         body = NotificationManager._status_change_template.format(
             wid=metadata.wid,
             wfname=metadata.name,
@@ -18,9 +25,7 @@ class NotificationManager:
             tdir=metadata.outdir,
         )
         NotificationManager.send_email(
-            JanisConfiguration.manager().email,
-            subject=f"{metadata.wid} status to {status}",
-            body=body,
+            nots.email, subject=f"{metadata.wid} status to {status}", body=body
         )
         return body
 

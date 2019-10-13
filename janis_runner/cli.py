@@ -178,7 +178,7 @@ def add_translate_args(parser):
 def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
-    parser.add_argument("-r", "--recipes", help="Recipes from template")
+    parser.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
     parser.add_argument(
         "--resources",
         action="store_true",
@@ -226,7 +226,10 @@ def add_run_args(parser):
         help="The output directory to which tasks are saved in, defaults to $HOME.",
     )
     parser.add_argument(
-        "-r", "--recipe", help="Use a provided recipe from a provided template"
+        "-r",
+        "--recipe",
+        help="Use a provided recipe from a provided template",
+        action="append",
     )
 
     parser.add_argument(
@@ -467,7 +470,7 @@ def do_run(args):
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
-        recipe=args.recipe,
+        recipes=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
     )
 

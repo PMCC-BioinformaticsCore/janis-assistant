@@ -47,7 +47,7 @@ From: janis-noreply@petermac.org
 
 {body}"""
 
-        command = f"echo '{email_template}' > {mail_program}"
+        command = f"echo '{email_template}' | {mail_program}"
         Logger.log("Sending email with command: " + str(command))
         try:
             subprocess.call(command, shell=True)
@@ -61,8 +61,8 @@ From: janis-noreply@petermac.org
     The workflow '{wfname}' ({wid}) moved to the '{status}' status.
 </p>
 <ul>
-    <li>Task directory: {tdir}</li>
-    <li>Execution directory: {exdir}</li>
+    <li>Task directory: <code>{tdir}</code></li>
+    <li>Execution directory: <code>{exdir}</code></li>
 </ul>
     
-<p>Kind regards, Janis</p>"""
+<p>Kind regards, <br />Janis</p>"""

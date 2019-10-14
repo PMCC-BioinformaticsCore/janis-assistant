@@ -24,7 +24,7 @@ class PeterMacTemplate(EnvironmentTemplate):
         singularityVersion="3.4.0",
     ):
 
-        super().__init__(mail_program="sendmail")
+        super().__init__(mail_program="sendmail -t")
         self.execution_dir = executionDir
         self.queues = queues or ["prod_short", "prod_med", "prod"]
         self.email = email

@@ -27,6 +27,8 @@ class EnvVariables(HashableEnum):
     exec_dir = "JANIS_EXCECUTIONDIR"
     search_path = "JANIS_SEARCHPATH"
     recipe_paths = "JANIS_RECIPEPATHS"
+    recipe_directory = "JANIS_RECIPEDIRECTORY"  # secretly comma separated
+
     cromwelljar = "JANIS_CROMWELLJAR"
 
     def __str__(self):
@@ -43,11 +45,18 @@ class EnvVariables(HashableEnum):
             return os.path.join(os.getenv("HOME"), ".janis/janis.conf")
         elif self == EnvVariables.recipe_paths:
             return []
+        elif self == EnvVariables.recipe_directory:
+            return []
 
         raise Exception(f"Couldn't determine default() for '{self.value}'")
 
     def resolve(self, include_default=False):
-        return os.getenv(self.value, self.default() if include_default else None)
+        value = os.getenv(self.value, self.default() if include_default else None)
+        if self == EnvVariables.recipe_paths:
+            return value.split(",") if value else None
+        if self == EnvVariables.recipe_directory:
+            return value.split(",") if value else None
+        return value
 
 
 class JanisConfiguration:
@@ -122,6 +131,8 @@ class JanisConfiguration:
             Id = "id"
 
         def __init__(self, d: dict, default: dict):
+            d = d if d else {}
+
             self.id = JanisConfiguration.get_value_for_key(d, self.Keys.Id, default)
 
             # remove this id from the dictionary: https://stackoverflow.com/a/15411146/
@@ -146,7 +157,8 @@ class JanisConfiguration:
     class JanisConfigurationRecipes:
         class Keys(HashableEnum):
             Recipes = "recipes"
-            RecipePaths = "paths"
+            Paths = "paths"
+            Directories = "directories"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -154,12 +166,37 @@ class JanisConfiguration:
             self.recipes = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Recipes, default
             )
-            rps = JanisConfiguration.get_value_for_key(
-                d, self.Keys.RecipePaths, default
-            )
+            rps = JanisConfiguration.get_value_for_key(d, self.Keys.Paths, default)
             self.recipe_paths = rps if isinstance(rps, list) else [rps]
 
+            dirs = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Directories, default
+            )
+            self.recipe_directories = dirs
+
+            self._files_by_key = None
             self._loaded_recipes = False
+
+        VALID_YAML_EXTENSIONS = {
+            "yaml",
+            "yml",
+            "json",
+        }  # json can be parsed by ruamel.yaml with no extra config
+
+        @staticmethod
+        def parseable_yaml_filename_if_valid(path):
+            base, ext = os.path.splitext(path)
+
+            if len(ext) == 0:
+                return os.path.basename(path), path
+
+            if (
+                ext[1:]
+                in JanisConfiguration.JanisConfigurationRecipes.VALID_YAML_EXTENSIONS
+            ):
+                return os.path.basename(path)[: -len(ext)], path
+
+            return None
 
         def load_recipes(self, force=False):
             if not force and (self._loaded_recipes or not self.recipe_paths):
@@ -170,11 +207,9 @@ class JanisConfiguration:
             paths = []
 
             # Do the env first, then ones from the config can cascade over them
-            from_env = EnvVariables.recipe_paths.resolve(True)
-            if from_env:
-                paths.extend(
-                    from_env if isinstance(from_env, list) else from_env.split(",")
-                )
+            paths_from_env = EnvVariables.recipe_paths.resolve(True)
+            if paths_from_env:
+                paths.extend(paths_from_env)
 
             if self.recipe_paths:
                 paths.extend(self.recipe_paths)
@@ -188,20 +223,48 @@ class JanisConfiguration:
                 except Exception as e:
                     Logger.critical(f"Couldn't load recipe '{recipe_location}': {e}")
 
+            dirs: List[str] = []
+            dirs.extend(EnvVariables.recipe_directory.resolve(True) or [])
+            dirs.extend(self.recipe_directories or [])
+
+            self._files_by_key = {}
+            for d in dirs:
+                if not os.path.exists(d):
+                    Logger.critical(f"Couldn't find recipe directory: '{d}', skipping")
+                    continue
+                if not os.path.isdir(d):
+                    Logger.critical(
+                        f"The path listed as a recipe directory was not a directory: '{d}', skipping"
+                    )
+                    continue
+                contents = os.listdir(d)
+                for f in contents:
+                    fpath = os.path.join(d, f)
+                    parsed = self.parseable_yaml_filename_if_valid(fpath)
+                    if not parsed:
+                        Logger.log(
+                            f"Skipping file within recipe directory '{fpath}' as it contained "
+                            f"an unrecognised extension: '{os.path.splitext(fpath)[1]}"
+                        )
+
+                    key, value = parsed
+                    if key not in self._files_by_key:
+                        self._files_by_key[key] = []
+                    self._files_by_key[key].append(value)
+
             self._loaded_recipes = True
 
-        def get_recipe_for_key(self, key):
-
-            self.load_recipes()
-
-            if key is None:
-                return {}
-            if key in self.recipes:
-                return self.recipes[key] or {}
-
-            raise KeyError(
-                f"Couldn't find recipe '{key}' in recipes, expected one of: {', '.join(self.recipes.keys())}"
-            )
+        @staticmethod
+        def get_cascaded_dict_from_yamls(files):
+            d = {}
+            for f in files:
+                try:
+                    with open(f) as rl:
+                        adr = ruamel.yaml.load(rl, Loader=ruamel.yaml.Loader)
+                        d.update(adr)
+                except Exception as e:
+                    Logger.critical(f"Couldn't parse file '{f}': {e}")
+            return d
 
         def get_recipe_for_keys(self, keys: List[str]):
 
@@ -212,10 +275,20 @@ class JanisConfiguration:
 
             rec = {}
             for key in keys:
+                found_key = False
+
+                if key in self._files_by_key:
+                    found_key = True
+                    rec.update(
+                        self.get_cascaded_dict_from_yamls(self._files_by_key[key])
+                    )
+
                 if key in self.recipes:
+                    found_key = True
                     rec.update(self.recipes[key] or {})
-                else:
-                    Logger.critical("Couldn't find '{key}' in known recipes")
+
+                if not found_key:
+                    Logger.critical(f"Couldn't find '{key}' in known recipes")
 
             return rec
 
@@ -226,6 +299,8 @@ class JanisConfiguration:
             # Slack = "slack"     # unused
 
         def __init__(self, d: dict, default: dict):
+            d = d if d else {}
+
             self.email = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Email, default
             )
@@ -318,7 +393,7 @@ class JanisConfiguration:
             },
             JanisConfiguration.Keys.Recipes: {
                 JanisConfiguration.JanisConfigurationRecipes.Keys.Recipes: {},
-                JanisConfiguration.JanisConfigurationRecipes.Keys.RecipePaths: [],
+                JanisConfiguration.JanisConfigurationRecipes.Keys.Paths: [],
             },
             JanisConfiguration.Keys.Notifications: {
                 JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None

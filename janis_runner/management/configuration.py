@@ -320,6 +320,9 @@ class JanisConfiguration:
                 JanisConfiguration.JanisConfigurationRecipes.Keys.Recipes: {},
                 JanisConfiguration.JanisConfigurationRecipes.Keys.RecipePaths: [],
             },
+            JanisConfiguration.Keys.Notifications: {
+                JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
+            },
         }
         return stringify_dict_keys_or_return_value(deflt)
 

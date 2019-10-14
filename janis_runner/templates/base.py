@@ -7,8 +7,8 @@ from janis_runner.engines.enginetypes import EngineType
 
 class EnvironmentTemplate(ABC):
     @abstractmethod
-    def engine_config(self, engine: EngineType):
-        pass
+    def engine_config(self, engine: EngineType, mail_program=None):
+        self.mail_program = mail_program
 
     def preengine_code(self, engine: EngineType):
         pass

@@ -34,14 +34,25 @@ class NotificationManager:
 
     @staticmethod
     def send_email(to: List[str], subject: str, body: str):
-        tos = ",".join(to)
-        command = ["echo", f"'{body}'", "|", "mailx", "-s", subject, tos]
 
+        mail_program = JanisConfiguration.manager().template.template.mail_program
+
+        if not mail_program:
+            return Logger.log("Skipping email send as no mail program is configured")
+
+        email_template = f"""\
+Content-Type: text/html
+To: {",".join(to)}
+From: janis-noreply@petermac.org
+
+{body}"""
+
+        command = f"echo '{email_template}' > {mail_program}"
         Logger.log("Sending email with command: " + str(command))
         try:
             subprocess.call(command, shell=True)
         except Exception as e:
-            Logger.critical(f"Couldn't send email to {tos}: {e}")
+            Logger.critical(f"Couldn't send email '{subject}' to {to}: {e}")
 
     _status_change_template = """\
 <h1>Status change: {status}</h1>

@@ -11,12 +11,6 @@ class NotificationManager:
     @staticmethod
     def notify_status_change(status, metadata: WorkflowModel):
 
-        nots = JanisConfiguration.manager().notifications
-
-        if not nots.email:
-            Logger.log("Skipping notify status change as no email")
-            return
-
         body = NotificationManager._status_change_template.format(
             wid=metadata.wid,
             wfname=metadata.name,
@@ -25,24 +19,32 @@ class NotificationManager:
             tdir=metadata.outdir,
         )
 
-        email = nots.email if isinstance(nots.email, list) else nots.email.split(",")
-
         NotificationManager.send_email(
-            email, subject=f"{metadata.wid} status to {status}", body=body
+            subject=f"{metadata.wid} status to {status}", body=body
         )
         return body
 
     @staticmethod
-    def send_email(to: List[str], subject: str, body: str):
+    def send_email(subject: str, body: str):
 
         mail_program = JanisConfiguration.manager().template.template.mail_program
 
         if not mail_program:
             return Logger.log("Skipping email send as no mail program is configured")
 
+        nots = JanisConfiguration.manager().notifications
+
+        if not nots.email:
+            Logger.log("Skipping notify status change as no email")
+            return
+
+        emails: List[str] = nots.email if isinstance(
+            nots.email, list
+        ) else nots.email.split(",")
+
         email_template = f"""\
 Content-Type: text/html
-To: {",".join(to)}
+To: {"; ".join(emails)}
 From: janis-noreply@petermac.org
 Subject: {subject}
 
@@ -53,7 +55,7 @@ Subject: {subject}
         try:
             subprocess.call(command, shell=True)
         except Exception as e:
-            Logger.critical(f"Couldn't send email '{subject}' to {to}: {e}")
+            Logger.critical(f"Couldn't send email '{subject}' to {emails}: {e}")
 
     _status_change_template = """\
 <h1>Status change: {status}</h1>

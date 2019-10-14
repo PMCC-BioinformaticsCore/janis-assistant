@@ -44,6 +44,7 @@ class NotificationManager:
 Content-Type: text/html
 To: {",".join(to)}
 From: janis-noreply@petermac.org
+Subject: {subject}
 
 {body}"""
 

@@ -24,8 +24,11 @@ class NotificationManager:
             exdir=metadata.execution_dir,
             tdir=metadata.outdir,
         )
+
+        email = nots.email if isinstance(nots.email, list) else nots.email.split(",")
+
         NotificationManager.send_email(
-            nots.email, subject=f"{metadata.wid} status to {status}", body=body
+            email, subject=f"{metadata.wid} status to {status}", body=body
         )
         return body
 

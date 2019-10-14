@@ -32,10 +32,11 @@ class NotificationManager:
     @staticmethod
     def send_email(to: List[str], subject: str, body: str):
         tos = ",".join(to)
+        command = ["echo", f"'{body}'", "|", "mailx", "-s", subject, tos]
+
+        Logger.log("Sending email with command: " + str(command))
         try:
-            subprocess.call(
-                ["echo", f"'{body}'", "|", "mailx", "-s", subject, tos], shell=True
-            )
+            subprocess.call(command, shell=True)
         except Exception as e:
             Logger.critical(f"Couldn't send email to {tos}: {e}")
 
@@ -50,5 +51,4 @@ class NotificationManager:
     <li>Execution directory: {exdir}</li>
 </ul>
     
-<p>Kind regards, Janis</p>
-    """
+<p>Kind regards, Janis</p>"""

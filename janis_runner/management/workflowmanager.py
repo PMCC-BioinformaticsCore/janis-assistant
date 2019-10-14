@@ -648,7 +648,7 @@ class WorkflowManager:
 
         if prev == status and not force_notification:
             return
-
+        Logger.log("Status changed to: " + str(status))
         self.database.workflowmetadata.status = status
         # send an email here
 

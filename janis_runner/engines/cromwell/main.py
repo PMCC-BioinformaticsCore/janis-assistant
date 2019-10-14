@@ -1,4 +1,3 @@
-import os
 import json
 import os
 import re
@@ -12,6 +11,7 @@ from glob import glob
 from typing import Optional
 
 import requests
+from janis_core.utils.logger import Logger
 
 from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.outputs import WorkflowOutputModel
@@ -20,7 +20,6 @@ from janis_runner.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
 )
-from janis_runner.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.utils import (
     ProcessLogger,
@@ -28,7 +27,6 @@ from janis_runner.utils import (
     find_free_port,
 )
 from janis_runner.utils.dateutil import DateUtil
-from janis_core.utils.logger import Logger
 from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
 
@@ -492,9 +490,8 @@ class Cromwell(Engine):
         else:
             tmpl = jc.template.template.engine_config(EngineType.cromwell)
             if tmpl:
-                template = from_template(tmpl, jc.cromwell.config)
                 with open(self.config_path, "w+") as f:
-                    f.writelines(template.output())
+                    f.writelines(tmpl.output())
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True

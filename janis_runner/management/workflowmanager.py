@@ -99,7 +99,6 @@ class WorkflowManager:
         tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
 
         tm.database.workflowmetadata.wid = wid
-        tm.set_status(TaskStatus.PROCESSING)
         tm.database.workflowmetadata.engine = environment.engine
         tm.database.workflowmetadata.filescheme = environment.filescheme
         tm.database.workflowmetadata.environment = environment.id()
@@ -107,6 +106,11 @@ class WorkflowManager:
         tm.database.workflowmetadata.start = DateUtil.now()
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
+
+        # This is the only time we're allowed to skip the tm.set_status
+        # This is a temporary stop gap until "notification on status" is implemented.
+        # tm.set_status(TaskStatus.PROCESSING)
+        tm.database.workflowmetadata.status = TaskStatus.PROCESSING
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)

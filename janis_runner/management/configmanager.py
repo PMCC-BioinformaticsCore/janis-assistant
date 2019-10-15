@@ -63,7 +63,7 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path(task.wid, self)
+        tm = WorkflowManager.from_path(task.wid)
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -145,7 +145,7 @@ class ConfigManager:
         ).fetchone()
         if not path:
             raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path(path[0], self)
+        return WorkflowManager.from_path(path[0])
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 

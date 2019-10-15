@@ -136,7 +136,7 @@ class WorkflowManager:
         return tm
 
     @staticmethod
-    def from_path(path, config_manager):
+    def from_path(path):
         """
         :param config_manager:
         :param path: Path should include the $wid if relevant
@@ -438,7 +438,11 @@ class WorkflowManager:
                 eout = engine_output[i]
 
                 # choose tag
-                new_prefix = prefix[i] if (prefix and len(prefix) > 1) else prefix
+                new_prefix = (
+                    prefix[i]
+                    if (isinstance(prefix, list) and len(prefix) > 1)
+                    else prefix
+                )
 
                 new_tag = tag
                 if tag_index_to_explode is not None:

@@ -69,7 +69,11 @@ class WorkflowDbManager:
     def db_connection(self):
         path = self.get_sql_path()
         Logger.log("Opening database connection to: " + path)
-        return sqlite3.connect(path)
+        try:
+            return sqlite3.connect(path)
+        except:
+            Logger.critical("Error when opening DB connection to: " + path)
+            raise
 
     def save_metadata(self, metadata: WorkflowModel):
 

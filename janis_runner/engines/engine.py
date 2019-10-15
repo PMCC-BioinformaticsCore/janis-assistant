@@ -59,7 +59,8 @@ class Engine(Archivable, ABC):
 
     def __setstate__(self, state):
         super().__setstate__(state)
-        self._logfp = open(self.logfile, "a+")
+        # Don't reopen as we can't reconnect to the Cromwell instance anyway
+        self._logfp = None  # open(self.logfile, "a+")
 
 
 class TaskBase:

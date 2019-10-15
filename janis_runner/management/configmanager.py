@@ -86,7 +86,7 @@ class ConfigManager:
         ):
             raise Exception(f"The specified output director '{outdir}' was not empty")
 
-        od = outdir if outdir else os.path.join(config.executiondir, wf.id())
+        od = outdir if outdir else os.path.join(config.outputdir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()

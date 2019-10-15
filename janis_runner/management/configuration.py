@@ -62,7 +62,7 @@ class EnvVariables(HashableEnum):
 class JanisConfiguration:
     class Keys(HashableEnum):
         ConfigDir = "configDir"
-        ExecutionDir = "executionDir"
+        OutputDir = "outputDir"
         SearchPaths = "searchPaths"
         Engine = "engine"
         Environment = "environment"
@@ -296,6 +296,7 @@ class JanisConfiguration:
         class Keys(HashableEnum):
             # Events = "events"   # All events currently
             Email = "email"
+            MailProgram = "mailProgram"
             # Slack = "slack"     # unused
 
         def __init__(self, d: dict, default: dict):
@@ -305,8 +306,12 @@ class JanisConfiguration:
                 d, self.Keys.Email, default
             )
 
+            self.mail_program = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MailProgram, default
+            )
+
     def __init__(self, d: dict = None):
-        default = self.default()
+        default = self.base()
         d = d if d else {}
 
         extra = "" if d is None else " from loaded config"
@@ -316,8 +321,8 @@ class JanisConfiguration:
             d, JanisConfiguration.Keys.ConfigDir, default
         )
         self.dbpath = os.path.join(self.configdir, "janis.db")
-        self.executiondir = self.get_value_for_key(
-            d, JanisConfiguration.Keys.ExecutionDir, default
+        self.outputdir = self.get_value_for_key(
+            d, JanisConfiguration.Keys.OutputDir, default
         )
 
         self.environment = JanisConfiguration.JanisConfigurationEnvironment(
@@ -354,6 +359,9 @@ class JanisConfiguration:
 
         JanisConfiguration._managed = self
 
+        if self.template.template:
+            self.template.template.post_configuration_hook(self)
+
     @staticmethod
     def get_value_for_key(d, key, default):
         val = d.get(key)
@@ -376,25 +384,40 @@ class JanisConfiguration:
         return JanisConfiguration()
 
     @staticmethod
-    def default():
+    def base():
+        """
+        The defaults listed here should be sensible defaults
+
+        :return:
+        """
 
         deflt = {
             JanisConfiguration.Keys.ConfigDir: EnvVariables.config_dir.resolve(True),
-            JanisConfiguration.Keys.ExecutionDir: EnvVariables.exec_dir.resolve(True),
+            JanisConfiguration.Keys.OutputDir: EnvVariables.exec_dir.resolve(True),
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
             JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
-            JanisConfiguration.Keys.Cromwell: {
-                # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
-                JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
-                JanisConfiguration.JanisConfigurationCromwell.Keys.ConfigPath: None,
-            },
+            # JanisConfiguration.Keys.Cromwell: {
+            #     # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
+            #     JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
+            # },
             JanisConfiguration.Keys.Template: {
                 JanisConfiguration.JanisConfigurationTemplate.Keys.Id: "local"
             },
-            JanisConfiguration.Keys.Recipes: {
-                JanisConfiguration.JanisConfigurationRecipes.Keys.Recipes: {},
-                JanisConfiguration.JanisConfigurationRecipes.Keys.Paths: [],
+            JanisConfiguration.Keys.Notifications: {
+                JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
             },
+        }
+        return stringify_dict_keys_or_return_value(deflt)
+
+    @staticmethod
+    def default():
+        """
+        The defaults listed are provided to the user on init, they should be
+        bareboned to the options that a user may often want to configure.
+        """
+        deflt = {
+            JanisConfiguration.Keys.OutputDir: EnvVariables.exec_dir.resolve(True),
+            JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
             JanisConfiguration.Keys.Notifications: {
                 JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
             },
@@ -405,8 +428,10 @@ class JanisConfiguration:
 def stringify_dict_keys_or_return_value(d):
     if isinstance(d, list):
         return [stringify_dict_keys_or_return_value(dd) for dd in d]
-    if not isinstance(d, dict):
+    if isinstance(d, int) or isinstance(d, float) or isinstance(d, bool):
         return d
+    if not isinstance(d, dict):
+        return str(d)
 
     out = {}
     for k, v in d.items():

@@ -22,7 +22,11 @@ from janis_runner.data.models.filescheme import (
 from janis_runner.engines import Engine, get_engine_type, Cromwell, EngineType
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configmanager import ConfigManager
-from janis_runner.management.configuration import JanisConfiguration
+from janis_runner.management.configuration import (
+    JanisConfiguration,
+    EnvVariables,
+    stringify_dict_keys_or_return_value,
+)
 import janis_runner.templates as janistemplates
 from janis_runner.utils import (
     Logger,
@@ -151,8 +155,15 @@ def generate_inputs(
     )
 
 
-def init_template(templatename):
+def init_template(templatename, stream=None):
+    """
+    :param templatename:
+    :param force:
+    :return:
+    """
     import ruamel.yaml
+
+    outpath = EnvVariables.config_path.resolve(True)
 
     outd = JanisConfiguration.default()
 
@@ -160,15 +171,24 @@ def init_template(templatename):
         schema = janistemplates.get_schema_for_template(
             janistemplates.templates[templatename]
         )
-        outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell.value
+        outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
         outd[JanisConfiguration.Keys.Template] = {
             s.id(): s.default for s in schema if s.default or not s.optional
         }
         outd[JanisConfiguration.Keys.Template][
-            JanisConfiguration.JanisConfigurationTemplate.Keys.Id.value
+            JanisConfiguration.JanisConfigurationTemplate.Keys.Id
         ] = templatename
 
-    ruamel.yaml.dump(outd, sys.stderr, default_flow_style=False)
+    outd = stringify_dict_keys_or_return_value(outd)
+
+    if os.path.exists(outpath):
+        Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
+    else:
+        with open(outpath, "w+") as configpath:
+            ruamel.yaml.dump(outd, configpath, default_flow_style=False)
+
+    if stream:
+        ruamel.yaml.dump(outd, sys.stderr, default_flow_style=False)
 
 
 def fromjanis(

@@ -8,8 +8,8 @@ class LocalTemplate(EnvironmentTemplate):
 
     default_recipes = {}
 
-    def __init__(self, executionDir):
-        super().__init__()
+    def __init__(self, executionDir=None, mailProgram: str = None):
+        super().__init__(mail_program=mailProgram)
 
         self.executionDir = executionDir
 

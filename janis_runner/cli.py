@@ -60,7 +60,9 @@ def process_args(sysargs=None):
     subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
-    add_init_args(subparsers.add_parser("init", help="Initialise a janis template"))
+    add_init_args(
+        subparsers.add_parser("init", help="Initialise a Janis configuration")
+    )
     add_translate_args(
         subparsers.add_parser("translate", help="Translate a janis workflow to ")
     )
@@ -349,10 +351,12 @@ def check_logger_args(args):
 
 def add_init_args(args):
     args.add_argument("template", choices=jtemplates.keys())
+    args.add_argument("--stdout", action="store_true", help="Write to standard out")
 
 
 def do_init(args):
-    init_template(args.template)
+    stream = sys.stdout if args.stdout else None
+    init_template(args.template, stream=stream)
 
 
 def do_version(_):

@@ -7,7 +7,7 @@ from janis_runner.engines.enginetypes import EngineType
 
 class EnvironmentTemplate(ABC):
     def __init__(self, mail_program=None):
-        self.mail_program = mail_program
+        self._mail_program = mail_program
 
     @abstractmethod
     def engine_config(self, engine: EngineType):
@@ -15,3 +15,7 @@ class EnvironmentTemplate(ABC):
 
     def preengine_code(self, engine: EngineType):
         pass
+
+    def post_configuration_hook(self, configuration):
+        if self._mail_program:
+            configuration.notifications.mail_program = self._mail_program

@@ -27,12 +27,12 @@ class NotificationManager:
     @staticmethod
     def send_email(subject: str, body: str):
 
-        mail_program = JanisConfiguration.manager().template.template.mail_program
+        nots = JanisConfiguration.manager().notifications
+
+        mail_program = nots.mail_program
 
         if not mail_program:
             return Logger.log("Skipping email send as no mail program is configured")
-
-        nots = JanisConfiguration.manager().notifications
 
         if not nots.email:
             Logger.log("Skipping notify status change as no email")

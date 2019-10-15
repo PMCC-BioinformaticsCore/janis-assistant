@@ -35,7 +35,7 @@ class ConfigManager:
 
         cp = os.path.dirname(config.dbpath)
         os.makedirs(cp, exist_ok=True)
-        os.makedirs(config.executiondir, exist_ok=True)
+        os.makedirs(config.outputdir, exist_ok=True)
 
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()

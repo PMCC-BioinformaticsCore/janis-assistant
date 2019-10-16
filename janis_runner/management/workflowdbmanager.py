@@ -115,7 +115,8 @@ class WorkflowDbManager:
         return flattened
 
     def commit(self):
-        return self.connection.commit()
+        self.connection.commit()
+        self.progressDB.kvdb.commit()
 
     def close(self):
         self.connection.close()

@@ -133,6 +133,8 @@ class WorkflowManager:
         else:
             tm.set_status(TaskStatus.DRY_RUN)
 
+        tm.database.commit()
+
         return tm
 
     @staticmethod

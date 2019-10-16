@@ -275,6 +275,7 @@ def fromjanis(
                 ),
                 "engine.log",
             ),
+            watch=watch,
             **kwargs,
         )
         fs = get_filescheme_from_fs(filescheme, **kwargs)
@@ -310,7 +311,7 @@ def fromjanis(
         raise e
 
 
-def get_engine_from_eng(eng, logfile, confdir, **kwargs):
+def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
     if isinstance(eng, Engine):
         return eng.start_engine()
 
@@ -323,9 +324,10 @@ def get_engine_from_eng(eng, logfile, confdir, **kwargs):
             confdir=confdir,
             host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
+            watch=watch,
         ).start_engine()
 
-    return get_engine_type(eng)(logfile=logfile).start_engine()
+    return get_engine_type(eng)(logfile=logfile, watch=watch).start_engine()
 
 
 def get_filescheme_from_fs(fs, **kwargs):

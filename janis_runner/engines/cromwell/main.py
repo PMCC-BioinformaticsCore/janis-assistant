@@ -57,9 +57,10 @@ class Cromwell(Engine):
         cromwelljar=None,
         config_path=None,
         config=None,
+        watch=True,
     ):
 
-        super().__init__(identifier, EngineType.cromwell, logfile=logfile)
+        super().__init__(identifier, EngineType.cromwell, watch=watch, logfile=logfile)
 
         # Heirarchy of configs:
         #   - Passed in config
@@ -158,7 +159,7 @@ class Cromwell(Engine):
 
         self.is_started = True
 
-        if self._process:
+        if self._process and self.watch:
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 

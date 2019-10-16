@@ -42,7 +42,13 @@ def get_schema_for_template(template):
         fdefault = inp.default
         optional = fdefault is not inspect.Parameter.empty
         default = fdefault if optional else None
-        ins.append(TemplateInput(inp.name, inp.annotation, optional, default))
+
+        defaulttype = type(fdefault) if fdefault is not None else None
+        annotation = (
+            defaulttype if inp.annotation is inspect.Parameter.empty else inp.annotation
+        )
+
+        ins.append(TemplateInput(inp.name, annotation, optional, default))
 
     return ins
 

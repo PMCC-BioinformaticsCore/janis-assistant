@@ -1,3 +1,4 @@
+from typing import Union, List
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
@@ -17,8 +18,8 @@ class PeterMacTemplate(EnvironmentTemplate):
 
     def __init__(
         self,
-        executionDir,
-        queues=None,
+        executionDir: str,
+        queues: Union[str, List[str]] = "prod_med,prod",
         email=None,
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",

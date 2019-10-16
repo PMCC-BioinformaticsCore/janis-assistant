@@ -249,6 +249,8 @@ def fromjanis(
             )
         inputsdict.update(required_inputs)
 
+    validate_inputs(wf, inputsdict)
+
     row = cm.create_task_base(wf, outdir=output_dir)
 
     env_raw = env or jc.environment.default
@@ -311,6 +313,26 @@ def fromjanis(
         raise e
 
 
+def validate_inputs(wf, additional_inputs):
+    errors = {}
+
+    for inpkey, inp in wf.input_nodes.items():
+        value = additional_inputs.get(inpkey, inp.value)
+
+        if inp.datatype.validate_value(value, allow_null_if_not_optional=False):
+            continue
+
+        errors[inpkey] = (
+            inp.datatype.invalid_value_hint(value)
+            or f"An internal error occurred when validating {inpkey} from {inp.datatype.id()}"
+        )
+
+    if len(errors) == 0:
+        return True
+
+    raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
+
+
 def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
     if isinstance(eng, Engine):
         return eng.start_engine()
@@ -351,7 +373,3 @@ def cleanup():
     raise NotImplementedError("Implementation coming soon")
     # rows = ConfigManager.manager().taskDB.get_all_tasks()
     # try:
-
-
-def validate_and_run_janis(wf, **kwargs):
-    pass

@@ -163,8 +163,9 @@ class JanisConfiguration:
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
 
-            self.recipes = JanisConfiguration.get_value_for_key(
-                d, self.Keys.Recipes, default
+            self.recipes = (
+                JanisConfiguration.get_value_for_key(d, self.Keys.Recipes, default)
+                or {}
             )
             rps = JanisConfiguration.get_value_for_key(d, self.Keys.Paths, default)
             self.recipe_paths = rps if isinstance(rps, list) else [rps]

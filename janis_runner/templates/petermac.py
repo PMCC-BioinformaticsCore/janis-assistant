@@ -23,6 +23,7 @@ class PeterMacTemplate(EnvironmentTemplate):
         email=None,
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
+        catchSlurmErrors=False,
     ):
 
         super().__init__(mail_program="sendmail -t")
@@ -31,6 +32,7 @@ class PeterMacTemplate(EnvironmentTemplate):
         self.email = email
         self.container_dir = containerDir
         self.singularity_version = singularityVersion
+        self.catch_slurm_errors = catchSlurmErrors
 
     def cromwell(self):
         config = CromwellConfiguration(
@@ -48,6 +50,7 @@ class PeterMacTemplate(EnvironmentTemplate):
                         ),
                         jobemail=self.email,
                         jobqueues=self.queues,
+                        afternotokaycatch=self.catch_slurm_errors,
                     )
                 },
             )

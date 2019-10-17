@@ -304,7 +304,7 @@ String? docker
             jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
             JOBID=$(sbatch \\
                 -p {','.join(jobqueues)} \\
-                --parsable
+                --parsable \\
                 -J $jobname \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\

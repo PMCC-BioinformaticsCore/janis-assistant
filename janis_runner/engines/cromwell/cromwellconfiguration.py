@@ -303,7 +303,7 @@ String? docker
             # Submit the script to SLURM
             jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
             JOBID=$(sbatch \\
-                -p {','.join(jobqueues)} \\
+                -p {','.join(jobqueues) if isinstance(jobqueues, list) else jobqueues} \\
                 --parsable \\
                 -J $jobname \\
                 -D ${{cwd}} \\

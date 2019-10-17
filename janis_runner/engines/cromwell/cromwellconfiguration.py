@@ -265,7 +265,7 @@ String? docker""".strip(),
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --dependency=afternotokay:$RES --wrap 'echo 1 >> ${cwd}/execution/rc')"
+                    afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --dependency=afternotokay:$JOBID --wrap 'echo 1 >> ${cwd}/execution/rc')"
 
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
@@ -315,7 +315,7 @@ String? docker
                 {emailextra} \\
                 --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
                 {afternotokaycommand} \\
-                && echo Submitted batch job $RES
+                && echo Submitted batch job $JOBID
             """,
                 )
                 return slurm

@@ -25,8 +25,10 @@ class KvDB:
     def __getattr__(self, key):
 
         if key in self.attributes_to_persist:
-            return self.kvdb.get(key)
-
+            if key in self.kvdb:
+                return self.kvdb.__getitem__(key)
+            return None
+        Logger.log(f"Gettting {key} from KvDB")
         if key in self.__dict__:
             return self.__dict__[key]
 

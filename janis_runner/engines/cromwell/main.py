@@ -47,6 +47,7 @@ class Cromwell(Engine):
     def __setstate__(self, state):
         super().__setstate__(state)
         self._logger = None
+        self._process = None
 
     def __init__(
         self,

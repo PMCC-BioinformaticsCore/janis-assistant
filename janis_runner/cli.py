@@ -144,6 +144,7 @@ def add_watch_args(parser):
 
 def add_resume_args(parser):
     parser.add_argument("wid", help="WID to watch")
+    return parser
 
 
 def add_metadata_args(parser):
@@ -401,7 +402,7 @@ def do_watch(args):
 
 
 def do_resume(args):
-    do_resume(args.wid)
+    resume(args.wid)
 
 
 def do_metadata(args):

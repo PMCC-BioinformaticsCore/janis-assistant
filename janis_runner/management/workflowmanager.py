@@ -151,17 +151,18 @@ class WorkflowManager:
             outdir_workflow, spec_translator.dependencies_filename(wf_evaluate)
         )
 
+        tm.database.commit()
+
         if not dryrun:
             # this happens for all workflows no matter what type
             tm.set_status(TaskStatus.QUEUED)
 
             # resubmit the engine
-            command = ["janis", "monitor", outdir]
+            command = ["janis", "-d", "resume", wid]
             jc.template.template.submit_detatched_engine(command)
 
-            # tm.submit_workflow_if_required(wf_evaluate, spec_translator)
-            # if watch:
-            #     tm.resume(show_metadata=show_metadata)
+            if watch:
+                tm.poll_stored_metadata()
         else:
             tm.set_status(TaskStatus.DRY_RUN)
 
@@ -222,9 +223,6 @@ class WorkflowManager:
             if status not in TaskStatus.final_states():
                 time.sleep(seconds)
 
-        self.database.workflowmetadata.finish = DateUtil.now()
-        self.database.progressDB.workflowMovedToFinalState = True
-
     def resume(self):
         """
         Resume takes an initialised DB, looks for the engine (if it's around),
@@ -245,6 +243,8 @@ class WorkflowManager:
         # check status and see if we can resume
         if not self.database.progressDB.submitWorkflow:
             self.submit_workflow_if_required()
+
+        self.database.commit()
 
         self.watch_engine()
         self.save_metadata_if_required()
@@ -689,6 +689,7 @@ class WorkflowManager:
             if meta:
                 Logger.log("Got metadata from engine")
                 status = meta.status
+                self.set_status(status)
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
@@ -699,6 +700,7 @@ class WorkflowManager:
             return
         Logger.log("Status changed to: " + str(status))
         self.database.workflowmetadata.status = status
+        self.database.commit()
         # send an email here
 
         NotificationManager.notify_status_change(status, self.database.get_metadata())

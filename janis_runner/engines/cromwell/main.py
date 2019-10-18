@@ -97,6 +97,19 @@ class Cromwell(Engine):
             )
         return Cromwell(identifier=identifier, host=url)
 
+    def test_connection(self):
+        if not self.is_started:
+            return False
+
+        try:
+            r = requests.get(self.url_test())
+            r.raise_for_status()
+            return True
+
+        except Exception as e:
+            Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
+            return False
+
     def start_engine(self):
 
         if self.is_started:
@@ -191,6 +204,9 @@ class Cromwell(Engine):
 
     def url_outputs(self, identifier):
         return self.url_base() + f"/{identifier}/outputs"
+
+    def url_test(self):
+        return f"http://{self.host}/engine/v1/version"
 
     def url_metadata(self, identifier, expand_subworkflows=True):
         return (

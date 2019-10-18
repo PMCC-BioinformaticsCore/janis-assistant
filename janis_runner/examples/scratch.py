@@ -96,4 +96,4 @@ class TestFromJanisIntegration(unittest.TestCase):
 
     def test_reconnect(self):
         wid = "fbe6ad"  # 44395a"
-        ConfigManager.manager().from_tid(tid).resume_if_possible()
+        ConfigManager.manager().from_tid(tid).resume()

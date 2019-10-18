@@ -1,7 +1,16 @@
 """
 I think this is where the bread and butter is!
 
-A task manager will have reference to a database,
+Run / monitor separation:
+
+    Now when you "run", the "fromjanis" function will be called and the Janis
+    execution directory is set up, and all the metadata is set.
+
+    From there, a new process is spawned off (customisable through the template),
+    which starts the engine, submits the workflow and monitors it.
+    We'll add a try:catch: to the whole monitor to ensure that we don't leave
+    any processing lying around.
+
 
 
 """
@@ -15,6 +24,7 @@ from janis_core import InputSelector, Logger, Workflow, File, Array
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
+from janis_runner.management.configuration import JanisConfiguration
 
 from janis_runner.data.models.filescheme import FileScheme, LocalFileScheme
 from janis_runner.data.enums import TaskStatus
@@ -92,6 +102,8 @@ class WorkflowManager:
         keep_intermediate_files=False,
     ):
 
+        jc = JanisConfiguration.manager()
+
         # output directory has been created
 
         environment.identifier += "_" + wid
@@ -106,6 +118,7 @@ class WorkflowManager:
         tm.database.workflowmetadata.start = DateUtil.now()
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
+        tm.database.workflowmetadata.configuration = jc
 
         # This is the only time we're allowed to skip the tm.set_status
         # This is a temporary stop gap until "notification on status" is implemented.
@@ -124,12 +137,31 @@ class WorkflowManager:
             max_memory=max_memory,
         )
 
+        outdir_workflow = tm.get_path_for_component(
+            WorkflowManager.WorkflowManagerPath.workflow
+        )
+
+        tm.database.workflowmetadata.submission_workflow = os.path.join(
+            outdir_workflow, spec_translator.workflow_filename(wf_evaluate)
+        )
+        tm.database.workflowmetadata.submission_inputs = os.path.join(
+            outdir_workflow, spec_translator.inputs_filename(wf_evaluate)
+        )
+        tm.database.workflowmetadata.submission_resources = os.path.join(
+            outdir_workflow, spec_translator.dependencies_filename(wf_evaluate)
+        )
+
         if not dryrun:
             # this happens for all workflows no matter what type
             tm.set_status(TaskStatus.QUEUED)
-            tm.submit_workflow_if_required(wf_evaluate, spec_translator)
-            if watch:
-                tm.resume_if_possible(show_metadata=show_metadata)
+
+            # resubmit the engine
+            command = ["janis", "monitor", outdir]
+            jc.template.template.submit_detatched_engine(command)
+
+            # tm.submit_workflow_if_required(wf_evaluate, spec_translator)
+            # if watch:
+            #     tm.resume(show_metadata=show_metadata)
         else:
             tm.set_status(TaskStatus.DRY_RUN)
 
@@ -156,19 +188,65 @@ class WorkflowManager:
         fs = db.workflowmetadata.filescheme
         env = Environment(envid, eng, fs)
 
+        JanisConfiguration._managed = db.workflowmetadata.configuration
+
         db.close()
 
         tm = WorkflowManager(outdir=path, wid=wid, environment=env)
         return tm
 
-    def resume_if_possible(self, show_metadata=True):
+    def poll_stored_metadata(self, seconds=3):
+        """
+        This function just polls the database for metadata every so often,
+        and simply displays it. It will keep doing that until the task
+        moves into a TERMINAL status.
+
+        It's presumed that there's a janis-monitor that's watching the engine
+        """
+
+        if self.database.progressDB.workflowMovedToFinalState:
+            meta = self.database.get_metadata()
+            print(meta.format())
+
+            return Logger.log(f"Workflow '{self.wid}' has already finished, skipping")
+
+        status = None
+
+        while status not in TaskStatus.final_states():
+            meta = self.database.get_metadata()
+            if meta:
+                call("clear")
+                print(meta.format())
+                status = meta.status
+
+            if status not in TaskStatus.final_states():
+                time.sleep(seconds)
+
+        self.database.workflowmetadata.finish = DateUtil.now()
+        self.database.progressDB.workflowMovedToFinalState = True
+
+    def resume(self):
+        """
+        Resume takes an initialised DB, looks for the engine (if it's around),
+        or starts it and monitors the status, updating the DB every so often
+        :return:
+        """
+
+        # engine should be loaded from the DB
+        engine = self.database.workflowmetadata.engine
+
+        is_allegedly_started = engine.test_connection()
+
+        if not is_allegedly_started:
+            engine.start_engine()
+            # Write the new engine details back into the database (for like PID, host and is_started)
+            self.database.workflowmetadata.engine = engine
+
         # check status and see if we can resume
         if not self.database.progressDB.submitWorkflow:
-            return Logger.critical(
-                f"Can't resume workflow with id '{self.wid}' as the workflow "
-                "was not submitted to the engine"
-            )
-        self.wait_if_required(show_metadata=show_metadata)
+            self.submit_workflow_if_required()
+
+        self.watch_engine()
         self.save_metadata_if_required()
         self.copy_outputs_if_required()
         self.remove_exec_dir()
@@ -299,15 +377,13 @@ class WorkflowManager:
             f"Janis runner cannot evaluate selecting the output from a {type(selector).__name__} type"
         )
 
-    def submit_workflow_if_required(self, wf, translator):
+    def submit_workflow_if_required(self):
         if self.database.progressDB.submitWorkflow:
             return Logger.log(f"Workflow '{self.wid}' has submitted finished, skipping")
 
-        outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
-
-        fn_wf = os.path.join(outdir_workflow, translator.workflow_filename(wf))
-        fn_inp = os.path.join(outdir_workflow, translator.inputs_filename(wf))
-        fn_deps = os.path.join(outdir_workflow, translator.dependencies_filename(wf))
+        fn_wf = self.database.workflowmetadata.submission_workflow
+        fn_inp = self.database.workflowmetadata.submission_inputs
+        fn_deps = self.database.workflowmetadata.submission_resources
 
         Logger.log(f"Submitting task '{self.wid}' to '{self.environment.engine.id()}'")
         self._engine_wid = self.environment.engine.start_from_paths(
@@ -529,37 +605,6 @@ class WorkflowManager:
 
         return [original_filepath, newoutputfilepath]
 
-    def wait_if_required(self, show_metadata=True):
-
-        if self.database.progressDB.workflowMovedToFinalState:
-            meta = self.database.get_metadata()
-            print(meta.format())
-
-            return Logger.log(f"Workflow '{self.wid}' has already finished, skipping")
-
-        status = None
-
-        while status not in TaskStatus.final_states():
-            self.save_metadata()
-            meta = self.database.get_metadata()
-            if meta:
-                if show_metadata:
-                    call("clear")
-                    print(meta.format())
-                status = meta.status
-
-            if status not in TaskStatus.final_states():
-                if not show_metadata:
-                    time.sleep(5)
-                else:
-                    for _ in range(2):
-                        time.sleep(3)
-                        call("clear")
-                        print(meta.format())
-
-        self.database.workflowmetadata.finish = DateUtil.now()
-        self.database.progressDB.workflowMovedToFinalState = True
-
     def remove_exec_dir(self):
         status = self.database.workflowmetadata.status
 
@@ -634,20 +679,18 @@ class WorkflowManager:
             ms.append((f"{j.batchid}-stderr", j.stderr))
             ms.append((f"{j.batchid}-stdout", j.stderr))
 
-    def watch(self):
+    def watch_engine(self):
         import time
-        from subprocess import call
 
         status = None
 
         while status not in TaskStatus.final_states():
             meta = self.save_metadata()
             if meta:
-                call("clear")
-                print(meta.format())
+                Logger.log("Got metadata from engine")
                 status = meta.status
             if status not in TaskStatus.final_states():
-                time.sleep(2)
+                time.sleep(5)
 
     def set_status(self, status: TaskStatus, force_notification=False):
         prev = self.database.workflowmetadata.status

@@ -13,8 +13,10 @@ class EnvironmentTemplate(ABC):
     def engine_config(self, engine: EngineType):
         pass
 
-    def preengine_code(self, engine: EngineType):
-        pass
+    def submit_detatched_engine(self, command):
+        import subprocess
+
+        subprocess.call(command)
 
     def post_configuration_hook(self, configuration):
         if self._mail_program:

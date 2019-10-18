@@ -347,9 +347,9 @@ def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
             host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
             watch=watch,
-        ).start_engine()
+        )
 
-    return get_engine_type(eng)(logfile=logfile, watch=watch).start_engine()
+    return get_engine_type(eng)(logfile=logfile, watch=watch)
 
 
 def get_filescheme_from_fs(fs, **kwargs):
@@ -367,6 +367,13 @@ def get_filescheme_from_fs(fs, **kwargs):
         return SSHFileScheme(con + "_connection", con)
 
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
+
+
+def resume(wid):
+    wm = ConfigManager.manager().from_wid(wid)
+    if not wm:
+        raise Exception("Couldn't find workflow manager with wid = " + str(wid))
+    wm.resume()
 
 
 def cleanup():

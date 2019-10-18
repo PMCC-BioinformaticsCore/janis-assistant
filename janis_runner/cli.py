@@ -19,6 +19,7 @@ from janis_runner.main import (
     generate_inputs,
     cleanup,
     init_template,
+    resume,
 )
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
@@ -49,6 +50,7 @@ def process_args(sysargs=None):
         "rm": do_rm,
         "cleanup": do_cleanup,
         "init": do_init,
+        "resume": do_resume,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -74,6 +76,11 @@ def process_args(sysargs=None):
 
     add_watch_args(
         subparsers.add_parser("watch", help="Watch an existing Janis workflow")
+    )
+    add_resume_args(
+        subparsers.add_parser(
+            "resume", help="INTERNAL: used after submission to monitor the engine"
+        )
     )
     add_abort_args(
         subparsers.add_parser("abort", help="Abort a running Janis Workflow")
@@ -133,6 +140,10 @@ def add_logger_args(parser):
 def add_watch_args(parser):
     parser.add_argument("wid", help="Workflow id")
     return parser
+
+
+def add_resume_args(parser):
+    parser.add_argument("wid", help="WID to watch")
 
 
 def add_metadata_args(parser):
@@ -386,7 +397,11 @@ def do_version(_):
 def do_watch(args):
     wid = args.wid
     tm = ConfigManager.manager().from_wid(wid)
-    tm.resume_if_possible()
+    tm.resume()
+
+
+def do_resume(args):
+    do_resume(args.wid)
 
 
 def do_metadata(args):
@@ -399,7 +414,7 @@ def do_metadata(args):
                 print("--- TASKID = " + t.wid + " ---")
                 ConfigManager.manager().from_wid(t.wid).log_dbtaskinfo()
             except Exception as e:
-                print("\tThe following error ocurred: " + str(e))
+                print("\tAn error occurred: " + str(e))
     else:
         tm = ConfigManager.manager().from_wid(wid)
         tm.log_dbtaskinfo()

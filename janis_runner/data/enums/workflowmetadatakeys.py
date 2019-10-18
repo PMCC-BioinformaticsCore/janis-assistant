@@ -20,3 +20,9 @@ class WorkflowMetadataDbKeys(Enum):
     keepexecutiondir = "keepexecutiondir"
 
     author = "author"
+
+    configuration = "configuration"
+
+    submission_workflow = "submission_workflow"
+    submission_inputs = "submission_inputs"
+    submission_resources = "submission_resources"

@@ -6,7 +6,7 @@ from janis_runner.management import Archivable
 from janis_runner.utils import Logger
 
 
-class KvDB:
+class KvDB(object):
 
     attributes_to_persist = {}
 
@@ -19,21 +19,20 @@ class KvDB:
 
         if name in self.attributes_to_persist:
             self.kvdb[name] = value
+            return
 
-        self.__dict__[name] = value
+        super().__setattr__(name, value)
 
-    def __getattr__(self, key):
-
-        if key in self.attributes_to_persist:
-            if key in self.kvdb:
-                return self.kvdb.__getitem__(key)
+    def __getattr__(self, item):
+        if item in self.attributes_to_persist:
+            if item in self.kvdb:
+                return self[item]
             return None
-        Logger.log(f"Gettting {key} from KvDB")
-        if key in self.__dict__:
-            return self.__dict__[key]
+        if item in self.__dict__:
+            return self.__dict__[item]
 
         raise AttributeError(
-            f"Couldn't find attribute '{key}'' on {self.__class__.__name__}"
+            f"Couldn't find attribute '{item}'' on {self.__class__.__name__}"
         )
 
     def __getitem__(self, item):

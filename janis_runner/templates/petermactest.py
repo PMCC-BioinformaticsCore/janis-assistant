@@ -64,7 +64,7 @@ class PeterMacTestTemplate(EnvironmentTemplate):
         q = self.queues or "prod_short"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
-        newcommand = ["sbatch", "--queues", "--time", "30", jq, "--wrap", f"'{jc}'"]
+        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", f"'{jc}'"]
         Logger.info("Starting command: " + str(newcommand))
         subprocess.call(
             newcommand,

@@ -6,6 +6,7 @@ class KvDB(object):
     attributes_to_persist = {}
 
     def __init__(self, dblocation, tablename):
+        sqlitedict.logger.disabled = True
         self.kvdb = sqlitedict.SqliteDict(
             dblocation, tablename=tablename, autocommit=True
         )

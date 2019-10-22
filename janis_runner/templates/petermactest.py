@@ -64,14 +64,16 @@ class PeterMacTestTemplate(EnvironmentTemplate):
         q = self.queues or "prod_short"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
-        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", f"'{jc}'"]
+        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", jc]
         Logger.info("Starting command: " + str(newcommand))
-        subprocess.call(
+        rc = subprocess.call(
             newcommand,
             close_fds=True,
             # stdout=subprocess.DEVNULL,
             # stderr=subprocess.DEVNULL,
         )
+        if rc != 0:
+            raise Exception(f"Couldn't submit janis-monitor, non-zero exit code ({rc})")
 
     def engine_config(self, engine: EngineType):
         if engine == EngineType.cromwell:

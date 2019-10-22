@@ -173,13 +173,23 @@ class Cromwell(Engine):
 
         self.is_started = True
 
-        if self._process and self.watch:
+        if self._process:
+            self._logfp = open(self.logfile, "w+")
+            Logger.info(
+                "Will log to file" if bool(self._logfp) else "Will NOT log to file"
+            )
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 
     def stop_engine(self):
         if self._logger:
             self._logger.terminate()
+
+        if self._logfp:
+            self._logfp.flush()
+            os.fsync(self._logfp.fileno())
+            self._logfp.close()
+
         if not self.process_id:
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return

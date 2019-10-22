@@ -1,4 +1,5 @@
 import threading
+import os
 from typing import IO
 
 from janis_core.utils.logger import Logger
@@ -15,6 +16,9 @@ class ProcessLogger(threading.Thread):
 
     def terminate(self):
         self.should_terminate = True
+        if self.logfp:
+            self.logfp.flush()
+            os.fsync(self.logfp.fileno())
 
     def run(self):
         try:

@@ -17,8 +17,6 @@ class Engine(Archivable, ABC):
         self.logfile = logfile
         self.watch = watch
         self._logfp = None
-        if self.logfile and watch:
-            self._logfp = open(self.logfile, "w+")
 
     def id(self):
         return self.identifier

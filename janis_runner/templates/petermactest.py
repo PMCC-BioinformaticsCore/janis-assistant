@@ -1,5 +1,8 @@
 import subprocess
 from typing import Union, List
+
+from janis_core import Logger
+
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
@@ -62,11 +65,12 @@ class PeterMacTestTemplate(EnvironmentTemplate):
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
         newcommand = ["sbatch", "--queues", "--time", "30", jq, "--wrap", f"'{jc}'"]
-        subprocess.Popen(
+        Logger.info("Starting command: " + str(newcommand))
+        subprocess.call(
             newcommand,
             close_fds=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
         )
 
     def engine_config(self, engine: EngineType):

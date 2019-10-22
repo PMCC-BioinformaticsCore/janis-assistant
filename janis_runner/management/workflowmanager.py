@@ -20,7 +20,7 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
-from janis_core import InputSelector, Logger, Workflow, File, Array
+from janis_core import InputSelector, Logger, Workflow, File, Array, LogLevel
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
@@ -84,6 +84,9 @@ class WorkflowManager:
             has = metadb.name.lower().startswith(name.lower())
 
         return metadb if has else False
+
+    def watch(self):
+        self.poll_stored_metadata()
 
     @staticmethod
     def from_janis(
@@ -158,10 +161,13 @@ class WorkflowManager:
             tm.set_status(TaskStatus.QUEUED)
 
             # resubmit the engine
-            command = ["janis", "-d", "resume", wid]
+            loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
+            command = ["janis", "--logLevel", loglevel, "resume", wid]
             jc.template.template.submit_detatched_engine(command)
+            Logger.log("Submitted detatched engine")
 
             if watch:
+                Logger.log("Watching submitted workflow")
                 tm.poll_stored_metadata()
         else:
             tm.set_status(TaskStatus.DRY_RUN)
@@ -230,8 +236,14 @@ class WorkflowManager:
         :return:
         """
 
+        # get a logfile and start doing stuff
+        logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
+
+        Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
+
         # engine should be loaded from the DB
         engine = self.database.workflowmetadata.engine
+        self.environment.engine = engine
 
         is_allegedly_started = engine.test_connection()
 
@@ -245,13 +257,19 @@ class WorkflowManager:
             self.submit_workflow_if_required()
 
         self.database.commit()
+        try:
+            self.watch_engine()
+            self.save_metadata_if_required()
+            self.copy_outputs_if_required()
+            self.remove_exec_dir()
+            engine.stop_engine()
 
-        self.watch_engine()
-        self.save_metadata_if_required()
-        self.copy_outputs_if_required()
-        self.remove_exec_dir()
-        self.environment.engine.stop_engine()
-
+            Logger.close_file()
+        except Exception as e:
+            Logger.critical(
+                f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: "
+                + str(e)
+            )
         print(
             f"Finished managing task '{self.wid}'. View the task outputs: file://{self.get_task_path()}"
         )

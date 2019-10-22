@@ -398,7 +398,7 @@ def do_version(_):
 def do_watch(args):
     wid = args.wid
     tm = ConfigManager.manager().from_wid(wid)
-    tm.resume()
+    tm.watch()
 
 
 def do_resume(args):

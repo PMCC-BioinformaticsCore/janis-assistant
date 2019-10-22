@@ -300,7 +300,7 @@ def fromjanis(
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
         )
-
+        Logger.log("Finished executing task")
         return tm.wid
 
     except KeyboardInterrupt:

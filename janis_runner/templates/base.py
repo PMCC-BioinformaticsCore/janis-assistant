@@ -16,7 +16,14 @@ class EnvironmentTemplate(ABC):
     def submit_detatched_engine(self, command):
         import subprocess
 
-        subprocess.Popen(command)
+        Logger.info("Starting Janis resume with " + str(command))
+        subprocess.Popen(
+            command,
+            close_fds=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        # subprocess.Popen(command) # Keep process open
 
     def post_configuration_hook(self, configuration):
         if self._mail_program:

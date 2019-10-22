@@ -9,6 +9,7 @@ class WorkflowMetadataDbKeys(Enum):
     finish = "finish"
     execution_dir = "execution_dir"
     status = "status"
+    lastupdated = "last_updated"
 
     engine = "engine"
     engine_url = "engine_url"

@@ -96,7 +96,7 @@ class WorkflowDbManager:
             finish=self.workflowmetadata.finish,
             outdir=self.exec_path,
             execution_dir=self.workflowmetadata.execution_dir,
-            status=self.workflowmetadata["status"],
+            status=self.workflowmetadata.status,
             engine=self.workflowmetadata.engine.description(),
             engine_url=self.workflowmetadata.engine_url,
             # filesystem=self.workflowmetadata.filesystem.id(),

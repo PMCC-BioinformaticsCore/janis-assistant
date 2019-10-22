@@ -736,6 +736,9 @@ class WorkflowManager:
         if meta.execution_dir:
             self.database.workflowmetadata.execution_dir = meta.execution_dir
 
+        if meta.finish:
+            self.database.workflowmetadata.finish = meta.finish
+
         return meta
 
     def abort(self) -> bool:

@@ -314,6 +314,7 @@ def add_run_args(parser):
     parser.add_argument(
         "--stay-connected",
         action="store_true",
+        default=False,
         help="useful for debugging when something doesn't start correctly",
     )
 
@@ -492,7 +493,7 @@ def do_run(args):
         force=args.no_cache,
         recipes=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
-        should_disconnect=not bool(args.stay_connected),
+        should_disconnect=not (args.stay_connected is True),
     )
 
     Logger.info("Exiting")

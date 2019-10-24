@@ -241,42 +241,45 @@ class WorkflowManager:
         """
 
         # get a logfile and start doing stuff
-        logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
-
-        Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
-
-        # engine should be loaded from the DB
-        engine = self.database.workflowmetadata.engine
-        self.environment.engine = engine
-
-        is_allegedly_started = engine.test_connection()
-
-        if not is_allegedly_started:
-            engine.start_engine()
-            # Write the new engine details back into the database (for like PID, host and is_started)
-            self.database.workflowmetadata.engine = engine
-
-        # check status and see if we can resume
-        if not self.database.progressDB.submitWorkflow:
-            self.submit_workflow_if_required()
-
-        self.database.commit()
         try:
+            logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
+
+            Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
+
+            # engine should be loaded from the DB
+            engine = self.database.workflowmetadata.engine
+            self.environment.engine = engine
+
+            is_allegedly_started = engine.test_connection()
+
+            if not is_allegedly_started:
+                engine.start_engine()
+                # Write the new engine details back into the database (for like PID, host and is_started)
+                self.database.workflowmetadata.engine = engine
+
+            # check status and see if we can resume
+            if not self.database.progressDB.submitWorkflow:
+                self.submit_workflow_if_required()
+
+            self.database.commit()
             self.watch_engine()
             self.save_metadata_if_required()
             self.copy_outputs_if_required()
             self.remove_exec_dir()
             engine.stop_engine()
 
+            Logger.info(
+                f"Finished managing task '{self.wid}'. View the task outputs: file://{self.get_task_path()}"
+            )
+
             Logger.close_file()
+
         except Exception as e:
             Logger.critical(
                 f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: "
                 + str(e)
             )
-        print(
-            f"Finished managing task '{self.wid}'. View the task outputs: file://{self.get_task_path()}"
-        )
+
         return self
 
     def prepare_and_output_workflow_to_evaluate_if_required(

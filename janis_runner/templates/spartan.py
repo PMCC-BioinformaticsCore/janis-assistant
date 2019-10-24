@@ -75,7 +75,8 @@ class SpartanTemplate(EnvironmentTemplate):
         q = self.queues or "physical"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
-        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", jc]
+        loadedcommand = "module load Java && " + jc
+        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", loadedcommand]
         Logger.info("Starting command: " + str(newcommand))
         rc = subprocess.call(
             newcommand,

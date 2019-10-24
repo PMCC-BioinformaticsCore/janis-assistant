@@ -135,6 +135,8 @@ class JanisConfiguration:
 
             self.id = JanisConfiguration.get_value_for_key(d, self.Keys.Id, default)
 
+            Logger.log("Got template ID: " + str(self.id))
+
             # remove this id from the dictionary: https://stackoverflow.com/a/15411146/
             d.pop(self.Keys.Id.value, None)
             self.template = from_template(self.id, d)

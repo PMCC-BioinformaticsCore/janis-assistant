@@ -50,7 +50,7 @@ class PeterMacTemplate(EnvironmentTemplate):
                         singularitycontainerdir=self.container_dir,
                         buildinstructions=(
                             f"sbatch -p {joined_queued} --wait \
-                              --wrap 'docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) "
+                              --wrap 'unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) "
                             f"&& image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
                         ),
                         jobemail=self.email,

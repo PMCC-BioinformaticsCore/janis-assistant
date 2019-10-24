@@ -43,7 +43,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
                         + self.singularity_version,
                         singularitycontainerdir=self.container_dir,
                         buildinstructions=(
-                            f"docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) && "
+                            f"unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) && "
                             f"image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}"
                         ),
                         jobemail=None,

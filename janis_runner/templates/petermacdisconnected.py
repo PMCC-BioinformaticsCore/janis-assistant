@@ -16,6 +16,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
         queues: Union[str, List[str]] = "prod_med,prod",
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
+        catchSlurmErrors=True,
     ):
 
         super().__init__(
@@ -23,6 +24,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
             queues=queues,
             containerDir=containerDir,
             singularityVersion=singularityVersion,
+            catchSlurmErrors=catchSlurmErrors,
         )
 
     def cromwell(self):
@@ -36,7 +38,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
             backend=CromwellConfiguration.Backend(
                 default="pmac",
                 providers={
-                    "pmac": CromwellConfiguration.Backend.Provider.singularity(
+                    "pmac": CromwellConfiguration.Backend.Provider.slurm_singularity(
                         singularityloadinstructions="module load singularity/"
                         + self.singularity_version,
                         singularitycontainerdir=self.container_dir,
@@ -44,6 +46,9 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
                             f"docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) && "
                             f"image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}"
                         ),
+                        jobemail=None,
+                        jobqueues=joined_queued,
+                        afternotokaycatch=self.catch_slurm_errors,
                     )
                 },
             )

@@ -6,9 +6,10 @@ from janis_core import Logger
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
+from janis_runner.templates.petermac import PeterMacTemplate
 
 
-class PeterMacTestTemplate(EnvironmentTemplate):
+class PeterMacDisconnectedTemplate(PeterMacTemplate):
     def __init__(
         self,
         executionDir: str,
@@ -17,14 +18,16 @@ class PeterMacTestTemplate(EnvironmentTemplate):
         singularityVersion="3.4.0",
     ):
 
-        super().__init__(mail_program="sendmail -t")
-        self.execution_dir = executionDir
-        self.queues = queues or ["prod_short", "prod_med", "prod"]
-        self.container_dir = containerDir
-        self.singularity_version = singularityVersion
+        super().__init__(
+            executionDir=executionDir,
+            queues=queues,
+            containerDir=containerDir,
+            singularityVersion=singularityVersion,
+        )
 
     def cromwell(self):
 
+        # This will be changed to: queues = "janis" once partition as been created
         joined_queued = (
             ",".join(self.queues) if isinstance(self.queues, list) else self.queues
         )
@@ -38,9 +41,8 @@ class PeterMacTestTemplate(EnvironmentTemplate):
                         + self.singularity_version,
                         singularitycontainerdir=self.container_dir,
                         buildinstructions=(
-                            f"sbatch -p {joined_queued} --wait \
-                              --wrap 'docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) "
-                            f"&& image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
+                            f"docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) && "
+                            f"image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}"
                         ),
                     )
                 },
@@ -52,10 +54,7 @@ class PeterMacTestTemplate(EnvironmentTemplate):
         ].config
         backend.root = self.execution_dir
         backend.filesystems = {
-            "local": {
-                "localization": ["cached-copy", "hard-link", "soft-link", "copy"]
-            },
-            # "caching": {"hashing-strategy": "path+modtime"},
+            "local": {"localization": ["cached-copy", "hard-link", "soft-link", "copy"]}
         }
 
         return config

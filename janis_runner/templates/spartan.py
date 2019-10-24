@@ -1,4 +1,7 @@
+import subprocess
 from typing import Union, List
+
+from janis_core import Logger
 
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
@@ -67,6 +70,21 @@ class SpartanTemplate(EnvironmentTemplate):
         }
 
         return config
+
+    def submit_detatched_engine(self, command):
+        q = self.queues or "physical"
+        jq = ", ".join(q) if isinstance(q, list) else q
+        jc = " ".join(command) if isinstance(command, list) else command
+        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", jc]
+        Logger.info("Starting command: " + str(newcommand))
+        rc = subprocess.call(
+            newcommand,
+            close_fds=True,
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
+        )
+        if rc != 0:
+            raise Exception(f"Couldn't submit janis-monitor, non-zero exit code ({rc})")
 
     def engine_config(self, engine: EngineType):
         if engine == EngineType.cromwell:

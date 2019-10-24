@@ -204,12 +204,12 @@ def fromjanis(
     inputs: Union[str, dict] = None,
     required_inputs: dict = None,
     watch=True,
-    show_metadata=True,
     max_cores=None,
     max_memory=None,
     force=False,
     keep_intermediate_files=False,
     recipes=None,
+    should_disconnect=True,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -295,10 +295,10 @@ def fromjanis(
             inputs_dict=inputsdict,
             dryrun=dryrun,
             watch=watch,
-            show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
+            should_disconnect=should_disconnect,
         )
         Logger.log("Finished executing task")
         return tm.wid

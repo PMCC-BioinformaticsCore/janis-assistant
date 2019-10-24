@@ -117,10 +117,10 @@ class ConfigManager:
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
-        show_metadata=True,
         max_cores=None,
         max_memory=None,
         keep_intermediate_files=False,
+        should_disconnect=True,
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
@@ -133,10 +133,10 @@ class ConfigManager:
             validation_requirements=validation_requirements,
             dryrun=dryrun,
             watch=watch,
-            show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
+            should_disconnect=should_disconnect,
         )
 
     def from_wid(self, wid):

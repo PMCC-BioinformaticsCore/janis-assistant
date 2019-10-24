@@ -99,10 +99,10 @@ class WorkflowManager:
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
-        show_metadata=True,
         max_cores=None,
         max_memory=None,
         keep_intermediate_files=False,
+        should_disconnect=True,
     ):
 
         jc = JanisConfiguration.manager()
@@ -161,14 +161,18 @@ class WorkflowManager:
             tm.set_status(TaskStatus.QUEUED)
 
             # resubmit the engine
-            loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
-            command = ["janis", "--logLevel", loglevel, "resume", wid]
-            jc.template.template.submit_detatched_engine(command)
-            Logger.log("Submitted detatched engine")
+            if should_disconnect:
+                loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
+                command = ["janis", "--logLevel", loglevel, "resume", wid]
+                jc.template.template.submit_detatched_engine(command)
+                Logger.log("Submitted detatched engine")
 
-            if watch:
-                Logger.log("Watching submitted workflow")
-                tm.poll_stored_metadata()
+                if watch:
+                    Logger.log("Watching submitted workflow")
+                    tm.poll_stored_metadata()
+            else:
+                tm.resume()
+
         else:
             tm.set_status(TaskStatus.DRY_RUN)
 

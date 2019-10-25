@@ -280,9 +280,10 @@ class WorkflowManager:
         except Exception as e:
             import traceback
 
+            err = traceback.format_exc()
             Logger.critical(
                 f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: "
-                + str(e)
+                + err
             )
 
             try:
@@ -294,6 +295,8 @@ class WorkflowManager:
                 Logger.critical(
                     "An additional fatal error occurred while trying to store Janis state: "
                     + str(e)
+                    + "\n\nSee the logfile for more information: "
+                    + Logger.WRITE_LOCATION
                 )
 
         Logger.close_file()

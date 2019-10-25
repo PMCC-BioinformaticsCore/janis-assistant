@@ -164,7 +164,7 @@ class WorkflowManager:
             if should_disconnect:
                 loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
                 command = ["janis", "--logLevel", loglevel, "resume", wid]
-                jc.template.template.submit_detatched_engine(command)
+                jc.template.template.submit_detatched_resume(wid, command)
                 Logger.log("Submitted detatched engine")
 
                 if watch:

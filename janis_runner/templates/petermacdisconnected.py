@@ -64,11 +64,21 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
 
         return config
 
-    def submit_detatched_engine(self, command):
+    def submit_detatched_resume(self, wid, command):
         q = self.queues or "prod_short"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
-        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", jc]
+        newcommand = [
+            "sbatch",
+            "-p",
+            jq,
+            "-j",
+            f"janis-{wid}",
+            "--time",
+            "30",
+            "--wrap",
+            jc,
+        ]
         Logger.info("Starting command: " + str(newcommand))
         rc = subprocess.call(
             newcommand,

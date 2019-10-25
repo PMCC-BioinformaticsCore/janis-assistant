@@ -71,12 +71,22 @@ class SpartanTemplate(EnvironmentTemplate):
 
         return config
 
-    def submit_detatched_engine(self, command):
+    def submit_detatched_resume(self, wid, command):
         q = self.queues or "physical"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
         loadedcommand = "module load Java && module load web_proxy && " + jc
-        newcommand = ["sbatch", "-p", jq, "--time", "30", "--wrap", loadedcommand]
+        newcommand = [
+            "sbatch",
+            "-p",
+            jq,
+            "-j",
+            f"janis-{wid}",
+            "--time",
+            "30",
+            "--wrap",
+            loadedcommand,
+        ]
         Logger.info("Starting command: " + str(newcommand))
         rc = subprocess.call(
             newcommand,

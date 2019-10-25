@@ -13,15 +13,15 @@ class EnvironmentTemplate(ABC):
     def engine_config(self, engine: EngineType):
         pass
 
-    def submit_detatched_engine(self, command):
+    def submit_detatched_resume(self, wid, command):
         import subprocess
 
         Logger.info("Starting Janis resume with " + str(command))
         subprocess.Popen(
             command,
             close_fds=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
         )
         # subprocess.Popen(command) # Keep process open
 

@@ -137,6 +137,7 @@ class Cromwell(Engine):
 
         if self.port:
             cmd.append(f"-Dwebservice.port={self.port}")
+        cmd.append(f"-Dwebservice.interface=127.0.0.1")
 
         if self.config_path and os.path.exists(self.config_path):
             Logger.log("Using configuration file for Cromwell: " + self.config_path)

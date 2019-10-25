@@ -16,13 +16,23 @@ class DateUtil:
             return None
 
     @staticmethod
+    def as_utc(d):
+        return d.astimezone(tz.UTC) if d else None
+
+    @staticmethod
     def now():
         return datetime.utcnow().replace(tzinfo=tz.UTC)
 
     @staticmethod
+    def max():
+        return DateUtil.as_utc(
+            datetime.max.replace(day=datetime.max.day - 1, tzinfo=tz.UTC)
+        )
+
+    @staticmethod
     def secs_difference(a: datetime, b: datetime):
         if a.tzinfo is None or b.tzinfo is None:
-            aorb = "a" if a.tzinfo is None else "b"
+            aorb = a if a.tzinfo is None else b
             raise Exception(
                 f"input '{aorb}' doesn't have tzinfo, "
                 "please use DateUtil methods to create all dates"

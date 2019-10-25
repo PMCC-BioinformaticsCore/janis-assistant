@@ -1,19 +1,25 @@
 import os
+import json
+import os
 import re
+import shutil
+import signal
+import subprocess
 import sys
+import time
 import urllib.request
 from glob import glob
 from typing import Optional
 
-import json
 import requests
-import signal
-import subprocess
-import time
-import shutil
 
 from janis_runner.__meta__ import ISSUE_URL
-from janis_runner.data.models.schema import TaskMetadata
+from janis_runner.data.models.outputs import WorkflowOutputModel
+from janis_runner.data.models.workflow import WorkflowModel
+from janis_runner.engines.cromwell.cromwellmetadata import (
+    cromwell_status_to_status,
+    CromwellMetadata,
+)
 from janis_runner.engines.cromwell.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
@@ -23,16 +29,9 @@ from janis_runner.utils import (
     find_free_port,
 )
 from janis_runner.utils.dateutil import DateUtil
-from janis_runner.utils.logger import Logger
-from janis_runner.engines.cromwell.metadata import (
-    cromwell_status_to_status,
-    CromwellMetadata,
-)
-
-from .data_types import CromwellFile
+from janis_core.utils.logger import Logger
 from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
-
 
 CROMWELL_RELEASES = (
     "https://api.github.com/repos/broadinstitute/cromwell/releases/latest"
@@ -42,17 +41,15 @@ ansi_escape = re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]")
 
 
 class Cromwell(Engine):
-    def db_to_kwargs(self, keys: [str] = None):
-        return super(Cromwell, self).db_to_kwargs(
-            [
-                *(keys or []),
-                "logfile",
-                "host",
-                "config_path",
-                "process_id",
-                "config_path",
-            ]
-        )
+    def description(self):
+        pid = ""
+        if self.process_id:
+            pid = f" [PID={self.process_id}]"
+        return f"cromwell ({self.host}){pid}"
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._logger = None
 
     def __init__(
         self,
@@ -80,8 +77,8 @@ class Cromwell(Engine):
         self.host = host
         self.port = None
         self.config_path = None
-        self.process = None
-        self.logger = None
+        self._process = None
+        self._logger = None
         self.stdout = []
 
         if not self.connect_to_instance:
@@ -113,10 +110,10 @@ class Cromwell(Engine):
             Logger.info("Cromwell environment discovered, skipping local instance")
             return self
 
-        if self.process:
+        if self._process:
             self.is_started = True
             Logger.info(
-                f"Discovered Cromwell instance (pid={self.process}), skipping start"
+                f"Discovered Cromwell instance (pid={self._process}), skipping start"
             )
             return self
 
@@ -135,15 +132,15 @@ class Cromwell(Engine):
         cmd.extend(["-jar", cromwell_loc, "server"])
 
         Logger.log(f"Starting Cromwell with command: '{' '.join(cmd)}'")
-        self.process = subprocess.Popen(
+        self._process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid
         )
-        Logger.log("Cromwell is starting with pid=" + str(self.process.pid))
+        Logger.log("Cromwell is starting with pid=" + str(self._process.pid))
         Logger.log(
             "Cromwell will start the HTTP server, reading logs to determine when this occurs"
         )
         for c in iter(
-            self.process.stdout.readline, "b"
+            self._process.stdout.readline, "b"
         ):  # replace '' with b'' for Python 3
             cd = c.decode("utf-8").rstrip()
 
@@ -154,9 +151,9 @@ class Cromwell(Engine):
 
             # self.stdout.append(str(c))
             if "service started on" in cd:
-                self.process_id = self.process.pid
+                self.process_id = self._process.pid
                 Logger.info(
-                    "Service successfully started with pid=" + str(self.process.pid)
+                    "Service successfully started with pid=" + str(self._process.pid)
                 )
                 break
             # elif ansi_escape.match():
@@ -164,13 +161,13 @@ class Cromwell(Engine):
 
         self.is_started = True
 
-        if self.process:
-            self.logger = ProcessLogger(self.process, "Cromwell: ", self.logfp)
+        if self._process:
+            self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 
     def stop_engine(self):
-        if self.logger:
-            self.logger.terminate()
+        if self._logger:
+            self._logger.terminate()
         if not self.process_id:
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return
@@ -206,7 +203,7 @@ class Cromwell(Engine):
     def url_abort(self, identifier):
         return self.url_base() + f"/{identifier}/abort"
 
-    def create_task(self, tid, source, inputs: list, dependencies, workflow_type=None):
+    def create_task(self, wid, source, inputs: list, dependencies, workflow_type=None):
         # curl \
         #   -X POST "http://localhost:8000/api/workflows/v1" \
         #   -H "accept: application/json" \
@@ -225,10 +222,10 @@ class Cromwell(Engine):
 
         files = {
             "workflowSource": source,
-            "labels": json.dumps({"taskid": tid}),
+            "labels": json.dumps({"taskid": wid}),
             "workflowOptions": json.dumps(
                 {
-                    "google_labels": {"taskid": tid},
+                    "google_labels": {"taskid": wid},
                     "monitoring_image": "quay.io/dinvlad/cromwell-monitor",
                     "workflow_failure_mode": "ContinueWhilePossible",
                 }
@@ -360,17 +357,39 @@ class Cromwell(Engine):
 
         if not outs:
             return {}
-        return {
-            k: CromwellFile.parse(outs[k]) if isinstance(outs[k], dict) else outs[k]
-            for k in outs
-        }
+        parsed = [self.parse_output(k, v) for k, v in outs.items()]
+        return {out[0]: out[1] for out in parsed}
+
+    @staticmethod
+    def parse_output(key, value):
+        newkey = "".join(key.split(".")[1:])
+
+        fileloc = value
+        if isinstance(value, dict):
+            fileloc = value["location"]
+
+        if isinstance(fileloc, list):
+            return newkey, [Cromwell.parse_output(key, f)[1] for f in fileloc]
+
+        return (
+            newkey,
+            WorkflowOutputModel(
+                tag=newkey,
+                original_path=fileloc,
+                timestamp=DateUtil.now(),
+                new_path=None,
+                tags=None,
+                prefix=None,
+                secondaries=None,
+            ),
+        )
 
     def start_from_paths(
-        self, tid: str, source_path: str, input_path: str, deps_path: str
+        self, wid: str, source_path: str, input_path: str, deps_path: str
     ):
         """
         This does NOT watch, it purely schedule the jobs
-        :param tid:
+        :param wid:
         :param source_path:
         :param input_path:
         :param deps_path:
@@ -379,7 +398,7 @@ class Cromwell(Engine):
         src = open(source_path, "rb")
         inp = open(input_path, "rb")
         deps = open(deps_path, "rb")
-        engid = self.create_task(tid, src, [inp], deps, workflow_type="wdl")
+        engid = self.create_task(wid, src, [inp], deps, workflow_type="wdl")
 
         src.close()
         inp.close()
@@ -416,7 +435,7 @@ class Cromwell(Engine):
             )
 
         task.identifier = self.create_task(
-            tid=task.tid,
+            wid=task.wid,
             source=task.source if task.source else open(task.source_path, "rb"),
             inputs=ins,
             dependencies=deps,
@@ -488,11 +507,21 @@ class Cromwell(Engine):
             r.raise_for_status()
             return CromwellMetadata(r.json())
 
-        except Exception as e:
-            print(e)
-            return None
+        except requests.HTTPError as e:
+            if e.response.status_code == 404:
+                # Usually means Cromwell hasn't loaded properly yet
+                return None
 
-    def metadata(self, identifier, expand_subworkflows=True) -> Optional[TaskMetadata]:
+            try:
+                res = e.response.json()
+                message = res["message"]
+                Logger.warn("Response when getting Cromwell metadata: " + str(message))
+            except Exception as ee:
+                Logger.warn(str(e))
+            finally:
+                return None
+
+    def metadata(self, identifier, expand_subworkflows=True) -> Optional[WorkflowModel]:
         raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
         return raw.standard() if raw else raw
 
@@ -500,4 +529,4 @@ class Cromwell(Engine):
         url = self.url_abort(identifier)
         r = requests.post(url)
         Logger.log("Cromwell (Abort): " + str(r))
-        return TaskStatus.TERMINATED
+        return TaskStatus.ABORTED

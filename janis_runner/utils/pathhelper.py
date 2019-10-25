@@ -1,11 +1,9 @@
 import os
 import tempfile
 from path import Path
-from janis_core import Workflow, CommandTool
+from janis_core import Workflow, CommandTool, Logger
 from typing import List, Tuple
 from inspect import isclass, isabstract
-
-from .logger import Logger
 
 
 def write_files_into_buffered_zip(files: List[Tuple[str, str]]):
@@ -128,7 +126,7 @@ def get_workflow_from_file(file, name, include_commandtools=False):
 
     except Exception as e:
         raise Exception(
-            f"Unrecognised python file when getting worfklow / command tool: {file} :: {e}"
+            f"Unrecognised python file when getting workflow / command tool: {file} :: {e}"
         )
 
     if name:
@@ -137,8 +135,15 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     if len(ptypes) == 0:
         return None
     if len(ptypes) > 1:
+        action = (
+            "(please specify the workflow to use via the `--name` parameter, this name must be the name of "
+            "the variable or the class name and not the workflowId)."
+        )
+        if name:
+            action = "(you might need to restructure your file to allow --name to uniquely identify your workflow"
+
         raise Exception(
-            f"More than one workflow ({len(ptypes)}) detected in '{file}' (please specify a name): "
+            f"There was more than one workflow ({len(ptypes)}) detected in '{file}' {action}"
             + ",".join(str(x) for x in ptypes)
         )
 

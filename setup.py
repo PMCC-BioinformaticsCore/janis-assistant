@@ -31,6 +31,8 @@ setup(
         "python-dotenv",
         "python-dateutil",
         "progressbar2",
+        "sqlitedict",
+        "tabulate",
     ],
     packages=["janis_runner"] + modules,
     classifiers=[

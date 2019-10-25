@@ -1,8 +1,44 @@
 import abc
+import sqlitedict
 
 from janis_runner.data.dbproviderbase import DbProviderBase
 from janis_runner.management import Archivable
 from janis_runner.utils import Logger
+
+
+class KvDB:
+
+    attributes_to_persist = {}
+
+    def __init__(self, dblocation, tablename):
+        self.kvdb = sqlitedict.SqliteDict(
+            dblocation, tablename=tablename, autocommit=True
+        )
+
+    def __setattr__(self, name, value):
+
+        if name in self.attributes_to_persist:
+            self.kvdb[name] = value
+
+        self.__dict__[name] = value
+
+    def __getattr__(self, key):
+
+        if key in self.attributes_to_persist:
+            return self.kvdb.get(key)
+
+        if key in self.__dict__:
+            return self.__dict__[key]
+
+        raise AttributeError(
+            f"Couldn't find attribute '{key}'' on {self.__class__.__name__}"
+        )
+
+    def __getitem__(self, item):
+        return self.kvdb.__getitem__(item)
+
+    def __setitem__(self, key, value):
+        return self.kvdb.__setitem__(key, value)
 
 
 class KeyValueDbProviderBase(DbProviderBase, abc.ABC):

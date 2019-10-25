@@ -1,11 +1,17 @@
 import inspect
 from typing import Type
 
-from .pmac import pmac
+from .templates import templates
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.utils import try_parse_primitive_type
 
-templates = {"pmac": pmac}
+
+#  IF YOU'RE LOOKING TO MODIFY THE TEMPLATES:
+#  Go to ./templates.py
+
+
+# No modifications below here should need to be made
+
 inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}
 
 

@@ -1,21 +1,24 @@
 import sys
 import argparse
 import json
+
+import pkg_resources
 import ruamel.yaml
 import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
 
-from janis_runner.data.enums import InfoKeys
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 
-from janis_runner.data.models.schema import TaskStatus
+from janis_runner.data.enums.taskstatus import TaskStatus
 
 from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
-from janis_runner.utils.logger import Logger, LogLevel
+from janis_core.utils.logger import Logger, LogLevel
+
+from janis_runner.utils.dateutil import DateUtil
 from janis_runner.validation import ValidationRequirements
 
 
@@ -48,7 +51,7 @@ def process_args(sysargs=None):
     parser.add_argument("-c", "--config", help="Path to config file")
     parser.add_argument("-v", "--version", action="store_true")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
     add_translate_args(
@@ -92,6 +95,10 @@ def process_args(sysargs=None):
 
     check_logger_args(args)
 
+    if not args.command:
+        parser.print_help()
+        sys.exit(2)
+
     JanisConfiguration.initial_configuration(args.config)
 
     return cmds[args.command](args)
@@ -116,22 +123,22 @@ def add_logger_args(parser):
 
 
 def add_watch_args(parser):
-    parser.add_argument("tid", help="Task id")
+    parser.add_argument("wid", help="Workflow id")
     return parser
 
 
 def add_metadata_args(parser):
-    parser.add_argument("tid", help="Task id")
+    parser.add_argument("wid", help="Task id")
     return parser
 
 
 def add_abort_args(parser):
-    parser.add_argument("tid", help="Task id")
+    parser.add_argument("wid", help="Task id", nargs="+")
     return parser
 
 
 def add_rm_args(parser):
-    parser.add_argument("tid", help="Task id to remove")
+    parser.add_argument("wid", help="Task id to remove", nargs="+")
     parser.add_argument("--keep", help="Keep output files", action="store_true")
     return parser
 
@@ -306,7 +313,7 @@ def add_environment_args(parser):
 
 
 def add_reconnect_args(parser):
-    parser.add_argument("tid", help="task-id to reconnect to")
+    parser.add_argument("wid", help="task-id to reconnect to")
     return parser
 
 
@@ -343,42 +350,69 @@ def do_configs(parser):
 
 
 def do_version(_):
-    from janis_runner.__meta__ import __version__
+    from tabulate import tabulate
 
-    print(__version__)
+    from janis_runner.__meta__ import __version__ as jr_version
+    from janis_core.__meta__ import __version__ as jc_version
+    import janis_core.registry.entrypoints as EP
+
+    fields = [["janis-core", jc_version], ["janis-runner", jr_version]]
+    eps = pkg_resources.iter_entry_points(group=EP.EXTENSIONS)
+    skip_eps = {"runner"}
+    for entrypoint in eps:
+        if entrypoint.name in skip_eps:
+            continue
+        try:
+            version = entrypoint.load().__version__
+            if version:
+                fields.append(["janis-" + entrypoint.name, version])
+
+        except Exception as e:
+            Logger.log_ex(e)
+
+    print(tabulate(fields))
 
 
 def do_watch(args):
-    tid = args.tid
-    tm = ConfigManager.manager().from_tid(tid)
+    wid = args.wid
+    tm = ConfigManager.manager().from_wid(wid)
     tm.resume_if_possible()
 
 
 def do_metadata(args):
-    tid = args.tid
+    wid = args.wid
     Logger.mute()
-    if tid == "*":
+    if wid == "*":
         tasks = ConfigManager.manager().taskDB.get_all_tasks()
         for t in tasks:
             try:
-                print("--- TASKID = " + t.tid + " ---")
-                ConfigManager.manager().from_tid(t.tid).log_dbtaskinfo()
+                print("--- TASKID = " + t.wid + " ---")
+                ConfigManager.manager().from_wid(t.wid).log_dbtaskinfo()
             except Exception as e:
                 print("\tThe following error ocurred: " + str(e))
     else:
-        tm = ConfigManager.manager().from_tid(tid)
+        tm = ConfigManager.manager().from_wid(wid)
         tm.log_dbtaskinfo()
     Logger.unmute()
 
 
 def do_abort(args):
-    tid = args.tid
-    tm = ConfigManager.manager().from_tid(tid)
-    tm.abort()
+    wids = args.wid
+    for wid in wids:
+        try:
+            tm = ConfigManager.manager().from_wid(wid)
+            tm.abort()
+        except Exception as e:
+            Logger.critical(f"Couldn't abort' {wid}: " + str(e))
 
 
 def do_rm(args):
-    ConfigManager.manager().remove_task(args.tid, keep_output=args.keep)
+    wids = args.wid
+    for wid in wids:
+        try:
+            ConfigManager.manager().remove_task(wid, keep_output=args.keep)
+        except Exception as e:
+            Logger.critical(f"Can't remove {wid}: " + str(e))
 
 
 def do_run(args):
@@ -403,7 +437,15 @@ def do_run(args):
     # we'll need to parse them manually and then pass them to fromjanis as requiring a match
     required_inputs = parse_additional_arguments(args.extra_inputs)
 
-    return fromjanis(
+    inputs = args.inputs
+    if "inputs" in required_inputs:
+        # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
+        # annoying if you forget to put the inputs before the workflow positional argument.
+        # TBH, we could automatically do this for all params, but it's a little trickier
+        ins = required_inputs.pop("inputs")
+        inputs.extend(ins if isinstance(ins, list) else [ins])
+
+    wid = fromjanis(
         args.workflow,
         name=args.name,
         validation_reqs=v,
@@ -424,6 +466,10 @@ def do_run(args):
         force=args.no_cache,
         keep_intermediate_files=args.keep_intermediate_files,
     )
+
+    Logger.info("Exiting")
+    print(wid, file=sys.stdout)
+    raise SystemExit
 
 
 def do_inputs(args):
@@ -463,19 +509,21 @@ def do_query(args):
 
     prepared = [
         (
-            tid,
-            t.database.get_meta_info(InfoKeys.status),
-            t.database.get_meta_info(InfoKeys.name),
-            t.database.get_meta_info(InfoKeys.start),
-            t.path,
+            wid,
+            t.status,
+            t.name,
+            t.start,
+            (", ".join(t.labels) if t.labels else ""),
+            t.outdir,
         )
-        for tid, t in tasks.items()
+        for wid, t in tasks.items()
     ]
-    prepared.sort(key=lambda p: p[3])
+    prepared.sort(key=lambda p: p[3] if p[3] else DateUtil.max())
 
     print(
         tabulate.tabulate(
-            prepared, headers=["TaskID", "status", "name", "start date", "path"]
+            prepared,
+            headers=["TaskID", "status", "name", "start date", "labels", "path"],
         ),
         file=sys.stdout,
     )

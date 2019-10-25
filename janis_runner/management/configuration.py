@@ -4,7 +4,7 @@ from typing import Optional, List, Union
 import ruamel.yaml
 
 # from janis_runner.engines.enginetypes import EngineType
-from janis_runner.utils import Logger
+from janis_core.utils.logger import Logger
 
 
 class HashableEnum(str, Enum):

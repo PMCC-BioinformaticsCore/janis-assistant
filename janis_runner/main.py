@@ -12,6 +12,8 @@ from inspect import isclass
 import janis_core as j
 from typing import Optional, Dict, Union, Type
 
+from janis_runner.management.workflowmanager import WorkflowManager
+
 from janis_runner.data.models.filescheme import (
     FileScheme,
     LocalFileScheme,
@@ -124,6 +126,7 @@ def translate(
         raise Exception("Unsupported tool type: " + toolref.__name__)
 
     print(wfstr, file=sys.stdout)
+    return wfstr
 
 
 def generate_inputs(
@@ -140,7 +143,7 @@ def generate_inputs(
         inputsdict = parse_dict(inputsfile)
 
     if not toolref:
-        raise Exception("Couldn't find workflow with name: " + str(toolref))
+        raise Exception("Couldn't find workflow with name: " + str(tool))
 
     return toolref.generate_inputs_override(
         additional_inputs=inputsdict, with_resource_overrides=with_resources
@@ -213,9 +216,18 @@ def fromjanis(
 
         eng = get_engine_from_eng(
             engine,
-            execdir=os.path.join(row.outputdir, "execution"),
-            confdir=os.path.join(row.outputdir, "configuration"),
-            logfile=os.path.join(row.outputdir, "logs/engine.log"),
+            execdir=WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+            ),
+            confdir=WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
+            ),
+            logfile=os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    row.outputdir, WorkflowManager.WorkflowManagerPath.logs
+                ),
+                "engine.log",
+            ),
             **kwargs,
         )
         fs = get_filescheme_from_fs(filescheme, **kwargs)
@@ -224,7 +236,7 @@ def fromjanis(
     try:
 
         tm = cm.start_task(
-            tid=row.tid,
+            wid=row.wid,
             wf=wf,
             environment=environment,
             validation_requirements=validation_reqs,
@@ -239,7 +251,7 @@ def fromjanis(
             keep_intermediate_files=keep_intermediate_files,
         )
 
-        return tm.tid
+        return tm.wid
 
     except KeyboardInterrupt:
         pass

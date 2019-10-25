@@ -5,6 +5,7 @@ from janis_runner.utils import (
     parse_additional_arguments,
     convert_prefix_to_argname,
     try_parse_primitive_type,
+    recursively_join,
 )
 
 
@@ -31,51 +32,51 @@ class TestGetExtension(TestCase):
 class TestGetTimeFormat(TestCase):
     def test_under_minute_1(self):
         secs = 0
-        self.assertEqual("0", second_formatter(secs))
+        self.assertEqual("0s", second_formatter(secs))
 
     def test_under_minute_2(self):
         secs = 8
-        self.assertEqual("8", second_formatter(secs))
+        self.assertEqual("8s", second_formatter(secs))
 
     def test_under_minute_3(self):
         secs = 22
-        self.assertEqual("22", second_formatter(secs))
+        self.assertEqual("22s", second_formatter(secs))
 
     def test_under_minute_4(self):
         secs = 59
-        self.assertEqual("59", second_formatter(secs))
+        self.assertEqual("59s", second_formatter(secs))
 
     def test_under_hour_1(self):
         secs = 60
-        self.assertEqual("1:00", second_formatter(secs))
+        self.assertEqual("1m:00s", second_formatter(secs))
 
     def test_under_hour_2(self):
         secs = 70
-        self.assertEqual("1:10", second_formatter(secs))
+        self.assertEqual("1m:10s", second_formatter(secs))
 
     def test_under_hour_3(self):
         secs = 609
-        self.assertEqual("10:09", second_formatter(secs))
+        self.assertEqual("10m:09s", second_formatter(secs))
 
     def test_under_hour_4(self):
         secs = 3599
-        self.assertEqual("59:59", second_formatter(secs))
+        self.assertEqual("59m:59s", second_formatter(secs))
 
     def test_under_day_1(self):
         secs = 3600
-        self.assertEqual("1:00:00", second_formatter(secs))
+        self.assertEqual("1h:00m:00s", second_formatter(secs))
 
     def test_under_day_2(self):
         secs = 3660
-        self.assertEqual("1:01:00", second_formatter(secs))
+        self.assertEqual("1h:01m:00s", second_formatter(secs))
 
     def test_under_day_3(self):
         secs = 86399
-        self.assertEqual("23:59:59", second_formatter(secs))
+        self.assertEqual("23h:59m:59s", second_formatter(secs))
 
     def test_day(self):
         secs = 86400
-        self.assertEqual("1:00:00:00", second_formatter(secs))
+        self.assertEqual("1d:00h:00m:00s", second_formatter(secs))
 
 
 class TestSimplePrefixConverter(TestCase):
@@ -174,3 +175,28 @@ class TestSimpleArgParser(TestCase):
                 ["--my-mixed-bag", "4.7", "true", "valueish", "0"]
             ),
         )
+
+
+class TestRecursiveJoin(TestCase):
+    def test_empty(self):
+        self.assertEqual("", recursively_join([], ","))
+
+    def test_one_layer(self):
+        ar = ["1", "2", "3"]
+        self.assertEqual("1,2,3", recursively_join(ar, ","))
+
+    def test_one_layer_none(self):
+        ar = ["1", None, "3"]
+        self.assertEqual("1,None,3", recursively_join(ar, ","))
+
+    def test_one_layer_mixed(self):
+        ar = ["1", True, 1.0, 1]
+        self.assertEqual("1,True,1.0,1", recursively_join(ar, ","))
+
+    def test_two_layers(self):
+        ar = [["1", "2"], "3"]
+        self.assertEqual("1,2,3", recursively_join(ar, ","))
+
+    def test_three_layers_mixed(self):
+        ar = [["1", "2", ["3", 4], 5, [[[[[6.0]]], 7]]], "8"]
+        self.assertEqual("1,2,3,4,5,6.0,7,8", recursively_join(ar, ","))

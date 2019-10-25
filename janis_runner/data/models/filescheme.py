@@ -10,7 +10,7 @@ import urllib.request
 
 from janis_runner.management import Archivable
 from janis_runner.management.configuration import JanisConfiguration
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class FileScheme(Archivable, abc.ABC):
@@ -47,6 +47,10 @@ class FileScheme(Archivable, abc.ABC):
 
     @abc.abstractmethod
     def rm_dir(self, directory):
+        pass
+
+    @abc.abstractmethod
+    def mkdirs(self, directory):
         pass
 
     @staticmethod
@@ -92,6 +96,9 @@ class LocalFileScheme(FileScheme):
     def rm_dir(self, directory):
         Logger.info(f"Removing local directory '{directory}'")
         return shutil.rmtree(directory)
+
+    def mkdirs(self, directory):
+        return os.makedirs(directory, exist_ok=True)
 
     @staticmethod
     def link_copy_or_fail(source, dest):
@@ -150,6 +157,9 @@ class HTTPFileScheme(FileScheme):
         Logger.info(f"Issuing HTTP.DELETE request for directory '{directory}'")
         return requests.delete(directory)
 
+    def mkdirs(self, directory):
+        return None
+
 
 class SSHFileScheme(FileScheme):
     def __init__(self, identifier, connectionstring):
@@ -194,6 +204,13 @@ class SSHFileScheme(FileScheme):
         )
         subprocess.call(args)
 
+    def mkdirs(self, directory):
+        args = ["ssh", self.connectionstring, "-p", directory]
+        Logger.info(
+            f"Securely making directory {self.connectionstring}:{directory} through ssh"
+        )
+        subprocess.call(args)
+
 
 class GCSFileScheme(FileScheme):
     """
@@ -214,6 +231,9 @@ class GCSFileScheme(FileScheme):
     def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
         pass
 
+    def mkdirs(self, directory):
+        pass
+
 
 class S3FileScheme(FileScheme):
     """
@@ -224,5 +244,8 @@ class S3FileScheme(FileScheme):
     @staticmethod
     def is_valid_prefix(prefix: str):
         return prefix.lower().startswith("s3://")
+
+    def mkdirs(self, directory):
+        pass
 
     pass

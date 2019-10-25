@@ -2,7 +2,7 @@ import socket
 import os.path
 from typing import Set, List, Union
 
-from .logger import Logger
+from janis_core.utils.logger import Logger
 from .pathhelper import (
     get_janis_workflow_from_searchname,
     get_workflow_from_file,
@@ -20,14 +20,19 @@ def generate_new_id(forbiddenids: Set[str]):
     def gen_uuid():
         return random.choice("abcdef") + str(uuid.uuid4())[:5]
 
-    tid = gen_uuid()
-    while tid in forbiddenids:
-        tid = gen_uuid()
+    wid = gen_uuid()
+    while wid in forbiddenids:
+        wid = gen_uuid()
 
-    return tid
+    return wid
 
 
 def get_extension(fn):
+    """
+    Returns the file extension (with no dot) if available, else None
+    :param fn:
+    :return:
+    """
     last_path_component = os.path.basename(fn)
     if "." not in last_path_component:
         return None
@@ -39,10 +44,11 @@ def get_extension(fn):
 
 def second_formatter(secs):
     if not secs:
-        return "0"
+        return "0s"
 
     intervals = []
     ranges = [60, 3600, 86400]
+    extensions = ["s", "m", "h", "d"]
 
     remainder = secs
     under_first_interval = False
@@ -56,9 +62,11 @@ def second_formatter(secs):
 
     intervals.append(remainder)
 
-    outp = str(intervals[0])
-    for ivl in intervals[1:]:
-        outp += ":" + str(ivl).zfill(2)
+    maxintervals = len(intervals) - 1
+    outp = str(intervals[0]) + extensions[maxintervals]
+    for i in range(1, len(intervals)):
+        ivl = intervals[i]
+        outp += ":" + str(ivl).zfill(2) + extensions[maxintervals - i]
 
     return outp
 
@@ -110,6 +118,7 @@ def parse_additional_arguments(largs: List[str]):
     for arg in largs:
         if arg.startswith("-"):
             if curprefix:
+                # Todo: Check if curprefix in the already parsed arguments and convert to an array
                 parsed[curprefix] = (
                     try_parse_primitive_type(curvalue) if curvalue else True
                 )
@@ -131,3 +140,12 @@ def parse_additional_arguments(largs: List[str]):
         parsed[curprefix] = curvalue if curvalue else True
 
     return parsed
+
+
+def recursively_join(iterable, separator: str):
+    return separator.join(
+        [
+            (recursively_join(i, separator) if isinstance(i, list) else str(i))
+            for i in iterable
+        ]
+    )

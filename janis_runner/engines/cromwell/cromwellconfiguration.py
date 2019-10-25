@@ -1,7 +1,7 @@
 import json
 from typing import Tuple, Any, Dict, Union
 
-from janis_runner.utils.logger import Logger
+from janis_core.utils.logger import Logger
 
 
 class Serializable:
@@ -270,6 +270,7 @@ String? docker""".strip(),
                     slurm.config.runtime_attributes[0],
                     """\
 Int runtime_minutes = 1440
+String kvruntime_value = ""
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker
@@ -306,7 +307,7 @@ String? docker
                 --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
                 --mem=${{memory_mb}} \\
                 {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}"
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}"
             # submit my afternotok dep
             # >&2 echo $jobid
 

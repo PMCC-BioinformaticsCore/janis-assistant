@@ -8,8 +8,8 @@ from janis_runner.utils import Logger
 
 
 class TaskRow:
-    def __init__(self, tid, outputdir):
-        self.tid = tid
+    def __init__(self, wid, outputdir):
+        self.wid = wid
         self.outputdir = outputdir
 
     def to_row(self):
@@ -17,7 +17,7 @@ class TaskRow:
         This should match the order of
             - 'from_row'
         """
-        return self.tid, self.outputdir
+        return self.wid, self.outputdir
 
     @staticmethod
     def from_row(row: Tuple[str, str]):
@@ -34,30 +34,22 @@ class TaskRow:
             - 'to_row'
             - 'from_row'
         """
-        return "tid", "outputdir"
+        return "wid", "outputdir"
 
 
 class TasksDbProvider(DbProviderBase):
 
     table_name = "tasks"
 
-    def __init__(self, db, cursor):
-        super(TasksDbProvider, self).__init__(db, cursor)
-
-        self.create_tasks_table_if_required()
-
-    def create_tasks_table_if_required(self) -> None:
-        self.cursor.execute(
-            f"""CREATE TABLE IF NOT EXISTS {TasksDbProvider.table_name}(
-            tid varchar(6) PRIMARY KEY, 
+    def table_schema(self):
+        return f"""CREATE TABLE IF NOT EXISTS {TasksDbProvider.table_name}(
+            wid varchar(6) PRIMARY KEY, 
             outputdir text
         )"""
-        )
-        self.commit()
 
-    def get_by_tid(self, tid) -> Optional[TaskRow]:
+    def get_by_wid(self, wid) -> Optional[TaskRow]:
         row = self.cursor.execute(
-            f"SELECT * FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+            f"SELECT * FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
         ).fetchone()
         if row is None or len(row) == 0:
             return None
@@ -83,9 +75,9 @@ class TasksDbProvider(DbProviderBase):
         )
         self.commit()
 
-    def remove_by_id(self, tid: str) -> None:
-        Logger.info(f"Removing '{tid}' from database")
+    def remove_by_id(self, wid: str) -> None:
+        Logger.info(f"Removing '{wid}' from database")
         self.cursor.execute(
-            f"DELETE FROM {TasksDbProvider.table_name} WHERE tid = ?", (tid,)
+            f"DELETE FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
         )
         self.commit()

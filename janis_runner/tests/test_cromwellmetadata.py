@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from janis_runner.engines.cromwell.metadata import CromwellMetadata
+from janis_runner.engines.cromwell.cromwellmetadata import CromwellMetadata
 
 
 class TestCromwellMetadata(TestCase):

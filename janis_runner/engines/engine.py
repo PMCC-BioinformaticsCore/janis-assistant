@@ -2,9 +2,10 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
 
+from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management import Archivable
-from janis_runner.data.models.schema import TaskStatus, TaskMetadata
+from janis_runner.data.enums import TaskStatus
 
 
 class Engine(Archivable, ABC):
@@ -14,18 +15,15 @@ class Engine(Archivable, ABC):
         self.is_started = False
         self.process_id = None
         self.logfile = logfile
-        self.logfp = None
+        self._logfp = None
         if self.logfile:
-            self.logfp = open(self.logfile, "w+")
-
-    def db_to_kwargs(self, keys: List[str] = None):
-        k = ["engtype"]
-        if keys:
-            k.extend(keys)
-        return super(Engine, self).db_to_kwargs(k)
+            self._logfp = open(self.logfile, "w+")
 
     def id(self):
         return self.identifier
+
+    def description(self):
+        return self.engtype.value
 
     @abstractmethod
     def start_engine(self):
@@ -36,7 +34,7 @@ class Engine(Archivable, ABC):
         pass
 
     @abstractmethod
-    def start_from_paths(self, tid, source_path: str, input_path: str, deps_path: str):
+    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         pass
 
     @abstractmethod
@@ -56,14 +54,18 @@ class Engine(Archivable, ABC):
         pass
 
     @abstractmethod
-    def metadata(self, identifier) -> TaskMetadata:
+    def metadata(self, identifier) -> WorkflowModel:
         pass
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self._logfp = open(self.logfile, "a+")
 
 
 class TaskBase:
     def __init__(
         self,
-        tid: str,
+        wid: str,
         engine: Engine,
         source=None,
         source_path=None,
@@ -77,7 +79,7 @@ class TaskBase:
         task_start=None,
         task_finish=None,
     ):
-        self.tid = tid
+        self.wid = wid
         self.engine = engine
 
         self.source = source
@@ -119,7 +121,7 @@ class TaskBase:
 class AsyncTask(threading.Thread, TaskBase):
     def __init__(
         self,
-        tid: str,
+        wid: str,
         engine: Engine,
         source=None,
         source_path=None,
@@ -138,7 +140,7 @@ class AsyncTask(threading.Thread, TaskBase):
         threading.Thread.__init__(self)
         TaskBase.__init__(
             self,
-            tid=tid,
+            wid=wid,
             engine=engine,
             source=source,
             source_path=source_path,
@@ -167,7 +169,7 @@ class AsyncTask(threading.Thread, TaskBase):
 class SyncTask(TaskBase):
     def __init__(
         self,
-        tid: str,
+        wid: str,
         engine: Engine,
         source=None,
         source_path=None,
@@ -184,7 +186,7 @@ class SyncTask(TaskBase):
     ):
         TaskBase.__init__(
             self,
-            tid=tid,
+            wid=wid,
             engine=engine,
             source=source,
             source_path=source_path,

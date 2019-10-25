@@ -36,3 +36,9 @@ class KvDB(object):
 
     def __setitem__(self, key, value):
         return self.kvdb.__setitem__(key, value)
+
+    def commit(self):
+        return self.kvdb.commit()
+
+    def close(self):
+        return self.kvdb.close()

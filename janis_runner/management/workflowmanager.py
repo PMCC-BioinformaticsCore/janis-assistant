@@ -191,15 +191,15 @@ class WorkflowManager:
         # database path
 
         path = WorkflowManager.get_task_path_for(path)
-        db = WorkflowDbManager(path)
+        db = WorkflowDbManager.get_workflow_metadatadb(path)
 
-        wid = db.workflowmetadata.wid  # .get_meta_info(InfoKeys.taskId)
-        envid = db.workflowmetadata.environment  # .get_meta_info(InfoKeys.environment)
-        eng = db.workflowmetadata.engine
-        fs = db.workflowmetadata.filescheme
+        wid = db.wid  # .get_meta_info(InfoKeys.taskId)
+        envid = db.environment  # .get_meta_info(InfoKeys.environment)
+        eng = db.engine
+        fs = db.filescheme
         env = Environment(envid, eng, fs)
 
-        JanisConfiguration._managed = db.workflowmetadata.configuration
+        JanisConfiguration._managed = db.configuration
 
         db.close()
 
@@ -257,28 +257,32 @@ class WorkflowManager:
                 # Write the new engine details back into the database (for like PID, host and is_started)
                 self.database.workflowmetadata.engine = engine
 
+            if self.database.workflowmetadata.please_abort:
+                Logger.info("Detected please_abort request, aborting")
+                return self.abort()
+
             # check status and see if we can resume
             if not self.database.progressDB.submitWorkflow:
                 self.submit_workflow_if_required()
 
             self.database.commit()
             self.watch_engine()
-            self.save_metadata_if_required()
-            self.copy_outputs_if_required()
-            self.remove_exec_dir()
+            if self.database.workflowmetadata.status == TaskStatus.COMPLETED:
+                self.save_metadata_if_required()
+                self.copy_outputs_if_required()
+                self.remove_exec_dir()
             engine.stop_engine()
 
             Logger.info(
                 f"Finished managing task '{self.wid}'. View the task outputs: file://{self.get_task_path()}"
             )
 
-            Logger.close_file()
-
         except Exception as e:
             Logger.critical(
                 f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: "
                 + str(e)
             )
+        Logger.close_file()
 
         return self
 
@@ -718,6 +722,10 @@ class WorkflowManager:
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
+            if self.database.workflowmetadata.please_abort:
+                Logger.info("Detected please_abort request during poll, aborting")
+                status = self.abort()
+
     def set_status(self, status: TaskStatus, force_notification=False):
         prev = self.database.workflowmetadata.status
 
@@ -747,6 +755,18 @@ class WorkflowManager:
             self.database.workflowmetadata.finish = meta.finish
 
         return meta
+
+    @staticmethod
+    def mark_aborted(outputdir) -> bool:
+        try:
+            db = WorkflowDbManager.get_workflow_metadatadb(outputdir)
+            db.please_abort = True
+            db.kvdb.commit()
+            Logger.info("Marked workflow as aborted, this may take some time full exit")
+            return True
+        except Exception as e:
+            Logger.critical("Couldn't mark aborted: " + str(e))
+            return False
 
     def abort(self) -> bool:
         self.set_status(TaskStatus.ABORTED, force_notification=True)

@@ -10,7 +10,7 @@ import sys, os
 from inspect import isclass
 
 import janis_core as j
-from typing import Optional, Dict, Union, Type
+from typing import Optional, Dict, Union, Type, List
 
 from janis_runner.management.workflowmanager import WorkflowManager
 
@@ -374,6 +374,15 @@ def resume(wid):
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
     wm.resume()
+
+
+def abort_wids(wids: List[str]):
+    for wid in wids:
+        try:
+            row = ConfigManager.manager().taskDB.get_by_wid(wid)
+            WorkflowManager.mark_aborted(row.outputdir)
+        except Exception as e:
+            Logger.critical(f"Couldn't abort '{wid}': " + str(e))
 
 
 def cleanup():

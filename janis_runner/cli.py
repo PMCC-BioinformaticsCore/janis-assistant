@@ -20,6 +20,7 @@ from janis_runner.main import (
     cleanup,
     init_template,
     resume,
+    abort_wids,
 )
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
@@ -426,12 +427,7 @@ def do_metadata(args):
 
 def do_abort(args):
     wids = args.wid
-    for wid in wids:
-        try:
-            tm = ConfigManager.manager().from_wid(wid)
-            tm.abort()
-        except Exception as e:
-            Logger.critical(f"Couldn't abort' {wid}: " + str(e))
+    abort_wids(wids)
 
 
 def do_rm(args):

@@ -278,10 +278,24 @@ class WorkflowManager:
             )
 
         except Exception as e:
+            import traceback
+
             Logger.critical(
                 f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: "
                 + str(e)
             )
+
+            try:
+                self.database.workflowmetadata.status = TaskStatus.FAILED
+                self.database.workflowmetadata.error = traceback.format_exc()
+                self.database.commit()
+                self.database.close()
+            except Exception as e:
+                Logger.critical(
+                    "An additional fatal error occurred while trying to store Janis state: "
+                    + str(e)
+                )
+
         Logger.close_file()
 
         return self

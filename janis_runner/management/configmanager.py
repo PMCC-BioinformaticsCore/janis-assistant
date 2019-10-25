@@ -35,7 +35,7 @@ class ConfigManager:
 
         cp = os.path.dirname(config.dbpath)
         os.makedirs(cp, exist_ok=True)
-        os.makedirs(config.executiondir, exist_ok=True)
+        os.makedirs(config.outputdir, exist_ok=True)
 
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
@@ -63,7 +63,7 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path(task.wid, self)
+        tm = WorkflowManager.from_path(task.wid)
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -86,7 +86,7 @@ class ConfigManager:
         ):
             raise Exception(f"The specified output director '{outdir}' was not empty")
 
-        od = outdir if outdir else os.path.join(config.executiondir, wf.id())
+        od = outdir if outdir else os.path.join(config.outputdir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()
@@ -145,7 +145,7 @@ class ConfigManager:
         ).fetchone()
         if not path:
             raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path(path[0], self)
+        return WorkflowManager.from_path(path[0])
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 

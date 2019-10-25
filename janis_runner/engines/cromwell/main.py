@@ -1,4 +1,3 @@
-import os
 import json
 import os
 import re
@@ -12,6 +11,7 @@ from glob import glob
 from typing import Optional
 
 import requests
+from janis_core.utils.logger import Logger
 
 from janis_runner.__meta__ import ISSUE_URL
 from janis_runner.data.models.outputs import WorkflowOutputModel
@@ -20,16 +20,13 @@ from janis_runner.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
 )
-from janis_runner.engines.cromwell.templates import from_template
 from janis_runner.engines.enginetypes import EngineType
-from janis_runner.management.configuration import JanisConfiguration
 from janis_runner.utils import (
     ProcessLogger,
     write_files_into_buffered_zip,
     find_free_port,
 )
 from janis_runner.utils.dateutil import DateUtil
-from janis_core.utils.logger import Logger
 from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus, TaskBase
 
@@ -60,9 +57,10 @@ class Cromwell(Engine):
         cromwelljar=None,
         config_path=None,
         config=None,
+        watch=True,
     ):
 
-        super().__init__(identifier, EngineType.cromwell, logfile=logfile)
+        super().__init__(identifier, EngineType.cromwell, watch=watch, logfile=logfile)
 
         # Heirarchy of configs:
         #   - Passed in config
@@ -161,7 +159,7 @@ class Cromwell(Engine):
 
         self.is_started = True
 
-        if self._process:
+        if self._process and self.watch:
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 
@@ -255,6 +253,8 @@ class Cromwell(Engine):
         return task_id
 
     def resolve_jar(self, cromwelljar):
+        from janis_runner.management.configuration import JanisConfiguration
+
         man = JanisConfiguration.manager()
         if not man:
             raise Exception(
@@ -381,6 +381,7 @@ class Cromwell(Engine):
                 tags=None,
                 prefix=None,
                 secondaries=None,
+                extension=None,
             ),
         )
 
@@ -470,6 +471,8 @@ class Cromwell(Engine):
             task.outputs = self.outputs_task(task.identifier)
 
     def find_or_generate_config(self, config, config_path):
+        from janis_runner.management.configuration import JanisConfiguration
+
         jc = JanisConfiguration.manager()
 
         if config:
@@ -482,18 +485,14 @@ class Cromwell(Engine):
         elif config_path:
             shutil.copyfile(config_path, self.config_path)
 
-        elif jc.cromwell.config:
-            tmpl = jc.cromwell.config.get("template")
-            if not tmpl:
-                raise Exception(
-                    "When configuring cromwell via janis config, a template is required"
-                )
-            template = from_template(tmpl, jc.cromwell.config)
-            with open(self.config_path, "w+") as f:
-                f.writelines(template.output())
-
         elif jc.cromwell.configpath:
             shutil.copyfile(jc.cromwell.configpath, self.config_path)
+
+        else:
+            tmpl = jc.template.template.engine_config(EngineType.cromwell)
+            if tmpl:
+                with open(self.config_path, "w+") as f:
+                    f.writelines(tmpl.output())
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True

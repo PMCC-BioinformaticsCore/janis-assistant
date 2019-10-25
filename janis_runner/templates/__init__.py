@@ -1,16 +1,10 @@
 import inspect
 from typing import Type
 
+
+from .base import EnvironmentTemplate
 from .templates import templates
-from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
-from janis_runner.utils import try_parse_primitive_type
 
-
-#  IF YOU'RE LOOKING TO MODIFY THE TEMPLATES:
-#  Go to ./templates.py
-
-
-# No modifications below here should need to be made
 
 inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}
 
@@ -26,22 +20,20 @@ class TemplateInput:
         return self.identifier
 
 
-def from_template(name, options) -> CromwellConfiguration:
+def from_template(name, options) -> EnvironmentTemplate:
     template = templates.get(name)
     if not template:
-        raise Exception(
-            f"Couldn't find CromwellConfiguration template with name: '{name}'"
-        )
+        raise Exception(f"Couldn't find Configuration template with name: '{name}'")
 
     validate_template_params(template, options)
     newoptions = {**options}
-    newoptions.pop("template")
+    # newoptions.pop("template")
 
     return template(**newoptions)
 
 
 def get_schema_for_template(template):
-    argspec = inspect.signature(template)
+    argspec = inspect.signature(template.__init__)
 
     ins = []
     for inp in argspec.parameters.values():
@@ -50,7 +42,13 @@ def get_schema_for_template(template):
         fdefault = inp.default
         optional = fdefault is not inspect.Parameter.empty
         default = fdefault if optional else None
-        ins.append(TemplateInput(inp.name, inp.annotation, optional, default))
+
+        defaulttype = type(fdefault) if fdefault is not None else None
+        annotation = (
+            defaulttype if inp.annotation is inspect.Parameter.empty else inp.annotation
+        )
+
+        ins.append(TemplateInput(inp.name, annotation, optional, default))
 
     return ins
 

@@ -1,10 +1,7 @@
 import unittest
 from typing import List
 
-from janis_runner.engines.cromwell.templates import (
-    validate_template_params,
-    get_schema_for_template,
-)
+from janis_runner.templates import validate_template_params, get_schema_for_template
 
 
 class TestOptionParsing(unittest.TestCase):

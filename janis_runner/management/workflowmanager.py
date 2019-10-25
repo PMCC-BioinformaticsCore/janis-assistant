@@ -11,7 +11,7 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
-from janis_core import InputSelector, Logger, Workflow
+from janis_core import InputSelector, Logger, Workflow, File, Array
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
@@ -23,6 +23,7 @@ from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
 from janis_runner.environments.environment import Environment
+from janis_runner.management.notificationmanager import NotificationManager
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
 from janis_runner.utils import get_extension, recursively_join
 from janis_runner.utils.dateutil import DateUtil
@@ -51,6 +52,8 @@ class WorkflowManager:
 
         self.database = WorkflowDbManager(self.get_task_path_safe())
         self.environment = environment
+
+        self._prev_status = None
 
         if not self.wid:
             self.wid = self.get_engine_wid()
@@ -96,7 +99,6 @@ class WorkflowManager:
         tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
 
         tm.database.workflowmetadata.wid = wid
-        tm.database.workflowmetadata.status = TaskStatus.PROCESSING
         tm.database.workflowmetadata.engine = environment.engine
         tm.database.workflowmetadata.filescheme = environment.filescheme
         tm.database.workflowmetadata.environment = environment.id()
@@ -104,6 +106,11 @@ class WorkflowManager:
         tm.database.workflowmetadata.start = DateUtil.now()
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
+
+        # This is the only time we're allowed to skip the tm.set_status
+        # This is a temporary stop gap until "notification on status" is implemented.
+        # tm.set_status(TaskStatus.PROCESSING)
+        tm.database.workflowmetadata.status = TaskStatus.PROCESSING
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)
@@ -119,17 +126,19 @@ class WorkflowManager:
 
         if not dryrun:
             # this happens for all workflows no matter what type
-            tm.database.workflowmetadata.status = TaskStatus.QUEUED
+            tm.set_status(TaskStatus.QUEUED)
             tm.submit_workflow_if_required(wf_evaluate, spec_translator)
             if watch:
                 tm.resume_if_possible(show_metadata=show_metadata)
         else:
-            tm.database.workflowmetadata.status = "DRY-RUN"
+            tm.set_status(TaskStatus.DRY_RUN)
+
+        tm.database.commit()
 
         return tm
 
     @staticmethod
-    def from_path(path, config_manager):
+    def from_path(path):
         """
         :param config_manager:
         :param path: Path should include the $wid if relevant
@@ -249,6 +258,12 @@ class WorkflowManager:
 
         for o in wf.output_nodes.values():
             # We'll
+            ext = None
+            innertype = o.datatype
+            while isinstance(innertype, Array):
+                innertype = innertype.subtype()
+            if isinstance(o.datatype, File):
+                ext = o.datatype.extension
             outputs.append(
                 WorkflowOutputModel(
                     tag=o.id(),
@@ -258,6 +273,7 @@ class WorkflowManager:
                     prefix=self.evaluate_output_selector(o.output_prefix, mapped_inps),
                     tags=self.evaluate_output_selector(o.output_tag, mapped_inps),
                     secondaries=o.datatype.secondary_files(),
+                    extension=ext,
                 )
             )
 
@@ -319,7 +335,7 @@ class WorkflowManager:
             import json
 
             meta = self.environment.engine.metadata(self.wid)
-            self.database.workflowmetadata.status = meta.status
+            self.set_status(meta.status)
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.outputs, fp)
 
@@ -359,6 +375,7 @@ class WorkflowManager:
                 prefix=out.prefix,
                 tag=out.tags,
                 secondaries=out.secondaries,
+                extension=out.extension,
                 engine_output=eout,
             )
 
@@ -381,6 +398,7 @@ class WorkflowManager:
         prefix,
         tag,
         secondaries,
+        extension,
         engine_output: Union[WorkflowOutputModel, Any, List[Any]],
         shard=None,
     ):
@@ -416,19 +434,17 @@ class WorkflowManager:
                     ar.extend(iterable[1 + tag_index_to_explode :])
                 return ar
 
-            if prefix and len(prefix) > 0 and len(prefix) != len(engine_output):
-                Logger.warn("...")
-
-            if tag and len(tag) > 0 and len(tag) != len(engine_output):
-                Logger.warn("...")
-
             tag_index_to_explode = find_element_where_length_is(tag, nshards)
 
             for i in range(nshards):
                 eout = engine_output[i]
 
                 # choose tag
-                new_prefix = prefix[i] if (prefix and len(prefix) > 1) else prefix
+                new_prefix = (
+                    prefix[i]
+                    if (isinstance(prefix, list) and len(prefix) > 1)
+                    else prefix
+                )
 
                 new_tag = tag
                 if tag_index_to_explode is not None:
@@ -443,6 +459,7 @@ class WorkflowManager:
                         engine_output=eout,
                         shard=[*prev_shards, s],
                         secondaries=secondaries,
+                        extension=extension,
                     )
                 )
                 s += 1
@@ -451,7 +468,7 @@ class WorkflowManager:
         final_tags = tag
         final_prefix = prefix
 
-        if any(isinstance(t, list) for t in final_tags):
+        if final_tags and any(isinstance(t, list) for t in final_tags):
             Logger.critical(
                 f"One of the final output tags {str(final_tags)} was still an array. This is an issue, "
                 f"so we're going to default to the generic 'output' directory"
@@ -489,10 +506,11 @@ class WorkflowManager:
 
         if isinstance(engine_output, WorkflowOutputModel):
             original_filepath = engine_output.originalpath
-            ext = get_extension(engine_output.originalpath)
+            ext = extension or get_extension(engine_output.originalpath)
             if ext:
-                outfn += ext
-                newoutputfilepath += "." + ext
+                dot = "" if ext[0] == "." else "."
+                outfn += dot + ext
+                newoutputfilepath += dot + ext
             fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
         else:
             if isinstance(fs, LocalFileScheme):
@@ -631,22 +649,34 @@ class WorkflowManager:
             if status not in TaskStatus.final_states():
                 time.sleep(2)
 
+    def set_status(self, status: TaskStatus, force_notification=False):
+        prev = self.database.workflowmetadata.status
+
+        if prev == status and not force_notification:
+            return
+        Logger.log("Status changed to: " + str(status))
+        self.database.workflowmetadata.status = status
+        # send an email here
+
+        NotificationManager.notify_status_change(status, self.database.get_metadata())
+
     def save_metadata(self) -> Optional[WorkflowModel]:
         meta = self.environment.engine.metadata(self.get_engine_wid())
 
         if not meta:
             return None
 
-        self.database.workflowmetadata.status = meta.status
+        self.database.save_metadata(meta)
+
+        self.set_status(meta.status)
+
         if meta.execution_dir:
             self.database.workflowmetadata.execution_dir = meta.execution_dir
-
-        self.database.save_metadata(meta)
 
         return meta
 
     def abort(self) -> bool:
-        self.database.workflowmetadata.status = TaskStatus.ABORTED
+        self.set_status(TaskStatus.ABORTED, force_notification=True)
         status = False
         try:
             status = bool(self.environment.engine.terminate_task(self.get_engine_wid()))

@@ -9,14 +9,15 @@ from janis_runner.data.enums import TaskStatus
 
 
 class Engine(Archivable, ABC):
-    def __init__(self, identifier: str, engtype: EngineType, logfile=None):
+    def __init__(self, identifier: str, engtype: EngineType, watch=True, logfile=None):
         self.identifier = identifier
         self.engtype = engtype
         self.is_started = False
         self.process_id = None
         self.logfile = logfile
+        self.watch = watch
         self._logfp = None
-        if self.logfile:
+        if self.logfile and watch:
             self._logfp = open(self.logfile, "w+")
 
     def id(self):
@@ -59,7 +60,8 @@ class Engine(Archivable, ABC):
 
     def __setstate__(self, state):
         super().__setstate__(state)
-        self._logfp = open(self.logfile, "a+")
+        # Don't reopen as we can't reconnect to the Cromwell instance anyway
+        self._logfp = None  # open(self.logfile, "a+")
 
 
 class TaskBase:

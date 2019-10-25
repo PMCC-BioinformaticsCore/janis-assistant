@@ -259,8 +259,13 @@ String? docker""".strip(),
                 buildinstructions,
                 jobemail,
                 jobqueues,
+                afternotokaycatch: bool = False,
             ):
                 slurm = cls.slurm()
+
+                afternotokaycommand = ""
+                if afternotokaycatch:
+                    afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --dependency=afternotokay:$JOBID --wrap 'echo 1 >> ${cwd}/execution/rc')"
 
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
@@ -297,8 +302,9 @@ String? docker
 
             # Submit the script to SLURM
             jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
-            sbatch \\
-                -p {','.join(jobqueues)} \\
+            JOBID=$(sbatch \\
+                -p {','.join(jobqueues) if isinstance(jobqueues, list) else jobqueues} \\
+                --parsable \\
                 -J $jobname \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
@@ -307,11 +313,10 @@ String? docker
                 --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
                 --mem=${{memory_mb}} \\
                 {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}"
-            # submit my afternotok dep
-            # >&2 echo $jobid
-
-              """,
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
+                {afternotokaycommand} \\
+                && echo Submitted batch job $JOBID
+            """,
                 )
                 return slurm
 

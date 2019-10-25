@@ -7,13 +7,19 @@ import ruamel.yaml
 import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
-
+from janis_runner.templates.templates import templates as jtemplates
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.management.configuration import JanisConfiguration
 
 from janis_runner.data.enums.taskstatus import TaskStatus
 
-from janis_runner.main import fromjanis, translate, generate_inputs, cleanup
+from janis_runner.main import (
+    fromjanis,
+    translate,
+    generate_inputs,
+    cleanup,
+    init_template,
+)
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
 from janis_core.utils.logger import Logger, LogLevel
@@ -40,9 +46,9 @@ def process_args(sysargs=None):
         "metadata": do_metadata,
         "environment": do_environment,
         "query": do_query,
-        "config": do_configs,
         "rm": do_rm,
         "cleanup": do_cleanup,
+        "init": do_init,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -54,6 +60,9 @@ def process_args(sysargs=None):
     subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
+    add_init_args(
+        subparsers.add_parser("init", help="Initialise a Janis configuration")
+    )
     add_translate_args(
         subparsers.add_parser("translate", help="Translate a janis workflow to ")
     )
@@ -85,7 +94,6 @@ def process_args(sysargs=None):
 
     subparsers.add_parser("version", help="Print the versions of Janis and exit")
 
-    # add_config_args(subparsers.add_parser("config", help=""))
     # add_cleanup_args(subparsers.add_parser("cleanup"))
 
     args = parser.parse_args(sysargs)
@@ -143,11 +151,6 @@ def add_rm_args(parser):
     return parser
 
 
-def add_config_args(parser):
-    # No options at the moment
-    return parser
-
-
 def add_cleanup_args(parser):
     # parser.add_help("Remove janis tasks that can no longer be found")
     return parser
@@ -165,9 +168,6 @@ def add_translate_args(parser):
         help="Optional name of workflow if there are multiple workflows in the tool",
     )
     parser.add_argument(
-        "--inputs", help="File that overrides the inputs declared in the workflow."
-    )
-    parser.add_argument(
         "--output-dir", help="output directory to write output to (default=stdout)"
     )
     parser.add_argument(
@@ -180,8 +180,8 @@ def add_translate_args(parser):
 def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
+    parser.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
     parser.add_argument(
-        "-r",
         "--resources",
         action="store_true",
         help="Add resource overrides into inputs file",
@@ -189,7 +189,7 @@ def add_inputs_args(parser):
     parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
     )
-    parser.add_argument("--inputs", help="additional inputs to pull values from")
+    parser.add_argument("-i", "--inputs", help="additional inputs to pull values from")
     parser.add_argument(
         "-n",
         "--name",
@@ -215,6 +215,7 @@ def add_run_args(parser):
     )
 
     parser.add_argument(
+        "-i",
         "--inputs",
         help="File of inputs (matching the workflow) to override, these inputs will "
         "take precedence over inputs declared in the workflow",
@@ -225,6 +226,12 @@ def add_run_args(parser):
         "-o",
         "--output-dir",
         help="The output directory to which tasks are saved in, defaults to $HOME.",
+    )
+    parser.add_argument(
+        "-r",
+        "--recipe",
+        help="Use a provided recipe from a provided template",
+        action="append",
     )
 
     parser.add_argument(
@@ -342,11 +349,14 @@ def check_logger_args(args):
     Logger.set_console_level(level)
 
 
-def do_configs(parser):
-    outd = JanisConfiguration.default()
-    outs = ruamel.yaml.dump(outd, default_flow_style=False)
+def add_init_args(args):
+    args.add_argument("template", choices=jtemplates.keys())
+    args.add_argument("--stdout", action="store_true", help="Write to standard out")
 
-    print(outs, file=sys.stdout)
+
+def do_init(args):
+    stream = sys.stdout if args.stdout else None
+    init_template(args.template, stream=stream)
 
 
 def do_version(_):
@@ -464,6 +474,7 @@ def do_run(args):
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
+        recipes=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
     )
 
@@ -534,7 +545,6 @@ def do_translate(args):
         tool=args.workflow,
         translation=args.translation,
         name=args.name,
-        inputs=args.inputs,
         output_dir=args.output_dir,
         force=args.no_cache,
     )

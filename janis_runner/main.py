@@ -19,10 +19,15 @@ from janis_runner.data.models.filescheme import (
     LocalFileScheme,
     SSHFileScheme,
 )
-from janis_runner.engines import Engine, get_engine_type, Cromwell
+from janis_runner.engines import Engine, get_engine_type, Cromwell, EngineType
 from janis_runner.environments.environment import Environment
 from janis_runner.management.configmanager import ConfigManager
-from janis_runner.management.configuration import JanisConfiguration
+from janis_runner.management.configuration import (
+    JanisConfiguration,
+    EnvVariables,
+    stringify_dict_keys_or_return_value,
+)
+import janis_runner.templates as janistemplates
 from janis_runner.utils import (
     Logger,
     get_janis_workflow_from_searchname,
@@ -150,6 +155,42 @@ def generate_inputs(
     )
 
 
+def init_template(templatename, stream=None):
+    """
+    :param templatename:
+    :param force:
+    :return:
+    """
+    import ruamel.yaml
+
+    outpath = EnvVariables.config_path.resolve(True)
+
+    outd = JanisConfiguration.default()
+
+    if templatename:
+        schema = janistemplates.get_schema_for_template(
+            janistemplates.templates[templatename]
+        )
+        outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
+        outd[JanisConfiguration.Keys.Template] = {
+            s.id(): s.default for s in schema if s.default or not s.optional
+        }
+        outd[JanisConfiguration.Keys.Template][
+            JanisConfiguration.JanisConfigurationTemplate.Keys.Id
+        ] = templatename
+
+    outd = stringify_dict_keys_or_return_value(outd)
+
+    if os.path.exists(outpath):
+        Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
+    else:
+        with open(outpath, "w+") as configpath:
+            ruamel.yaml.dump(outd, configpath, default_flow_style=False)
+
+    if stream:
+        ruamel.yaml.dump(outd, sys.stderr, default_flow_style=False)
+
+
 def fromjanis(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
@@ -168,6 +209,7 @@ def fromjanis(
     max_memory=None,
     force=False,
     keep_intermediate_files=False,
+    recipes=None,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -182,6 +224,11 @@ def fromjanis(
 
     # organise inputs
     inputsdict = {}
+
+    if recipes:
+        valuesfromrecipe = jc.recipes.get_recipe_for_keys(recipes)
+        inputsdict.update(valuesfromrecipe)
+
     if inputs:
         if not isinstance(inputs, list):
             inputs = [inputs]
@@ -201,6 +248,8 @@ def fromjanis(
                 f"There were unrecognised keys when creating inputs for {wf.id()}, {', '.join(invalid_keys)}"
             )
         inputsdict.update(required_inputs)
+
+    validate_inputs(wf, inputsdict)
 
     row = cm.create_task_base(wf, outdir=output_dir)
 
@@ -228,6 +277,7 @@ def fromjanis(
                 ),
                 "engine.log",
             ),
+            watch=watch,
             **kwargs,
         )
         fs = get_filescheme_from_fs(filescheme, **kwargs)
@@ -263,7 +313,27 @@ def fromjanis(
         raise e
 
 
-def get_engine_from_eng(eng, logfile, confdir, **kwargs):
+def validate_inputs(wf, additional_inputs):
+    errors = {}
+
+    for inpkey, inp in wf.input_nodes.items():
+        value = additional_inputs.get(inpkey, inp.value)
+
+        if inp.datatype.validate_value(value, allow_null_if_not_optional=False):
+            continue
+
+        errors[inpkey] = (
+            inp.datatype.invalid_value_hint(value)
+            or f"An internal error occurred when validating {inpkey} from {inp.datatype.id()}"
+        )
+
+    if len(errors) == 0:
+        return True
+
+    raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
+
+
+def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
     if isinstance(eng, Engine):
         return eng.start_engine()
 
@@ -276,9 +346,10 @@ def get_engine_from_eng(eng, logfile, confdir, **kwargs):
             confdir=confdir,
             host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
+            watch=watch,
         ).start_engine()
 
-    return get_engine_type(eng)(logfile=logfile).start_engine()
+    return get_engine_type(eng)(logfile=logfile, watch=watch).start_engine()
 
 
 def get_filescheme_from_fs(fs, **kwargs):
@@ -302,7 +373,3 @@ def cleanup():
     raise NotImplementedError("Implementation coming soon")
     # rows = ConfigManager.manager().taskDB.get_all_tasks()
     # try:
-
-
-def validate_and_run_janis(wf, **kwargs):
-    pass

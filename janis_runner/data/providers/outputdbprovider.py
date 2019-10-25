@@ -17,7 +17,8 @@ class OutputDbProvider(DbProviderBase):
             timestamp NULLABLE STRING,
             prefix STRING,
             tags STRING,
-            secondaries STRING
+            secondaries STRING,
+            extension STRING
         )
         """
 
@@ -38,9 +39,9 @@ class OutputDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO outputs
-            (tag, original_path, new_path, timestamp, prefix, tags, secondaries)
+            (tag, original_path, new_path, timestamp, prefix, tags, secondaries, extension)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     def insert_many(self, outputs: List[WorkflowOutputModel]):
@@ -63,6 +64,7 @@ class OutputDbProvider(DbProviderBase):
             prefix,
             tags,
             secs,
+            model.extension,
         )
 
     def insert(self, model: WorkflowOutputModel):

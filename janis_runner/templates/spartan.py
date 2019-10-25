@@ -80,7 +80,7 @@ class SpartanTemplate(EnvironmentTemplate):
             "sbatch",
             "-p",
             jq,
-            "-j",
+            "-J",
             f"janis-{wid}",
             "--time",
             "30",

@@ -72,7 +72,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
             "sbatch",
             "-p",
             jq,
-            "-j",
+            "-J",
             f"janis-{wid}",
             "--time",
             "30",

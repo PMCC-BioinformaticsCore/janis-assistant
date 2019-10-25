@@ -184,6 +184,7 @@ def init_template(templatename, stream=None):
     if os.path.exists(outpath):
         Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
     else:
+        os.makedirs(os.path.dirname(outpath))
         with open(outpath, "w+") as configpath:
             ruamel.yaml.dump(outd, configpath, default_flow_style=False)
 

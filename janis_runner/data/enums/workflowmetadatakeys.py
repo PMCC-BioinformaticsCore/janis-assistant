@@ -9,6 +9,8 @@ class WorkflowMetadataDbKeys(Enum):
     finish = "finish"
     execution_dir = "execution_dir"
     status = "status"
+    lastupdated = "last_updated"
+    pleaseabort = "please_abort"
 
     engine = "engine"
     engine_url = "engine_url"
@@ -20,3 +22,9 @@ class WorkflowMetadataDbKeys(Enum):
     keepexecutiondir = "keepexecutiondir"
 
     author = "author"
+
+    configuration = "configuration"
+
+    submission_workflow = "submission_workflow"
+    submission_inputs = "submission_inputs"
+    submission_resources = "submission_resources"

@@ -1,6 +1,7 @@
 import inspect
 from typing import Type
 
+from janis_core import Logger
 
 from .base import EnvironmentTemplate
 from .templates import templates
@@ -24,6 +25,8 @@ def from_template(name, options) -> EnvironmentTemplate:
     template = templates.get(name)
     if not template:
         raise Exception(f"Couldn't find Configuration template with name: '{name}'")
+
+    Logger.log(f"Got template from id = {name}")
 
     validate_template_params(template, options)
     newoptions = {**options}

@@ -13,8 +13,17 @@ class EnvironmentTemplate(ABC):
     def engine_config(self, engine: EngineType):
         pass
 
-    def preengine_code(self, engine: EngineType):
-        pass
+    def submit_detatched_resume(self, wid, command):
+        import subprocess
+
+        Logger.info("Starting Janis resume with " + str(command))
+        subprocess.Popen(
+            command,
+            close_fds=True,
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
+        )
+        # subprocess.Popen(command) # Keep process open
 
     def post_configuration_hook(self, configuration):
         if self._mail_program:

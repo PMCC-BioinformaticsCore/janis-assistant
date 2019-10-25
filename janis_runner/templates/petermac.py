@@ -35,6 +35,11 @@ class PeterMacTemplate(EnvironmentTemplate):
         self.catch_slurm_errors = catchSlurmErrors
 
     def cromwell(self):
+
+        joined_queued = (
+            ",".join(self.queues) if isinstance(self.queues, list) else self.queues
+        )
+
         config = CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
                 default="slurm-pmac",
@@ -44,8 +49,8 @@ class PeterMacTemplate(EnvironmentTemplate):
                         + self.singularity_version,
                         singularitycontainerdir=self.container_dir,
                         buildinstructions=(
-                            f"sbatch -p {','.join(self.queues)} --wait \
-                              --wrap 'docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) "
+                            f"sbatch -p {joined_queued} --wait \
+                              --wrap 'unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) "
                             f"&& image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
                         ),
                         jobemail=self.email,

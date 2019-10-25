@@ -321,6 +321,44 @@ String? docker
                 return slurm
 
             @classmethod
+            def singularity(
+                cls,
+                singularityloadinstructions,
+                singularitycontainerdir,
+                buildinstructions,
+            ):
+                config = cls(
+                    actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+                    config=cls.Config(
+                        runtime_attributes="""\
+String? docker""".strip(),
+                        run_in_background=True,
+                    ),
+                )
+                config.config.submit_docker = (
+                    "submit-docker",
+                    f"""
+                    {singularityloadinstructions}
+
+                    docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
+                    image={singularitycontainerdir}/$docker_subbed.sif
+                    lock_path={singularitycontainerdir}/$docker_subbed.lock
+
+                    if [ ! -f "$image" ]; then
+                      (
+                      flock --exclusive 200 1>&2
+                      if [ ! -f "$image" ]; then
+                        {buildinstructions}
+                      fi
+                      ) 200>$lock_path
+                    fi
+
+                    singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}
+                    """,
+                )
+                return config
+
+            @classmethod
             def slurm_udocker(cls):
                 slurm = cls.slurm()
 

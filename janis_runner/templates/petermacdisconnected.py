@@ -6,53 +6,49 @@ from janis_core import Logger
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
+from janis_runner.templates.petermac import PeterMacTemplate
 
 
-class SpartanTemplate(EnvironmentTemplate):
-
-    # default_recipes = {
-    #     "hg38": {
-    #         "reference": "/data/projects/punim0755/hg38/assembly_contigs_renamed/Homo_sapiens_assembly38.fasta",
-    #         "snps_dbsnp": "/data/cephfs/punim0755/hg38/dbsnp_contigs_renamed/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
-    #         "snps_1000gp": "/data/cephfs/punim0755/hg38/snps_1000GP/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-    #         "known_indels": "/data/cephfs/punim0755/hg38/known_indels_contigs_renamed/Homo_sapiens_assembly38.known_indels.vcf.gz",
-    #         "mills_1000gp_indels": "/data/cephfs/punim0755/hg38/mills_indels/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-    #     }
-    # }
-
+class PeterMacDisconnectedTemplate(PeterMacTemplate):
     def __init__(
         self,
-        executionDir,
-        queues: Union[str, List[str]] = "physical",
-        email=None,
+        executionDir: str,
+        queues: Union[str, List[str]] = "prod_med,prod",
         containerDir="/config/binaries/singularity/containers_devel/janis/",
-        singularityVersion="3.2.0-spartan_gcc-6.2.0",
+        singularityVersion="3.4.0",
+        catchSlurmErrors=True,
     ):
 
-        super().__init__()
-        self.execution_dir = executionDir
-        self.queues = queues
-        self.email = email
-        self.container_dir = containerDir
-        self.singularity_version = singularityVersion
+        super().__init__(
+            executionDir=executionDir,
+            queues=queues,
+            containerDir=containerDir,
+            singularityVersion=singularityVersion,
+            catchSlurmErrors=catchSlurmErrors,
+        )
 
     def cromwell(self):
-        queues = self.queues
-        if not isinstance(self.queues, list):
-            queues = [self.queues]
+
+        # This will be changed to: queues = "janis" once partition as been created
+        joined_queued = (
+            ",".join(self.queues) if isinstance(self.queues, list) else self.queues
+        )
 
         config = CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
-                default="slurm-spartan",
+                default="pmac",
                 providers={
-                    "slurm-spartan": CromwellConfiguration.Backend.Provider.slurm_singularity(
-                        singularityloadinstructions=f"module load Singularity/{self.singularity_version}",
+                    "pmac": CromwellConfiguration.Backend.Provider.slurm_singularity(
+                        singularityloadinstructions="module load singularity/"
+                        + self.singularity_version,
                         singularitycontainerdir=self.container_dir,
                         buildinstructions=(
-                            f"singularity pull $image docker://${{docker}}"
+                            f"unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) && "
+                            f"image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}"
                         ),
-                        jobemail=self.email,
-                        jobqueues=queues,
+                        jobemail=None,
+                        jobqueues=joined_queued,
+                        afternotokaycatch=self.catch_slurm_errors,
                     )
                 },
             )
@@ -63,19 +59,15 @@ class SpartanTemplate(EnvironmentTemplate):
         ].config
         backend.root = self.execution_dir
         backend.filesystems = {
-            "local": {
-                "localization": ["cached-copy", "hard-link", "soft-link", "copy"]
-            },
-            # "caching": {"hashing-strategy": "path+modtime"},
+            "local": {"localization": ["cached-copy", "hard-link", "soft-link", "copy"]}
         }
 
         return config
 
     def submit_detatched_resume(self, wid, command):
-        q = self.queues or "physical"
+        q = self.queues or "prod_short"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
-        loadedcommand = "module load Java && module load web_proxy && " + jc
         newcommand = [
             "sbatch",
             "-p",
@@ -85,7 +77,7 @@ class SpartanTemplate(EnvironmentTemplate):
             "--time",
             "30",
             "--wrap",
-            loadedcommand,
+            jc,
         ]
         Logger.info("Starting command: " + str(newcommand))
         rc = subprocess.call(

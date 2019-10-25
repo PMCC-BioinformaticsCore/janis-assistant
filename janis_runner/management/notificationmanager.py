@@ -34,7 +34,7 @@ class NotificationManager:
         if not mail_program:
             return Logger.log("Skipping email send as no mail program is configured")
 
-        if not nots.email:
+        if not nots.email or nots.email.lower() == "none":
             Logger.log("Skipping notify status change as no email")
             return
 

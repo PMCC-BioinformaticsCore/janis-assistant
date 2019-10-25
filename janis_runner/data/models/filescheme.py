@@ -95,7 +95,11 @@ class LocalFileScheme(FileScheme):
 
     def rm_dir(self, directory):
         Logger.info(f"Removing local directory '{directory}'")
-        return shutil.rmtree(directory)
+        try:
+            return shutil.rmtree(directory)
+        except Exception as e:
+            Logger.critical(f"Error removing directory '{directory}': {e}")
+            return False
 
     def mkdirs(self, directory):
         return os.makedirs(directory, exist_ok=True)

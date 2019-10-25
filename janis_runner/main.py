@@ -10,7 +10,7 @@ import sys, os
 from inspect import isclass
 
 import janis_core as j
-from typing import Optional, Dict, Union, Type
+from typing import Optional, Dict, Union, Type, List
 
 from janis_runner.management.workflowmanager import WorkflowManager
 
@@ -184,6 +184,7 @@ def init_template(templatename, stream=None):
     if os.path.exists(outpath):
         Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
     else:
+        os.makedirs(os.path.dirname(outpath))
         with open(outpath, "w+") as configpath:
             ruamel.yaml.dump(outd, configpath, default_flow_style=False)
 
@@ -204,12 +205,12 @@ def fromjanis(
     inputs: Union[str, dict] = None,
     required_inputs: dict = None,
     watch=True,
-    show_metadata=True,
     max_cores=None,
     max_memory=None,
     force=False,
     keep_intermediate_files=False,
     recipes=None,
+    should_disconnect=True,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -295,12 +296,12 @@ def fromjanis(
             inputs_dict=inputsdict,
             dryrun=dryrun,
             watch=watch,
-            show_metadata=show_metadata,
             max_cores=max_cores,
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
+            should_disconnect=should_disconnect,
         )
-
+        Logger.log("Finished executing task")
         return tm.wid
 
     except KeyboardInterrupt:
@@ -347,9 +348,9 @@ def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
             host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
             watch=watch,
-        ).start_engine()
+        )
 
-    return get_engine_type(eng)(logfile=logfile, watch=watch).start_engine()
+    return get_engine_type(eng)(logfile=logfile, watch=watch)
 
 
 def get_filescheme_from_fs(fs, **kwargs):
@@ -367,6 +368,22 @@ def get_filescheme_from_fs(fs, **kwargs):
         return SSHFileScheme(con + "_connection", con)
 
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
+
+
+def resume(wid):
+    wm = ConfigManager.manager().from_wid(wid)
+    if not wm:
+        raise Exception("Couldn't find workflow manager with wid = " + str(wid))
+    wm.resume()
+
+
+def abort_wids(wids: List[str]):
+    for wid in wids:
+        try:
+            row = ConfigManager.manager().taskDB.get_by_wid(wid)
+            WorkflowManager.mark_aborted(row.outputdir)
+        except Exception as e:
+            Logger.critical(f"Couldn't abort '{wid}': " + str(e))
 
 
 def cleanup():

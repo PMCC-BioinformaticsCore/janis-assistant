@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 from janis_runner.data.keyvaluedbproviderbase import KvDB
+from janis_runner.data.models.filescheme import FileScheme
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines import Engine
 from janis_runner.utils.getuser import lookup_username
@@ -35,6 +35,7 @@ class WorkflowMetadataDbProvider(KvDB):
             self.start = None
             self.finish = None
             self.last_updated = None
+            self.please_abort = False
 
             self.execution_dir = None
             self.keepexecutiondir = None
@@ -43,6 +44,8 @@ class WorkflowMetadataDbProvider(KvDB):
             self.filescheme: FileScheme = None
             self.labels = None
             self.error = None
+
+            self.configuration = None
 
             self.author = lookup_username()
 

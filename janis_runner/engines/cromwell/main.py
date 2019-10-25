@@ -47,6 +47,7 @@ class Cromwell(Engine):
     def __setstate__(self, state):
         super().__setstate__(state)
         self._logger = None
+        self._process = None
 
     def __init__(
         self,
@@ -97,6 +98,19 @@ class Cromwell(Engine):
             )
         return Cromwell(identifier=identifier, host=url)
 
+    def test_connection(self):
+        if not self.is_started:
+            return False
+
+        try:
+            r = requests.get(self.url_test())
+            r.raise_for_status()
+            return True
+
+        except Exception as e:
+            Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
+            return False
+
     def start_engine(self):
 
         if self.is_started:
@@ -123,6 +137,7 @@ class Cromwell(Engine):
 
         if self.port:
             cmd.append(f"-Dwebservice.port={self.port}")
+        cmd.append(f"-Dwebservice.interface=127.0.0.1")
 
         if self.config_path and os.path.exists(self.config_path):
             Logger.log("Using configuration file for Cromwell: " + self.config_path)
@@ -159,13 +174,23 @@ class Cromwell(Engine):
 
         self.is_started = True
 
-        if self._process and self.watch:
+        if self._process:
+            self._logfp = open(self.logfile, "w+")
+            Logger.info(
+                "Will log to file" if bool(self._logfp) else "Will NOT log to file"
+            )
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 
     def stop_engine(self):
         if self._logger:
             self._logger.terminate()
+
+        if self._logfp:
+            self._logfp.flush()
+            os.fsync(self._logfp.fileno())
+            self._logfp.close()
+
         if not self.process_id:
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return
@@ -191,6 +216,9 @@ class Cromwell(Engine):
 
     def url_outputs(self, identifier):
         return self.url_base() + f"/{identifier}/outputs"
+
+    def url_test(self):
+        return f"http://{self.host}/engine/v1/version"
 
     def url_metadata(self, identifier, expand_subworkflows=True):
         return (

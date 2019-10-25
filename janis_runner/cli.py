@@ -19,6 +19,8 @@ from janis_runner.main import (
     generate_inputs,
     cleanup,
     init_template,
+    resume,
+    abort_wids,
 )
 from janis_runner.management.configmanager import ConfigManager
 from janis_runner.utils import parse_additional_arguments
@@ -49,6 +51,7 @@ def process_args(sysargs=None):
         "rm": do_rm,
         "cleanup": do_cleanup,
         "init": do_init,
+        "resume": do_resume,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -74,6 +77,11 @@ def process_args(sysargs=None):
 
     add_watch_args(
         subparsers.add_parser("watch", help="Watch an existing Janis workflow")
+    )
+    add_resume_args(
+        subparsers.add_parser(
+            "resume", help="INTERNAL: used after submission to monitor the engine"
+        )
     )
     add_abort_args(
         subparsers.add_parser("abort", help="Abort a running Janis Workflow")
@@ -132,6 +140,11 @@ def add_logger_args(parser):
 
 def add_watch_args(parser):
     parser.add_argument("wid", help="Workflow id")
+    return parser
+
+
+def add_resume_args(parser):
+    parser.add_argument("wid", help="WID to watch")
     return parser
 
 
@@ -258,11 +271,6 @@ def add_run_args(parser):
         "(eg: scp cluster:/path/to/output local/output/dir)",
     )
     parser.add_argument("--cromwell-url", help="Location to Cromwell")
-    parser.add_argument(
-        "--no-metadata",
-        help="Turn off the metadata polling (that would clear the screen).",
-        action="store_true",
-    )
 
     parser.add_argument(
         "--keep-intermediate-files",
@@ -302,6 +310,13 @@ def add_run_args(parser):
         "--no-cache",
         help="Force re-download of workflow if remote",
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--stay-connected",
+        action="store_true",
+        default=False,
+        help="useful for debugging when something doesn't start correctly",
     )
 
     # add hints
@@ -386,7 +401,11 @@ def do_version(_):
 def do_watch(args):
     wid = args.wid
     tm = ConfigManager.manager().from_wid(wid)
-    tm.resume_if_possible()
+    tm.watch()
+
+
+def do_resume(args):
+    resume(args.wid)
 
 
 def do_metadata(args):
@@ -399,7 +418,7 @@ def do_metadata(args):
                 print("--- TASKID = " + t.wid + " ---")
                 ConfigManager.manager().from_wid(t.wid).log_dbtaskinfo()
             except Exception as e:
-                print("\tThe following error ocurred: " + str(e))
+                print("\tAn error occurred: " + str(e))
     else:
         tm = ConfigManager.manager().from_wid(wid)
         tm.log_dbtaskinfo()
@@ -408,12 +427,7 @@ def do_metadata(args):
 
 def do_abort(args):
     wids = args.wid
-    for wid in wids:
-        try:
-            tm = ConfigManager.manager().from_wid(wid)
-            tm.abort()
-        except Exception as e:
-            Logger.critical(f"Couldn't abort' {wid}: " + str(e))
+    abort_wids(wids)
 
 
 def do_rm(args):
@@ -470,12 +484,12 @@ def do_run(args):
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,
         watch=not args.no_watch,
-        show_metadata=not args.no_metadata,
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
         recipes=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
+        should_disconnect=not (args.stay_connected is True),
     )
 
     Logger.info("Exiting")

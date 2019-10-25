@@ -35,6 +35,9 @@ class CWLTool(Engine):
         self.process = None
         self.pid = None
 
+    def test_connection(self):
+        return bool(self.pid)
+
     def start_engine(self):
         Logger.info(
             "Cwltool doesn't run in a server mode, an instance will "

@@ -1,4 +1,5 @@
 import threading
+import os
 from typing import IO
 
 from janis_core.utils.logger import Logger
@@ -15,6 +16,9 @@ class ProcessLogger(threading.Thread):
 
     def terminate(self):
         self.should_terminate = True
+        if self.logfp:
+            self.logfp.flush()
+            os.fsync(self.logfp.fileno())
 
     def run(self):
         try:
@@ -28,9 +32,11 @@ class ProcessLogger(threading.Thread):
                 line = c.decode("utf-8").rstrip()
                 if not line:
                     continue
-                if self.logfp:
-                    self.logfp.write(line + "\n")
                 Logger.log(self.prefix + line)
+                if self.logfp and not self.logfp.closed:
+                    self.logfp.write(line + "\n")
+                    self.logfp.flush()
+                    os.fsync(self.logfp.fileno())
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")

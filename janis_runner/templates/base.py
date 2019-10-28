@@ -20,8 +20,8 @@ class EnvironmentTemplate(ABC):
         subprocess.Popen(
             command,
             close_fds=True,
-            # stdout=subprocess.DEVNULL,
-            # stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         # subprocess.Popen(command) # Keep process open
 

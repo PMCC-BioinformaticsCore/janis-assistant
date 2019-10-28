@@ -41,6 +41,7 @@ class PeterMacTemplate(EnvironmentTemplate):
         )
 
         config = CromwellConfiguration(
+            system=CromwellConfiguration.System(job_shell="/bin/sh"),
             backend=CromwellConfiguration.Backend(
                 default="slurm-pmac",
                 providers={
@@ -56,9 +57,10 @@ class PeterMacTemplate(EnvironmentTemplate):
                         jobemail=self.email,
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,
+                        limit_resources=True,
                     )
                 },
-            )
+            ),
         )
 
         backend: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[

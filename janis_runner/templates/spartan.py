@@ -42,6 +42,7 @@ class SpartanTemplate(EnvironmentTemplate):
             queues = [self.queues]
 
         config = CromwellConfiguration(
+            system=CromwellConfiguration.System(job_shell="/bin/sh"),
             backend=CromwellConfiguration.Backend(
                 default="slurm-spartan",
                 providers={
@@ -55,7 +56,7 @@ class SpartanTemplate(EnvironmentTemplate):
                         jobqueues=queues,
                     )
                 },
-            )
+            ),
         )
 
         backend: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[

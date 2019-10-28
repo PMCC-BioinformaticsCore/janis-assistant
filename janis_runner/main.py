@@ -266,6 +266,7 @@ def fromjanis(
 
         eng = get_engine_from_eng(
             engine,
+            wid=row.wid,
             execdir=WorkflowManager.get_path_for_component_and_dir(
                 row.outputdir, WorkflowManager.WorkflowManagerPath.execution
             ),
@@ -334,7 +335,7 @@ def validate_inputs(wf, additional_inputs):
     raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
 
 
-def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
+def get_engine_from_eng(eng, wid, logfile, confdir, watch=True, **kwargs):
     if isinstance(eng, Engine):
         return eng.start_engine()
 
@@ -343,6 +344,7 @@ def get_engine_from_eng(eng, logfile, confdir, watch=True, **kwargs):
         if url:
             Logger.info("Found cromwell_url: " + url)
         return Cromwell(
+            identifier=f"cromwell-${wid}",
             logfile=logfile,
             confdir=confdir,
             host=url,

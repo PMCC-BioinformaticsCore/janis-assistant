@@ -88,7 +88,9 @@ class Cromwell(Engine):
             self.host = f"localhost:{self.port}"
 
             self.config_path = os.path.join(confdir, "cromwell.conf")
-            self.find_or_generate_config(config=config, config_path=config_path)
+            self.find_or_generate_config(
+                identifier, config=config, config_path=config_path
+            )
 
     @staticmethod
     def from_url(identifier, url):
@@ -498,7 +500,7 @@ class Cromwell(Engine):
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
 
-    def find_or_generate_config(self, config, config_path):
+    def find_or_generate_config(self, identifier, config, config_path):
         from janis_runner.management.configuration import JanisConfiguration
 
         jc = JanisConfiguration.manager()
@@ -517,8 +519,15 @@ class Cromwell(Engine):
             shutil.copyfile(jc.cromwell.configpath, self.config_path)
 
         else:
-            tmpl = jc.template.template.engine_config(EngineType.cromwell)
+            tmpl: CromwellConfiguration = jc.template.template.engine_config(
+                EngineType.cromwell
+            )
             if tmpl:
+                sys = tmpl.system or CromwellConfiguration.System()
+                sys.cromwell_id = identifier
+                sys.cromwell_id_random_suffix = False
+                sys.job_shell = ("job-shell", "/bin/sh")
+
                 with open(self.config_path, "w+") as f:
                     f.writelines(tmpl.output())
 

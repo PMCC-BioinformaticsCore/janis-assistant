@@ -106,6 +106,9 @@ class CromwellConfiguration(Serializable):
             new_workflow_poll_rate=None,
             number_of_workflow_log_copy_workers=None,
             number_of_cache_read_workers=None,
+            job_shell=None,
+            cromwell_id=None,
+            cromwell_id_random_suffix=None,
         ):
             self.io = io
             self.abort_jobs_on_terminate = (
@@ -137,6 +140,9 @@ class CromwellConfiguration(Serializable):
                 "number-of-cache-read-workers",
                 number_of_cache_read_workers,
             )
+            self.job_shell = ("job-shell", job_shell)
+            self.cromwell_id = cromwell_id
+            self.cromwell_id_random_suffix = cromwell_id_random_suffix
 
     class Database(Serializable):
         class Db(Serializable):
@@ -241,10 +247,16 @@ Int memory_mb = 3500
 String? docker""".strip(),
                         submit="""
     jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
-    sbatch -J $jobname -D ${cwd} -o ${out} -e ${err} -t ${runtime_minutes} ${"-p " + queue} \
-        ${"-n " + cpu} \
-        --mem-per-cpu=${requested_memory_mb_per_core} \
-        --wrap "/usr/bin/env bash ${script}" """,
+    sbatch \\
+        -J $jobname \\
+        -D ${cwd} \\
+        -o ${out} \\
+        -e ${err} \\
+        -t ${runtime_minutes} \\
+        ${"-p " + queue} \\
+        ${"-n " + cpu} \\
+        --mem=${memory_mb} \\
+        --wrap "/usr/bin/env ${job_shell} ${script}" """,
                         kill="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*",
@@ -260,6 +272,7 @@ String? docker""".strip(),
                 jobemail,
                 jobqueues,
                 afternotokaycatch: bool = False,
+                limit_resources: bool = True,
             ):
                 slurm = cls.slurm()
 
@@ -269,6 +282,19 @@ String? docker""".strip(),
 
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
+                )
+
+                cgroups_creation = (
+                    """# Generate singularity cgroups command
+                cgroupsfile="${{cwd}}/execution/singularity-cgroup.toml"
+                printf "[memory]\\n  limit = $((${{memory_mb}} * 1048576))" > $cgroupsfile\
+                """
+                    if limit_resources
+                    else ""
+                )
+
+                cgroups_binding = (
+                    " --apply-cgroups $cgroupsfile" if limit_resources else ""
                 )
 
                 slurm.config.runtime_attributes = (
@@ -300,6 +326,8 @@ String? docker
               ) 200>$lock_path
             fi
 
+            {cgroups_creation}
+
             # Submit the script to SLURM
             jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
             JOBID=$(sbatch \\
@@ -313,8 +341,8 @@ String? docker
                 --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
                 --mem=${{memory_mb}} \\
                 {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
-                {afternotokaycommand} \\
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}}{cgroups_binding} $image ${{job_shell}} ${{docker_script}}") \\
+                {afternotokaycommand} \\ 
                 && echo Submitted batch job $JOBID
             """,
                 )
@@ -326,7 +354,9 @@ String? docker
                 singularityloadinstructions,
                 singularitycontainerdir,
                 buildinstructions,
+                limit_resources: bool = True,
             ):
+
                 config = cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
@@ -335,6 +365,19 @@ String? docker""".strip(),
                         run_in_background=True,
                     ),
                 )
+
+                cgroups_creation = (
+                    """# Generate singularity cgroups command
+                cgroupsfile="${{cwd}}/execution/singularity-cgroup.toml"
+                printf "[memory]\\n  limit = $((${{memory_mb}} * 1048576))" > $cgroupsfile\
+                """
+                    if limit_resources
+                    else ""
+                )
+                cgroups_binding = (
+                    " --apply-cgroups $cgroupsfile" if limit_resources else ""
+                )
+
                 config.config.submit_docker = (
                     "submit-docker",
                     f"""
@@ -353,7 +396,9 @@ String? docker""".strip(),
                       ) 200>$lock_path
                     fi
 
-                    singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}
+                    {cgroups_creation}
+
+                    singularity exec --bind ${{cwd}}:${{docker_cwd}}{cgroups_binding} $image ${{job_shell}} ${{docker_script}}
                     """,
                 )
                 return config

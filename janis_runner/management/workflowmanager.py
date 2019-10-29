@@ -44,6 +44,9 @@ from janis_runner.validation import (
 
 
 class WorkflowManager:
+
+    MAX_ENGINE_ATTEMPTS = 5
+
     class WorkflowManagerPath(Enum):
         execution = "execution"
         workflow = "workflow"
@@ -54,6 +57,8 @@ class WorkflowManager:
     def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
         self.wid = wid
+
+        self._failed_engine_attempts = 0
 
         # hydrate from here if required
         self._engine_wid = None
@@ -271,11 +276,10 @@ class WorkflowManager:
                 self.save_metadata_if_required()
                 self.copy_outputs_if_required()
                 self.remove_exec_dir()
+
             engine.stop_engine()
 
-            Logger.info(
-                f"Finished managing task '{self.wid}'. View the task outputs: file://{self.get_task_path()}"
-            )
+            Logger.info(f"Finished managing task '{self.wid}'.")
 
         except Exception as e:
             import traceback
@@ -512,6 +516,7 @@ class WorkflowManager:
             )
 
         self.database.progressDB.copiedOutputs = True
+        Logger.info(f"View the task outputs: file://{self.get_task_path()}")
 
     def copy_output(
         self,
@@ -730,18 +735,31 @@ class WorkflowManager:
 
         status = None
 
-        while status not in TaskStatus.final_states():
+        while (
+            status not in TaskStatus.final_states()
+            and self._failed_engine_attempts <= self.MAX_ENGINE_ATTEMPTS
+        ):
             meta = self.save_metadata()
             if meta:
                 Logger.log("Got metadata from engine")
                 status = meta.status
                 self.set_status(status)
+                self._failed_engine_attempts = 0
+            else:
+                self._failed_engine_attempts = 5
+
             if status not in TaskStatus.final_states():
                 time.sleep(5)
 
             if self.database.workflowmetadata.please_abort:
                 Logger.info("Detected please_abort request during poll, aborting")
                 status = self.abort()
+
+            if self._failed_engine_attempts >= self.MAX_ENGINE_ATTEMPTS:
+                Logger.critical(
+                    f"Failed to contact the engine at least {self.MAX_ENGINE_ATTEMPTS}, "
+                    f"you might need to restart janis by: `janis resume {self.wid}`"
+                )
 
     def set_status(self, status: TaskStatus, force_notification=False):
         prev = self.database.workflowmetadata.status

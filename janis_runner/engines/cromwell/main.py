@@ -8,7 +8,7 @@ import sys
 import time
 import urllib.request
 from glob import glob
-from typing import Optional
+from typing import Optional, List
 
 import requests
 from janis_core.utils.logger import Logger
@@ -56,8 +56,8 @@ class Cromwell(Engine):
         identifier="cromwell",
         host=None,
         cromwelljar=None,
+        config: CromwellConfiguration = None,
         config_path=None,
-        config=None,
         watch=True,
     ):
 
@@ -79,6 +79,7 @@ class Cromwell(Engine):
         self._process = None
         self._logger = None
         self.stdout = []
+        self.error_message = None
 
         if not self.connect_to_instance:
 
@@ -87,6 +88,7 @@ class Cromwell(Engine):
             self.port = find_free_port()
             self.host = f"localhost:{self.port}"
 
+            self.config = None
             self.config_path = os.path.join(confdir, "cromwell.conf")
             self.find_or_generate_config(
                 identifier, config=config, config_path=config_path
@@ -113,9 +115,9 @@ class Cromwell(Engine):
             Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
             return False
 
-    def start_engine(self):
+    def start_engine(self, additional_cromwell_options: List[str] = None):
 
-        if self.is_started:
+        if self.test_connection():
             Logger.info("Engine has already been started")
             return self
 
@@ -131,11 +133,18 @@ class Cromwell(Engine):
             )
             return self
 
+        if self.config:
+            with open(self.config_path, "w+") as f:
+                f.writelines(self.config.output())
+
         Logger.log("Finding cromwell jar")
         cromwell_loc = self.resolve_jar(self.cromwelljar)
 
         Logger.info(f"Starting cromwell ({os.path.basename(cromwell_loc)})...")
         cmd = ["java", "-DLOG_MODE=pretty"]
+
+        if additional_cromwell_options:
+            cmd.extend(additional_cromwell_options)
 
         if self.port:
             cmd.append(f"-Dwebservice.port={self.port}")
@@ -183,6 +192,16 @@ class Cromwell(Engine):
             )
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
+
+    def did_fail(self, rc):
+        if rc == 0:
+            return
+
+        self.error_message = (
+            "Cromwell exited with rc = {rc}, check the engine log for more information"
+        )
+        self.process_id = None
+        self.process = None
 
     def stop_engine(self):
         if self._logger:
@@ -363,6 +382,9 @@ class Cromwell(Engine):
         return asset.get("browser_download_url"), asset.get("name")
 
     def poll_task(self, identifier) -> TaskStatus:
+        if self.error_message:
+            return TaskStatus.FAILED
+
         url = self.url_poll(identifier=identifier)
         r = requests.get(url)
         res = r.json()
@@ -500,17 +522,15 @@ class Cromwell(Engine):
             Logger.log("Collecting outputs")
             task.outputs = self.outputs_task(task.identifier)
 
-    def find_or_generate_config(self, identifier, config, config_path):
+    def find_or_generate_config(
+        self, identifier, config: CromwellConfiguration, config_path
+    ):
         from janis_runner.management.configuration import JanisConfiguration
 
         jc = JanisConfiguration.manager()
 
         if config:
-            lines = config
-            if isinstance(config, CromwellConfiguration):
-                lines = config.output()
-            with open(self.config_path, "w+") as f:
-                f.writelines(lines)
+            self.config = config
 
         elif config_path:
             shutil.copyfile(config_path, self.config_path)
@@ -519,17 +539,14 @@ class Cromwell(Engine):
             shutil.copyfile(jc.cromwell.configpath, self.config_path)
 
         else:
-            tmpl: CromwellConfiguration = jc.template.template.engine_config(
+            self.config: CromwellConfiguration = jc.template.template.engine_config(
                 EngineType.cromwell
-            )
-            if tmpl:
-                sys = tmpl.system or CromwellConfiguration.System()
-                sys.cromwell_id = identifier
-                sys.cromwell_id_random_suffix = False
-                sys.job_shell = ("job-shell", "/bin/sh")
-
-                with open(self.config_path, "w+") as f:
-                    f.writelines(tmpl.output())
+            ) or CromwellConfiguration()
+            if not self.config.system:
+                self.config.system = CromwellConfiguration.System()
+            self.config.system.cromwell_id = identifier
+            self.config.system.cromwell_id_random_suffix = False
+            self.config.system.job_shell = ("job-shell", "/bin/sh")
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True
@@ -558,6 +575,9 @@ class Cromwell(Engine):
                 return None
 
     def metadata(self, identifier, expand_subworkflows=True) -> Optional[WorkflowModel]:
+        if self.error_message:
+            return WorkflowModel(error=self.error_message, status=TaskStatus.FAILED)
+
         raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
         return raw.standard() if raw else raw
 

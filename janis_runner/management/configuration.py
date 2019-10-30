@@ -115,17 +115,6 @@ class JanisConfiguration:
 
         return JanisConfiguration._managed
 
-    class JanisConfigurationEnvironment:
-        class Keys(HashableEnum):
-            Default = "default"
-
-        def __init__(self, d: dict, default: dict):
-            d = d if d else {}
-
-            self.default = JanisConfiguration.get_value_for_key(
-                d, self.Keys.Default, default
-            )
-
     class JanisConfigurationTemplate:
         class Keys(HashableEnum):
             Id = "id"
@@ -328,11 +317,6 @@ class JanisConfiguration:
             d, JanisConfiguration.Keys.OutputDir, default
         )
 
-        self.environment = JanisConfiguration.JanisConfigurationEnvironment(
-            d.get(JanisConfiguration.Keys.Environment),
-            default.get(JanisConfiguration.Keys.Environment),
-        )
-
         self.engine = self.get_value_for_key(d, JanisConfiguration.Keys.Engine, default)
         self.cromwell = JanisConfiguration.JanisConfigurationCromwell(
             d.get(JanisConfiguration.Keys.Cromwell),
@@ -359,6 +343,9 @@ class JanisConfiguration:
         env_sp = EnvVariables.search_path.resolve(False)
         if env_sp and env_sp not in self.searchpaths:
             self.searchpaths.append(env_sp)
+
+        # Get's set by the template for now, but eventually we should be able to look it up
+        self.container = None
 
         JanisConfiguration._managed = self
 

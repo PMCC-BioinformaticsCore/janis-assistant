@@ -115,8 +115,15 @@ class WorkflowDbManager:
         return flattened
 
     def commit(self):
-        self.connection.commit()
-        self.progressDB.kvdb.commit()
+        if self.connection:
+            self.connection.commit()
+        else:
+            Logger.critical("Couldn't commit to DB connection")
+
+        if self.connection:
+            self.progressDB.kvdb.commit()
+        else:
+            Logger.critical("Couldn't commit to workflow metadata DB connection")
 
     def close(self):
         self.connection.close()

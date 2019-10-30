@@ -158,19 +158,22 @@ class CromwellConfiguration(Serializable):
             self.profile = profile
             self.insert_batch_size = ("insert-batch-size", insert_batch_size)
 
+        MYSQL_URL = "jdbc:mysql://{url}/{database}?rewriteBatchedStatements=true&useSSL=false&serverTimezone=UTC"
+
         @classmethod
         def mysql(
             cls,
             username=None,
             password=None,
             connection_timeout=5000,
-            url="jdbc:mysql://localhost/cromwell?rewriteBatchedStatements=true&useSSL=false&serverTimezone=UTC",
+            database="cromwell",
+            url="localhost",
         ):
             return cls(
                 profile="slick.jdbc.MySQLProfile$",
                 db=cls.Db(
-                    driver="com.mysql.jdbc.Driver",
-                    url=url,
+                    driver="com.mysql.cj.jdbc.Driver",
+                    url=cls.MYSQL_URL.format(url=url, database=database),
                     user=username,
                     password=password,
                     connection_timeout=connection_timeout,
@@ -593,6 +596,30 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
                 )
             self.hash_lookup = ("hash-lookup", hash_lookup)
 
+    class CallCaching(Serializable):
+        class BlacklistCache(Serializable):
+            def __init__(self, enabled=None, concurrency=None, ttl=None, size=None):
+                self.enabled = enabled
+                self.concurrency = concurrency
+                self.ttl = ttl
+                self.size = size
+
+        def __init__(
+            self, enabled=True, invalidate_bad_cache_results=None, blacklist_cache=None
+        ):
+            if blacklist_cache is not None and not isinstance(
+                blacklist_cache, self.BlacklistCache
+            ):
+                raise Exception(
+                    "hash-lookup is not of type CromwellConfiguration.Docker.HashLookup"
+                )
+            self.enabled = enabled
+            self.invalidate_bad_cache_results = (
+                "invalidate-bad-cache-results",
+                invalidate_bad_cache_results,
+            )
+            self.hash_lookup = ("blacklist-cache", blacklist_cache)
+
     def __init__(
         self,
         webservice: Webservice = None,
@@ -602,6 +629,7 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         backend: Backend = None,
         engine: Engine = None,
         docker: Docker = None,
+        cache: CallCaching = None,
         aws=None,
     ):
         if webservice is not None and isinstance(
@@ -631,6 +659,12 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         if docker is not None and not isinstance(docker, CromwellConfiguration.Docker):
             raise Exception("docker not of type CromwellConfiguration.Docker")
         self.docker = docker
+        if cache is not None and not isinstance(
+            cache, CromwellConfiguration.CallCaching
+        ):
+            raise Exception("cache not of type CromwellConfiguration.CallCaching")
+        self.call_caching = ("call-caching", cache)
+
         if aws is not None and not isinstance(aws, CromwellConfiguration.AWS):
             raise Exception("aws not of type CromwellConfiguration.AWS")
         self.aws = aws

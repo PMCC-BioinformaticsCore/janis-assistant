@@ -6,13 +6,15 @@ from janis_core.utils.logger import Logger
 
 
 class ProcessLogger(threading.Thread):
-    def __init__(self, process, prefix, logfp):
+    def __init__(self, process, prefix, logfp, exit_function=None):
         threading.Thread.__init__(self)
         self.should_terminate = False
         self.process = process
         self.prefix = prefix
         self.logfp: IO = logfp
         self.start()
+        self.rc = None
+        self.exit_function = exit_function
 
     def terminate(self):
         self.should_terminate = True
@@ -37,6 +39,15 @@ class ProcessLogger(threading.Thread):
                     self.logfp.write(line + "\n")
                     self.logfp.flush()
                     os.fsync(self.logfp.fileno())
+
+                rc = self.process.poll()
+                if rc is not None:
+                    # process has terminated
+                    self.rc = rc
+                    print("Process has ended")
+                    if self.exit_function:
+                        self.exit_function(rc)
+                    return
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")

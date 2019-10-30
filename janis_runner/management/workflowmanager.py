@@ -31,11 +31,18 @@ from janis_runner.data.enums import TaskStatus
 from janis_runner.data.models.outputs import WorkflowOutputModel
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
-from janis_runner.engines import get_ideal_specification_for_engine, Cromwell, CWLTool
+from janis_runner.engines import (
+    get_ideal_specification_for_engine,
+    Cromwell,
+    CWLTool,
+    EngineType,
+    CromwellConfiguration,
+)
 from janis_runner.environments.environment import Environment
+from janis_runner.management.mysql import MySql
 from janis_runner.management.notificationmanager import NotificationManager
 from janis_runner.management.workflowdbmanager import WorkflowDbManager
-from janis_runner.utils import get_extension, recursively_join
+from janis_runner.utils import get_extension, recursively_join, find_free_port
 from janis_runner.utils.dateutil import DateUtil
 from janis_runner.validation import (
     generate_validation_workflow_from_janis,
@@ -53,12 +60,14 @@ class WorkflowManager:
         metadata = "metadata"
         logs = "logs"
         configuration = "configuration"
+        database = "database"
+        mysql_initial = "mysql_initial"
 
     def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
         self.wid = wid
 
-        self._failed_engine_attempts = 0
+        self._failed_engine_attempts = None
 
         # hydrate from here if required
         self._engine_wid = None
@@ -67,6 +76,7 @@ class WorkflowManager:
 
         self.database = WorkflowDbManager(self.get_task_path_safe())
         self.environment = environment
+        self.dbcontainer: MySql = None
 
         self._prev_status = None
 
@@ -251,33 +261,28 @@ class WorkflowManager:
 
             Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
 
-            # engine should be loaded from the DB
-            engine = self.database.workflowmetadata.engine
-            self.environment.engine = engine
-
-            is_allegedly_started = engine.test_connection()
-
-            if not is_allegedly_started:
-                engine.start_engine()
-                # Write the new engine details back into the database (for like PID, host and is_started)
-                self.database.workflowmetadata.engine = engine
+            self.start_engine_if_required()
 
             if self.database.workflowmetadata.please_abort:
                 Logger.info("Detected please_abort request, aborting")
                 return self.abort()
 
             # check status and see if we can resume
-            if not self.database.progressDB.submitWorkflow:
-                self.submit_workflow_if_required()
+            self.submit_workflow_if_required()
 
             self.database.commit()
             self.watch_engine()
+            Logger.info(
+                f"Task has finished with status: {self.database.workflowmetadata.status}"
+            )
+
             if self.database.workflowmetadata.status == TaskStatus.COMPLETED:
                 self.save_metadata_if_required()
                 self.copy_outputs_if_required()
                 self.remove_exec_dir()
 
-            engine.stop_engine()
+            self.database.workflowmetadata.engine.stop_engine()
+            self.dbcontainer.stop()
 
             Logger.info(f"Finished managing task '{self.wid}'.")
 
@@ -294,6 +299,10 @@ class WorkflowManager:
                 self.database.workflowmetadata.status = TaskStatus.FAILED
                 self.database.workflowmetadata.error = traceback.format_exc()
                 self.database.commit()
+
+                self.database.workflowmetadata.engine.stop_engine()
+                self.dbcontainer.stop()
+
                 self.database.close()
             except Exception as e:
                 Logger.critical(
@@ -306,6 +315,64 @@ class WorkflowManager:
         Logger.close_file()
 
         return self
+
+    def start_engine_if_required(self):
+        # engine should be loaded from the DB
+        engine = self.database.workflowmetadata.engine
+        self.environment.engine = engine
+
+        is_allegedly_started = engine.test_connection()
+
+        if not is_allegedly_started:
+
+            was_manually_started = False
+
+            # start mysql if it's cromwell, and then slightly change the config if one exists
+            if isinstance(engine, Cromwell):
+                if engine.config:
+                    if (
+                        self.database.workflowmetadata.manages_database
+                        or not engine.config.database
+                    ):
+                        # only here do we start mysql
+                        self.start_mysql_and_prepare_cromwell(engine)
+                        self.database.workflowmetadata.manages_database = True
+                        was_manually_started = True
+                    else:
+                        Logger.info(
+                            "Skipping start mysql as database configuration already exists"
+                        )
+
+                else:
+                    Logger.info(
+                        "Skipping start mysql as Janis is not managing the config"
+                    )
+
+            if not was_manually_started:
+                engine.start_engine()
+            # Write the new engine details back into the database (for like PID, host and is_started)
+            self.database.workflowmetadata.engine = engine
+
+    def start_mysql_and_prepare_cromwell(self, engine):
+        self.dbcontainer = MySql(
+            container=JanisConfiguration.manager().container,
+            datadirectory=self.get_path_for_component(
+                self.WorkflowManagerPath.database
+            ),
+            forwardedport=find_free_port(),
+        )
+        scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql_initial)
+        self.dbcontainer.prepare_startup_scripts_dir(scriptsdir)
+        self.dbcontainer.start(startup_scripts_dir=scriptsdir)
+
+        engine.config.database = CromwellConfiguration.Database.mysql(username="root")
+        engine.config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
+
+        port = self.dbcontainer.forwardedport
+        url = CromwellConfiguration.Database.MYSQL_URL.format(
+            url=f"127.0.0.1:{port}", database="cromwell"
+        )
+        engine.start_engine(additional_cromwell_options=["-Ddatabase.db.url=" + url])
 
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
@@ -429,7 +496,7 @@ class WorkflowManager:
 
     def submit_workflow_if_required(self):
         if self.database.progressDB.submitWorkflow:
-            return Logger.log(f"Workflow '{self.wid}' has submitted finished, skipping")
+            return Logger.log(f"Workflow '{self.wid}' has submitted, skipping")
 
         fn_wf = self.database.workflowmetadata.submission_workflow
         fn_inp = self.database.workflowmetadata.submission_inputs
@@ -703,7 +770,10 @@ class WorkflowManager:
 
     @staticmethod
     def get_path_for_component_and_dir(path, component: WorkflowManagerPath):
-        return os.path.join(path, "janis", component.value)
+        val = os.path.join(path, "janis", component.value)
+        if not os.path.exists(val):
+            os.makedirs(val, exist_ok=True)
+        return val
 
     @staticmethod
     def create_dir_structure(path):
@@ -735,9 +805,9 @@ class WorkflowManager:
 
         status = None
 
-        while (
-            status not in TaskStatus.final_states()
-            and self._failed_engine_attempts <= self.MAX_ENGINE_ATTEMPTS
+        while status not in TaskStatus.final_states() and (
+            self._failed_engine_attempts is None
+            or self._failed_engine_attempts <= self.MAX_ENGINE_ATTEMPTS
         ):
             meta = self.save_metadata()
             if meta:
@@ -745,8 +815,9 @@ class WorkflowManager:
                 status = meta.status
                 self.set_status(status)
                 self._failed_engine_attempts = 0
-            else:
-                self._failed_engine_attempts = 5
+            elif self._failed_engine_attempts is not None:
+                # We'll only add a failed attempt if we've contacted it before
+                self._failed_engine_attempts += 1
 
             if status not in TaskStatus.final_states():
                 time.sleep(5)
@@ -755,7 +826,10 @@ class WorkflowManager:
                 Logger.info("Detected please_abort request during poll, aborting")
                 status = self.abort()
 
-            if self._failed_engine_attempts >= self.MAX_ENGINE_ATTEMPTS:
+            if (
+                self._failed_engine_attempts
+                and self._failed_engine_attempts >= self.MAX_ENGINE_ATTEMPTS
+            ):
                 Logger.critical(
                     f"Failed to contact the engine at least {self.MAX_ENGINE_ATTEMPTS}, "
                     f"you might need to restart janis by: `janis resume {self.wid}`"
@@ -812,6 +886,7 @@ class WorkflowManager:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:
             self.environment.engine.stop_engine()
+            self.dbcontainer.stop()
         except Exception as e:
             Logger.critical("Couldn't stop engine: " + str(e))
 

@@ -254,36 +254,28 @@ def fromjanis(
 
     row = cm.create_task_base(wf, outdir=output_dir)
 
-    env_raw = env or jc.environment.default
-    environment = None
+    engine = engine or jc.engine
 
-    if env_raw:
-        environment = (
-            cm.get_environment(env_raw) if isinstance(env_raw, str) else env_raw
-        )
-    else:
-        engine = engine or jc.engine
-
-        eng = get_engine_from_eng(
-            engine,
-            wid=row.wid,
-            execdir=WorkflowManager.get_path_for_component_and_dir(
-                row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+    eng = get_engine_from_eng(
+        engine,
+        wid=row.wid,
+        execdir=WorkflowManager.get_path_for_component_and_dir(
+            row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+        ),
+        confdir=WorkflowManager.get_path_for_component_and_dir(
+            row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
+        ),
+        logfile=os.path.join(
+            WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.logs
             ),
-            confdir=WorkflowManager.get_path_for_component_and_dir(
-                row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
-            ),
-            logfile=os.path.join(
-                WorkflowManager.get_path_for_component_and_dir(
-                    row.outputdir, WorkflowManager.WorkflowManagerPath.logs
-                ),
-                "engine.log",
-            ),
-            watch=watch,
-            **kwargs,
-        )
-        fs = get_filescheme_from_fs(filescheme, **kwargs)
-        environment = Environment(f"custom_{wf.id()}", eng, fs)
+            "engine.log",
+        ),
+        watch=watch,
+        **kwargs,
+    )
+    fs = get_filescheme_from_fs(filescheme, **kwargs)
+    environment = Environment(f"custom_{wf.id()}", eng, fs)
 
     try:
 
@@ -302,7 +294,7 @@ def fromjanis(
             keep_intermediate_files=keep_intermediate_files,
             should_disconnect=should_disconnect,
         )
-        Logger.log("Finished executing task")
+        Logger.log("Finished starting task task")
         return tm.wid
 
     except KeyboardInterrupt:
@@ -344,7 +336,7 @@ def get_engine_from_eng(eng, wid, logfile, confdir, watch=True, **kwargs):
         if url:
             Logger.info("Found cromwell_url: " + url)
         return Cromwell(
-            identifier=f"cromwell-${wid}",
+            identifier=f"cromwell-{wid}",
             logfile=logfile,
             confdir=confdir,
             host=url,

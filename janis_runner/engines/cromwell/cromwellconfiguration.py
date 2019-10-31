@@ -283,6 +283,10 @@ String? docker""".strip(),
                 if afternotokaycatch:
                     afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --dependency=afternotokay:$JOBID --wrap 'echo 1 >> ${cwd}/execution/rc')"
 
+                partitions = (
+                    ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
+                )
+                partition_string = ("- p" + "") if partitions else ""
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )
@@ -334,15 +338,15 @@ String? docker
             # Submit the script to SLURM
             jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
             JOBID=$(sbatch \\
-                -p {','.join(jobqueues) if isinstance(jobqueues, list) else jobqueues} \\
                 --parsable \\
                 -J $jobname \\
+                --mem=${{memory_mb}} \\
+                --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
+                {partition_string} \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
                 -e ${{cwd}}/execution/stderr \\
                 -t ${{runtime_minutes}} \\
-                --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
-                --mem=${{memory_mb}} \\
                 {emailextra} \\
                 --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}}{cgroups_binding} $image ${{job_shell}} ${{docker_script}}") \\
                 {afternotokaycommand} \\ 

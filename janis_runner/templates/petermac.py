@@ -2,9 +2,10 @@ from typing import Union, List
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_runner.templates.base import EnvironmentTemplate
+from janis_runner.templates.slurm import SlurmSingularityTemplate
 
 
-class PeterMacTemplate(EnvironmentTemplate):
+class PeterMacTemplate(SlurmSingularityTemplate):
 
     # default_recipes = {
     #     "hg38": {
@@ -26,55 +27,27 @@ class PeterMacTemplate(EnvironmentTemplate):
         catchSlurmErrors=False,
     ):
 
-        super().__init__(mail_program="sendmail -t")
-        self.execution_dir = executionDir
-        self.queues = queues or ["prod_short", "prod_med", "prod"]
-        self.email = email
-        self.container_dir = containerDir
-        self.singularity_version = singularityVersion
-        self.catch_slurm_errors = catchSlurmErrors
+        singload = "module load singularity"
+        if singularityVersion:
+            singload += "/" + str(singularityVersion)
 
-    def cromwell(self):
+        joined_queued = ",".join(queues) if isinstance(queues, list) else str(queues)
 
-        joined_queued = (
-            ",".join(self.queues) if isinstance(self.queues, list) else self.queues
+        # Very cromwell specific at the moment, need to generalise this later
+        singbuild = f"sbatch -p {joined_queued} --wait \
+            --wrap 'unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) \
+            && image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
+
+        super().__init__(
+            mail_program="sendmail -t",
+            containerDir=containerDir,
+            executionDir=executionDir,
+            queues=queues,
+            email=email,
+            catchSlurmErrors=catchSlurmErrors,
+            buildInstructions=singbuild,
+            singularityLoadInstructions=singload,
         )
-
-        config = CromwellConfiguration(
-            system=CromwellConfiguration.System(job_shell="/bin/sh"),
-            backend=CromwellConfiguration.Backend(
-                default="slurm-pmac",
-                providers={
-                    "slurm-pmac": CromwellConfiguration.Backend.Provider.slurm_singularity(
-                        singularityloadinstructions="module load singularity/"
-                        + self.singularity_version,
-                        singularitycontainerdir=self.container_dir,
-                        buildinstructions=(
-                            f"sbatch -p {joined_queued} --wait \
-                              --wrap 'unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) "
-                            f"&& image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
-                        ),
-                        jobemail=self.email,
-                        jobqueues=self.queues,
-                        afternotokaycatch=self.catch_slurm_errors,
-                        limit_resources=True,
-                    )
-                },
-            ),
-        )
-
-        backend: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
-            config.backend.default
-        ].config
-        backend.root = self.execution_dir
-        backend.filesystems = {
-            "local": {
-                "localization": ["cached-copy", "hard-link", "soft-link", "copy"]
-            },
-            # "caching": {"hashing-strategy": "path+modtime"},
-        }
-
-        return config
 
     def engine_config(self, engine: EngineType):
         if engine == EngineType.cromwell:

@@ -61,7 +61,7 @@ class WorkflowManager:
         logs = "logs"
         configuration = "configuration"
         database = "database"
-        mysql_initial = "mysql_initial"
+        mysql = "mysql"
 
     def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
@@ -118,6 +118,7 @@ class WorkflowManager:
         max_memory=None,
         keep_intermediate_files=False,
         should_disconnect=True,
+        skip_mysql=False,
     ):
 
         jc = JanisConfiguration.manager()
@@ -137,6 +138,7 @@ class WorkflowManager:
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
         tm.database.workflowmetadata.configuration = jc
+        tm.database.workflowmetadata.should_manage_database = not skip_mysql
 
         # This is the only time we're allowed to skip the tm.set_status
         # This is a temporary stop gap until "notification on status" is implemented.
@@ -282,7 +284,8 @@ class WorkflowManager:
                 self.remove_exec_dir()
 
             self.database.workflowmetadata.engine.stop_engine()
-            self.dbcontainer.stop()
+            if self.dbcontainer:
+                self.dbcontainer.stop()
 
             Logger.info(f"Finished managing task '{self.wid}'.")
 
@@ -301,7 +304,8 @@ class WorkflowManager:
                 self.database.commit()
 
                 self.database.workflowmetadata.engine.stop_engine()
-                self.dbcontainer.stop()
+                if self.dbcontainer:
+                    self.dbcontainer.stop()
 
                 self.database.close()
             except Exception as e:
@@ -330,7 +334,7 @@ class WorkflowManager:
             # start mysql if it's cromwell, and then slightly change the config if one exists
             if isinstance(engine, Cromwell):
                 if engine.config:
-                    if (
+                    if self.database.workflowmetadata.should_manage_database and (
                         self.database.workflowmetadata.manages_database
                         or not engine.config.database
                     ):
@@ -354,16 +358,19 @@ class WorkflowManager:
             self.database.workflowmetadata.engine = engine
 
     def start_mysql_and_prepare_cromwell(self, engine):
+        scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
+
         self.dbcontainer = MySql(
+            wid=self.wid,
             container=JanisConfiguration.manager().container,
             datadirectory=self.get_path_for_component(
                 self.WorkflowManagerPath.database
             ),
+            confdir=scriptsdir,
             forwardedport=find_free_port(),
         )
-        scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql_initial)
-        self.dbcontainer.prepare_startup_scripts_dir(scriptsdir)
-        self.dbcontainer.start(startup_scripts_dir=scriptsdir)
+        self.dbcontainer.prepare_startup_scripts_dir()
+        self.dbcontainer.start()
 
         engine.config.database = CromwellConfiguration.Database.mysql(username="root")
         engine.config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
@@ -886,7 +893,8 @@ class WorkflowManager:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:
             self.environment.engine.stop_engine()
-            self.dbcontainer.stop()
+            if self.dbcontainer:
+                self.dbcontainer.stop()
         except Exception as e:
             Logger.critical("Couldn't stop engine: " + str(e))
 

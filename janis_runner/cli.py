@@ -297,6 +297,12 @@ def add_run_args(parser):
     )
 
     parser.add_argument(
+        "--no-mysql",
+        help="Skip running mysql server for managed Cromwell",
+        action="store_true",
+    )
+
+    parser.add_argument(
         "--max-cores",
         type=int,
         help="maximum number of cores to use when generating resource overrides",
@@ -490,6 +496,7 @@ def do_run(args):
         recipes=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
         should_disconnect=not (args.stay_connected is True),
+        skip_mysql=args.no_mysql,
     )
 
     Logger.info("Exiting")

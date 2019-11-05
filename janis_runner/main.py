@@ -106,6 +106,9 @@ def translate(
 
     toolref = resolve_tool(tool, name, from_toolshed=True)
 
+    if not toolref:
+        raise Exception(f"Couldn't find tool: '{tool}'")
+
     inputsdict = None
     if inputs:
         inputsfile = get_file_from_searchname(inputs, ".")
@@ -211,6 +214,7 @@ def fromjanis(
     keep_intermediate_files=False,
     recipes=None,
     should_disconnect=True,
+    skip_mysql=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -293,6 +297,7 @@ def fromjanis(
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
             should_disconnect=should_disconnect,
+            skip_mysql=skip_mysql,
         )
         Logger.log("Finished starting task task")
         return tm.wid

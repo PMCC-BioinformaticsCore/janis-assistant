@@ -47,6 +47,7 @@ class WorkflowMetadataDbProvider(KvDB):
 
             self.configuration = None
             self.manages_database = None
+            self.should_manage_database = True
 
             self.author = lookup_username()
 

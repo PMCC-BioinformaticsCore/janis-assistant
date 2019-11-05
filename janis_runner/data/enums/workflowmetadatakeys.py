@@ -29,3 +29,4 @@ class WorkflowMetadataDbKeys(Enum):
     submission_inputs = "submission_inputs"
     submission_resources = "submission_resources"
     manages_database = "manages_database"
+    should_manage_database = "should_manage_database"

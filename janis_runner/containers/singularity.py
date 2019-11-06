@@ -34,9 +34,9 @@ class Singularity(Container):
             command.extend(
                 [
                     "--net",
-                    "--network=none",
+                    # "--network=none",
                     "--network-args",
-                    *[f'"{v}={k}/tcp"' for k, v in self.exposedports.items()],
+                    *[f'"portmap={v}:{k}/tcp"' for k, v in self.exposedports.items()],
                 ]
             )
 

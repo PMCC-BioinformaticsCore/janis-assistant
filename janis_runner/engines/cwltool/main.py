@@ -309,14 +309,12 @@ class CWLTool(Engine):
             exit_function=self.task_did_exit,
         )
 
-        # self.metadata_by_task_id[wid]["outputs"] = outputs
-        # self.metadata_by_task_id[wid]["status"] = finalstatus
-
         return wid
 
     def task_did_exit(self, logger: CWLToolLogger, status: TaskStatus):
-        print("CWLTool did fire task did exit function")
-        self.metadata_by_task_id[logger.wid] = {"status": status}
+        Logger.log("CWLTool fired 'did exit function'")
+        self.metadata_by_task_id[logger.wid]["status"] = status
+        self.metadata_by_task_id[logger.wid]["outputs"] = logger.outputs
 
     def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
         Logger.info(f"Updated task {job.jid} with status={job.status}")

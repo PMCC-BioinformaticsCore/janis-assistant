@@ -8,10 +8,13 @@ from datetime import datetime
 from typing import Dict, Any
 
 import dateutil
+from cwltool.workflow import WorkflowJob
+from janis_core import LogLevel
 
 from janis_runner.data.models.workflow import WorkflowModel
+from janis_runner.data.models.workflowjob import WorkflowJobModel
 from janis_runner.engines.enginetypes import EngineType
-from janis_runner.engines.engine import Engine, TaskStatus, TaskBase
+from janis_runner.engines.engine import Engine, TaskStatus
 from janis_runner.utils import ProcessLogger
 from janis_runner.utils.dateutil import DateUtil
 from janis_core.utils.logger import Logger
@@ -26,6 +29,7 @@ class CWLToolLogger(ProcessLogger):
 
         self.metadata_callback = metadata_callback
         self.outputs = None
+        self.workflow_scope = []
         super().__init__(process, "cwltool", logfp, exit_function)
 
     def run(self):
@@ -102,8 +106,65 @@ class CWLToolLogger(ProcessLogger):
         if not match:
             return
 
-        print(match)
-        self.metadata_callback(self, match)
+        name, action = match.groups()
+
+        s = name.split(" ")
+        if len(s) == 0 or len(s) > 2:
+            return Logger.critical("Unsure how to handle metadata update: " + str(line))
+
+        component = s[0]
+        stepname = s[1] if len(s) > 1 else None
+
+        status = None
+        parentid = "_".join(self.workflow_scope) or None
+
+        if component == "workflow":
+            if action == "start":
+                if stepname:  # stepname is empty for root workflow
+                    self.workflow_scope.append(stepname)
+                    stepname = None
+                    status = TaskStatus.RUNNING
+            elif action == "completed success":
+                if len(self.workflow_scope) > 0:
+                    self.workflow_scope.pop(0)
+                status = TaskStatus.COMPLETED
+
+        elif component == "step":
+            if action == "start":
+                status = TaskStatus.RUNNING
+            elif action == "completed success":
+                status = TaskStatus.COMPLETED
+
+        if not status:
+            return
+
+        if not stepname:
+            # return WorkflowModel
+            return
+
+        jid = f"{parentid}_{stepname}" if parentid else stepname
+
+        start = DateUtil.now() if status == TaskStatus.RUNNING else None
+        finish = DateUtil.now() if status == TaskStatus.COMPLETED else None
+
+        job = WorkflowJobModel(
+            jid=jid,
+            parentjid=parentid,
+            name=stepname,
+            status=status,
+            attempt=None,
+            shard=None,
+            start=start,
+            finish=finish,
+            backend="local",
+            batchid="",
+            cached=False,
+            container=None,
+            stderr=None,
+            stdout=None,
+        )
+
+        self.metadata_callback(self, job)
 
 
 class CWLTool(Engine):
@@ -118,7 +179,7 @@ class CWLTool(Engine):
     # one at once (at the moment).
     metadata_by_task_id = (
         {}
-    )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [] } }
+    )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [], jobs: {} } }
 
     def __init__(
         self, logfile=None, identifier: str = "cwltool", options=None, watch=True
@@ -215,7 +276,7 @@ class CWLTool(Engine):
             start=meta.get("start"),
             finish=meta.get("finish"),
             # outputs=meta.get("outputs") or [],
-            jobs=[],
+            jobs=meta.get("jobs", {}).values(),
             error=None,
             # executiondir=None,
         )
@@ -224,6 +285,7 @@ class CWLTool(Engine):
         self.metadata_by_task_id[wid] = {
             "start": DateUtil.now(),
             "status": TaskStatus.PROCESSING,
+            "jobs": {},
         }
 
         cmd = ["cwltool", *self.options, "--disable-color", source_path]
@@ -256,5 +318,6 @@ class CWLTool(Engine):
         print("CWLTool did fire task did exit function")
         self.metadata_by_task_id[logger.wid] = {"status": status}
 
-    def task_did_update(self, logger, update):
-        print("CWLToolLogger fired task did update function: " + str(update))
+    def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
+        Logger.info(f"Updated task {job.jid} with status={job.status}")
+        self.metadata_by_task_id[logger.wid]["jobs"][job.jid] = job

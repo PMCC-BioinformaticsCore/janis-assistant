@@ -108,9 +108,7 @@ class JobDbProvider(DbProviderBase):
         )
 
     def update(self, model: WorkflowJobModel):
-        return self.cursor.execute(
-            self._update_statement, self._update_model_obj(model)
-        )
+        return self.cursor.execute(*self._update_model_obj(model))
 
     _insert_statement = """\
         INSERT INTO jobs (
@@ -119,23 +117,23 @@ class JobDbProvider(DbProviderBase):
         ) VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-    _update_statement = """\
-        UPDATE jobs SET
-            parentjid=?,
-            name=?,
-            batchid=?,
-            shard=?,
-            attempt=?,
-            container=?,
-            status=?,
-            start=?,
-            finish=?,
-            backend=?,
-            cached=?,
-            stdout=?,
-            stderr=?
-        WHERE jid = ?
-        """
+    # _update_statement = """\
+    #     UPDATE jobs SET
+    #         parentjid=?,
+    #         name=?,
+    #         batchid=?,
+    #         shard=?,
+    #         attempt=?,
+    #         container=?,
+    #         status=?,
+    #         start=?,
+    #         finish=?,
+    #         backend=?,
+    #         cached=?,
+    #         stdout=?,
+    #         stderr=?
+    #     WHERE jid = ?
+    #     """
 
     def _insert_model_obj(self, model: WorkflowJobModel):
         return (
@@ -156,43 +154,45 @@ class JobDbProvider(DbProviderBase):
         )
 
     def _update_model_obj(self, model: WorkflowJobModel):
+        obj = {
+            "parentjid": model.parentjid,
+            "name": model.name,
+            "batchid": model.batchid,
+            "shard": model.shard,
+            "attempt": model.attempt,
+            "container": model.container,
+            "status": model.status.value,
+            "start": model.start,
+            "finish": model.finish,
+            "backend": model.backend,
+            "cached": model.cached,
+            "stdout": model.stdout,
+            "stderr": model.stderr,
+        }
+
+        kvs = [(k, v) for k, v in obj.items() if v]
+        mapped = ", ".join(f"{k[0]}=?" for k in kvs)
         return (
-            model.parentjid,
-            model.name,
-            model.batchid,
-            model.shard,
-            model.attempt,
-            model.container,
-            model.status.value,
-            model.start,
-            model.finish,
-            model.backend,
-            model.cached,
-            model.stdout,
-            model.stderr,
-            model.jid,
+            f"UPDATE jobs SET {mapped} WHERE jid= ? ",
+            [v[1] for v in kvs] + [model.jid],
         )
 
     def update_or_insert_many(self, jobs: List[WorkflowJobModel]):
         allidsr = self.cursor.execute("SELECT jid FROM jobs").fetchall()
         allids = set(r[0] for r in allidsr)
 
-        updates = []
         inserts = []
         events = []
 
         for job in jobs:
             if job.jid in allids:
                 # Update
-                updates.append(self._update_model_obj(job))
+                self.cursor.execute(*self._update_model_obj(job))
             else:
                 # Insert
                 inserts.append(self._insert_model_obj(job))
             if job.events:
                 events.extend(job.events)
-
-        if updates:
-            self.cursor.executemany(self._update_statement, updates)
 
         if inserts:
             try:

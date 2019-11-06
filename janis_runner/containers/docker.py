@@ -35,14 +35,11 @@ class Docker(Container):
         if self.exposedports:
             command.extend(f"-p{v}:{k}" for k, v in self.exposedports.items())
 
-        Logger.info("Starting docker with command: " + str(command))
+        command.append(self.container)
+        Logger.info("Starting docker with command: " + str(" ".join(command)))
 
         try:
-            self.dockerid = (
-                subprocess.check_output(command + [self.container])
-                .decode("ascii")
-                .strip()
-            )
+            self.dockerid = subprocess.check_output(command).decode("ascii").strip()
             self.running = True
 
         except subprocess.CalledProcessError as e:
@@ -96,6 +93,6 @@ class Docker(Container):
 
         except subprocess.CalledProcessError as e:
             Logger.critical("Docker exec_command failed")
-            return (None, e.returncode)
+            return (str(e), e.returncode)
 
         return (val.strip() if val else val, 0)

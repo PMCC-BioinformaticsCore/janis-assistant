@@ -45,6 +45,11 @@ class CWLToolLogger(ProcessLogger):
                 if not line:
                     continue
 
+                if self.logfp and not self.logfp.closed:
+                    self.logfp.write(line + "\n")
+                    self.logfp.flush()
+                    os.fsync(self.logfp.fileno())
+
                 lowline = line.lower().lstrip()
                 if lowline.startswith("error"):
                     Logger.critical("cwltool: " + line)
@@ -304,7 +309,7 @@ class CWLTool(Engine):
         self._logger = CWLToolLogger(
             wid,
             process,
-            None,
+            logfp=open(self.logfile, "a+"),
             metadata_callback=self.task_did_update,
             exit_function=self.task_did_exit,
         )

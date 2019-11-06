@@ -186,7 +186,7 @@ class Cromwell(Engine):
         self.is_started = True
 
         if self._process:
-            self._logfp = open(self.logfile, "w+")
+            self._logfp = open(self.logfile, "a+")
             Logger.info(
                 "Will log to file" if bool(self._logfp) else "Will NOT log to file"
             )

@@ -4,7 +4,7 @@ from janis_runner.engines.toil.main import Toil
 from .cromwell import Cromwell, CromwellConfiguration
 from .enginetypes import EngineType
 from .cwltool.main import CWLTool
-from .engine import SyncTask, AsyncTask, Engine
+from .engine import Engine
 from janis_core import SupportedTranslations
 
 

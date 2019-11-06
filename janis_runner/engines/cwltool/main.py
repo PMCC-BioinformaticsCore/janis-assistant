@@ -10,6 +10,7 @@ from typing import Dict, Any
 import dateutil
 from cwltool.workflow import WorkflowJob
 from janis_core import LogLevel
+from janis_runner.data.models.outputs import WorkflowOutputModel
 
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
@@ -235,17 +236,53 @@ class CWLTool(Engine):
         if not outs:
             return {}
 
-        retval = {}
+        retval: Dict[str, WorkflowOutputModel] = {}
         for k, o in outs.items():
-            if "path" in o:
-                retval[k] = o["path"]
-            if "secondaryFiles" in o:
-                for s in o["secondaryFiles"]:
-                    path = s["path"]
-                    ext = path.rpartition(".")[-1]
-                    retval[f"{k}_{ext}"] = path
+            retval.update(self.process_potential_out(k, o))
 
         return retval
+
+    @staticmethod
+    def process_potential_out(key, out):
+
+        if isinstance(out, list):
+            outs = [CWLTool.process_potential_out(key, o) for o in out]
+            ups = {}
+            for o in outs:
+                for k, v in o.items():
+                    if k not in ups:
+                        ups[k] = []
+                    ups[k].append(v)
+            return ups
+
+        updates = {}
+        if "path" in out:
+            updates[key] = WorkflowOutputModel(
+                tag=key,
+                original_path=out["path"],
+                timestamp=DateUtil.now(),
+                new_path=None,
+                tags=None,
+                prefix=None,
+                secondaries=None,
+                extension=None,
+            )
+        for s in out.get("secondaryFiles", []):
+            path = s["path"]
+            ext = path.rpartition(".")[-1]
+            newk = f"{key}_{ext}"
+            updates[newk] = WorkflowOutputModel(
+                tag=newk,
+                original_path=path,
+                timestamp=DateUtil.now(),
+                new_path=None,
+                tags=None,
+                prefix=None,
+                secondaries=None,
+                extension=None,
+            )
+
+        return updates
 
     def terminate_task(self, identifier) -> TaskStatus:
         """

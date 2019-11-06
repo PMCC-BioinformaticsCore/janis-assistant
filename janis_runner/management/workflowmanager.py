@@ -714,16 +714,14 @@ class WorkflowManager:
                 newoutputfilepath += dot + ext
             fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
         else:
+            original_filepath = engine_output
             if isinstance(fs, LocalFileScheme):
                 # Write engine_output to outpath
-                original_filepath = engine_output
                 with open(newoutputfilepath, "w+") as outfile:
                     outfile.write(engine_output)
 
         for sec in secondaries or []:
-            frompath = apply_secondary_file_format_to_filename(
-                engine_output.originalpath, sec
-            )
+            frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
             tofn = apply_secondary_file_format_to_filename(outfn, sec)
             topath = os.path.join(outdir, tofn)
             fs.cp_from(frompath, topath, None)

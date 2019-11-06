@@ -28,7 +28,7 @@ from janis_runner.utils import (
 )
 from janis_runner.utils.dateutil import DateUtil
 from .cromwellconfiguration import CromwellConfiguration
-from ..engine import Engine, TaskStatus, TaskBase
+from ..engine import Engine, TaskStatus
 
 CROMWELL_RELEASES = (
     "https://api.github.com/repos/broadinstitute/cromwell/releases/latest"
@@ -457,70 +457,6 @@ class Cromwell(Engine):
         inp.close()
         deps.close()
         return engid
-
-    def start_from_task(self, task: TaskBase):
-        """
-        This watches the job, and calls a task handler / onerror if it can
-        :param task:
-        :return:
-        """
-        Logger.log("Creating workflow and submitting to Cromwell")
-
-        ins, deps = [], None
-        if task.inputs or task.input_paths:
-            for t in task.inputs if task.inputs else task.input_paths:
-                if isinstance(t, dict):
-                    import ruamel.yaml
-
-                    ins.append(ruamel.yaml.dump(t, default_flow_style=False))
-                elif task.inputs:
-                    ins.append(t)
-                else:
-                    ins = open(t, "rb")
-
-        if task.dependencies:
-            deps = write_files_into_buffered_zip(task.dependencies)
-        elif task.dependencies_path:
-            deps = (
-                task.dependencies
-                if task.dependencies
-                else open(task.dependencies_path, "rb")
-            )
-
-        task.identifier = self.create_task(
-            wid=task.wid,
-            source=task.source if task.source else open(task.source_path, "rb"),
-            inputs=ins,
-            dependencies=deps,
-        )
-        Logger.info("Created task with id: " + task.identifier)
-        Logger.log("Task is now processing")
-        task.task_start = DateUtil.now()
-
-        while task.status not in TaskStatus.final_states():
-            status = self.poll_task(task.identifier)
-            if status != task.status:
-                Logger.info(
-                    "Task ('{id}') has progressed to: '{status}'".format(
-                        id=task.identifier, status=status
-                    )
-                )
-            task.status = status
-
-            if task.status not in TaskStatus.final_states():
-                time.sleep(1)
-
-        task.task_finish = DateUtil.now()
-        Logger.info(
-            "Task ('{id}') has finished processing: {t} seconds".format(
-                id=task.identifier,
-                t=str((task.task_finish - task.task_start).total_seconds()),
-            )
-        )
-
-        if task.status == TaskStatus.COMPLETED:
-            Logger.log("Collecting outputs")
-            task.outputs = self.outputs_task(task.identifier)
 
     def find_or_generate_config(
         self, identifier, config: CromwellConfiguration, config_path

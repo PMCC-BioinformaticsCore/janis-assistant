@@ -33,7 +33,8 @@ class Singularity(Container):
         if self.exposedports:
             command.extend(
                 [
-                    f"--net",
+                    "--net",
+                    "--network=none",
                     "--network-args",
                     *[f'"{v}={k}/tcp"' for k, v in self.exposedports.items()],
                 ]

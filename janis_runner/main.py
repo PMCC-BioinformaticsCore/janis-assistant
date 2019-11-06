@@ -242,6 +242,8 @@ def fromjanis(
                 inputsdict.update(inp)
             else:
                 inputsfile = get_file_from_searchname(inp, ".")
+                if inputsfile is None:
+                    raise FileNotFoundError("Couldn't find inputs file: " + str(inp))
                 inputsdict.update(parse_dict(inputsfile))
 
     if required_inputs:

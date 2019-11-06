@@ -299,6 +299,7 @@ def add_run_args(parser):
     parser.add_argument(
         "--no-mysql",
         help="Skip running mysql server for managed Cromwell",
+        default=True,
         action="store_true",
     )
 

@@ -12,9 +12,10 @@ class ProcessLogger(threading.Thread):
         self.process = process
         self.prefix = prefix
         self.logfp: IO = logfp
-        self.start()
         self.rc = None
         self.exit_function = exit_function
+
+        self.start()
 
     def terminate(self):
         self.should_terminate = True

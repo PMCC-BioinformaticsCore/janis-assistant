@@ -1,5 +1,6 @@
-import json
+import re
 import os
+import json
 import shutil
 import subprocess
 import tempfile
@@ -11,8 +12,98 @@ import dateutil
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine, TaskStatus, TaskBase
+from janis_runner.utils import ProcessLogger
 from janis_runner.utils.dateutil import DateUtil
 from janis_core.utils.logger import Logger
+
+
+class CWLToolLogger(ProcessLogger):
+
+    statusupdateregex = re.compile("INFO \[(.*)\] (.+)$")
+
+    def __init__(self, wid: str, process, logfp, metadata_callback, exit_function=None):
+        self.wid = wid
+
+        self.metadata_callback = metadata_callback
+        self.outputs = None
+        super().__init__(process, "cwltool", logfp, exit_function)
+
+    def run(self):
+        finalstatus = None
+        try:
+            for c in iter(self.process.stderr.readline, "b"):
+                if self.should_terminate:
+                    return
+                if not c:
+                    continue
+
+                line = c.decode("utf-8").strip()
+                if not line:
+                    continue
+
+                lowline = line.lower().lstrip()
+                if lowline.startswith("error"):
+                    Logger.critical("cwltool: " + line)
+
+                elif lowline.startswith("warn"):
+                    Logger.warn("cwltool: " + line)
+
+                elif lowline.startswith("info"):
+                    Logger.info("cwltool: " + line)
+                    self.process_metadataupdate_if_match(line)
+
+                else:
+                    Logger.log("cwltool: " + line)
+
+                if "final process status is" in lowline:
+                    if "fail" in line.lower():
+                        finalstatus = TaskStatus.FAILED
+                    elif "success" in line.lower():
+                        finalstatus = TaskStatus.COMPLETED
+                    else:
+                        finalstatus = TaskStatus.ABORTED
+                    break
+
+                elif self.process.poll() is not None:
+                    finalstatus = TaskStatus.ABORTED
+                    Logger.warn(
+                        f"CWLTool finished with rc={self.process.returncode} but janis "
+                        f"was unable to capture the workflow status. Marking as aborted"
+                    )
+                    break
+
+            j = ""
+            Logger.log("Process has completed")
+            if finalstatus == TaskStatus.COMPLETED:
+                for c in iter(self.process.stdout.readline, "s"):
+                    if not c:
+                        continue
+                    j += c.decode("utf-8")
+                    try:
+                        self.outputs = json.loads(j)
+                        break
+                    except:
+                        continue
+
+            print(finalstatus)
+            self.terminate()
+            self.exit_function(self, finalstatus)
+
+        except KeyboardInterrupt:
+            self.should_terminate = True
+            print("Detected keyboard interrupt")
+            # raise
+        except Exception as e:
+            print("Detected another error")
+            raise e
+
+    def process_metadataupdate_if_match(self, line):
+        match = self.statusupdateregex.match(line)
+        if not match:
+            return
+
+        print(match)
+        self.metadata_callback(self, match)
 
 
 class CWLTool(Engine):
@@ -29,11 +120,14 @@ class CWLTool(Engine):
         {}
     )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [] } }
 
-    def __init__(self, logfile=None, identifier: str = "cwltool", options=None):
-        super().__init__(identifier, EngineType.cwltool, logfile=logfile)
+    def __init__(
+        self, logfile=None, identifier: str = "cwltool", options=None, watch=True
+    ):
+        super().__init__(identifier, EngineType.cwltool, logfile=logfile, watch=True)
         self.options = options if options else []
         self.process = None
         self.pid = None
+        self._logger = None
 
     def test_connection(self):
         return bool(self.pid)
@@ -126,115 +220,6 @@ class CWLTool(Engine):
             # executiondir=None,
         )
 
-    def start_from_task(self, task: TaskBase):
-        task.identifier = self.create_task(None, None, None)
-
-        self.metadata_by_task_id[task.identifier] = {
-            "start": DateUtil.now(),
-            "status": TaskStatus.PROCESSING,
-        }
-
-        temps = []
-        sourcepath, inputpaths, toolspath = (
-            task.source_path,
-            task.input_paths,
-            task.dependencies_path,
-        )
-        if task.source:
-            t = tempfile.NamedTemporaryFile(mode="w+t", suffix=".cwl", delete=False)
-            t.writelines(task.source)
-            t.seek(0)
-            temps.append(t)
-            sourcepath = t.name
-
-        if task.inputs:
-            inputs = []
-            if len(task.inputs) > 1:
-                raise Exception("CWLTool currently only supports 1 input file")
-            for s in task.inputs:
-                if isinstance(s, dict):
-                    import ruamel.yaml
-
-                    s = ruamel.yaml.dump(s, default_flow_style=False)
-                t = tempfile.NamedTemporaryFile(mode="w+t", suffix=".yml")
-                t.writelines(s)
-                t.seek(0)
-                inputs.append(t)
-                inputpaths = [t.name for t in inputs]
-            temps.extend(inputs)
-
-        if task.dependencies:
-            # might need to work out where to put these
-
-            tmp_container = tempfile.tempdir + "/"
-            tmpdir = tmp_container + "tools/"
-            if os.path.exists(tmpdir):
-                shutil.rmtree(tmpdir)
-            os.mkdir(tmpdir)
-            for (f, d) in task.dependencies:
-                with open(tmp_container + f, "w+") as q:
-                    q.write(d)
-            temps.append(tmpdir)
-
-        # start cwltool
-        cmd = ["cwltool", *self.options]
-        if sourcepath:
-            cmd.append(sourcepath)
-        if inputpaths:
-            if len(inputpaths) > 1:
-                raise Exception(
-                    "CWLTool only accepts 1 input, Todo: Implement inputs merging later"
-                )
-            cmd.append(inputpaths[0])
-        # if toolspath: cmd.extend(["--basedir", toolspath])
-
-        self.metadata_by_task_id[task.identifier]["status"] = TaskStatus.RUNNING
-
-        process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
-        )
-        Logger.log("Running command: '" + " ".join(cmd) + "'")
-        Logger.info("CWLTool has started with pid=" + str(process.pid))
-        self.taskid_to_process[task.identifier] = process.pid
-
-        for c in iter(process.stderr.readline, "b"):  # replace '' with b'' for Python 3
-            line = c.decode("utf-8").rstrip()
-            if not line.strip():
-                continue
-            self._logfp.write(line + "\n")
-            Logger.log("cwltool: " + line)
-            if b"Final process status is success" in c:
-                break
-        j = ""
-        Logger.log("Process has completed")
-        for c in iter(process.stdout.readline, "s"):  # replace '' with b'' for Python 3
-            if not c:
-                continue
-            j += c.decode("utf-8")
-            try:
-                json.loads(j)
-                break
-            except:
-                continue
-
-        Logger.info("Workflow has completed execution")
-        process.terminate()
-        outputs = json.loads(j)
-        Logger.info(outputs)
-        self.metadata_by_task_id[task.identifier]["outputs"] = outputs
-        self.metadata_by_task_id[task.identifier]["status"] = TaskStatus.COMPLETED
-
-        # close temp files
-        Logger.log(f"Closing {len(temps)} temp files")
-        for t in temps:
-            if hasattr(t, "close"):
-                t.close()
-            if isinstance(t, str):
-                if os.path.exists(t) and os.path.isdir(t):
-                    shutil.rmtree(t)
-                else:
-                    os.remove(t)
-
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         self.metadata_by_task_id[wid] = {
             "start": DateUtil.now(),
@@ -254,59 +239,22 @@ class CWLTool(Engine):
         Logger.info("CWLTool has started with pid=" + str(process.pid))
         self.taskid_to_process[wid] = process.pid
 
-        finalstatus = None
-        errors = []
-        for c in iter(process.stderr.readline, "b"):  # replace '' with b'' for Python 3
-            line = c.decode("utf-8").rstrip()
-            if not line.strip():
-                continue
+        self._logger = CWLToolLogger(
+            wid,
+            process,
+            None,
+            metadata_callback=self.task_did_update,
+            exit_function=self.task_did_exit,
+        )
 
-            lowline = line.lower().lstrip()
-            if lowline.startswith("error"):
-
-                Logger.critical("cwltool: " + line)
-                errors.append(line)
-            elif lowline.startswith("warn"):
-                Logger.warn("cwltool: " + line)
-            elif lowline.startswith("info"):
-                Logger.info("cwltool: " + line)
-            else:
-                Logger.log("cwltool: " + line)
-
-            if "final process status is" in lowline:
-                if "fail" in line.lower():
-                    finalstatus = TaskStatus.FAILED
-                elif "success" in line.lower():
-                    finalstatus = TaskStatus.COMPLETED
-                else:
-                    finalstatus = TaskStatus.ABORTED
-                break
-
-            elif process.poll() is not None:
-                finalstatus = TaskStatus.ABORTED
-                Logger.warn(
-                    f"CWLTool finished with rc={process.returncode} but janis "
-                    f"was unable to capture the workflow status"
-                )
-
-        j = ""
-        Logger.log("Process has completed")
-        outputs = None
-        if finalstatus == TaskStatus.COMPLETED:
-            for c in iter(
-                process.stdout.readline, "s"
-            ):  # replace '' with b'' for Python 3
-                if not c:
-                    continue
-                j += c.decode("utf-8")
-                try:
-                    outputs = json.loads(j)
-                    break
-                except:
-                    continue
-        process.terminate()
-
-        self.metadata_by_task_id[wid]["outputs"] = outputs
-        self.metadata_by_task_id[wid]["status"] = finalstatus
+        # self.metadata_by_task_id[wid]["outputs"] = outputs
+        # self.metadata_by_task_id[wid]["status"] = finalstatus
 
         return wid
+
+    def task_did_exit(self, logger: CWLToolLogger, status: TaskStatus):
+        print("CWLTool did fire task did exit function")
+        self.metadata_by_task_id[logger.wid] = {"status": status}
+
+    def task_did_update(self, logger, update):
+        print("CWLToolLogger fired task did update function: " + str(update))

@@ -71,9 +71,7 @@ class WorkflowJobModel:
 
         tb = "    "
         fin = self.finish if self.finish else DateUtil.now()
-        time = (
-            round(DateUtil.secs_difference(self.start, fin)) if self.start else "N/A "
-        )
+        time = round(DateUtil.secs_difference(self.start, fin)) if self.start else None
         # percentage = (
         #     (round(1000 * time / self.supertime) / 10)
         #     if (self.start and self.supertime)
@@ -105,7 +103,9 @@ class WorkflowJobModel:
         if self.jobs:
             ppre = pre + tb
             subs: List[WorkflowJobModel] = sorted(
-                self.jobs, key=lambda j: j.start if j.start else 0, reverse=False
+                self.jobs,
+                key=lambda j: j.start if j.start else DateUtil.now(),
+                reverse=False,
             )
 
             return (

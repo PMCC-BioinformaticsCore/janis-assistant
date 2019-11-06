@@ -43,14 +43,22 @@ def get_extension(fn):
 
 
 def second_formatter(secs):
+    if secs is None:
+        return "N/A"
+
     if not secs:
         return "0s"
+
+    try:
+        remainder = int(secs)
+    except:
+        Logger.critical(f"second_formatter received non-int type: '{secs}'")
+        return str(secs)
 
     intervals = []
     ranges = [60, 3600, 86400]
     extensions = ["s", "m", "h", "d"]
 
-    remainder = secs
     under_first_interval = False
 
     for r in ranges[::-1]:

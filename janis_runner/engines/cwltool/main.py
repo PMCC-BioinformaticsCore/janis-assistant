@@ -1,24 +1,17 @@
-import re
-import os
 import json
-import shutil
+import os
+import re
 import subprocess
-import tempfile
-from datetime import datetime
 from typing import Dict, Any
 
-import dateutil
-from cwltool.workflow import WorkflowJob
-from janis_core import LogLevel
+from janis_core.utils.logger import Logger
 from janis_runner.data.models.outputs import WorkflowOutputModel
-
 from janis_runner.data.models.workflow import WorkflowModel
 from janis_runner.data.models.workflowjob import WorkflowJobModel
-from janis_runner.engines.enginetypes import EngineType
 from janis_runner.engines.engine import Engine, TaskStatus
+from janis_runner.engines.enginetypes import EngineType
 from janis_runner.utils import ProcessLogger
 from janis_runner.utils.dateutil import DateUtil
-from janis_core.utils.logger import Logger
 
 
 class CWLToolLogger(ProcessLogger):

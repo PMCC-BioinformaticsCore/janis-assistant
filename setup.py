@@ -3,14 +3,15 @@ from setuptools import setup, find_packages
 # from setuptools.command.develop import develop
 # from setuptools.command.install import install
 
-modules = ["janis_runner." + p for p in sorted(find_packages("./janis_runner"))]
+modules = ["janis_assistant." + p for p in sorted(find_packages("./janis_assistant"))]
 
 vsn = {}
-with open("./janis_runner/__meta__.py") as fp:
+with open("./janis_assistant/__meta__.py") as fp:
     exec(fp.read(), vsn)
 __version__ = vsn["__version__"]
 
 setup(
+    # legacy .runner - renamed to assistant
     name="janis-pipelines.runner",
     version=__version__,
     description="Easier way to run workflows, configurable across environments",
@@ -19,10 +20,10 @@ setup(
     author="Michael Franklin",
     author_email="michael.franklin@petermac.org",
     license="MIT",
-    keywords=["janis", "workflows", "enginerunner"],
+    keywords=["janis", "workflows", "assistant"],
     entry_points={
-        "console_scripts": ["janis=janis_runner.cli:process_args"],
-        "janis.extension": ["runner=janis_runner"],
+        "console_scripts": ["janis=janis_assistant.cli:process_args"],
+        "janis.extension": ["assistant=janis_assistant"],
     },
     install_requires=[
         "janis-pipelines.core>=0.6.0",
@@ -35,7 +36,7 @@ setup(
         "tabulate",
         "ruamel.yaml >= 0.12.4, <= 0.15.77",
     ],
-    packages=["janis_runner"] + modules,
+    packages=["janis_assistant"] + modules,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Scientific/Engineering",

@@ -1,6 +1,6 @@
 # Welcome to Janis-Runner
 
-[![Build Status](https://travis-ci.org/PMCC-BioinformaticsCore/janis-runner.svg?branch=master)](https://travis-ci.org/PMCC-BioinformaticsCore/janis-runner)
+[![Build Status](https://travis-ci.org/PMCC-BioinformaticsCore/janis-assistant.svg?branch=master)](https://travis-ci.org/PMCC-BioinformaticsCore/janis-assistant)
 [![PyPI version](https://badge.fury.io/py/janis-pipelines.runner.svg)](https://badge.fury.io/py/janis-pipelines.runner)
 
 [Janis](https://github.com/PMCC-BioinformaticsCore/janis). is a workflow assistant designed 
@@ -9,7 +9,7 @@ to make the process of building and running workflows easier.
 ## Quick start
 
 ```bash
-pip3 install janis-pipelines[runner]
+pip3 install janis-pipelines
 ```
 
 You can run a workflow in CWLTool with the following command line: 
@@ -25,7 +25,7 @@ janis run myWorkflow.py --engine cwltool
 - `inputs` - Generate an inputs file for a workflow
 - `translate` - Translate a workflow into CWL / WDL
 - `metadata` - Get the available metadata on an execution
-- `version` - Print the version of `janis_runner`
+- `version` - Print the version of `janis_assistant`
 
 ### `run`
 
@@ -91,7 +91,7 @@ optional arguments:
 
 ## Configuration
 
-It's possible to configure a number of attributes of `janis.runner`. 
+It's possible to configure a number of attributes of `janis_assistant`. 
 You can provide a YAML configuration file in two ways:
 
 - CLI: `--config /path/to/config.yml`
@@ -102,7 +102,7 @@ You can provide a YAML configuration file in two ways:
 
 ### Options
 
-Defaults: [`janis_runner/management/configuration.py`](https://github.com/PMCC-BioinformaticsCore/janis-runner/blob/master/janis_runner/management/configuration.py#L68)
+Defaults: [`janis_assistant/management/configuration.py`](https://github.com/PMCC-BioinformaticsCore/janis-assistant/blob/master/janis_assistant/management/configuration.py#L68)
 
 - Config / DB directory: `configDir: /path/to/configir/`
     - Second priority to environment variable: `JANIS_CONFIGDIR`
@@ -120,7 +120,7 @@ Defaults: [`janis_runner/management/configuration.py`](https://github.com/PMCC-B
 
 ## Engines
 
-There are currently 2 engines that `janis.runner` supports:
+There are currently 2 engines that `janis_assistant` supports:
 
 1. CWLTool
 2. Cromwell
@@ -138,7 +138,7 @@ You should include the `--logDebug` parmeter to see the output of CWLTool.
 Cromwell can be run in two modes:
 
 1. Connect to an existing instance (well supported) - include the `--cromwell-url` argument with the port to 
-    allow Janis.runner to correctly connect to this instance.
+    allow the Janis assistant to correctly connect to this instance.
     
 2. Run and manage it's own instance. When the task is started, the `process_id` of the started Cromwell instance
     is stored in the `taskdb`, when the task finishes execution, the process is manually stopped. You are able to

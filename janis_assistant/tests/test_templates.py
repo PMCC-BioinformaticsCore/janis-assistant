@@ -10,22 +10,25 @@ from janis_assistant.templates import (
 
 class TestOptionParsing(unittest.TestCase):
     def test_option_parsing_one_correct(self):
-        def my_function(val1):
-            pass
+        class my_function(EnvironmentTemplate):
+            def __init__(self, val1):
+                super().__init__(None, None)
 
         options = {"val1": "test"}
         self.assertTrue(validate_template_params(my_function, options))
 
     def test_option_parsing_two_correct(self):
-        def my_function(val1, val2="test"):
-            pass
+        class my_function(EnvironmentTemplate):
+            def __init__(self, val1, val2="test"):
+                super().__init__(None, None)
 
         options = {"val1": "test", "val2": "test"}
         self.assertTrue(validate_template_params(my_function, options))
 
     def test_option_parsing_missing_required(self):
-        def my_function(val1):
-            pass
+        class my_function(EnvironmentTemplate):
+            def __init__(self, val1):
+                super().__init__(None, None)
 
         options = {}
         self.assertRaises(
@@ -33,15 +36,17 @@ class TestOptionParsing(unittest.TestCase):
         )
 
     def test_option_parsing_default_one_param(self):
-        def my_function(val1, val2="test"):
-            pass
+        class my_function(EnvironmentTemplate):
+            def __init__(self, val1, val2="test"):
+                super().__init__(None, None)
 
         options = {"val1": True}
         self.assertTrue(validate_template_params(my_function, options))
 
     def test_option_parsing_one_extra(self):
-        def my_function(val1, val2="test"):
-            pass
+        class my_function(EnvironmentTemplate):
+            def __init__(self, val1, val2="test"):
+                super().__init__(None, None)
 
         options = {"val1": True, "unrecognised": False}
         self.assertRaises(

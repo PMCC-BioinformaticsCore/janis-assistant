@@ -1,10 +1,15 @@
-# Welcome to Janis-Runner
+# Welcome to Janis-Assistant
 
 [![Build Status](https://travis-ci.org/PMCC-BioinformaticsCore/janis-assistant.svg?branch=master)](https://travis-ci.org/PMCC-BioinformaticsCore/janis-assistant)
 [![PyPI version](https://badge.fury.io/py/janis-pipelines.runner.svg)](https://badge.fury.io/py/janis-pipelines.runner)
 
-[Janis](https://github.com/PMCC-BioinformaticsCore/janis). is a workflow assistant designed 
+[Janis](https://github.com/PMCC-BioinformaticsCore/janis) is a workflow assistant designed 
 to make the process of building and running workflows easier. 
+
+More specifically:
+
+- Janis core is a framework for specifying workflows, that can be transpiled to CWL and WDL.
+- Janis assistant runs manages an engine to these workflows and collects the results. 
 
 ## Quick start
 
@@ -12,10 +17,25 @@ to make the process of building and running workflows easier.
 pip3 install janis-pipelines
 ```
 
+### CWLTool
+
 You can run a workflow in CWLTool with the following command line: 
 ```bash
-janis run myWorkflow.py --engine cwltool
+janis run --engine cwltool hello
 ```
+
+To use CWLTool, you must have CWLTool in your path with either Docker or Node, see [Engine support](https://janis.readthedocs.io/en/latest/references/engines.html)
+for more information.
+
+### Cromwell
+
+Cromwell is the default engine, and can be ran with:
+```bash
+janis run --engine cromwell hello
+```
+
+To use Cromwell, you must have Java 1.8 available. See [Engine support](https://janis.readthedocs.io/en/latest/references/engines.html#id2)
+for more information.
 
 ## CLI options:
 

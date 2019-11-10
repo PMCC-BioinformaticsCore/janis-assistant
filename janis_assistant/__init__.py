@@ -1,7 +1,3 @@
-from dotenv import load_dotenv
-
-load_dotenv()
-
 from janis_assistant.main import fromjanis
 from janis_assistant.data.models.filescheme import (
     FileScheme,

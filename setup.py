@@ -29,7 +29,6 @@ setup(
         "janis-pipelines.core>=0.6.0",
         "requests",
         "path.py",
-        "python-dotenv",
         "python-dateutil",
         "progressbar2",
         "sqlitedict",

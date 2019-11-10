@@ -1,10 +1,6 @@
 from typing import List, Dict, Optional
 
-from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
-from janis_core import Tool, Workflow, WorkflowBuilder, DataType, ToolOutput, String
-from janis_bioinformatics.data_types import Vcf, Bed
-
-from janis_core.utils.logger import Logger
+from janis_core import Tool, Workflow, WorkflowBuilder, DataType, ToolOutput, Logger
 
 
 class ValidationRequirements:
@@ -24,7 +20,8 @@ class ValidationRequirements:
 def generate_validation_workflow_from_janis(
     tool: Workflow, validreqs: ValidationRequirements
 ):
-    from janis_bioinformatics.data_types import FastaWithDict
+    from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed
+    from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
 
     failed_outputs, untyped_outputs = ensure_outputs_are_in_workflow_and_are_compatible(
         tool, validreqs.fields, Vcf()

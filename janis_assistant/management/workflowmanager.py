@@ -369,7 +369,6 @@ class WorkflowManager:
             confdir=scriptsdir,
             forwardedport=find_free_port(),
         )
-        self.dbcontainer.prepare_startup_scripts_dir()
         self.dbcontainer.start()
 
         engine.config.database = CromwellConfiguration.Database.mysql(username="root")

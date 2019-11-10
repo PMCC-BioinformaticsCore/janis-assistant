@@ -13,12 +13,14 @@ class Docker(Container):
         environment_variables: Dict[str, str] = None,
         bindpoints: Dict[str, str] = None,
         exposedports: Dict[int, int] = None,
+        instancename: str = None,
     ):
         super().__init__(
             container=container,
             environment_variables=environment_variables,
             bindpoints=bindpoints,
             exposedports=exposedports,
+            instancename=instancename,
         )
 
         self.dockerid = None
@@ -34,6 +36,9 @@ class Docker(Container):
 
         if self.exposedports:
             command.extend(f"-p{v}:{k}" for k, v in self.exposedports.items())
+
+        if self.instancename:
+            command.extend(["--name", self.instancename])
 
         command.append(self.container)
         Logger.info("Starting docker with command: " + str(" ".join(command)))
@@ -54,16 +59,7 @@ class Docker(Container):
                 f"Skipping end docker container '{self.container}' as no dockerID was found"
             )
         cmd = f"docker stop {self.dockerid}; docker rm -f {self.dockerid}"
-        # cmd = [
-        #     "docker",
-        #     "stop",
-        #     self.dockerid,
-        #     ";",
-        #     "docker",
-        #     "rm",
-        #     "-f",
-        #     self.dockerid,
-        # ]
+
         try:
             Logger.info("Stopping docker with command: " + str(cmd))
 

@@ -1,8 +1,7 @@
 janis-pipelines.core
-requests
 black
 pre-commit
-python-dotenv
+requests
+python-dateutil
 sqlitedict
 tabulate
-ruamel.yaml

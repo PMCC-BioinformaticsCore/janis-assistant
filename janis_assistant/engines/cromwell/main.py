@@ -21,6 +21,7 @@ from janis_assistant.engines.cromwell.cromwellmetadata import (
     CromwellMetadata,
 )
 from janis_assistant.engines.enginetypes import EngineType
+from janis_assistant.management.envvariables import EnvVariables
 from janis_assistant.utils import (
     ProcessLogger,
     write_files_into_buffered_zip,
@@ -313,10 +314,14 @@ class Cromwell(Engine):
 
         potentials = []
 
+        fromenv = EnvVariables.cromwelljar.resolve(False)
+
         if cromwelljar:
             potentials.append(os.path.expanduser(cromwelljar))
         if man.cromwell.jarpath:
             potentials.append(os.path.expanduser(cromwelljar))
+        if fromenv:
+            potentials.append(fromenv)
         potentials.extend(
             reversed(sorted(glob(os.path.join(man.configdir + "cromwell-*.jar"))))
         )

@@ -1,7 +1,11 @@
 import unittest
 from typing import List
 
-from janis_assistant.templates import validate_template_params, get_schema_for_template
+from janis_assistant.templates import (
+    validate_template_params,
+    get_schema_for_template,
+    EnvironmentTemplate,
+)
 
 
 class TestOptionParsing(unittest.TestCase):
@@ -46,29 +50,21 @@ class TestOptionParsing(unittest.TestCase):
 
 
 class TestTemplateSchemaGeneration(unittest.TestCase):
-    @staticmethod
-    def template(
-        executionDir: str, queues: List[str] = None, containerDir: str = "/default/dir"
-    ):
-        pass
+    class TestTemplate(EnvironmentTemplate):
+        def __init__(
+            self, queues: List[str] = None, containerDir: str = "/default/dir"
+        ):
+            super().__init__(None, None)
 
     @classmethod
     def setUpClass(cls):
-        cls.inputs = get_schema_for_template(TestTemplateSchemaGeneration.template)
+        cls.inputs = get_schema_for_template(TestTemplateSchemaGeneration.TestTemplate)
 
     def test_general_parse(self):
-        self.assertEqual(3, len(self.inputs))
-
-    def test_execution_dir(self):
-        inp = self.inputs[0]
-
-        self.assertEqual("executionDir", inp.identifier)
-        self.assertEqual(str, inp.type)
-        self.assertFalse(inp.optional)
-        self.assertIsNone(inp.default)
+        self.assertEqual(2, len(self.inputs))
 
     def test_queues(self):
-        inp = self.inputs[1]
+        inp = self.inputs[0]
 
         self.assertEqual("queues", inp.identifier)
         self.assertEqual(List[str], inp.type)
@@ -76,7 +72,7 @@ class TestTemplateSchemaGeneration(unittest.TestCase):
         self.assertIsNone(inp.default)
 
     def test_container_dir(self):
-        inp = self.inputs[2]
+        inp = self.inputs[1]
 
         self.assertEqual("containerDir", inp.identifier)
         self.assertEqual(str, inp.type)

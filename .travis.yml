@@ -1,7 +1,9 @@
 language: python
 python:
 - '3.6'
-install: true
+install:
+  - pip install -r requirements.txt
+  - pip install codecov coverage requests_mock nose_parameterized
 script: nosetests -w janis_assistant --with-coverage --cover-package=janis_assistant
 deploy:
   provider: pypi

@@ -12,7 +12,7 @@ from janis_assistant.containers.singularity import Singularity
 
 class MySql(object):
 
-    MYSQL_CONTAINERNAME = "mysql"
+    MYSQL_CONTAINERNAME = "mariadb:10.2.27"
 
     def __init__(
         self,
@@ -32,7 +32,9 @@ class MySql(object):
                 "Must provide singularity_container_path if using MySQL with Singularity"
             )
 
-        self.container: Container = container(self.MYSQL_CONTAINERNAME)
+        self.container: Container = container(
+            self.MYSQL_CONTAINERNAME, instancename="mariadb-" + wid
+        )
         self.datadirectory = datadirectory
         self.forwardedport = forwardedport
         self.password = "janis-password"
@@ -44,15 +46,11 @@ class MySql(object):
         self.sqlconfdir = os.path.join(self.confdir, "conf")
         self.mysqldoverride = os.path.join(self.confdir, "mysqld")
 
-        os.makedirs(self.confdir, exist_ok=True)
-        os.makedirs(self.startupscriptsdir, exist_ok=True)
-        os.makedirs(self.sqlconfdir, exist_ok=True)
-        os.makedirs(self.mysqldoverride, exist_ok=True)
-
     def start(self):
         """
         """
-        import os.path
+
+        self.prepare_mysql_dirs()
 
         # before we start, we want to create a Database for Cromwell, we can do this by
         # binding a directory of scripts to /docker-entrypoint-initdb.d (runs *.sh, *.sql, *.sql.gz)
@@ -60,7 +58,7 @@ class MySql(object):
 
         self.container.bindpoints = {
             "/var/lib/mysql": self.datadirectory,
-            # "/var/run/mysqld": self.mysqldoverride,
+            "/var/run/mysqld": self.mysqldoverride,
             # "/etc/mysql": self.sqlconfdir,
             "/docker-entrypoint-initdb.d": self.startupscriptsdir,
         }
@@ -87,7 +85,7 @@ class MySql(object):
     def stop(self):
         self.container.stop_container()
 
-    def prepare_startup_scripts_dir(self):
+    def prepare_mysql_dirs(self):
         import os
 
         os.makedirs(self.startupscriptsdir, exist_ok=True)
@@ -106,7 +104,7 @@ class MySql(object):
             f.write(MySql.STARTUP_SCRIPT)
 
     STARTUP_SCRIPT = """\
-CREATE DATABASE cromwell;
+CREATE DATABASE cromwell IF NOT EXISTS;
 """
     # """
     # INIT_SQL="CREATE DATABASE ${CROMWELL_DB} IF NOT EXISTS; CREATE USER 'janis'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';

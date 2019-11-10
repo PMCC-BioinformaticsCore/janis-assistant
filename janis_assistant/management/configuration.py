@@ -1,62 +1,12 @@
-import os
-from enum import Enum
+import os.path
 from typing import Optional, List, Union
 import ruamel.yaml
 
 from janis_assistant.engines.enginetypes import EngineType
 from janis_core.utils.logger import Logger
 
+from janis_assistant.management.envvariables import EnvVariables, HashableEnum
 from janis_assistant.templates import from_template
-
-
-class HashableEnum(str, Enum):
-    def __str__(self):
-        return self.value
-
-    def to_yaml(self):
-        return self.value
-
-    pass
-    # def __hash__(self):
-    #     return self.value.__hash__()
-
-
-class EnvVariables(HashableEnum):
-    config_path = "JANIS_CONFIGPATH"
-    config_dir = "JANIS_CONFIGDIR"
-    exec_dir = "JANIS_EXCECUTIONDIR"
-    search_path = "JANIS_SEARCHPATH"
-    recipe_paths = "JANIS_RECIPEPATHS"
-    recipe_directory = "JANIS_RECIPEDIRECTORY"  # secretly comma separated
-
-    cromwelljar = "JANIS_CROMWELLJAR"
-
-    def __str__(self):
-        return self.value
-
-    def default(self):
-        import os
-
-        if self == EnvVariables.config_dir:
-            return os.path.join(os.getenv("HOME"), ".janis/")
-        elif self == EnvVariables.exec_dir:
-            return os.path.join(os.getenv("HOME"), "janis/execution/")
-        elif self == EnvVariables.config_path:
-            return os.path.join(os.getenv("HOME"), ".janis/janis.conf")
-        elif self == EnvVariables.recipe_paths:
-            return []
-        elif self == EnvVariables.recipe_directory:
-            return []
-
-        raise Exception(f"Couldn't determine default() for '{self.value}'")
-
-    def resolve(self, include_default=False):
-        value = os.getenv(self.value, self.default() if include_default else None)
-        if self == EnvVariables.recipe_paths:
-            return value.split(",") if value else None
-        if self == EnvVariables.recipe_directory:
-            return value.split(",") if value else None
-        return value
 
 
 class JanisConfiguration:
@@ -191,6 +141,8 @@ class JanisConfiguration:
             return None
 
         def load_recipes(self, force=False):
+            from os import listdir
+
             if not force and (self._loaded_recipes or not self.recipe_paths):
                 return
 
@@ -229,7 +181,7 @@ class JanisConfiguration:
                         f"The path listed as a recipe directory was not a directory: '{d}', skipping"
                     )
                     continue
-                contents = os.listdir(d)
+                contents = listdir(d)
                 for f in contents:
                     fpath = os.path.join(d, f)
                     parsed = self.parseable_yaml_filename_if_valid(fpath)

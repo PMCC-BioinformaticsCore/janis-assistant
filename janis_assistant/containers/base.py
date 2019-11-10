@@ -9,12 +9,14 @@ class Container(ABC):
         environment_variables: Dict[str, str] = None,
         bindpoints: Dict[str, str] = None,
         exposedports: Dict[int, int] = None,
+        instancename: str = None,
     ):
         self.container = container
         self.environment_variables = environment_variables or {}
         self.bindpoints = bindpoints or {}
         self.exposedports = exposedports or {}
         self.running = False
+        self.instancename = instancename
 
     @abstractmethod
     def start_container(self):

@@ -286,7 +286,7 @@ String? docker""".strip(),
                 partitions = (
                     ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
                 )
-                partition_string = ("- p" + "") if partitions else ""
+                partition_string = ("-p" + "") if partitions else ""
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )
@@ -349,7 +349,7 @@ String? docker
                 -t ${{runtime_minutes}} \\
                 {emailextra} \\
                 --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}}{cgroups_binding} $image ${{job_shell}} ${{docker_script}}") \\
-                {afternotokaycommand} \\ 
+                {afternotokaycommand} \\
                 && echo Submitted batch job $JOBID
             """,
                 )

@@ -42,7 +42,7 @@ class SlurmSingularityTemplate(EnvironmentTemplate):
                         jobemail=self.email,
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,
-                        limit_resources=limitResources,
+                        limit_resources=self.limitResources,
                     )
                 },
             ),

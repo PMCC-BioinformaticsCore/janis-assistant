@@ -567,7 +567,7 @@ class WorkflowManager:
             )
 
         wf_outputs = self.database.outputsDB.get_all()
-        engine_outputs = self.get_engine().engine.outputs_task(self.get_engine_wid())
+        engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
         eoutkeys = engine_outputs.keys()
         fs = self.environment.filescheme
 

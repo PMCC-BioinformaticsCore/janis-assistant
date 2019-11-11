@@ -92,3 +92,7 @@ class Docker(Container):
             return (str(e), e.returncode)
 
         return (val.strip() if val else val, 0)
+
+    def ensure_downloaded(self):
+        # meh it'll download itself anyway
+        return

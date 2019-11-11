@@ -29,3 +29,7 @@ class Container(ABC):
     @abstractmethod
     def exec_command(self, command):
         pass
+
+    @abstractmethod
+    def ensure_downloaded(self):
+        pass

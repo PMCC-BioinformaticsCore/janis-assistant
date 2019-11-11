@@ -8,6 +8,8 @@ from janis_assistant.containers.base import Container
 from typing import Dict, Type
 
 from janis_assistant.containers.singularity import Singularity
+from janis_assistant.management.configuration import JanisConfiguration
+from janis_assistant.templates.base import SingularityEnvironmentTemplate
 
 
 class MySql(object):
@@ -51,6 +53,8 @@ class MySql(object):
         """
 
         self.prepare_mysql_dirs()
+
+        self.container.ensure_downloaded()
 
         # before we start, we want to create a Database for Cromwell, we can do this by
         # binding a directory of scripts to /docker-entrypoint-initdb.d (runs *.sh, *.sql, *.sql.gz)

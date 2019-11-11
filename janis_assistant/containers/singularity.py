@@ -106,17 +106,17 @@ class Singularity(Container):
         if os.path.exists(pathed_container):
             return True
 
-        if Singularity.buildinstructions:
-            command = Singularity.buildinstructions.replace(
-                "$image", pathed_container
-            ).replace("${{docker}}", self.container)
-        else:
-            command = [
-                "singularity",
-                "pull",
-                pathed_container,
-                "docker://" + self.container,
-            ]
+        # if Singularity.buildinstructions:
+        #     command = Singularity.buildinstructions.replace(
+        #         "$image", pathed_container
+        #     ).replace("${docker}", self.container)
+        # else:
+        command = [
+            "singularity",
+            "pull",
+            pathed_container,
+            "docker://" + self.container,
+        ]
         try:
             build_result = subprocess.check_output(command)
             Logger.log(build_result)

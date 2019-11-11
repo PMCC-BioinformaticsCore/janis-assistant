@@ -5,6 +5,7 @@ from janis_core import Logger
 
 from janis_assistant.containers.base import Container
 from janis_assistant.containers.docker import Docker
+from janis_assistant.containers.singularity import Singularity
 from janis_assistant.engines.enginetypes import EngineType
 
 
@@ -34,3 +35,24 @@ class EnvironmentTemplate(ABC):
             configuration.notifications.mail_program = self._mail_program
 
         configuration.container = self.containertype
+
+
+class SingularityEnvironmentTemplate(EnvironmentTemplate):
+    def __init__(
+        self,
+        mail_program: str,
+        containerDir: str,
+        loadInstructions=None,
+        buildInstructions=f"singularity pull $image docker://${{docker}}",
+    ):
+        super().__init__(mail_program=mail_program, containertype=Singularity)
+        self.singularity_load_instructions = loadInstructions
+        self.singularity_container_dir = containerDir
+        self.singularity_build_instructions = buildInstructions
+
+        # little bit hacky
+        Singularity.containerdir = containerDir
+        Singularity.loadinstructions = loadInstructions
+        Singularity.buildinstructions = buildInstructions
+
+        pass

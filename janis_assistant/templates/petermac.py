@@ -36,7 +36,7 @@ class PeterMacTemplate(SlurmSingularityTemplate):
         # Very cromwell specific at the moment, need to generalise this later
         singbuild = f"sbatch -p {joined_queued} --wait \
             --wrap 'unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) \
-            && image={self.container_dir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
+            && image={containerDir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
 
         super().__init__(
             mail_program="sendmail -t",
@@ -47,6 +47,7 @@ class PeterMacTemplate(SlurmSingularityTemplate):
             catchSlurmErrors=catchSlurmErrors,
             buildInstructions=singbuild,
             singularityLoadInstructions=singload,
+            limitResources=False,
         )
 
     def engine_config(self, engine: EngineType):

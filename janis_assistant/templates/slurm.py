@@ -15,6 +15,7 @@ class SlurmSingularityTemplate(EnvironmentTemplate):
         catchSlurmErrors=False,
         buildInstructions=f"singularity pull $image docker://${{docker}}",
         singularityLoadInstructions=None,
+        limitResources=True,
     ):
 
         super().__init__(mail_program=mail_program)
@@ -25,6 +26,7 @@ class SlurmSingularityTemplate(EnvironmentTemplate):
         self.catch_slurm_errors = catchSlurmErrors
         self.build_instructions = buildInstructions
         self.singularity_load_instructions = singularityLoadInstructions
+        self.limitResources = limitResources
 
     def cromwell(self):
 
@@ -40,7 +42,7 @@ class SlurmSingularityTemplate(EnvironmentTemplate):
                         jobemail=self.email,
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,
-                        limit_resources=True,
+                        limit_resources=limitResources,
                     )
                 },
             ),

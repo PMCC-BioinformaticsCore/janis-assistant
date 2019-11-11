@@ -293,8 +293,8 @@ String? docker""".strip(),
 
                 cgroups_creation = (
                     """# Generate singularity cgroups command
-                cgroupsfile="${{cwd}}/execution/singularity-cgroup.toml"
-                printf "[memory]\\n  limit = $((${{memory_mb}} * 1048576))" > $cgroupsfile\
+                cgroupsfile="${cwd}/execution/singularity-cgroup.toml"
+                printf "[memory]\\n  limit = $((${memory_mb} * 1048576))" > $cgroupsfile\
                 """
                     if limit_resources
                     else ""

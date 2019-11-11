@@ -50,7 +50,7 @@ class Singularity(Container):
             command.extend(
                 [
                     "--net",
-                    # "--network=none",
+                    "--network=none",
                     "--network-args",
                     *[f'"portmap={v}:{k}/tcp"' for k, v in self.exposedports.items()],
                 ]
@@ -59,7 +59,7 @@ class Singularity(Container):
         try:
             newenv = os.environ
             for k in self.environment_variables:
-                newenv["SINGULARITYENV_" + k] = self.environment_variables[k]
+                newenv["SINGULARITYENV_" + k] = str(self.environment_variables[k])
 
             if not self.instancename:
                 self.instancename = generate_new_id(set())
@@ -117,6 +117,9 @@ class Singularity(Container):
             pathed_container,
             "docker://" + self.container,
         ]
+        Logger.info(
+            "Couldn't find singularity container, building with: " + " ".join(command)
+        )
         try:
             build_result = subprocess.check_output(command)
             Logger.log(build_result)

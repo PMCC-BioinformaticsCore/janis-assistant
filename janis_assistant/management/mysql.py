@@ -23,16 +23,10 @@ class MySql(object):
         datadirectory: str,
         forwardedport: int,
         confdir: str,
-        singularity_container_path: str = None,
     ):
         import os.path
 
         self._containertype = container
-
-        if container == Singularity and not singularity_container_path:
-            raise Exception(
-                "Must provide singularity_container_path if using MySQL with Singularity"
-            )
 
         self.container: Container = container(
             self.MYSQL_CONTAINERNAME, instancename="mariadb-" + wid
@@ -40,9 +34,6 @@ class MySql(object):
         self.datadirectory = datadirectory
         self.forwardedport = forwardedport
         self.password = "janis-password"
-
-        self.singularity_container_path = singularity_container_path
-
         self.confdir = confdir
         self.startupscriptsdir = os.path.join(self.confdir, "startup")
         self.sqlconfdir = os.path.join(self.confdir, "conf")

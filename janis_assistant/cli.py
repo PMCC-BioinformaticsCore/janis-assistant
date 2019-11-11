@@ -296,11 +296,17 @@ def add_run_args(parser):
         action="store_true",
     )
 
+    # parser.add_argument(
+    #     "--no-mysql",
+    #     help="Skip running mysql server for managed Cromwell",
+    #     # default=True,
+    #     action="store_true",
+    # )
+
     parser.add_argument(
-        "--no-mysql",
-        help="Skip running mysql server for managed Cromwell",
-        default=True,
+        "--use-mysql",
         action="store_true",
+        help="BETA: Run MySQL for persistence with Cromwell",
     )
 
     parser.add_argument(
@@ -497,7 +503,7 @@ def do_run(args):
         recipes=args.recipe,
         keep_intermediate_files=args.keep_intermediate_files,
         should_disconnect=not (args.stay_connected is True),
-        skip_mysql=args.no_mysql,
+        skip_mysql=not args.use_mysql,
     )
 
     Logger.info("Exiting")

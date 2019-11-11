@@ -79,6 +79,7 @@ class WorkflowManager:
         self.dbcontainer: MySql = None
 
         self._prev_status = None
+        self._engine = None
 
         if not self.wid:
             self.wid = self.get_engine_wid()
@@ -283,7 +284,7 @@ class WorkflowManager:
                 self.copy_outputs_if_required()
                 self.remove_exec_dir()
 
-            self.database.workflowmetadata.engine.stop_engine()
+            self.get_engine().stop_engine()
             if self.dbcontainer:
                 self.dbcontainer.stop()
 
@@ -303,7 +304,7 @@ class WorkflowManager:
                 self.database.workflowmetadata.error = traceback.format_exc()
                 self.database.commit()
 
-                self.database.workflowmetadata.engine.stop_engine()
+                self.get_engine().stop_engine()
                 if self.dbcontainer:
                     self.dbcontainer.stop()
 
@@ -320,9 +321,14 @@ class WorkflowManager:
 
         return self
 
+    def get_engine(self):
+        if not self._engine:
+            self._engine = self.environment.engine
+        return self._engine
+
     def start_engine_if_required(self):
         # engine should be loaded from the DB
-        engine = self.database.workflowmetadata.engine
+        engine = self.get_engine()
         self.environment.engine = engine
 
         is_allegedly_started = engine.test_connection()
@@ -339,7 +345,7 @@ class WorkflowManager:
                         or not engine.config.database
                     ):
                         # only here do we start mysql
-                        self.start_mysql_and_prepare_cromwell(engine)
+                        self.start_mysql_and_prepare_cromwell()
                         self.database.workflowmetadata.manages_database = True
                         was_manually_started = True
                     else:
@@ -357,7 +363,7 @@ class WorkflowManager:
             # Write the new engine details back into the database (for like PID, host and is_started)
             self.database.workflowmetadata.engine = engine
 
-    def start_mysql_and_prepare_cromwell(self, engine):
+    def start_mysql_and_prepare_cromwell(self):
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
 
         self.dbcontainer = MySql(
@@ -371,6 +377,8 @@ class WorkflowManager:
         )
         self.dbcontainer.start()
 
+        engine: Cromwell = self.get_engine()
+
         engine.config.database = CromwellConfiguration.Database.mysql(username="root")
         engine.config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
 
@@ -379,6 +387,7 @@ class WorkflowManager:
             url=f"127.0.0.1:{port}", database="cromwell"
         )
         engine.start_engine(additional_cromwell_options=["-Ddatabase.db.url=" + url])
+        self.database.workflowmetadata.engine = engine
 
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
@@ -508,10 +517,10 @@ class WorkflowManager:
         fn_inp = self.database.workflowmetadata.submission_inputs
         fn_deps = self.database.workflowmetadata.submission_resources
 
-        Logger.log(f"Submitting task '{self.wid}' to '{self.environment.engine.id()}'")
-        self._engine_wid = self.environment.engine.start_from_paths(
-            self.wid, fn_wf, fn_inp, fn_deps
-        )
+        engine = self.get_engine()
+
+        Logger.log(f"Submitting task '{self.wid}' to '{engine.id()}'")
+        self._engine_wid = engine.start_from_paths(self.wid, fn_wf, fn_inp, fn_deps)
         self.database.workflowmetadata.engine_wid = self._engine_wid
         Logger.log(
             f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
@@ -522,25 +531,27 @@ class WorkflowManager:
         if self.database.progressDB.savedMetadata:
             return Logger.log(f"Workflow '{self.wid}' has saved metadata, skipping")
 
+        engine = self.get_engine()
+
         metadir = self.get_path_for_component(self.WorkflowManagerPath.metadata)
-        if isinstance(self.environment.engine, Cromwell):
+        if isinstance(engine, Cromwell):
             import json
 
-            meta = self.environment.engine.raw_metadata(self.get_engine_wid()).meta
+            meta = engine.raw_metadata(self.get_engine_wid()).meta
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta, fp)
 
-        elif isinstance(self.environment.engine, CWLTool):
+        elif isinstance(engine, CWLTool):
             import json
 
-            meta = self.environment.engine.metadata(self.wid)
+            meta = engine.metadata(self.wid)
             self.set_status(meta.status)
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.outputs, fp)
 
         else:
             raise Exception(
-                f"Don't know how to save metadata for engine '{self.environment.engine.id()}'"
+                f"Don't know how to save metadata for engine '{engine.id()}'"
             )
 
         self.database.progressDB.savedMetadata = True
@@ -556,7 +567,7 @@ class WorkflowManager:
             )
 
         wf_outputs = self.database.outputsDB.get_all()
-        engine_outputs = self.environment.engine.outputs_task(self.get_engine_wid())
+        engine_outputs = self.get_engine().engine.outputs_task(self.get_engine_wid())
         eoutkeys = engine_outputs.keys()
         fs = self.environment.filescheme
 
@@ -852,7 +863,7 @@ class WorkflowManager:
         NotificationManager.notify_status_change(status, self.database.get_metadata())
 
     def save_metadata(self) -> Optional[WorkflowModel]:
-        meta = self.environment.engine.metadata(self.get_engine_wid())
+        meta = self.get_engine().metadata(self.get_engine_wid())
 
         if not meta:
             return None
@@ -884,12 +895,14 @@ class WorkflowManager:
     def abort(self) -> bool:
         self.set_status(TaskStatus.ABORTED, force_notification=True)
         status = False
+
+        engine = self.get_engine()
         try:
-            status = bool(self.environment.engine.terminate_task(self.get_engine_wid()))
+            status = bool(engine.terminate_task(self.get_engine_wid()))
         except Exception as e:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:
-            self.environment.engine.stop_engine()
+            engine.stop_engine()
             if self.dbcontainer:
                 self.dbcontainer.stop()
         except Exception as e:

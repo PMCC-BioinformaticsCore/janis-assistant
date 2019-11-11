@@ -21,7 +21,6 @@ class Engine(Archivable, ABC):
     def id(self):
         return self.identifier
 
-    @staticmethod
     def test_connection(self):
         pass
 

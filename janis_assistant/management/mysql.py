@@ -104,7 +104,7 @@ class MySql(object):
             f.write(MySql.STARTUP_SCRIPT)
 
     STARTUP_SCRIPT = """\
-CREATE DATABASE cromwell IF NOT EXISTS;
+CREATE DATABASE IF NOT EXISTS cromwell;
 """
     # """
     # INIT_SQL="CREATE DATABASE ${CROMWELL_DB} IF NOT EXISTS; CREATE USER 'janis'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';

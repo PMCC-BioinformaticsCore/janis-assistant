@@ -286,7 +286,7 @@ String? docker""".strip(),
                 partitions = (
                     ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
                 )
-                partition_string = ("-p" + "") if partitions else ""
+                partition_string = ("-p" + partitions) if partitions else ""
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )

@@ -84,7 +84,7 @@ class SpartanTemplate(EnvironmentTemplate):
             "-J",
             f"janis-{wid}",
             "--time",
-            "30",
+            "1440",
             "--wrap",
             loadedcommand,
         ]

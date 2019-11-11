@@ -1,22 +1,10 @@
 from typing import Union, List
+
 from janis_assistant.engines.enginetypes import EngineType
-from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
-from janis_assistant.templates.base import EnvironmentTemplate
 from janis_assistant.templates.slurm import SlurmSingularityTemplate
 
 
 class PeterMacTemplate(SlurmSingularityTemplate):
-
-    # default_recipes = {
-    #     "hg38": {
-    #         "reference": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.fasta",
-    #         "snps_dbsnp": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.dbsnp138.vcf.gz",
-    #         "snps_1000gp": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz",
-    #         "known_indels": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Homo_sapiens_assembly38.known_indels.vcf.gz",
-    #         "mills_indels": "/bioinf_core/Proj/hg38_testing/Resources/Gatk_Resource_Bundle_hg38/hg38_contigs_renamed/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz",
-    #     }
-    # }
-
     def __init__(
         self,
         executionDir: str,
@@ -40,13 +28,13 @@ class PeterMacTemplate(SlurmSingularityTemplate):
 
         super().__init__(
             mail_program="sendmail -t",
-            containerDir=containerDir,
             executionDir=executionDir,
             queues=joined_queued,
             email=email,
             catchSlurmErrors=catchSlurmErrors,
             buildInstructions=singbuild,
             singularityLoadInstructions=singload,
+            containerDir=containerDir,
             limitResources=False,
         )
 

@@ -1,10 +1,11 @@
 from typing import Union, List
-from janis_assistant.engines.enginetypes import EngineType
+
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
-from janis_assistant.templates.base import EnvironmentTemplate
+from janis_assistant.engines.enginetypes import EngineType
+from janis_assistant.templates.base import SingularityEnvironmentTemplate
 
 
-class SlurmSingularityTemplate(EnvironmentTemplate):
+class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
         executionDir: str,
@@ -18,14 +19,16 @@ class SlurmSingularityTemplate(EnvironmentTemplate):
         limitResources=True,
     ):
 
-        super().__init__(mail_program=mail_program)
+        super().__init__(
+            mail_program=mail_program,
+            containerDir=containerDir,
+            buildInstructions=buildInstructions,
+            loadInstructions=singularityLoadInstructions,
+        )
         self.execution_dir = executionDir
         self.queues = queues or []
         self.email = email
-        self.container_dir = containerDir
         self.catch_slurm_errors = catchSlurmErrors
-        self.build_instructions = buildInstructions
-        self.singularity_load_instructions = singularityLoadInstructions
         self.limitResources = limitResources
 
     def cromwell(self):
@@ -37,8 +40,8 @@ class SlurmSingularityTemplate(EnvironmentTemplate):
                 providers={
                     "slurm-singularity": CromwellConfiguration.Backend.Provider.slurm_singularity(
                         singularityloadinstructions=self.singularity_load_instructions,
-                        singularitycontainerdir=self.container_dir,
-                        buildinstructions=self.build_instructions,
+                        singularitycontainerdir=self.singularity_container_dir,
+                        buildinstructions=self.singularity_build_instructions,
                         jobemail=self.email,
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,

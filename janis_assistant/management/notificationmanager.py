@@ -51,7 +51,7 @@ Subject: {subject}
 {body}"""
 
         command = f"echo '{email_template}' | {mail_program}"
-        Logger.log("Sending email with command: " + str(command))
+        Logger.log("Sending email with command: " + str(command.replace("\n", "\\n")))
         try:
             subprocess.call(command, shell=True)
         except Exception as e:

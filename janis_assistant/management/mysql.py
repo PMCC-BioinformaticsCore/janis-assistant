@@ -36,7 +36,6 @@ class MySql(object):
         self.password = "janis-password"
         self.confdir = confdir
         self.startupscriptsdir = os.path.join(self.confdir, "startup")
-        self.sqlconfdir = os.path.join(self.confdir, "conf")
         self.mysqldoverride = os.path.join(self.confdir, "mysqld")
 
     def start(self):
@@ -54,7 +53,6 @@ class MySql(object):
         self.container.bindpoints = {
             "/var/lib/mysql": self.datadirectory,
             "/var/run/mysqld": self.mysqldoverride,
-            # "/etc/mysql": self.sqlconfdir,
             "/docker-entrypoint-initdb.d": self.startupscriptsdir,
         }
         self.container.exposedports = {3306: self.forwardedport}
@@ -66,7 +64,7 @@ class MySql(object):
         self.container.start_container()
         # Have to wait for it to initialise
         sleep(10)
-        cmd = ["mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "--wait=30"]
+        cmd = ["mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "--wait=60"]
         while True:
             (response, rc) = self.container.exec_command(cmd)
             if response == "mysqld is alive":
@@ -84,14 +82,7 @@ class MySql(object):
         import os
 
         os.makedirs(self.startupscriptsdir, exist_ok=True)
-        os.makedirs(self.sqlconfdir, exist_ok=True)
         os.makedirs(self.mysqldoverride, exist_ok=True)
-
-        # with open(os.path.join(self.sqlconfdir, ".my.cnf"), "w+") as f:
-        #     f.write(self.MYSQL_CONF.format(PORT=self.forwardedport))
-
-        # with open(os.path.join(self.sqlconfdir, ".mysqlrootpw"), "w+") as f:
-        #     f.write(self.SETPASSWORD.format(PASSWORD=self.forwardedport))
 
         with open(
             os.path.join(self.startupscriptsdir, "01-create-table.sql"), "w+"
@@ -101,20 +92,3 @@ class MySql(object):
     STARTUP_SCRIPT = """\
 CREATE DATABASE IF NOT EXISTS cromwell;
 """
-    # """
-    # INIT_SQL="CREATE DATABASE ${CROMWELL_DB} IF NOT EXISTS; CREATE USER 'janis'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-    # GRANT ALL PRIVILEGES ON ${CROMWELL_DB}.* TO '${MYSQL_USER}'@'%' WITH GRANT OPTION;"\
-    # """
-
-    # SETPASSWORD = """SET PASSWORD FOR 'root'@'localhost' = PASSWORD('{PASSWORD}');"""
-
-
-#     MYSQL_CONF = """\
-# [mysqld]
-# innodb_use_native_aio=0
-# init-file=/etc/mysql/.mysqlrootpw
-# port={PORT}
-#
-# [client]
-# user=root
-# """

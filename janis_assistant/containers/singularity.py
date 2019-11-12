@@ -6,7 +6,7 @@ from typing import Dict
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
-from janis_assistant.utils import generate_new_id
+from janis_assistant.utils import generate_new_id, ProcessLogger
 
 
 class Singularity(Container):
@@ -32,6 +32,7 @@ class Singularity(Container):
         )
 
         self.dockerid = None
+        self.run_logger = None
 
     def start_container(self):
 
@@ -69,15 +70,25 @@ class Singularity(Container):
             )
             Logger.log(out)
 
-            out2 = subprocess.check_output(
-                ["singularity", "run", "instance://" + self.instancename]
+            startprocess = subprocess.Popen(
+                ["singularity", "run", "instance://" + self.instancename],
+                stdout=subprocess.PIPE,
             )
-            Logger.log(out2)
+            self.run_logger = ProcessLogger(
+                startprocess,
+                prefix="mysql",
+                logfp=None,
+                exit_function=self.runlogger_didexit,
+            )
 
         except subprocess.CalledProcessError as e:
             raise Exception(
                 "An error occurred while starting a singularity container: " + str(e)
             )
+
+    def runlogger_didexit(self, rc):
+        Logger.info("singularity run finished with code: " + str(rc))
+        self.run_logger = None
 
     def container_path(self):
         import re
@@ -86,9 +97,15 @@ class Singularity(Container):
         return os.path.join(self.containerdir or ".", subbed)
 
     def stop_container(self):
-
-        cmd = ["singularity", "instance", "stop", self.instancename]
-        return subprocess.check_output(cmd)
+        try:
+            if self.run_logger:
+                self.run_logger.terminate()
+            cmd = ["singularity", "instance", "stop", self.instancename]
+            return subprocess.check_output(cmd)
+        except subprocess.CalledProcessError as e:
+            Logger.critical(
+                f"Couldn't stop singularity instance '{self.instancename}': {e}"
+            )
 
     def exec_command(self, command):
         cmd = ["singularity", "run", self.instancename, *command]

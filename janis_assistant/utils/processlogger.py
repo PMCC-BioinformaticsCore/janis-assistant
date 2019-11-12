@@ -6,13 +6,22 @@ from janis_core.utils.logger import Logger
 
 
 class ProcessLogger(threading.Thread):
-    def __init__(self, process, prefix, logfp, exit_function=None):
+    def __init__(self, process, prefix, logfp, error_keyword=None, exit_function=None):
+        """
+
+        :param process:
+        :param prefix:
+        :param logfp:
+        :param error_keyword: If this error keyword is found, stop the ProcessLogger and call the exit function
+        :param exit_function:
+        """
         threading.Thread.__init__(self)
         self.should_terminate = False
         self.process = process
         self.prefix = prefix
         self.logfp: IO = logfp
         self.rc = None
+        self.error_keyword = error_keyword
         self.exit_function = exit_function
 
         self.start()
@@ -33,16 +42,19 @@ class ProcessLogger(threading.Thread):
                 if not c:
                     continue
                 line = c.decode("utf-8").rstrip()
+
                 if not line:
                     continue
-                Logger.log(self.prefix + line)
+                has_error = self.error_keyword and self.error_keyword in line
+                (Logger.critical if has_error else Logger.log)(self.prefix + line)
+
                 if self.logfp and not self.logfp.closed:
                     self.logfp.write(line + "\n")
                     self.logfp.flush()
                     os.fsync(self.logfp.fileno())
 
                 rc = self.process.poll()
-                if rc is not None:
+                if rc is not None or has_error:
                     # process has terminated
                     self.rc = rc
                     print("Process has ended")

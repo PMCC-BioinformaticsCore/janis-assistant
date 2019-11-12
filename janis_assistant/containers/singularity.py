@@ -53,7 +53,7 @@ class Singularity(Container):
                     "--net",
                     "--network=none",
                     "--network-args",
-                    *[f'"portmap={v}:{k}/tcp"' for k, v in self.exposedports.items()],
+                    *[f"portmap={v}:{k}/tcp" for k, v in self.exposedports.items()],
                 ]
             )
 
@@ -115,7 +115,7 @@ class Singularity(Container):
 
         try:
             val = subprocess.check_output(cmd)
-            return val.strip() if val else val, 0
+            return val.strip().decode() if val else val, 0
         except subprocess.CalledProcessError as e:
             Logger.critical("Docker exec_command failed")
             return str(e), e.returncode

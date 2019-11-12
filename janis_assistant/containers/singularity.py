@@ -109,7 +109,7 @@ class Singularity(Container):
             )
 
     def exec_command(self, command):
-        cmd = ["singularity", "run", "instance://" + self.instancename, *command]
+        cmd = ["singularity", "run", "instance://" + self.instancename]
         cmd.extend(command) if isinstance(command, list) else cmd.append(command)
 
         return subprocess.check_output(cmd)

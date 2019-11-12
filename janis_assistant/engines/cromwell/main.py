@@ -158,7 +158,10 @@ class Cromwell(Engine):
 
         Logger.log(f"Starting Cromwell with command: '{' '.join(cmd)}'")
         self._process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid
+            cmd,
+            stdout=subprocess.PIPE,
+            # preexec_fn creates a process group https://stackoverflow.com/a/4791612/
+            preexec_fn=os.setsid,
         )
         Logger.log("Cromwell is starting with pid=" + str(self._process.pid))
         Logger.log(

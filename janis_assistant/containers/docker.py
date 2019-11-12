@@ -35,7 +35,9 @@ class Docker(Container):
             command.extend(f"-v{v}:{k}" for k, v in self.bindpoints.items())
 
         if self.exposedports:
-            command.extend(f"-p{v}:{k}" for k, v in self.exposedports.items())
+            for k, v in self.exposedports.items():
+                ex = f":{v}" if v else ""
+                command.extend(["-p", f"{k}{ex}"])
 
         if self.instancename:
             command.extend(["--name", self.instancename])

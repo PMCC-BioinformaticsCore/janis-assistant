@@ -73,10 +73,11 @@ class Singularity(Container):
             startprocess = subprocess.Popen(
                 ["singularity", "run", "instance://" + self.instancename],
                 stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
             self.run_logger = ProcessLogger(
                 startprocess,
-                prefix="mysql",
+                prefix="mysql: ",
                 logfp=None,
                 exit_function=self.runlogger_didexit,
             )
@@ -112,7 +113,12 @@ class Singularity(Container):
         cmd = ["singularity", "run", "instance://" + self.instancename]
         cmd.extend(command) if isinstance(command, list) else cmd.append(command)
 
-        return subprocess.check_output(cmd)
+        try:
+            val = subprocess.check_output(cmd)
+            return val.strip() if val else val, 0
+        except subprocess.CalledProcessError as e:
+            Logger.critical("Docker exec_command failed")
+            return str(e), e.returncode
 
     def ensure_downloaded(self):
 

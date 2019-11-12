@@ -7,6 +7,7 @@ from janis_core import Logger
 from janis_assistant.containers.base import Container
 from typing import Dict, Type
 
+from janis_assistant.containers.docker import Docker
 from janis_assistant.containers.singularity import Singularity
 from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -36,6 +37,7 @@ class MySql(object):
         self.password = "janis-password"
         self.confdir = confdir
         self.startupscriptsdir = os.path.join(self.confdir, "startup")
+        self.sqlconfdir = os.path.join(self.confdir, "conf")
         self.mysqldoverride = os.path.join(self.confdir, "mysqld")
 
     def start(self):
@@ -53,24 +55,35 @@ class MySql(object):
         self.container.bindpoints = {
             "/var/lib/mysql": self.datadirectory,
             "/var/run/mysqld": self.mysqldoverride,
+            "/etc/mysql/": self.sqlconfdir,
             "/docker-entrypoint-initdb.d": self.startupscriptsdir,
         }
-        self.container.exposedports = {3306: self.forwardedport}
+
+        if isinstance(self.container, Docker):
+            self.container.exposedports = {self.forwardedport: None}
 
         self.container.environment_variables["MYSQL_ALLOW_EMPTY_PASSWORD"] = 1
-
-        # self.container.bindpoints["/var/run/mysqld"] = os.path.join(self.confdir)
 
         self.container.start_container()
         # Have to wait for it to initialise
         sleep(10)
-        cmd = ["mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "--wait=60"]
+        cmd = [
+            "mysqladmin",
+            "ping",
+            "-h",
+            f"127.0.0.1",
+            "-P",
+            str(self.forwardedport),
+            "-u",
+            "root",
+            "--wait=60",
+        ]
         while True:
             (response, rc) = self.container.exec_command(cmd)
             if response == "mysqld is alive":
                 return
             if response:
-                Logger.critical("MySQL: " + str(response))
+                Logger.critical("MySQL error: " + str(response))
                 raise Exception(response)
             else:
                 Logger.critical(rc)
@@ -83,12 +96,20 @@ class MySql(object):
 
         os.makedirs(self.startupscriptsdir, exist_ok=True)
         os.makedirs(self.mysqldoverride, exist_ok=True)
+        os.makedirs(self.sqlconfdir, exist_ok=True)
 
-        with open(
-            os.path.join(self.startupscriptsdir, "01-create-table.sql"), "w+"
-        ) as f:
+        strtfile = os.path.join(self.startupscriptsdir, "01-create-table.sql")
+        with open(strtfile, "w+") as f:
             f.write(MySql.STARTUP_SCRIPT)
+
+        with open(os.path.join(self.sqlconfdir, "my.cnf"), "w+") as f:
+            f.write(MySql.MYSQL_CONF.format(PORT=self.forwardedport))
 
     STARTUP_SCRIPT = """\
 CREATE DATABASE IF NOT EXISTS cromwell;
+"""
+
+    MYSQL_CONF = """\
+[mysqld]
+port={PORT}
 """

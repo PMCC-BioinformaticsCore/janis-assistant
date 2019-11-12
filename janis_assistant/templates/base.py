@@ -50,6 +50,9 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate):
         self.singularity_container_dir = containerDir
         self.singularity_build_instructions = buildInstructions
 
+        Logger.info(
+            f"Setting Singularity: containerdir={containerDir}, loadinstructions={loadInstructions}"
+        )
         # little bit hacky
         Singularity.containerdir = containerDir
         Singularity.loadinstructions = loadInstructions

@@ -26,7 +26,7 @@ def from_template(name, options) -> EnvironmentTemplate:
     if not template:
         raise Exception(f"Couldn't find Configuration template with name: '{name}'")
 
-    Logger.log(f"Got template from id = {name}")
+    Logger.log(f"Got template '{template.__name__}' from id = {name}")
 
     validate_template_params(template, options)
     newoptions = {**options}

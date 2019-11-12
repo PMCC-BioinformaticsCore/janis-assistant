@@ -65,9 +65,9 @@ class Singularity(Container):
             if not self.instancename:
                 self.instancename = generate_new_id(set())
 
-            out = subprocess.check_output(
-                command + [self.container_path(), self.instancename], env=newenv
-            )
+            command.extend([self.container_path(), self.instancename])
+            Logger.info("Starting singularity with command: " + " ".join(command))
+            out = subprocess.check_output(command, env=newenv)
             Logger.log(out)
 
             startprocess = subprocess.Popen(
@@ -98,6 +98,7 @@ class Singularity(Container):
 
     def stop_container(self):
         try:
+            Logger.info(f"Stopping mysql container '{self.instancename}'")
             if self.run_logger:
                 self.run_logger.terminate()
             cmd = ["singularity", "instance", "stop", self.instancename]
@@ -108,7 +109,7 @@ class Singularity(Container):
             )
 
     def exec_command(self, command):
-        cmd = ["singularity", "run", self.instancename, *command]
+        cmd = ["singularity", "run", "instance://" + self.instancename, *command]
         cmd.extend(command) if isinstance(command, list) else cmd.append(command)
 
         return subprocess.check_output(cmd)

@@ -42,12 +42,12 @@ from janis_assistant.environments.environment import Environment
 from janis_assistant.management.mysql import MySql
 from janis_assistant.management.notificationmanager import NotificationManager
 from janis_assistant.management.workflowdbmanager import WorkflowDbManager
+from janis_assistant.modifiers.base import PipelineModifierBase
+from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
+from janis_assistant.modifiers.validatormodifier import ValidatorPipelineModifier
 from janis_assistant.utils import get_extension, recursively_join, find_free_port
 from janis_assistant.utils.dateutil import DateUtil
-from janis_assistant.validation import (
-    generate_validation_workflow_from_janis,
-    ValidationRequirements,
-)
+from janis_assistant.validation import ValidationRequirements
 
 
 class WorkflowManager:
@@ -421,40 +421,31 @@ class WorkflowManager:
 
         Logger.log(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")
 
-        workflow_to_evaluate = workflow
+        modifiers = [InputFileQualifierModifier]
         if validation:
-            Logger.log(
-                f"Validation requirements provided, wrapping workflow '{workflow.id()}' with hap.py"
-            )
+            modifiers.append(ValidatorPipelineModifier(validation))
 
-            # we need to generate both the validation and non-validation workflow
-            workflow_to_evaluate = generate_validation_workflow_from_janis(
-                workflow, validation
-            )
+        workflow_to_evaluate, additional_inputs = PipelineModifierBase.apply_many(
+            modifiers, workflow, additional_inputs, hints=hints
+        )
 
-            wid = workflow.id()
+        translator.translate(
+            workflow,
+            to_console=False,
+            to_disk=True,
+            with_resource_overrides=True,
+            merge_resources=True,
+            hints=hints,
+            write_inputs_file=True,
+            export_path=outdir_workflow,
+            additional_inputs=additional_inputs,
+            max_cores=max_cores,
+            max_mem=max_memory,
+        )
 
-            adjusted_inputs = (
-                {wid + "_" + k: v for k, v in additional_inputs.items()}
-                if additional_inputs
-                else None
-            )
-
-            translator.translate(
-                workflow_to_evaluate,
-                to_console=False,
-                to_disk=True,
-                with_resource_overrides=True,
-                merge_resources=True,
-                hints=hints,
-                write_inputs_file=True,
-                export_path=outdir_workflow,
-                additional_inputs=adjusted_inputs,
-                max_cores=max_cores,
-                max_mem=max_memory,
-            )
-
-        self.evaluate_output_params(wf=workflow, additional_inputs=additional_inputs)
+        self.evaluate_output_params(
+            wf=workflow_to_evaluate, additional_inputs=additional_inputs
+        )
 
         self.database.progressDB.saveWorkflow = True
         return workflow_to_evaluate

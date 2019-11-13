@@ -248,7 +248,7 @@ def fromjanis(
 
     if required_inputs:
         reqkeys = set(required_inputs.keys())
-        inkeys = set(i.id() for i in wf.inputs())
+        inkeys = set(i.id() for i in wf.tool_inputs())
         invalid_keys = reqkeys - inkeys
         if len(invalid_keys) > 0:
             raise Exception(

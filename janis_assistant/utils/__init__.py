@@ -1,3 +1,4 @@
+import re
 import socket
 import os.path
 from typing import Set, List, Union
@@ -40,6 +41,21 @@ def get_extension(fn):
     if idx <= 0:
         return None
     return last_path_component[-idx:]
+
+
+uri_prefix = re.compile("^[A-z0-9]{2,}:\/\/")
+
+
+def fully_qualify_filename(fn):
+    """
+    The theory is, if the user types in a relative path (from the cwd), we should fully qualify this path.
+    We'd also want to resolve `~` / `.` and other operators too.
+    :param fn:
+    :return:
+    """
+    if uri_prefix.match(fn):
+        return fn
+    return os.path.abspath(os.path.expanduser(os.path.expandvars(fn)))
 
 
 def second_formatter(secs):

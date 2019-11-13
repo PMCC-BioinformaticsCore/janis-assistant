@@ -1,4 +1,6 @@
 from unittest import TestCase
+from os.path import join as ospathjoin
+
 from janis_assistant.utils import (
     get_extension,
     second_formatter,
@@ -6,6 +8,7 @@ from janis_assistant.utils import (
     convert_prefix_to_argname,
     try_parse_primitive_type,
     recursively_join,
+    fully_qualify_filename,
 )
 
 
@@ -175,6 +178,48 @@ class TestSimpleArgParser(TestCase):
                 ["--my-mixed-bag", "4.7", "true", "valueish", "0"]
             ),
         )
+
+
+class TestFullyQualityPath(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from os import getcwd
+
+        cls.cwd = getcwd()
+
+    def test_relative(self):
+        fn = "test/my.txt"
+        self.assertEqual(ospathjoin(self.cwd, fn), fully_qualify_filename(fn))
+
+    def test_dot_relative(self):
+        fn = "my.txt"
+        self.assertEqual(ospathjoin(self.cwd, fn), fully_qualify_filename("./" + fn))
+
+    def test_user_expand(self):
+        from os.path import expanduser
+
+        fn = "~/my.txt"
+        self.assertEqual(expanduser(fn), fully_qualify_filename(fn))
+
+    def test_nonrelative(self):
+        fn = "/test/my.txt"
+        self.assertEqual(fn, fully_qualify_filename(fn))
+
+    def test_ignore_https(self):
+        fn = "https://janis.readthedocs.io"
+        self.assertEqual(fn, fully_qualify_filename(fn))
+
+    def test_ignore_http(self):
+        fn = "http://janis.readthedocs.io"
+        self.assertEqual(fn, fully_qualify_filename(fn))
+
+    def test_ignore_s3(self):
+        fn = "s3://janis/readthedocs/io.txt"
+        self.assertEqual(fn, fully_qualify_filename(fn))
+
+    def test_ignore_gcs(self):
+        fn = "gcs://janis/readthedocs/io.txt"
+        self.assertEqual(fn, fully_qualify_filename(fn))
 
 
 class TestRecursiveJoin(TestCase):

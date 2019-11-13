@@ -36,7 +36,9 @@ class Engine(Archivable, ABC):
         pass
 
     @abstractmethod
-    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
+    def start_from_paths(
+        self, wid, source_path: str, input_path: str, deps_path: str, execution_dir: str
+    ):
         pass
 
     @abstractmethod

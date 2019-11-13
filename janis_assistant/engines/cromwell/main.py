@@ -446,7 +446,12 @@ class Cromwell(Engine):
         )
 
     def start_from_paths(
-        self, wid: str, source_path: str, input_path: str, deps_path: str
+        self,
+        wid: str,
+        source_path: str,
+        input_path: str,
+        deps_path: str,
+        execution_dir: str,
     ):
         """
         This does NOT watch, it purely schedule the jobs

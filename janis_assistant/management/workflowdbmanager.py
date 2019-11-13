@@ -84,6 +84,13 @@ class WorkflowDbManager:
         self.jobsDB.update_or_insert_many(alljobs)
 
         self.workflowmetadata.last_updated = DateUtil.now()
+        if metadata.error:
+            self.workflowmetadata.error = metadata.error
+        if metadata.execution_dir:
+            self.workflowmetadata.execution_dir = metadata.execution_dir
+
+        if metadata.finish:
+            self.workflowmetadata.finish = metadata.finish
         return
 
     def get_metadata(self):

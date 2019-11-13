@@ -520,7 +520,15 @@ class WorkflowManager:
         engine = self.get_engine()
 
         Logger.log(f"Submitting task '{self.wid}' to '{engine.id()}'")
-        self._engine_wid = engine.start_from_paths(self.wid, fn_wf, fn_inp, fn_deps)
+        self._engine_wid = engine.start_from_paths(
+            self.wid,
+            fn_wf,
+            fn_inp,
+            fn_deps,
+            execution_dir=self.get_path_for_component(
+                self.WorkflowManagerPath.execution
+            ),
+        )
         self.database.workflowmetadata.engine_wid = self._engine_wid
         Logger.log(
             f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
@@ -871,12 +879,6 @@ class WorkflowManager:
         self.database.save_metadata(meta)
 
         self.set_status(meta.status)
-
-        if meta.execution_dir:
-            self.database.workflowmetadata.execution_dir = meta.execution_dir
-
-        if meta.finish:
-            self.database.workflowmetadata.finish = meta.finish
 
         return meta
 

@@ -21,13 +21,18 @@ class CWLToolLogger(ProcessLogger):
     def __init__(self, wid: str, process, logfp, metadata_callback, exit_function=None):
         self.wid = wid
 
+        self.error = None
         self.metadata_callback = metadata_callback
         self.outputs = None
         self.workflow_scope = []
-        super().__init__(process, "cwltool", logfp, exit_function)
+        super().__init__(
+            process=process, prefix="cwltool", logfp=logfp, exit_function=exit_function
+        )
 
     def run(self):
         finalstatus = None
+        iserroring = False
+
         try:
             for c in iter(self.process.stderr.readline, "b"):
                 if self.should_terminate:
@@ -47,16 +52,22 @@ class CWLToolLogger(ProcessLogger):
                 lowline = line.lower().lstrip()
                 if lowline.startswith("error"):
                     Logger.critical("cwltool: " + line)
+                    iserroring = True
 
                 elif lowline.startswith("warn"):
+                    iserroring = False
                     Logger.warn("cwltool: " + line)
 
                 elif lowline.startswith("info"):
+                    iserroring = False
                     Logger.info("cwltool: " + line)
                     self.process_metadataupdate_if_match(line)
 
                 else:
                     Logger.log("cwltool: " + line)
+
+                if iserroring:
+                    self.error = (self.error or "") + "\n" + line
 
                 if "final process status is" in lowline:
                     if "fail" in line.lower():
@@ -88,9 +99,15 @@ class CWLToolLogger(ProcessLogger):
                     except:
                         continue
 
-            print(finalstatus)
+            if self.error:
+                Logger.critical("Janis detected a CWLTool error: " + self.error)
+
+            Logger.info(
+                "CWLTool detected transition to terminal status: " + str(finalstatus)
+            )
             self.terminate()
-            self.exit_function(self, finalstatus)
+            if self.exit_function:
+                self.exit_function(self, finalstatus)
 
         except KeyboardInterrupt:
             self.should_terminate = True
@@ -159,7 +176,7 @@ class CWLToolLogger(ProcessLogger):
             batchid="",
             cached=False,
             container=None,
-            stderr=None,
+            stderr=self.logfp.name,
             stdout=None,
         )
 
@@ -178,7 +195,7 @@ class CWLTool(Engine):
     # one at once (at the moment).
     metadata_by_task_id = (
         {}
-    )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [], jobs: {} } }
+    )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [], jobs: {}, error: None } }
 
     def __init__(
         self, logfile=None, identifier: str = "cwltool", options=None, watch=True
@@ -312,18 +329,26 @@ class CWLTool(Engine):
             finish=meta.get("finish"),
             # outputs=meta.get("outputs") or [],
             jobs=meta.get("jobs", {}).values(),
-            error=None,
+            error=meta.get("error"),
             # executiondir=None,
         )
 
-    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
+    def start_from_paths(
+        self, wid, source_path: str, input_path: str, deps_path: str, execution_dir: str
+    ):
         self.metadata_by_task_id[wid] = {
             "start": DateUtil.now(),
             "status": TaskStatus.PROCESSING,
             "jobs": {},
         }
 
-        cmd = ["cwltool", *self.options, "--disable-color", source_path]
+        cmd = ["cwltool", *self.options, "--disable-color"]
+
+        # more options
+        if execution_dir:
+            cmd.extend(["--outdir", execution_dir])
+
+        cmd.append(source_path)
 
         if input_path:
             cmd.append(input_path)
@@ -351,6 +376,17 @@ class CWLTool(Engine):
         self.metadata_by_task_id[logger.wid]["status"] = status
         self.metadata_by_task_id[logger.wid]["finish"] = DateUtil.now()
         self.metadata_by_task_id[logger.wid]["outputs"] = logger.outputs
+
+        if status != TaskStatus.COMPLETED:
+            js: Dict[str, WorkflowJobModel] = self.metadata_by_task_id[logger.wid][
+                "jobs"
+            ]
+            for j in js.values():
+                if j.status != TaskStatus.COMPLETED:
+                    j.status = status
+
+        if logger.error:
+            self.metadata_by_task_id[logger.wid]["error"] = logger.error
 
     def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
         Logger.info(f"Updated task {job.jid} with status={job.status}")

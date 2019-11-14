@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 
+from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
 from janis_assistant.utils import second_formatter
 
@@ -29,6 +30,7 @@ class WorkflowModel:
         jobs: List[WorkflowJobModel] = None,
         last_updated: datetime = None,
         tags: List[str] = None,
+        outputs: List[WorkflowOutputModel] = None,
     ):
         self.wid = wid
         self.engine_wid = engine_wid
@@ -51,7 +53,7 @@ class WorkflowModel:
         self.error = error
 
         self.jobs: List[WorkflowJobModel] = jobs or []
-        self.outputs = None
+        self.outputs: List[WorkflowOutputModel] = outputs
 
         self.author = author
 
@@ -89,6 +91,6 @@ Updated:    {updated_text}
 Jobs: 
 {nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start or DateUtil.now()))}       
 
-{("Outputs:" + nl.join(tb + o for o in self.outputs)) if self.outputs else ''}
+{("Outputs:" + "".join(nl + tb + o.format() for o in self.outputs) if self.outputs else '')}
 {("Error: " + self.error) if self.error else ''}
         """.strip()

@@ -1,5 +1,8 @@
 import datetime
+from os.path import commonprefix
+
 from typing import Optional, List
+
 
 from janis_assistant.utils.dateutil import DateUtil
 
@@ -83,3 +86,33 @@ class WorkflowOutputModel:
             else ss
             for ss in s
         ]
+
+    def format(self):
+        return f"- {self.tag}: {self._format_value(self.newpath)}"
+
+    @staticmethod
+    def _format_value(value, isroot=True):
+        if not value:
+            return ""
+
+        if isinstance(value, str):
+            value = value.split("|")
+
+        if isinstance(value, list):
+            if len(value) == 0:
+                return ""
+            elif len(value) == 1:
+                value = value[0]
+            else:
+                values = [
+                    WorkflowOutputModel._format_value(v, isroot=False) for v in value
+                ]
+                if isroot:
+                    return "(multiple) " + commonprefix(values) + "*"
+                return commonprefix(values)
+
+        if any(isinstance(value, T) for T in [str, float, int, bool]):
+            return str(value)
+
+        # hmmm, idk
+        return str(value)

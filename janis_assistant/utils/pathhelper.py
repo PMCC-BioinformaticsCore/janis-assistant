@@ -137,14 +137,14 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     if len(ptypes) > 1:
         action = (
             "(please specify the workflow to use via the `--name` parameter, this name must be the name of "
-            "the variable or the class name and not the workflowId)."
+            "the variable or the class name and not the workflowId)"
         )
         if name:
             action = "(you might need to restructure your file to allow --name to uniquely identify your workflow"
 
         raise Exception(
-            f"There was more than one workflow ({len(ptypes)}) detected in '{file}' {action}"
-            + ",".join(str(x) for x in ptypes)
+            f"There was more than one workflow ({len(ptypes)}) detected in '{file}' {action}. Detected tokens: "
+            + ", ".join(f"'{x[0]}' ({x[1].__class__.__name__})" for x in ptypes)
         )
 
     return ptypes[0][1]

@@ -3,6 +3,7 @@ from os.path import join as ospathjoin
 
 from typing import List
 
+from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider
@@ -112,6 +113,11 @@ class WorkflowDbManager:
             author=self.workflowmetadata.author,
             jobs=jobs,
             last_updated=self.workflowmetadata.last_updated,
+            outputs=(
+                self.outputsDB.get_all()
+                if self.workflowmetadata.status == TaskStatus.COMPLETED
+                else None
+            ),
         )
 
     def flatten_jobs(self, jobs: List[WorkflowJobModel]):

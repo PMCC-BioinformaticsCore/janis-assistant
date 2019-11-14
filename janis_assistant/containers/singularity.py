@@ -84,7 +84,7 @@ class Singularity(Container):
 
         except subprocess.CalledProcessError as e:
             raise Exception(
-                "An error occurred while starting a singularity container: " + str(e)
+                f"An error occurred while starting a singularity container: {str(e)}.\n\tOutput: {str(e.output)}"
             )
 
     def runlogger_didexit(self, rc):

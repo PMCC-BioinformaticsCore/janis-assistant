@@ -184,30 +184,18 @@ class CWLToolLogger(ProcessLogger):
 
 
 class CWLTool(Engine):
-
-    taskid_to_process = {}
-
-    # This is the bad version of a metadata store, this implementation really needs a rewrite to collect
-    # metadata from CWLTool (and store it somewhere) to be polled by the metadata function and provide status.
-    #
-    # Currently, this class just watches the stdout and looks for the JSON returned by CWLTool.
-    # I don't know the implications of updating this from another thread, because it should really only ever run
-    # one at once (at the moment).
-    metadata_by_task_id = (
-        {}
-    )  # format: { [wid: string]: { start: DateTime, status: Status, outputs: [], jobs: {}, error: None } }
-
     def __init__(
         self, logfile=None, identifier: str = "cwltool", options=None, watch=True
     ):
         super().__init__(identifier, EngineType.cwltool, logfile=logfile, watch=True)
         self.options = options if options else []
         self.process = None
-        self.pid = None
         self._logger = None
 
+        self.taskmeta = {}
+
     def test_connection(self):
-        return bool(self.pid)
+        return bool(self.process_id)
 
     def start_engine(self):
         Logger.info(
@@ -217,12 +205,16 @@ class CWLTool(Engine):
         return self
 
     def stop_engine(self):
-        Logger.info(
-            (
-                "CWLTool doesn't run in a server mode, an instance will "
-                "be automatically terminated when a task is finished"
-            )
-        )
+
+        # we're going to abort!
+        if self.process_id:
+            import signal
+
+            os.kill(self.process_id, signal.SIGTERM)
+
+        else:
+            Logger.critical("Couldn't terminate CWLTool as there was no processID")
+
         return self
 
     def create_task(self, source=None, inputs=None, dependencies=None) -> str:
@@ -233,15 +225,11 @@ class CWLTool(Engine):
         return str(uuid.uuid4())
 
     def poll_task(self, identifier) -> TaskStatus:
-        if identifier in self.taskid_to_process:
-            return TaskStatus.RUNNING
-        return TaskStatus.COMPLETED
+        return self.taskmeta.get("status", TaskStatus.PROCESSING)
 
     def outputs_task(self, identifier) -> Dict[str, Any]:
-        if identifier not in self.metadata_by_task_id:
-            raise Exception("Couldn't find status for CWLTool task: " + identifier)
 
-        outs = self.metadata_by_task_id[identifier].get("outputs")
+        outs = self.taskmeta.get("outputs")
 
         if not outs:
             return {}
@@ -303,9 +291,9 @@ class CWLTool(Engine):
         :param identifier:
         :return:
         """
-        raise NotImplementedError(
-            "terminate_task needs to be implemented in CWLTool, may require rework of tool"
-        )
+        self.stop_engine()
+        self.taskmeta["status"] = TaskStatus.ABORTED
+        return TaskStatus.ABORTED
 
     def metadata(self, identifier) -> WorkflowModel:
         """
@@ -316,27 +304,22 @@ class CWLTool(Engine):
         :param identifier:
         :return:
         """
-        if identifier not in self.metadata_by_task_id:
-            raise Exception("Couldn't find status for CWLTool task: " + identifier)
-
-        meta = self.metadata_by_task_id[identifier]
-
         return WorkflowModel(
             identifier,
             name=identifier,
-            status=meta.get("status"),
-            start=meta.get("start"),
-            finish=meta.get("finish"),
+            status=self.taskmeta.get("status"),
+            start=self.taskmeta.get("start"),
+            finish=self.taskmeta.get("finish"),
             # outputs=meta.get("outputs") or [],
-            jobs=meta.get("jobs", {}).values(),
-            error=meta.get("error"),
+            jobs=list(self.taskmeta.get("jobs", {}).values()),
+            error=self.taskmeta.get("error"),
             # executiondir=None,
         )
 
     def start_from_paths(
         self, wid, source_path: str, input_path: str, deps_path: str, execution_dir: str
     ):
-        self.metadata_by_task_id[wid] = {
+        self.taskmeta = {
             "start": DateUtil.now(),
             "status": TaskStatus.PROCESSING,
             "jobs": {},
@@ -356,10 +339,10 @@ class CWLTool(Engine):
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
-        self.metadata_by_task_id[wid]["status"] = TaskStatus.RUNNING
+        self.taskmeta["status"] = TaskStatus.RUNNING
         Logger.log("Running command: '" + " ".join(cmd) + "'")
         Logger.info("CWLTool has started with pid=" + str(process.pid))
-        self.taskid_to_process[wid] = process.pid
+        self.process_id = process.pid
 
         self._logger = CWLToolLogger(
             wid,
@@ -373,21 +356,19 @@ class CWLTool(Engine):
 
     def task_did_exit(self, logger: CWLToolLogger, status: TaskStatus):
         Logger.log("CWLTool fired 'did exit'")
-        self.metadata_by_task_id[logger.wid]["status"] = status
-        self.metadata_by_task_id[logger.wid]["finish"] = DateUtil.now()
-        self.metadata_by_task_id[logger.wid]["outputs"] = logger.outputs
+        self.taskmeta["status"] = status
+        self.taskmeta["finish"] = DateUtil.now()
+        self.taskmeta["outputs"] = logger.outputs
 
         if status != TaskStatus.COMPLETED:
-            js: Dict[str, WorkflowJobModel] = self.metadata_by_task_id[logger.wid][
-                "jobs"
-            ]
+            js: Dict[str, WorkflowJobModel] = self.taskmeta.get("jobs")
             for j in js.values():
                 if j.status != TaskStatus.COMPLETED:
                     j.status = status
 
         if logger.error:
-            self.metadata_by_task_id[logger.wid]["error"] = logger.error
+            self.taskmeta["error"] = logger.error
 
     def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
         Logger.info(f"Updated task {job.jid} with status={job.status}")
-        self.metadata_by_task_id[logger.wid]["jobs"][job.jid] = job
+        self.taskmeta["jobs"][job.jid] = job

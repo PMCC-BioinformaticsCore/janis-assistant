@@ -838,7 +838,7 @@ class WorkflowManager:
 
             if self.database.workflowmetadata.please_abort:
                 Logger.info("Detected please_abort request during poll, aborting")
-                status = self.abort()
+                return self.abort()
 
             if (
                 self._failed_engine_attempts

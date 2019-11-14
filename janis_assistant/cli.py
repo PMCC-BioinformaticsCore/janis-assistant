@@ -474,7 +474,7 @@ def do_run(args):
     # we'll need to parse them manually and then pass them to fromjanis as requiring a match
     required_inputs = parse_additional_arguments(args.extra_inputs)
 
-    inputs = args.inputs
+    inputs = args.inputs or []
     if "inputs" in required_inputs:
         # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
         # annoying if you forget to put the inputs before the workflow positional argument.
@@ -492,7 +492,7 @@ def do_run(args):
         hints=hints,
         output_dir=args.output_dir,
         dryrun=args.dryrun,
-        inputs=args.inputs,
+        inputs=inputs,
         required_inputs=required_inputs,
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,

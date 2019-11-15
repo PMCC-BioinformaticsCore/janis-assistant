@@ -115,6 +115,9 @@ def try_parse_primitive_type(value: Union[str, list]):
     if isinstance(value, list):
         return [try_parse_primitive_type(val) for val in value]
 
+    if not isinstance(value, str):
+        return value
+
     vl = value.lower()
     if vl == "true":
         return True

@@ -12,6 +12,8 @@ from inspect import isclass
 import janis_core as j
 from typing import Optional, Dict, Union, Type, List
 
+from janis_core.translations import TranslatorBase
+
 from janis_assistant.management.workflowmanager import WorkflowManager
 
 from janis_assistant.data.models.filescheme import (
@@ -257,7 +259,7 @@ def fromjanis(
 
     if required_inputs:
         reqkeys = set(required_inputs.keys())
-        inkeys = set(i.id() for i in wf.tool_inputs())
+        inkeys = set(wf.all_input_keys())
         invalid_keys = reqkeys - inkeys
         if len(invalid_keys) > 0:
             raise Exception(

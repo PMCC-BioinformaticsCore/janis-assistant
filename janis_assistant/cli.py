@@ -181,7 +181,9 @@ def add_translate_args(parser):
         help="Optional name of workflow if there are multiple workflows in the tool",
     )
     parser.add_argument(
-        "--output-dir", help="output directory to write output to (default=stdout)"
+        "-o",
+        "--output-dir",
+        help="output directory to write output to (default=stdout)",
     )
     parser.add_argument(
         "--no-cache",

@@ -51,11 +51,11 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             ),
         )
 
-        backend: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
+        beconfig: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
             config.backend.default
         ].config
-        backend.root = self.execution_dir
-        backend.filesystems = {
+        beconfig.root = self.execution_dir
+        beconfig.filesystems = {
             "local": {
                 "localization": ["cached-copy", "hard-link", "soft-link", "copy"]
             },

@@ -248,6 +248,12 @@ def add_run_args(parser):
     )
 
     parser.add_argument(
+        "--registry",
+        help="Skip looking through the search path, and only look in the registry",
+        action="store_true",
+    )
+
+    parser.add_argument(
         "-e",
         "--environment",
         # choices=environments,
@@ -504,6 +510,7 @@ def do_run(args):
         keep_intermediate_files=args.keep_intermediate_files,
         should_disconnect=not (args.stay_connected is True),
         skip_mysql=not args.use_mysql,
+        only_registry=args.registry,
     )
 
     Logger.info("Exiting")

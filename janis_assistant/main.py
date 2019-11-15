@@ -43,6 +43,7 @@ def resolve_tool(
     name=None,
     from_toolshed=False,
     force=False,
+    only_registry=False,
 ):
     if isinstance(tool, j.Tool):
         return tool
@@ -56,32 +57,33 @@ def resolve_tool(
             f"Janis is not sure how to resolve a workflow of type: '{type(tool)}'"
         )
 
-    fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
-    if fileschemewherelocated:
-        Logger.info(
-            f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
+    if not only_registry:
+        fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
+        if fileschemewherelocated:
+            Logger.info(
+                f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
+            )
+            # Get some unique name for the workflow
+            fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
+            outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
+            os.makedirs(outdir, exist_ok=True)
+            dest = os.path.join(outdir, fn)
+            Logger.log(f"Localising '{tool}' to '{dest}'")
+
+            fileschemewherelocated("internal").cp_from(
+                tool.lower(),
+                dest,
+                lambda progress: print(f"Download progress: {progress}"),
+                force=force,
+            )
+            tool = dest
+
+        wf = get_janis_workflow_from_searchname(
+            tool, ".", name=name, include_commandtools=True
         )
-        # Get some unique name for the workflow
-        fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
-        outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
-        os.makedirs(outdir, exist_ok=True)
-        dest = os.path.join(outdir, fn)
-        Logger.log(f"Localising '{tool}' to '{dest}'")
 
-        fileschemewherelocated("internal").cp_from(
-            tool.lower(),
-            dest,
-            lambda progress: print(f"Download progress: {progress}"),
-            force=force,
-        )
-        tool = dest
-
-    wf = get_janis_workflow_from_searchname(
-        tool, ".", name=name, include_commandtools=True
-    )
-
-    if wf:
-        return wf
+        if wf:
+            return wf
 
     if from_toolshed:
         v = None
@@ -91,7 +93,7 @@ def resolve_tool(
 
         wf = j.JanisShed.get_tool(tool, v)
 
-    return wf
+        return wf
 
 
 def translate(
@@ -187,7 +189,7 @@ def init_template(templatename, stream=None):
     if os.path.exists(outpath):
         Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
     else:
-        os.makedirs(os.path.dirname(outpath))
+        os.makedirs(os.path.dirname(outpath), exist_ok=True)
         with open(outpath, "w+") as configpath:
             ruamel.yaml.dump(outd, configpath, default_flow_style=False)
 
@@ -215,12 +217,19 @@ def fromjanis(
     recipes=None,
     should_disconnect=True,
     skip_mysql=False,
+    only_registry=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
     jc = JanisConfiguration.manager()
 
-    wf = resolve_tool(tool=workflow, name=name, from_toolshed=True, force=force)
+    wf = resolve_tool(
+        tool=workflow,
+        name=name,
+        from_toolshed=True,
+        only_registry=only_registry,
+        force=force,
+    )
     if not wf:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 

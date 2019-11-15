@@ -17,7 +17,9 @@ class HashableEnum(str, Enum):
 class EnvVariables(HashableEnum):
     config_path = "JANIS_CONFIGPATH"
     config_dir = "JANIS_CONFIGDIR"
+    base_dir = "JANIS_BASEDIR"
     exec_dir = "JANIS_EXCECUTIONDIR"
+    output_dir = "JANIS_OUTPUTDIR"
     search_path = "JANIS_SEARCHPATH"
     recipe_paths = "JANIS_RECIPEPATHS"
     recipe_directory = "JANIS_RECIPEDIRECTORY"  # secretly comma separated
@@ -32,8 +34,14 @@ class EnvVariables(HashableEnum):
 
         if self == EnvVariables.config_dir:
             return os.path.join(os.getenv("HOME"), ".janis/")
+        if self == EnvVariables.base_dir:
+            return os.path.join(os.getenv("HOME"), "janis")
+        if self == EnvVariables.output_dir:
+            return EnvVariables.base_dir.resolve(include_default=True)
         elif self == EnvVariables.exec_dir:
-            return os.path.join(os.getenv("HOME"), "janis/execution/")
+            return os.path.join(
+                EnvVariables.base_dir.resolve(include_default=True), "execution/"
+            )
         elif self == EnvVariables.config_path:
             return os.path.join(os.getenv("HOME"), ".janis/janis.conf")
         elif self == EnvVariables.recipe_paths:

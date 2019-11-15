@@ -11,6 +11,7 @@ from glob import glob
 from typing import Optional, List
 
 import requests
+from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
 
 from janis_assistant.__meta__ import ISSUE_URL
@@ -496,6 +497,18 @@ class Cromwell(Engine):
             self.config.system.cromwell_id = identifier
             self.config.system.cromwell_id_random_suffix = False
             self.config.system.job_shell = ("job-shell", "/bin/sh")
+
+            if self.config.backend:
+                if len(self.config.backend.providers) == 1:
+                    cnf: CromwellConfiguration.Backend.Provider.Config = first_value(
+                        self.config.backend.providers
+                    )
+                    if not cnf.root:
+                        cnf.root = EnvVariables.exec_dir.resolve(True)
+            else:
+                self.config.backend = CromwellConfiguration.Backend.with_new_local_exec_dir(
+                    EnvVariables.exec_dir.resolve(True)
+                )
 
     def raw_metadata(
         self, identifier, expand_subworkflows=True

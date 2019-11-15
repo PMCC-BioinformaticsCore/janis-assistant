@@ -335,7 +335,7 @@ class JanisConfiguration:
 
         deflt = {
             JanisConfiguration.Keys.ConfigDir: EnvVariables.config_dir.resolve(True),
-            JanisConfiguration.Keys.OutputDir: EnvVariables.exec_dir.resolve(True),
+            JanisConfiguration.Keys.OutputDir: EnvVariables.output_dir.resolve(True),
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
             JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
             # JanisConfiguration.Keys.Cromwell: {

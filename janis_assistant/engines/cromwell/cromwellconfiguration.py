@@ -210,7 +210,7 @@ class CromwellConfiguration(Serializable):
                     self.filesystems = filesystems
                     self.runtime_attributes = (
                         "runtime-attributes",
-                        runtime_attributes.replace("\n", "\\n"),
+                        (runtime_attributes or "").replace("\n", "\\n"),
                     )
 
                     self.submit = submit
@@ -223,7 +223,11 @@ class CromwellConfiguration(Serializable):
                     for k, v in kwargs.items():
                         self.__setattr__(k, v)
 
-            def __init__(self, actor_factory, config: Config):
+            def __init__(
+                self,
+                actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
+                config: Config = None,
+            ):
                 self.actor_factory = ("actor-factory", actor_factory)
                 self.config = config
 
@@ -548,6 +552,18 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
                         "The default tag '{default}' was not found in the providers and couldn't be "
                         "automatically corrected".format(default=default)
                     )
+
+        @staticmethod
+        def with_new_local_exec_dir(execution_directory: str):
+            return CromwellConfiguration.Backend(
+                providers={
+                    "Local": CromwellConfiguration.Backend.Provider(
+                        config=CromwellConfiguration.Backend.Provider.Config(
+                            root=execution_directory
+                        )
+                    )
+                }
+            )
 
     class Engine(Serializable):
         def __init__(self, s3: Union[bool, str] = None, gcs: Union[bool, str] = None):

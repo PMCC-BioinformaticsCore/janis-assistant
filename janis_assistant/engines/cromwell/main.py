@@ -500,11 +500,11 @@ class Cromwell(Engine):
 
             if self.config.backend:
                 if len(self.config.backend.providers) == 1:
-                    cnf: CromwellConfiguration.Backend.Provider.Config = first_value(
+                    cnf: CromwellConfiguration.Backend.Provider = first_value(
                         self.config.backend.providers
                     )
-                    if not cnf.root:
-                        cnf.root = EnvVariables.exec_dir.resolve(True)
+                    if not cnf.config.root:
+                        cnf.config.root = EnvVariables.exec_dir.resolve(True)
             else:
                 self.config.backend = CromwellConfiguration.Backend.with_new_local_exec_dir(
                     EnvVariables.exec_dir.resolve(True)

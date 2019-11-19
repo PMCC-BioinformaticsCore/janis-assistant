@@ -285,7 +285,7 @@ String? docker""".strip(),
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --dependency=afternotokay:$JOBID --wrap 'echo 1 >> ${cwd}/execution/rc')"
+                    afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap 'echo 1 >> ${cwd}/execution/rc')"
 
                 partitions = (
                     ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues

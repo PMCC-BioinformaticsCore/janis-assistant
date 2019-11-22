@@ -2,7 +2,6 @@ from typing import Union, List
 
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
-from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
 
 
@@ -33,6 +32,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         self.limitResources = limitResources
 
     def cromwell(self):
+        from janis_assistant.management.configuration import JanisConfiguration
 
         slurm_email = None
         if self.send_slurm_emails:

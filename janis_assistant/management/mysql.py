@@ -27,6 +27,10 @@ class MySql(object):
     ):
         import os.path
 
+        Logger.log(
+            f"Preparing {container.__name__} MySQL container with info: wid={wid}, port={forwardedport}, confdir={confdir}"
+        )
+
         self._containertype = container
 
         self.container: Container = container(
@@ -34,7 +38,6 @@ class MySql(object):
         )
         self.datadirectory = datadirectory
         self.forwardedport = forwardedport
-        self.password = "janis-password"
         self.confdir = confdir
         self.startupscriptsdir = os.path.join(self.confdir, "startup")
         self.sqlconfdir = os.path.join(self.confdir, "conf")
@@ -63,6 +66,7 @@ class MySql(object):
             self.container.exposedports = {self.forwardedport: None}
 
         self.container.environment_variables["MYSQL_ALLOW_EMPTY_PASSWORD"] = 1
+        self.container.environment_variables["MYSQL_INITDB_SKIP_TZINFO"] = 1
 
         self.container.start_container()
         # Have to wait for it to initialise

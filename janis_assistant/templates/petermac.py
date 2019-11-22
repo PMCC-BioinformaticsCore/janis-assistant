@@ -1,6 +1,5 @@
 from typing import Union, List
 
-from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.slurm import SlurmSingularityTemplate
 
 
@@ -9,9 +8,9 @@ class PeterMacTemplate(SlurmSingularityTemplate):
         self,
         executionDir: str,
         queues: Union[str, List[str]] = "prod_med,prod",
-        email=None,
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
+        sendSlurmEmails=False,
         catchSlurmErrors=False,
     ):
 
@@ -30,18 +29,10 @@ class PeterMacTemplate(SlurmSingularityTemplate):
             mail_program="sendmail -t",
             executionDir=executionDir,
             queues=joined_queued,
-            email=email,
+            sendSlurmEmails=sendSlurmEmails,
             catchSlurmErrors=catchSlurmErrors,
             buildInstructions=singbuild,
             singularityLoadInstructions=singload,
             containerDir=containerDir,
             limitResources=False,
-        )
-
-    def engine_config(self, engine: EngineType):
-        if engine == EngineType.cromwell:
-            return self.cromwell()
-
-        raise NotImplementedError(
-            f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"
         )

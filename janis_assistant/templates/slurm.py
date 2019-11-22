@@ -2,6 +2,7 @@ from typing import Union, List
 
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
+from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
 
 
@@ -12,7 +13,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         containerDir: str,
         queues: Union[str, List[str]] = None,
         mail_program=None,
-        email=None,
+        sendSlurmEmails=True,
         catchSlurmErrors=False,
         buildInstructions=f"singularity pull $image docker://${{docker}}",
         singularityLoadInstructions=None,
@@ -27,11 +28,15 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         )
         self.execution_dir = executionDir
         self.queues = queues or []
-        self.email = email
+        self.send_slurm_emails = sendSlurmEmails
         self.catch_slurm_errors = catchSlurmErrors
         self.limitResources = limitResources
 
     def cromwell(self):
+
+        slurm_email = None
+        if self.send_slurm_emails:
+            slurm_email = JanisConfiguration.manager().notifications.email
 
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(job_shell="/bin/sh"),
@@ -42,7 +47,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
                         singularityloadinstructions=self.singularity_load_instructions,
                         singularitycontainerdir=self.singularity_container_dir,
                         buildinstructions=self.singularity_build_instructions,
-                        jobemail=self.email,
+                        jobemail=slurm_email,
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,
                         limit_resources=self.limitResources,

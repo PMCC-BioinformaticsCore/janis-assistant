@@ -278,8 +278,8 @@ String? docker""".strip(),
                 buildinstructions,
                 jobemail,
                 jobqueues,
-                afternotokaycatch: bool = False,
-                limit_resources: bool = True,
+                afternotokaycatch: bool = True,
+                limit_resources: bool = False,
             ):
                 slurm = cls.slurm()
 

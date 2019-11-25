@@ -13,6 +13,8 @@ class PeterMacTemplate(SlurmSingularityTemplate):
         sendSlurmEmails=False,
         catchSlurmErrors=False,
         singularityBuildInstructions=None,
+        max_cores=40,
+        max_ram=256,
     ):
         """
         :param executionDir:
@@ -46,4 +48,6 @@ class PeterMacTemplate(SlurmSingularityTemplate):
             singularityLoadInstructions=singload,
             containerDir=containerDir,
             limitResources=False,
+            max_cores=max_cores,
+            max_ram=max_ram,
         )

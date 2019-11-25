@@ -365,7 +365,8 @@ String? docker
                 singularityloadinstructions,
                 singularitycontainerdir,
                 buildinstructions,
-                limit_resources: bool = True,
+                limit_resources: bool = False,
+                executionDirectory: str = None,
             ):
 
                 config = cls(
@@ -374,6 +375,7 @@ String? docker
                         runtime_attributes="""\
 String? docker""".strip(),
                         run_in_background=True,
+                        root=executionDirectory,
                     ),
                 )
 
@@ -688,46 +690,6 @@ qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=
         if aws is not None and not isinstance(aws, CromwellConfiguration.AWS):
             raise Exception("aws not of type CromwellConfiguration.AWS")
         self.aws = aws
-
-    @staticmethod
-    def udocker():
-        return CromwellConfiguration(
-            backend=CromwellConfiguration.Backend(
-                default="udocker",
-                providers={"udocker": CromwellConfiguration.Backend.Provider.udocker()},
-            ),
-            docker=CromwellConfiguration.Docker(
-                hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
-            ),
-        )
-
-    @staticmethod
-    def udocker_slurm():
-        return CromwellConfiguration(
-            backend=CromwellConfiguration.Backend(
-                default="udocker",
-                providers={
-                    "udocker": CromwellConfiguration.Backend.Provider.slurm_udocker()
-                },
-            ),
-            docker=CromwellConfiguration.Docker(
-                hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
-            ),
-        )
-
-    @staticmethod
-    def udocker_torque():
-        return CromwellConfiguration(
-            backend=CromwellConfiguration.Backend(
-                default="torque",
-                providers={
-                    "torque": CromwellConfiguration.Backend.Provider.torque_udocker()
-                },
-            ),
-            docker=CromwellConfiguration.Docker(
-                hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
-            ),
-        )
 
 
 if __name__ == "__main__":

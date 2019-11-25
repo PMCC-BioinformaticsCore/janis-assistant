@@ -7,6 +7,10 @@ from janis_assistant.templates.slurm import SlurmSingularityTemplate
 
 
 class SpartanTemplate(SlurmSingularityTemplate):
+    """
+    https://dashboard.hpc.unimelb.edu.au/
+    """
+
     def __init__(
         self,
         executionDir,
@@ -15,9 +19,9 @@ class SpartanTemplate(SlurmSingularityTemplate):
         singularityVersion="3.2.0-spartan_gcc-6.2.0",
         sendSlurmEmails=True,
         catchSlurmErrors=True,
+        max_cores=32,
+        max_ram=508,
     ):
-        joined_queued = ",".join(queues) if isinstance(queues, list) else str(queues)
-
         singload = "module load singularity"
         if singularityVersion:
             singload += "/" + str(singularityVersion)
@@ -32,6 +36,8 @@ class SpartanTemplate(SlurmSingularityTemplate):
             singularityLoadInstructions=singload,
             containerDir=containerDir,
             limitResources=False,
+            max_cores=max_cores,
+            max_ram=max_ram,
         )
 
     def submit_detatched_resume(self, wid, command):

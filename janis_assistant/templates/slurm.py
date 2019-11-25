@@ -17,6 +17,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         buildInstructions=f"singularity pull $image docker://${{docker}}",
         singularityLoadInstructions=None,
         limitResources=True,
+        max_cores=None,
+        max_ram=None,
     ):
 
         super().__init__(
@@ -24,6 +26,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             containerDir=containerDir,
             buildInstructions=buildInstructions,
             loadInstructions=singularityLoadInstructions,
+            max_cores=max_cores,
+            max_ram=max_ram,
         )
         self.execution_dir = executionDir
         self.queues = queues or []

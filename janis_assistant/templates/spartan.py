@@ -17,9 +17,6 @@ class SpartanTemplate(SlurmSingularityTemplate):
         catchSlurmErrors=True,
     ):
         joined_queued = ",".join(queues) if isinstance(queues, list) else str(queues)
-        singbuild = f"sbatch -p {joined_queued} --wait \
-        --wrap 'unset SINGULARITY_TMPDIR && docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}}) \
-        && image={containerDir}/$docker_subbed.sif && singularity pull $image docker://${{docker}}'"
 
         singload = "module load singularity"
         if singularityVersion:
@@ -31,7 +28,7 @@ class SpartanTemplate(SlurmSingularityTemplate):
             queues=queues,
             sendSlurmEmails=sendSlurmEmails,
             catchSlurmErrors=catchSlurmErrors,
-            buildInstructions=singbuild,
+            buildInstructions="singularity pull $image docker://${{docker}}",
             singularityLoadInstructions=singload,
             containerDir=containerDir,
             limitResources=False,

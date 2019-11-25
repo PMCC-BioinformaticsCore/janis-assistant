@@ -328,15 +328,6 @@ String? docker
             image={singularitycontainerdir}/$docker_subbed.sif
             lock_path={singularitycontainerdir}/$docker_subbed.lock
 
-            if [ ! -f "$image" ]; then
-              (
-              flock --exclusive 200 1>&2
-              if [ ! -f "$image" ]; then
-                {buildinstructions}
-              fi
-              ) 200>$lock_path
-            fi
-
             {cgroups_creation}
 
             # Submit the script to SLURM

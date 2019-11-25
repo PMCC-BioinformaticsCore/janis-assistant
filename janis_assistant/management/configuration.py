@@ -80,6 +80,21 @@ class JanisConfiguration:
             d.pop(self.Keys.Id.value, None)
             self.template = from_template(self.id, d)
 
+    class JanisConfigurationEnvironment:
+        class Keys(HashableEnum):
+            MaxCores = "maxCores"
+            MaxRam = "maxRam"
+
+        def __init__(self, d: dict, default: dict):
+            d = d if d else {}
+
+            self.max_cores = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MaxCores, default
+            )
+            self.max_ram = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MaxRam, default
+            )
+
     class JanisConfigurationCromwell:
         class Keys(HashableEnum):
             JarPath = "jar"
@@ -290,6 +305,11 @@ class JanisConfiguration:
             default.get(JanisConfiguration.Keys.Notifications),
         )
 
+        self.environment = JanisConfiguration.JanisConfigurationEnvironment(
+            d.get(JanisConfiguration.Keys.Environment),
+            default.get(JanisConfiguration.Keys.Environment),
+        )
+
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
         self.searchpaths = sp if isinstance(sp, list) else [sp]
         env_sp = EnvVariables.search_path.resolve(False)
@@ -342,6 +362,7 @@ class JanisConfiguration:
             #     # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
             #     JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
             # },
+            JanisConfiguration.Keys.Environment: {},
             JanisConfiguration.Keys.Template: {
                 JanisConfiguration.JanisConfigurationTemplate.Keys.Id: "local"
             },
@@ -356,6 +377,8 @@ class JanisConfiguration:
         """
         The defaults listed are provided to the user on init, they should be
         bareboned to the options that a user may often want to configure.
+
+        These are not defaults during execution
         """
         deflt = {
             JanisConfiguration.Keys.OutputDir: EnvVariables.exec_dir.resolve(True),

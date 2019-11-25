@@ -154,8 +154,8 @@ class WorkflowManager:
             validation=validation_requirements,
             hints=hints,
             additional_inputs=inputs_dict,
-            max_cores=max_cores,
-            max_memory=max_memory,
+            max_cores=max_cores or jc.environment.max_cores,
+            max_memory=max_memory or jc.environment.max_ram,
         )
 
         outdir_workflow = tm.get_path_for_component(

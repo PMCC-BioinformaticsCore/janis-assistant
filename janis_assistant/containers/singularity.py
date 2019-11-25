@@ -67,8 +67,9 @@ class Singularity(Container):
 
             command.extend([self.container_path(), self.instancename])
             Logger.info("Starting singularity with command: " + " ".join(command))
-            out = subprocess.check_output(command, env=newenv)
-            Logger.log(out)
+
+            out = subprocess.check_output(command, env=newenv, stderr=subprocess.STDOUT)
+            Logger.log(f"Singularity output: {out}")
 
             startprocess = subprocess.Popen(
                 ["singularity", "run", "instance://" + self.instancename],

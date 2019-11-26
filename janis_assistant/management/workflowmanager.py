@@ -430,7 +430,7 @@ class WorkflowManager:
         )
 
         translator.translate(
-            workflow,
+            workflow_to_evaluate,
             to_console=False,
             to_disk=True,
             with_resource_overrides=True,

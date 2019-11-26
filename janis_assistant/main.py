@@ -199,6 +199,16 @@ def init_template(templatename, stream=None):
         ruamel.yaml.dump(outd, sys.stderr, default_flow_style=False)
 
 
+def parse_known_inputs(tool: j.Tool, inps: Dict):
+    q = {**inps}
+    inmap = tool.inputs_map()
+    for k in inps:
+        if k not in inmap:
+            continue
+        q[k] = inmap[k].intype.parse_value(inps[k])
+    return q
+
+
 def fromjanis(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
@@ -264,7 +274,8 @@ def fromjanis(
             raise Exception(
                 f"There were unrecognised inputs provided to the tool \"{wf.id()}\", keys: {', '.join(invalid_keys)}"
             )
-        inputsdict.update(required_inputs)
+
+        inputsdict.update(parse_known_inputs(wf, required_inputs))
 
     validate_inputs(wf, inputsdict)
 

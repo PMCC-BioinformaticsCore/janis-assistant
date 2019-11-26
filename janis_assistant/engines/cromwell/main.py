@@ -29,6 +29,7 @@ from janis_assistant.utils import (
     find_free_port,
 )
 from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.fileutil import tail
 from .cromwellconfiguration import CromwellConfiguration
 from ..engine import Engine, TaskStatus
 
@@ -168,18 +169,35 @@ class Cromwell(Engine):
         Logger.log(
             "Cromwell will start the HTTP server, reading logs to determine when this occurs"
         )
+
+        self._logfp = open(self.logfile, "a+")
+        Logger.info("Will log to file" if bool(self._logfp) else "Will NOT log to file")
+
         for c in iter(
             self._process.stdout.readline, "b"
         ):  # replace '' with b'' for Python 3
-            cd = c.decode("utf-8").rstrip()
 
-            if not cd:
+            rc = self._process.poll()
+            if rc is not None:
+                Logger.critical(
+                    f"Cromwell has exited with rc={rc}. The last lines of the logfile ({self.logfile}):"
+                )
+                Logger.critical(tail(self._logfp, 10))
+
+            line = c.decode("utf-8").rstrip()
+
+            if not line:
                 continue
 
-            Logger.log("Cromwell: " + cd)
+            if self._logfp and not self._logfp.closed:
+                self._logfp.write(line + "\n")
+                self._logfp.flush()
+                os.fsync(self._logfp.fileno())
+
+            Logger.log("Cromwell: " + line)
 
             # self.stdout.append(str(c))
-            if "service started on" in cd:
+            if "service started on" in line:
                 self.process_id = self._process.pid
                 Logger.info(
                     "Service successfully started with pid=" + str(self._process.pid)
@@ -191,10 +209,7 @@ class Cromwell(Engine):
         self.is_started = True
 
         if self._process:
-            self._logfp = open(self.logfile, "a+")
-            Logger.info(
-                "Will log to file" if bool(self._logfp) else "Will NOT log to file"
-            )
+
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
         return self
 

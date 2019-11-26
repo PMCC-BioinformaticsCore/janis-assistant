@@ -36,17 +36,14 @@ class ValidatorPipelineModifier(PipelineModifierBase):
 
         w = WorkflowBuilder(tool.id() + "_validated")
 
-        w.input("validatorReference", FastaWithDict, default=self.validation.reference)
-        w.input("validatorTruthVCF", Vcf, default=self.validation.truthVCF)
+        w.input("validatorReference", FastaWithDict, value=self.validation.reference)
+        w.input("validatorTruthVCF", Vcf, value=self.validation.truthVCF)
         w.input(
-            "validatorIntervals", Bed(optional=True), default=self.validation.intervals
+            "validatorIntervals", Bed(optional=True), value=self.validation.intervals
         )
 
-        inpdict = {
-            i.id(): w.input(i.id(), i.intype, default=i.default)
-            for i in tool.tool_inputs()
-        }
-        toolstp = w.step(tool.id(), tool, **inpdict)
+        inpdict = {i.id(): w.input(i.id(), i.intype) for i in tool.tool_inputs()}
+        toolstp = w.step(tool.id(), tool(**inpdict))
 
         if isinstance(tool, Workflow):
             wf: Workflow = tool
@@ -85,6 +82,6 @@ class ValidatorPipelineModifier(PipelineModifierBase):
 
         return w
 
-    def inputs_modifier(self, wf: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
-        wid = wf.id()
-        return {wid + "_" + k: v for k, v in inputs.items()}
+    # def inputs_modifier(self, wf: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
+    #     wid = wf.id()
+    #     return {wid + "_" + k: v for k, v in inputs.items()}

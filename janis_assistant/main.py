@@ -202,7 +202,6 @@ def init_template(templatename, stream=None):
 def fromjanis(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
-    env: Union[str, Environment] = None,
     engine: Union[str, Engine] = None,
     filescheme: Union[str, FileScheme] = LocalFileScheme(),
     validation_reqs=None,

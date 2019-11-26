@@ -46,7 +46,6 @@ def process_args(sysargs=None):
         "watch": do_watch,
         "abort": do_abort,
         "metadata": do_metadata,
-        "environment": do_environment,
         "query": do_query,
         "rm": do_rm,
         "cleanup": do_cleanup,
@@ -95,7 +94,6 @@ def process_args(sysargs=None):
             "metadata", help="Print all known metadata about a workflow"
         )
     )
-    # add_environment_args(subparsers.add_parser("environment"))
     add_query_args(
         subparsers.add_parser("query", help="Search known workflows by some criteria")
     )
@@ -222,12 +220,6 @@ def add_run_args(parser):
     from janis_core import HINTS, HintEnum
 
     parser.add_argument("workflow", help="Run the workflow defined in this file")
-    parser.add_argument(
-        "-n",
-        "--name",
-        help="If you have multiple workflows in your file, you may want to "
-        "help Janis out to select the right workflow to run",
-    )
 
     parser.add_argument(
         "-i",
@@ -242,96 +234,6 @@ def add_run_args(parser):
         "--output-dir",
         help="The output directory to which tasks are saved in, defaults to $HOME.",
     )
-    parser.add_argument(
-        "-r",
-        "--recipe",
-        help="Use a provided recipe from a provided template",
-        action="append",
-    )
-
-    parser.add_argument(
-        "--registry",
-        help="Skip looking through the search path, and only look in the registry",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "-e",
-        "--environment",
-        # choices=environments,
-        help="Select a preconfigured environment (takes precendence over engine and filescheme). "
-        "See the list of environments with `janis environment list`",
-    )
-    parser.add_argument(
-        "--engine", choices=EngineType.engines(), help="Choose an engine to start"
-    )
-    parser.add_argument(
-        "-f",
-        "--filescheme",
-        choices=["local", "ssh"],
-        default="local",
-        help="Choose the filescheme required to retrieve the output files where your engine is located. "
-        "By selecting SSH, Janis will SCP the files using the --filescheme-ssh-binding SSH shortcut.",
-    )
-    parser.add_argument(
-        "--filescheme-ssh-binding",
-        help="Only valid if you've selected the ssh filescheme. "
-        "(eg: scp cluster:/path/to/output local/output/dir)",
-    )
-    parser.add_argument("--cromwell-url", help="Location to Cromwell")
-
-    parser.add_argument(
-        "--keep-intermediate-files",
-        action="store_true",
-        help="Do not remove execution directory on successful complete",
-    )
-
-    parser.add_argument("--validation-reference", help="reference file for validation")
-    parser.add_argument("--validation-truth-vcf", help="truthVCF for validation")
-    parser.add_argument("--validation-intervals", help="intervals to validate between")
-    parser.add_argument(
-        "--validation-fields", nargs="+", help="outputs from the workflow to validate"
-    )
-
-    parser.add_argument(
-        "--dryrun",
-        help="convert workflow, and do everything except submit the workflow",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--no-watch",
-        help="Submit the workflow and return the task id",
-        action="store_true",
-    )
-
-    # parser.add_argument(
-    #     "--no-mysql",
-    #     help="Skip running mysql server for managed Cromwell",
-    #     # default=True,
-    #     action="store_true",
-    # )
-
-    parser.add_argument(
-        "--use-mysql",
-        action="store_true",
-        help="BETA: Run MySQL for persistence with Cromwell",
-    )
-
-    parser.add_argument(
-        "--max-cores",
-        type=int,
-        help="maximum number of cores to use when generating resource overrides",
-    )
-    parser.add_argument(
-        "--max-memory",
-        type=int,
-        help="maximum GB of memory to use when generating resource overrides",
-    )
-    parser.add_argument(
-        "--no-cache",
-        help="Force re-download of workflow if remote",
-        action="store_true",
-    )
 
     parser.add_argument(
         "--stay-connected",
@@ -340,18 +242,130 @@ def add_run_args(parser):
         help="useful for debugging when something doesn't start correctly",
     )
 
+    parser.add_argument(
+        "--no-watch",
+        help="Submit the workflow and return the task id",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--dryrun",
+        help="convert workflow, and do everything except submit the workflow",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--keep-intermediate-files",
+        action="store_true",
+        help="Do not remove execution directory on successful complete",
+    )
+
+    # input manipulation
+
+    inpmanip_args = parser.add_argument_group("input manipulation")
+
+    inpmanip_args.add_argument(
+        "-r",
+        "--recipe",
+        help="Use a provided recipe from a provided template",
+        action="append",
+    )
+
+    inpmanip_args.add_argument(
+        "--max-cores",
+        type=int,
+        help="maximum number of cores to use when generating resource overrides",
+    )
+    inpmanip_args.add_argument(
+        "--max-memory",
+        type=int,
+        help="maximum GB of memory to use when generating resource overrides",
+    )
+
     # add hints
+    hint_args = parser.add_argument_group("hints")
     for HintType in HINTS:
         if issubclass(HintType, HintEnum):
-            parser.add_argument("--hint-" + HintType.key(), choices=HintType.symbols())
+            hint_args.add_argument(
+                "--hint-" + HintType.key(), choices=HintType.symbols()
+            )
+
+    # workflow collection
+
+    wfcol_group = parser.add_argument_group("workflow collection arguments")
+
+    wfcol_group.add_argument(
+        "--registry",
+        help="Skip looking through the search path, and only look in the registry",
+        action="store_true",
+    )
+
+    wfcol_group.add_argument(
+        "-n",
+        "--name",
+        help="If you have multiple workflows in your file, you may want to "
+        "help Janis out to select the right workflow to run",
+    )
+
+    wfcol_group.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
+
+    engine_args = parser.add_argument_group("engine arguments")
+
+    engine_args.add_argument(
+        "--engine", choices=EngineType.engines(), help="Choose an engine to start"
+    )
+
+    engine_args.add_argument("--cromwell-url", help="Location to Cromwell")
+
+    # filescheme
+
+    fs_args = parser.add_argument_group("filescheme arguments")
+    fs_args.add_argument(
+        "-f",
+        "--filescheme",
+        choices=["local", "ssh"],
+        default="local",
+        help="Choose the filescheme required to retrieve the output files where your engine is located. "
+        "By selecting SSH, Janis will SCP the files using the --filescheme-ssh-binding SSH shortcut.",
+    )
+
+    fs_args.add_argument(
+        "--filescheme-ssh-binding",
+        help="Only valid if you've selected the ssh filescheme. "
+        "(eg: scp cluster:/path/to/output local/output/dir)",
+    )
+
+    validation_args = parser.add_argument_group("validation arguments")
+
+    validation_args.add_argument(
+        "--validation-reference", help="reference file for validation"
+    )
+    validation_args.add_argument(
+        "--validation-truth-vcf", help="truthVCF for validation"
+    )
+    validation_args.add_argument(
+        "--validation-intervals", help="intervals to validate between"
+    )
+    validation_args.add_argument(
+        "--validation-fields", nargs="+", help="outputs from the workflow to validate"
+    )
+
+    # beta features
+
+    beta_args = parser.add_argument_group("beta features")
+
+    beta_args.add_argument(
+        "--use-mysql",
+        action="store_true",
+        help="BETA: Run MySQL for persistence with Cromwell",
+    )
 
     parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
 
-    return parser
-
-
-def add_environment_args(parser):
-    parser.add_argument("method", choices=["list", "create", "delete"], default="list")
     return parser
 
 
@@ -494,7 +508,6 @@ def do_run(args):
         args.workflow,
         name=args.name,
         validation_reqs=v,
-        env=args.environment,
         engine=args.engine,
         filescheme=args.filescheme,
         hints=hints,

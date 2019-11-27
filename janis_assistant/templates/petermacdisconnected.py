@@ -14,6 +14,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
         catchSlurmErrors=True,
+        sendSlurmEmails=False,
     ):
 
         buildinstructions = (

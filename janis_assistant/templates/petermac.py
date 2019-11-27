@@ -11,7 +11,7 @@ class PeterMacTemplate(SlurmSingularityTemplate):
         containerDir="/config/binaries/singularity/containers_devel/janis/",
         singularityVersion="3.4.0",
         sendSlurmEmails=False,
-        catchSlurmErrors=False,
+        catchSlurmErrors=True,
         singularityBuildInstructions=None,
         max_cores=40,
         max_ram=256,

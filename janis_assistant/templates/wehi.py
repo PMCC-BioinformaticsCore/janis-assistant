@@ -33,7 +33,7 @@ class WEHITemplate(PbsSingularityTemplate):
 
         # Very cromwell specific at the moment, need to generalise this later
         if not singularityBuildInstructions:
-            singularityBuildInstructions = "singularity pull image docker://${docker}"
+            singularityBuildInstructions = "singularity pull $image docker://${docker}"
 
         super().__init__(
             mail_program="sendmail -t",

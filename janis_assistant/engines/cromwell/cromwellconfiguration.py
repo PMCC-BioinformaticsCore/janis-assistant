@@ -497,6 +497,7 @@ String? docker""".strip(),
             -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime
     """,
                 )
+                return torq
 
             @classmethod
             def aws(cls, s3_bucket, queue_arn):

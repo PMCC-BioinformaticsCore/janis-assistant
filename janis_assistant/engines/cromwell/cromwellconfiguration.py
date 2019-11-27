@@ -74,6 +74,10 @@ class CromwellConfiguration(Serializable):
     Based on information provided by: https://github.com/broadinstitute/cromwell/blob/develop/cromwell.examples.conf
     """
 
+    JOBNAME_TRANSFORM = (
+        '${sub(sub(cwd, ".*call-", ""), "/", "-")}-cpu-${cpu}-mem-${memory_mb}'
+    )
+
     class Webservice(Serializable):
         def __init__(
             self, port=None, interface=None, binding_timeout=None, instance_name=None
@@ -189,6 +193,7 @@ class CromwellConfiguration(Serializable):
                     submit_docker=None,
                     runtime_attributes=None,
                     kill=None,
+                    kill_docker=None,
                     check_alive=None,
                     job_id_regex=None,
                     concurrent_job_limit=None,
@@ -215,7 +220,8 @@ class CromwellConfiguration(Serializable):
 
                     self.submit = submit
                     self.submit_docker = ("submit-docker", submit_docker)
-                    self.kill = ("kill", kill)
+                    self.kill = kill
+                    self.kill_docker = ("kill-docker", kill_docker)
                     self.check_alive = ("check-alive", check_alive)
                     self.job_id_regex = ("job-id-regex", job_id_regex)
                     self.run_in_background = ("run-in-background", run_in_background)
@@ -230,17 +236,6 @@ class CromwellConfiguration(Serializable):
             ):
                 self.actor_factory = ("actor-factory", actor_factory)
                 self.config = config
-
-            @classmethod
-            def udocker(cls):
-                return cls(
-                    actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
-                    config=cls.Config(
-                        run_in_background=True,
-                        runtime_attributes="String? docker",
-                        submit_docker="udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}",
-                    ),
-                )
 
             @classmethod
             def slurm(cls):
@@ -331,7 +326,7 @@ String? docker
             {cgroups_creation}
 
             # Submit the script to SLURM
-            jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
+            jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
             JOBID=$(sbatch \\
                 --parsable \\
                 -J $jobname \\
@@ -407,105 +402,100 @@ String? docker""".strip(),
                 )
                 return config
 
-            @classmethod
-            def slurm_udocker(cls):
-                slurm = cls.slurm()
-
-                slurm.config.runtime_attributes = (
-                    slurm.config.runtime_attributes[0],
-                    """
-Int runtime_minutes = 600
-Int cpu = 2
-Int requested_memory_mb_per_core = 8000
-String? queue
-String? docker""",
-                )
-                slurm.config.submit = None
-                slurm.config.submit_docker = (
-                    slurm.config.submit_docker[0],
-                    """
-sbatch -J ${job_name} -D ${cwd} -o ${cwd}/execution/stdout -e ${cwd}/execution/stderr ${"-p " + queue} \\
-    -t ${runtime_minutes} ${"-c " + cpu} --mem-per-cpu=${requested_memory_mb_per_core} \\
-    --wrap "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" """,
-                )
-                return slurm
-
             # noinspection PyPep8
             @classmethod
-            def torque(cls):
+            def torque(cls, queue):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
                 """
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
-                        runtime_attributes="""
-    Int cpu = 1
-    Float memory_gb = 1
-    String queue = "batch"
-    String walltime = "00:10:00"
-    String mem = "1gb"
+                        runtime_attributes=f"""
+    String queue = "{queue}"
+    Int runtime_minutes = 1439
+    Int? cpu = 1
+    Int memory_mb = 3500
      """,
                         submit="""
     chmod +x ${script}
     echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
         -l walltime=${walltime} -l mem=${mem}
             """,
-                        job_id_regex="(\\d+).*",
+                        job_id_regex="(\\\\d+).*",
                         kill="qdel ${job_id}",
                         check_alive="qstat ${job_id}",
                     ),
                 )
 
             @classmethod
-            def torque_udocker(cls):
+            def torque_singularity(
+                cls,
+                queue,
+                singularityloadinstructions,
+                singularitycontainerdir,
+                buildinstructions,
+                send_job_updates,
+            ):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
                 """
-                torque = cls.torque()
-                torque.config.submit = None
-                torque.config.submit_docker = (
-                    "submit-docker",
-                    """
-    chmod +x ${script}
-    udocker pull ${docker}
-    echo "udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${mem}""",
-                )
-                return torque
-                # return cls(
-                #     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
-                #     config=cls.Config(
-                #         runtime_attributes="""
-                # Int cpu = 1
-                # Float memory_gb = 1
-                # String queue = "batch"
-                # String walltime = "00:10:00"
-                # String mem = "1gb"
-                #  """,
-                #         submit="""
-                # qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-                #     -l walltime=${walltime} -l mem=${mem} udocker run --rm -v ${cwd}:${docker_cwd} ${docker} ${job_shell} ${script}
-                #         """,
-                #         job_id_regex="(\\d+).*",
-                #         kill="qdel ${job_id}",
-                #         check_alive="qstat ${job_id}"
-                #     )
-                # )
 
-            @classmethod
-            def torque_singularity(cls):
-                """
-                Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
-                """
-                torq = cls.torque()
+                from janis_assistant.management.configuration import JanisConfiguration
+
+                torq = cls.torque(queue)
+
+                emailparams = ""
+                email = JanisConfiguration.manager().notifications.email
+                if send_job_updates:
+                    if not email:
+                        Logger.info(
+                            "Skipping send_job_updates for Torque as no email was found in the configuration"
+                        )
+                    else:
+                        emailparams = f"-m ea -M {email}"
+
+                loadinstructions = (
+                    (singularityloadinstructions + " &&")
+                    if singularityloadinstructions
+                    else ""
+                )
+
+                torq.config.kill_docker = (torq.config.kill_docker[0], torq.config.kill)
+
+                torq.config.runtime_attributes = (
+                    torq.config.runtime_attributes[0],
+                    """\
+    Int runtime_minutes = 1440
+    Int? cpu = 1
+    Int memory_mb = 3500
+    String? docker""",
+                )
 
                 torq.config.submit_docker = (
                     "submit-docker",
-                    """
-qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-    -l walltime=${walltime} -l mem=${mem} ${script}
-                """,
+                    f"""
+    docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
+    image={singularitycontainerdir}/$docker_subbed.sif
+    jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
+    walltime=$(echo $(({{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
+
+    if [ ! -f image ]; then
+        {singularityloadinstructions}
+        {buildinstructions}
+    fi
+    
+    echo \
+        "{loadinstructions} \\
+        && singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}" |\\
+        qsub \
+            -v ${{cwd}} \\
+            -N $jobname \\
+            {emailparams} \\
+            -o ${{cwd}}/execution/stdout \\
+            -e ${{cwd}}/execution/stderr \\
+            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime
+    """,
                 )
 
             @classmethod

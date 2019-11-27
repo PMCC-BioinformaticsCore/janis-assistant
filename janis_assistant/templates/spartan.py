@@ -22,7 +22,7 @@ class SpartanTemplate(SlurmSingularityTemplate):
         max_cores=32,
         max_ram=508,
     ):
-        singload = "module load singularity"
+        singload = "module load Singularity"
         if singularityVersion:
             singload += "/" + str(singularityVersion)
 

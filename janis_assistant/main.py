@@ -162,7 +162,50 @@ def generate_inputs(
     )
 
 
-def init_template(templatename, stream=None):
+import argparse
+
+
+class InitArgParser(argparse.ArgumentParser):
+    def __init__(self, templatename, schema):
+        super().__init__(f"janis init {templatename}")
+        # self.add_usage(
+        #     , self._actions, self._mutually_exclusive_groups
+        # )
+
+        self.templatename = templatename
+        self.required_args = set()
+
+        for s in schema:
+            action = None
+
+            if s.type == bool:
+                action = "store_true"
+            if not s.optional:
+                self.required_args.add(s.identifier)
+            self.add_argument(
+                "--" + s.identifier, action=action, required=not s.optional, help=s.doc
+            )
+
+    def parse_args(self, args=None, namespace=None):
+        parsed = vars(super().parse_args(args, namespace))
+
+        # confirm parsed args
+        filtered_args = {p: v for p, v in parsed.items() if parsed[p] is not None}
+        missing_args = self.required_args - set(filtered_args.keys())
+        if len(missing_args) > 0:
+            self.error(f"expected arguments: {', '.join(missing_args)}")
+
+        return filtered_args
+
+    def error(self, message):
+        sys.stderr.write(
+            f"There was an error initializing '{self.templatename}': {message}\n"
+        )
+        self.print_help()
+        sys.exit(2)
+
+
+def init_template(templatename, stream=None, unparsed_init_args=None):
     """
     :param templatename:
     :param force:
@@ -178,9 +221,15 @@ def init_template(templatename, stream=None):
         schema = janistemplates.get_schema_for_template(
             janistemplates.templates[templatename]
         )
+
+        # parse extra params
+
+        parser = InitArgParser(templatename, schema)
+        parsed = parser.parse_args(unparsed_init_args)
+
         outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
         outd[JanisConfiguration.Keys.Template] = {
-            s.id(): s.default for s in schema if s.default or not s.optional
+            s.id(): parsed[s.id()] for s in schema if s.identifier in parsed
         }
         outd[JanisConfiguration.Keys.Template][
             JanisConfiguration.JanisConfigurationTemplate.Keys.Id

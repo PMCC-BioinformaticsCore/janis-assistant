@@ -402,11 +402,12 @@ def check_logger_args(args):
 def add_init_args(args):
     args.add_argument("template", choices=jtemplates.keys())
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
+    args.add_argument("init_params", nargs=argparse.REMAINDER, default=[])
 
 
 def do_init(args):
     stream = sys.stdout if args.stdout else None
-    init_template(args.template, stream=stream)
+    init_template(args.template, stream=stream, unparsed_init_args=args.init_params)
 
 
 def do_version(_):

@@ -11,11 +11,14 @@ inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}
 
 
 class TemplateInput:
-    def __init__(self, identifier: str, type: Type, optional: bool, default=None):
+    def __init__(
+        self, identifier: str, type: Type, optional: bool, default=None, doc=None
+    ):
         self.identifier = identifier
         self.type = type
         self.optional = optional
         self.default = default
+        self.doc = doc
 
     def id(self):
         return self.identifier

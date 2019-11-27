@@ -478,7 +478,7 @@ String? docker""".strip(),
     docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
     image={singularitycontainerdir}/$docker_subbed.sif
     jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-    walltime=$(echo $(({{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
+    walltime=$(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
 
     if [ ! -f image ]; then
         {singularityloadinstructions}

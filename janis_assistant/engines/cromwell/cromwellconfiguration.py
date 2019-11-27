@@ -422,7 +422,7 @@ String? docker""".strip(),
     echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
         -l walltime=${walltime} -l mem=${memory_mb}
             """,
-                        job_id_regex="(\\\\d+).*",
+                        job_id_regex=".*",
                         kill="qdel ${job_id}",
                         check_alive="qstat ${job_id}",
                     ),

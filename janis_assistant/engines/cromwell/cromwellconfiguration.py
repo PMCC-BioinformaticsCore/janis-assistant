@@ -420,7 +420,7 @@ String? docker""".strip(),
                         submit="""
     chmod +x ${script}
     echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${mem}
+        -l walltime=${walltime} -l mem=${memory_mb}
             """,
                         job_id_regex="(\\\\d+).*",
                         kill="qdel ${job_id}",
@@ -463,6 +463,7 @@ String? docker""".strip(),
 
                 torq.config.kill_docker = (torq.config.kill_docker[0], torq.config.kill)
 
+                torq.config.submit = None
                 torq.config.runtime_attributes = (
                     torq.config.runtime_attributes[0],
                     """\

@@ -420,9 +420,9 @@ String? docker""".strip(),
                         submit="""
     chmod +x ${script}
     echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${memory_mb}
+        -l walltime=${walltime} -l mem=${memory_mb} --terse
             """,
-                        job_id_regex=".*",
+                        job_id_regex="(\\d+)",
                         kill="qdel ${job_id}",
                         check_alive="qstat ${job_id}",
                     ),
@@ -481,7 +481,7 @@ String? docker""".strip(),
     jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
     walltime='23:00:00' # $(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
 
-    if [ ! -f image ]; then
+    if [ ! -f $image ]; then
         {singularityloadinstructions}
         {buildinstructions}
     fi
@@ -490,6 +490,7 @@ String? docker""".strip(),
         "{loadinstructions} \\
         singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}" |\\
         qsub \
+            --terse \\
             -v ${{cwd}} \\
             -N $jobname \\
             {emailparams} \\

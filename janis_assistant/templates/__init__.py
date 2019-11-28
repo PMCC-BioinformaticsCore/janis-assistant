@@ -3,6 +3,7 @@ from typing import Type
 
 from janis_core import Logger
 
+from janis_assistant.utils.docparser_info import parse_docstring
 from .base import EnvironmentTemplate
 from .templates import templates
 
@@ -40,6 +41,9 @@ def from_template(name, options) -> EnvironmentTemplate:
 
 def get_schema_for_template(template):
     argspec = inspect.signature(template.__init__)
+    docstrings = parse_docstring(template.__init__.__doc__)
+    paramlist = docstrings.get("params", [])
+    paramdocs = {p["name"]: p.get("doc") for p in paramlist if "name" in p}
 
     ins = []
     for inp in argspec.parameters.values():
@@ -53,8 +57,9 @@ def get_schema_for_template(template):
         annotation = (
             defaulttype if inp.annotation is inspect.Parameter.empty else inp.annotation
         )
+        doc = paramdocs.get(inp.name)
 
-        ins.append(TemplateInput(inp.name, annotation, optional, default))
+        ins.append(TemplateInput(inp.name, annotation, optional, default, doc=doc))
 
     return ins
 

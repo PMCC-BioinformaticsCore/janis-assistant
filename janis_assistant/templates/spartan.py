@@ -22,6 +22,19 @@ class SpartanTemplate(SlurmSingularityTemplate):
         max_cores=32,
         max_ram=508,
     ):
+        """Spartan template
+
+        Template for Melbourne University's Spartan Slurm cluster
+
+        :param executionDir: execution directory for Cromwell
+        :param queues: The queue to submit jobs to
+        :param containerDir:
+        :param singularityVersion:
+        :param sendSlurmEmails: Send SLURM job emails to the listed email address
+        :param catchSlurmErrors: Fail the task if Slurm kills the job (eg: memory / time)
+        :param max_cores: Override maximum number of cores (default: 32)
+        :param max_ram: Override maximum ram (default 508 [GB])
+        """
         singload = "module load Singularity"
         if singularityVersion:
             singload += "/" + str(singularityVersion)
@@ -40,6 +53,8 @@ class SpartanTemplate(SlurmSingularityTemplate):
             max_ram=max_ram,
         )
 
+
+class SpartanDisconnectedTemplate(SpartanTemplate):
     def submit_detatched_resume(self, wid, command):
         q = self.queues or "physical"
         jq = ", ".join(q) if isinstance(q, list) else q

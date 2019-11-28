@@ -324,6 +324,10 @@ String? docker
             lock_path={singularitycontainerdir}/$docker_subbed.lock
 
             {cgroups_creation}
+            
+            if [ ! -f "$image" ]; then
+              {buildinstructions}
+            fi
 
             # Submit the script to SLURM
             jobname={CromwellConfiguration.JOBNAME_TRANSFORM}

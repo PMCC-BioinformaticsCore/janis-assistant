@@ -1,5 +1,5 @@
 from janis_assistant.templates.local import LocalTemplate, LocalSingularityTemplate
-from janis_assistant.templates.pawsey import PawseyDisconnectedTemplate
+from janis_assistant.templates.pawsey import PawseyTemplate, PawseyDisconnectedTemplate
 from janis_assistant.templates.pbs import PbsSingularityTemplate
 from janis_assistant.templates.petermac import PeterMacTemplate
 from janis_assistant.templates.petermacdisconnected import PeterMacDisconnectedTemplate
@@ -22,5 +22,6 @@ templates = {
     "spartan-disconnected": SpartanDisconnectedTemplate,
     "pmac-disconnected": PeterMacDisconnectedTemplate,
     "wehi": WEHITemplate,
-    "pawsey": PawseyDisconnectedTemplate,
+    "pawsey": PawseyTemplate,
+    "pawsey-disconnected": PawseyDisconnectedTemplate,
 }

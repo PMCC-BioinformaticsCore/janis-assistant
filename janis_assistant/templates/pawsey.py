@@ -1,12 +1,13 @@
 import subprocess
 from typing import Union, List
 
+from janis_assistant.templates.slurm import SlurmSingularityTemplate
 from janis_core import Logger
 
 from janis_assistant.templates.petermac import PeterMacTemplate
 
 
-class PawseyDisconnectedTemplate(PeterMacTemplate):
+class PawseyTemplate(SlurmSingularityTemplate):
     """
     https://support.pawsey.org.au/documentation/display/US/Queue+Policies+and+Limits
 
@@ -23,10 +24,10 @@ class PawseyDisconnectedTemplate(PeterMacTemplate):
     def __init__(
         self,
         executionDir: str,
+        containerDir: str,
         queues: Union[str, List[str]] = "workq",
-        submissionQueue="longq",
-        containerDir="/config/binaries/singularity/containers_devel/janis/",
-        singularityVersion="3.4.0",
+        submissionQueue: str = "longq",
+        singularityVersion: str = "3.3.0",
         catchSlurmErrors=True,
         singularityBuildInstructions="singularity pull $image docker://${{docker}}",
         max_cores=28,
@@ -35,17 +36,22 @@ class PawseyDisconnectedTemplate(PeterMacTemplate):
 
         self.submission_queue = submissionQueue
 
+        singload = "module load singularity"
+        if singularityVersion:
+            singload += "/" + str(singularityVersion)
+
         super().__init__(
             executionDir=executionDir,
             queues=queues,
             containerDir=containerDir,
-            singularityVersion=singularityVersion,
             catchSlurmErrors=catchSlurmErrors,
-            singularityBuildInstructions=singularityBuildInstructions,
+            buildInstructions=singularityBuildInstructions,
             max_cores=max_cores,
             max_ram=max_ram,
         )
 
+
+class PawseyDisconnectedTemplate(PawseyTemplate):
     def submit_detatched_resume(self, wid, command):
         q = self.queues
         jq = ", ".join(q) if isinstance(q, list) else q

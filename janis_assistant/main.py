@@ -409,7 +409,7 @@ def get_engine_from_eng(eng, wid, logfile, confdir, watch=True, **kwargs):
         return eng.start_engine()
 
     if eng == "cromwell":
-        url = kwargs.get("cromwell_url")
+        url = kwargs.get("cromwell_url") or JanisConfiguration.manager().cromwell.url
         if url:
             Logger.info("Found cromwell_url: " + url)
         return Cromwell(

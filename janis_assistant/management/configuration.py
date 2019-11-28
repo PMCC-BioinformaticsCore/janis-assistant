@@ -99,6 +99,7 @@ class JanisConfiguration:
         class Keys(HashableEnum):
             JarPath = "jar"
             ConfigPath = "configPath"
+            Url = "url"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -109,6 +110,8 @@ class JanisConfiguration:
             self.configpath = JanisConfiguration.get_value_for_key(
                 d, self.Keys.ConfigPath, default
             )
+
+            self.url = JanisConfiguration.get_value_for_key(d, self.Keys.Url, default)
 
     class JanisConfigurationRecipes:
         class Keys(HashableEnum):

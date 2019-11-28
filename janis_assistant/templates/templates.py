@@ -4,7 +4,10 @@ from janis_assistant.templates.pbs import PbsSingularityTemplate
 from janis_assistant.templates.petermac import PeterMacTemplate
 from janis_assistant.templates.petermacdisconnected import PeterMacDisconnectedTemplate
 from janis_assistant.templates.slurm import SlurmSingularityTemplate
-from janis_assistant.templates.spartan import SpartanTemplate
+from janis_assistant.templates.spartan import (
+    SpartanTemplate,
+    SpartanDisconnectedTemplate,
+)
 from janis_assistant.templates.wehi import WEHITemplate
 
 templates = {
@@ -16,6 +19,7 @@ templates = {
     # location specific templates
     "pmac": PeterMacTemplate,
     "spartan": SpartanTemplate,
+    "spartan-disconnected": SpartanDisconnectedTemplate,
     "pmac-disconnected": PeterMacDisconnectedTemplate,
     "wehi": WEHITemplate,
     "pawsey": PawseyDisconnectedTemplate,

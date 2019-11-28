@@ -16,13 +16,18 @@ class PeterMacTemplate(SlurmSingularityTemplate):
         max_cores=40,
         max_ram=256,
     ):
-        """
-        :param executionDir:
-        :param queues:
-        :param containerDir:
-        :param singularityVersion:
-        :param sendSlurmEmails:
-        :param catchSlurmErrors:
+        """Peter Mac (login node) template
+
+        Template to run Janis / Cromwell at the Peter MacCallum Cancer Centre (Rosalind)
+
+        :param executionDir: Execution directory
+        :param queues: The queue to submit jobs to
+        :param containerDir: [OPTIONAL] Override the directory singularity containers are stored in
+        :param singularityVersion: The version of Singularity to use on the cluster
+        :param sendSlurmEmails: Send Slurm job notifications using the provided email
+        :param catchSlurmErrors: Fail the task if Slurm kills the job (eg: memory / time)
+        :param max_cores: Override maximum number of cores (default: 32)
+        :param max_ram: Override maximum ram (default 508 [GB])
         :param singularityBuildInstructions: Sensible default for PeterMac template
         """
 

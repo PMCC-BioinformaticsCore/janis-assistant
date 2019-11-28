@@ -28,6 +28,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
             containerDir=containerDir,
             singularityVersion=singularityVersion,
             catchSlurmErrors=catchSlurmErrors,
+            sendSlurmEmails=sendSlurmEmails,
             singularityBuildInstructions=buildinstructions,
         )
 

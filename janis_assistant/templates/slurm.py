@@ -16,7 +16,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         catchSlurmErrors=False,
         buildInstructions=f"singularity pull $image docker://${{docker}}",
         singularityLoadInstructions=None,
-        limitResources=True,
+        limitResources=False,
         max_cores=None,
         max_ram=None,
     ):

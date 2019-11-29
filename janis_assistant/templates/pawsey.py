@@ -30,7 +30,7 @@ class PawseyTemplate(SlurmSingularityTemplate):
         singularityVersion: str = "3.3.0",
         catchSlurmErrors=True,
         sendSlurmEmails=True,
-        singularityBuildInstructions="singularity pull $image docker://${{docker}}",
+        singularityBuildInstructions="singularity pull $image docker://${docker}",
         max_cores=28,
         max_ram=128,
     ):
@@ -48,6 +48,7 @@ class PawseyTemplate(SlurmSingularityTemplate):
             catchSlurmErrors=catchSlurmErrors,
             sendSlurmEmails=sendSlurmEmails,
             buildInstructions=singularityBuildInstructions,
+            singularityLoadInstructions=singload,
             max_cores=max_cores,
             max_ram=max_ram,
         )

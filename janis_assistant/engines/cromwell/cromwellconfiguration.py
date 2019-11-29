@@ -424,7 +424,7 @@ String? docker""".strip(),
                         submit="""
     chmod +x ${script}
     echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${memory_mb} --terse
+        -l walltime=${walltime} -l mem=${memory_mb}
             """,
                         job_id_regex="^(\\d+).*",
                         kill="qdel ${job_id}",
@@ -440,6 +440,7 @@ String? docker""".strip(),
                 singularitycontainerdir,
                 buildinstructions,
                 send_job_updates,
+                afternotokaycatch=False,
             ):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
@@ -448,6 +449,10 @@ String? docker""".strip(),
                 from janis_assistant.management.configuration import JanisConfiguration
 
                 torq = cls.torque(queue)
+
+                afternotokaycommand = ""
+                if afternotokaycatch:
+                    afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub depend=afternotok:$JOBID)"
 
                 emailparams = ""
                 email = JanisConfiguration.manager().notifications.email
@@ -493,13 +498,15 @@ String? docker""".strip(),
     echo \
         "{loadinstructions} \\
         singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}" |\\
-        qsub \\
+        JOBID=$(qsub \\
             -v ${{cwd}} \\
             -N $jobname \\
             {emailparams} \\
             -o ${{cwd}}/execution/stdout \\
             -e ${{cwd}}/execution/stderr \\
-            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime
+            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime  | awk 'match($0,/[0-9]+/){{print substr($0, RSTART, RLENGTH)}}')  \\
+        {afternotokaycommand} \\
+        && echo $JOBID
     """,
                 )
                 return torq

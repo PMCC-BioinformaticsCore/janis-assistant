@@ -33,7 +33,7 @@ class PeterMacDisconnectedTemplate(PeterMacTemplate):
         )
 
     def submit_detatched_resume(self, wid, command):
-        q = self.queues or "prod_short"
+        q = "janis"
         jq = ", ".join(q) if isinstance(q, list) else q
         jc = " ".join(command) if isinstance(command, list) else command
         newcommand = [

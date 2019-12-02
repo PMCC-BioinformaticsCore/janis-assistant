@@ -175,14 +175,20 @@ class InitArgParser(argparse.ArgumentParser):
         self.templatename = templatename
         self.required_args = set()
 
+        required_parser = self.add_argument_group("required arguments")
+        optional_parser = self.add_argument_group("optional arguments")
+
         for s in schema:
             action = None
 
             if s.type == bool:
                 action = "store_true"
+
+            group = optional_parser
             if not s.optional:
+                group = required_parser
                 self.required_args.add(s.identifier)
-            self.add_argument(
+            group.add_argument(
                 "--" + s.identifier, action=action, required=not s.optional, help=s.doc
             )
 
@@ -219,7 +225,7 @@ def init_template(templatename, stream=None, unparsed_init_args=None):
 
     if templatename:
         schema = janistemplates.get_schema_for_template(
-            janistemplates.templates[templatename]
+            janistemplates.get_template(templatename)
         )
 
         # parse extra params

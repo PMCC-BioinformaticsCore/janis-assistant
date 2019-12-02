@@ -5,7 +5,7 @@ from janis_core import Logger
 
 from janis_assistant.utils.docparser_info import parse_docstring
 from .base import EnvironmentTemplate
-from .templates import get_template
+from .templates import get_template, get_template_names
 
 
 inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}

@@ -1,4 +1,5 @@
 janis-pipelines.core
+janis-pipelines.templates
 black
 pre-commit
 requests

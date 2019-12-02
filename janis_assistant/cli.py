@@ -7,7 +7,7 @@ import ruamel.yaml
 import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
-from janis_assistant.templates.templates import templates as jtemplates
+from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.management.configuration import JanisConfiguration
 
@@ -400,7 +400,7 @@ def check_logger_args(args):
 
 
 def add_init_args(args):
-    args.add_argument("template", choices=jtemplates.keys())
+    args.add_argument("template", choices=get_template_names())
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
     args.add_argument("init_params", nargs=argparse.REMAINDER, default=[])
 

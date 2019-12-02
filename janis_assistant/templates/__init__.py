@@ -5,7 +5,7 @@ from janis_core import Logger
 
 from janis_assistant.utils.docparser_info import parse_docstring
 from .base import EnvironmentTemplate
-from .templates import templates
+from .templates import get_template
 
 
 inspect_ignore_keys = {"self", "args", "kwargs", "cls", "template"}
@@ -26,7 +26,7 @@ class TemplateInput:
 
 
 def from_template(name, options) -> EnvironmentTemplate:
-    template = templates.get(name)
+    template = get_template(name)
     if not template:
         raise Exception(f"Couldn't find Configuration template with name: '{name}'")
 

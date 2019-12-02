@@ -12,6 +12,7 @@ from inspect import isclass
 import janis_core as j
 from typing import Optional, Dict, Union, Type, List
 
+from janis_assistant.templates import TemplateInput
 from janis_core.translations import TranslatorBase
 
 from janis_assistant.management.workflowmanager import WorkflowManager
@@ -166,7 +167,7 @@ import argparse
 
 
 class InitArgParser(argparse.ArgumentParser):
-    def __init__(self, templatename, schema):
+    def __init__(self, templatename, schema: List[TemplateInput]):
         super().__init__(f"janis init {templatename}")
         # self.add_usage(
         #     , self._actions, self._mutually_exclusive_groups
@@ -188,8 +189,13 @@ class InitArgParser(argparse.ArgumentParser):
             if not s.optional:
                 group = required_parser
                 self.required_args.add(s.identifier)
+
+            hlp = s.doc
+            if s.default:
+                hlp = f"(default: {s.default}) {hlp}"
+
             group.add_argument(
-                "--" + s.identifier, action=action, required=not s.optional, help=s.doc
+                "--" + s.identifier, action=action, required=not s.optional, help=hlp
             )
 
     def parse_args(self, args=None, namespace=None):

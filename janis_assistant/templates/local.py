@@ -9,6 +9,10 @@ from janis_assistant.engines.enginetypes import EngineType
 
 class LocalTemplate(EnvironmentTemplate):
     def __init__(self, executionDir=None, mailProgram: str = None):
+        """
+        :param executionDir: A location where the execution should take place
+        :param mailProgram: Mail program to pipe email to, eg: 'sendmail -t'
+        """
         super().__init__(mail_program=mailProgram)
 
         self.executionDir = executionDir
@@ -43,6 +47,14 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
         containerBuildInstructions="singularity pull $image docker://${{docker}}",
         mailProgram: str = None,
     ):
+        """
+
+        :param executionDir: A location where the execution should take place
+        :param containerDir: Location where to save and execute containers from
+        :param singularityLoadInstructions: Ensure singularity with this command executed in shell
+        :param containerBuildInstructions: Instructions for building singularity, it's recommended to not touch this setting.
+        :param mailProgram: Mail program to pipe email to, eg: 'sendmail -t'
+        """
         super().__init__(
             mail_program=mailProgram,
             containerDir=containerDir,

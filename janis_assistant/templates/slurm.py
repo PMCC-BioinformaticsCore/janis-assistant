@@ -20,6 +20,19 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         max_cores=None,
         max_ram=None,
     ):
+        """
+        :param executionDir: A location where the execution should take place
+        :param containerDir: Location where to save and execute containers from
+        :param queues: A single or list of queues that work should be submitted to
+        :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
+        :param catchSlurmErrors: Catch Slurm errors (like OOM or walltime)
+        :param sendSlurmEmails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
+        :param buildInstructions: Instructions for building singularity, it's recommended to not touch this setting.
+        :param singularityLoadInstructions: Ensure singularity with this command executed in shell
+        :param limitResources: Limit resources with singularity using cgroups (REQUIRES ROOT)
+        :param max_cores: Maximum number of cores a task can request
+        :param max_ram: Maximum amount of ram (GB) that a task can request
+        """
 
         super().__init__(
             mail_program=mail_program,

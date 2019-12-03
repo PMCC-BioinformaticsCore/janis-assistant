@@ -39,3 +39,8 @@ def get_template(templatename: str):
 def get_template_names():
     load_templates_if_required()
     return list(set(additional_templates.keys()).union(inbuilt_templates.keys()))
+
+
+def get_all_templates():
+    load_templates_if_required()
+    return {**inbuilt_templates, **additional_templates}

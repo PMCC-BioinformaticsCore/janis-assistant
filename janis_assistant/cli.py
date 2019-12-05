@@ -7,6 +7,8 @@ import ruamel.yaml
 import tabulate
 
 from janis_core.enums.supportedtranslations import SupportedTranslations
+
+from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.management.configuration import JanisConfiguration
@@ -40,6 +42,7 @@ class DefaultHelpArgParser(argparse.ArgumentParser):
 def process_args(sysargs=None):
     cmds = {
         "version": do_version,
+        "docs": do_docs,
         "run": do_run,
         "translate": do_translate,
         "inputs": do_inputs,
@@ -99,6 +102,7 @@ def process_args(sysargs=None):
     )
 
     subparsers.add_parser("version", help="Print the versions of Janis and exit")
+    subparsers.add_parser("docs", help="Attempts to open ")
 
     # add_cleanup_args(subparsers.add_parser("cleanup"))
 
@@ -432,6 +436,15 @@ def do_version(_):
             Logger.log_ex(e)
 
     print(tabulate(fields))
+
+
+def do_docs(args):
+    try:
+        import webbrowser
+
+        webbrowser.open(DOCS_URL)
+    except Exception as e:
+        Logger.critical(f"Failed to open {DOCS_URL} ({e})")
 
 
 def do_watch(args):

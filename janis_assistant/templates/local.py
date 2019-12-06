@@ -44,7 +44,7 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
         executionDir,
         containerDir,
         singularityLoadInstructions=None,
-        containerBuildInstructions=None,
+        containerBuildInstructions=f"singularity pull $image docker://${{docker}}",
         mailProgram: str = None,
     ):
         """

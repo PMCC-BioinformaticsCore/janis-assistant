@@ -2,8 +2,8 @@ language: python
 python:
 - '3.6'
 install:
-  - pip install -r requirements.txt
-  - pip install codecov coverage requests_mock nose_parameterized
+- pip install -r requirements.txt
+- pip install codecov coverage requests_mock nose_parameterized
 script: nosetests -w janis_assistant --with-coverage --cover-package=janis_assistant
 deploy:
   provider: pypi
@@ -11,6 +11,6 @@ deploy:
   distributions: sdist bdist_wheel
   on:
     tags: true
-    repo: PMCC-BioinformaticsCore/janis-runner
+    repo: PMCC-BioinformaticsCore/janis-assistant
   password:
-    secure: qnFM6S0V59CunCMvJH5aO9MqVijTR2YxQ5l0nNyYXkVEjFEG2glJEiHGziU4WfDbhjIYGNqxoKia4GHd584xVOdR3X+9T0Gkjx0lcNA9diFdyc+VkP7kbs8sxPqYUeoy+sp/cF9sh/JqZB4gOFuN8JPRlWuZGE3PGpVT7/ZHL67UKFw6mjenkQH9/hqVbAE2PFrykWy7vUHtMkcrcFvtSBgm4+gbBGGJ7PbcfvbKiy/I9je/4er3EXGOYqjF4cv89EkQu6RdmARhgzbhnerlOs0zJtUNWYx0iFSE8D592E1lUqyDMy5ChoTaNIB0UeV8YbnH5IzBbvritv19/vzfFp01gVvb0H9YEi6YdiuZxyRKXGgPpmJETzGVf51WjxuwfooUCobJTCvMnYTSfjIAlAGpwl/BLGgqSRPIekkqCDXoUgfjgBfEW2U7wtYPPOiqPj5ms2sSo/6ScBjHax7kIhFsqNAAGMdPxG3iUNZWV558Wh/lph2o6QuKkLJD53Lv7mCT0NhyPs7KyDymhxVPyk5mV+yGfZYBKSY4zjOq/uFnFSdQX+SzkESvRA1jGuRZFBjH2c3eb82XnTVAC7Xy79ucKMU+74byQiObJQN2UKFrj48JrsoOkWXfWqpNS675hL2Azb7uf2LDR3832bMMZ72D+clJXV4/B71wVIANnb4=
+    secure: laLTrhzklU71XVaa43tS2CgWLXDMAZiDO/c/3lzShvVAoNK1xaQZMRs7iEmOTsfOP0rCXAmJwRdNLcY2pmQOu5g/ctFO75tbll5vZZ2KxlZZVAjqnRrWwg7YbkqNt2X5JvhsKHGQNah9zbajLVHQHN4hgQm3GnqT4hOlID6UMPZDksWU4VWBEZ/RZiCQfgIHN8c3vdJ8PSULoa0ImB+y9Jw8W+jH6hsTZgzUgNxVKjVzh+8OgDYPEhGHIHWV/VcpSo20EGkH0rCTK0NsSI+S8JWHlvSgJ0XycDIpGw7cr25JTJo70KrTkFNFOJXa/dQ0poNmZisDYfY/KobgKoL2S4tv/qF4m1D4nEVoiOI67cWeq7bNnxzdsQwSC+d21cHMDjqP1iMsRjMRDzFLa7j3OG6L6PyAO3KWNjnzpv9bbmfsycrc+EWs7CX4JfYq2caXbDWMxGnHr3MhdLVBecO9EaIDFUgo5glVORU+tPFBbFs59K4Xr+q8oKroKpX80IQDa9gBA0/bB+HJVkrG/Kfo7q8TaQ5VwRWoQaL8SNorCPxUNd1DYNWi/qm7+ifppRhVxYiDQCkcchb7WOznJqDhnFxm90VpDohLoNFnEprKxUL/pdEVDSJjDNhxrW9jhoIApz44PjJ9ZCjtud4maccKLfse18jYwyk6npfPBVpHeII=

@@ -41,10 +41,10 @@ class LocalTemplate(EnvironmentTemplate):
 class LocalSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        executionDir=None,
-        containerDir="/config/binaries/singularity/containers_devel/janis/",
+        executionDir,
+        containerDir,
         singularityLoadInstructions=None,
-        containerBuildInstructions="singularity pull $image docker://${{docker}}",
+        containerBuildInstructions=None,
         mailProgram: str = None,
     ):
         """

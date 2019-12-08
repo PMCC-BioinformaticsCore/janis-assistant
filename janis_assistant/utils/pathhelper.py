@@ -162,7 +162,7 @@ def get_janis_from_module_spec(spec, include_commandtools=False):
 
     potentials = []
     for k, ptype in spec.__dict__.items():
-        if isinstance(ptype, Workflow):
+        if isinstance(ptype, Workflow) or isinstance(ptype, CommandTool):
             potentials.append((k, ptype))
             continue
         if not callable(ptype):

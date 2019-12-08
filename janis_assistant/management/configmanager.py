@@ -166,7 +166,8 @@ class ConfigManager:
                     model = metadb.to_model()
                     model.outdir = row.outputdir
                     relevant[row.wid] = model
-            except:
+            except Exception as e:
+                Logger.critical(f"Couldn't check workflow '{row.wid}': {e}")
                 failed.append(row.wid)
 
         if failed:

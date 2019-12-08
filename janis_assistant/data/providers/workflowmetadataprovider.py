@@ -64,7 +64,7 @@ class WorkflowMetadataDbProvider(KvDB):
             finish=self.finish,
             execution_dir=self.execution_dir,
             engine=self.engine.id() if self.engine else None,
-            filesystem=self.filesystem.id() if self.filesystem else None,
+            filesystem=self.filescheme.id() if self.filescheme else None,
             labels=self.labels,
             error=self.error,
             author=self.author,

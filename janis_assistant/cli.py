@@ -23,6 +23,7 @@ from janis_assistant.main import (
     init_template,
     resume,
     abort_wids,
+    spider_tool,
 )
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.utils import parse_additional_arguments
@@ -54,6 +55,7 @@ def process_args(sysargs=None):
         "cleanup": do_cleanup,
         "init": do_init,
         "resume": do_resume,
+        "spider": do_spider,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -98,6 +100,9 @@ def process_args(sysargs=None):
         subparsers.add_parser(
             "metadata", help="Print all known metadata about a workflow"
         )
+    )
+    add_spider_args(
+        subparsers.add_parser("spider", help="Get information about a tool")
     )
     add_query_args(
         subparsers.add_parser("query", help="Search known workflows by some criteria")
@@ -147,6 +152,20 @@ def add_logger_args(parser):
 def add_watch_args(parser):
     parser.add_argument("wid", help="Workflow id")
     return parser
+
+
+def add_spider_args(parser):
+    parser.add_argument("tool", help="Tool to find")
+    parser.add_argument("--registry", help="Only look for tools in the registry")
+    parser.add_argument(
+        "--name",
+        help="Optional name of workflow if there are multiple workflows in the tool",
+    )
+    parser.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
 
 
 def add_resume_args(parser):
@@ -549,6 +568,12 @@ def do_run(args):
     Logger.info("Exiting")
     print(wid, file=sys.stdout)
     raise SystemExit
+
+
+def do_spider(args):
+    spider_tool(
+        tool=args.tool, name=args.name, force=args.no_cache, registry_only=args.registry
+    )
 
 
 def do_inputs(args):

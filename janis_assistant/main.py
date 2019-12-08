@@ -142,6 +142,22 @@ def translate(
     return wfstr
 
 
+def spider_tool(
+    tool: Union[str, j.CommandTool, j.Workflow],
+    name=None,
+    force=False,
+    registry_only=False,
+):
+    toolref = resolve_tool(
+        tool, name, from_toolshed=True, force=force, only_registry=registry_only
+    )
+
+    if not toolref:
+        raise Exception(f"Couldn't find tool: '{tool}'")
+
+    print(toolref.help())
+
+
 def generate_inputs(
     tool: Union[str, j.CommandTool, j.Workflow],
     name=None,

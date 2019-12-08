@@ -69,7 +69,9 @@ def process_args(sysargs=None):
         subparsers.add_parser("init", help="Initialise a Janis configuration")
     )
     add_translate_args(
-        subparsers.add_parser("translate", help="Translate a janis workflow to ")
+        subparsers.add_parser(
+            "translate", help="Translate a janis workflow to CWL or WDL"
+        )
     )
     add_inputs_args(
         subparsers.add_parser(
@@ -102,7 +104,9 @@ def process_args(sysargs=None):
     )
 
     subparsers.add_parser("version", help="Print the versions of Janis and exit")
-    subparsers.add_parser("docs", help="Attempts to open ")
+    subparsers.add_parser(
+        "docs", help="Attempts to open Janis documentation using `webbrowser`"
+    )
 
     # add_cleanup_args(subparsers.add_parser("cleanup"))
 

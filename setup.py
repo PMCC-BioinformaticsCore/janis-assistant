@@ -35,6 +35,7 @@ setup(
         "sqlitedict",
         "tabulate",
         "ruamel.yaml >= 0.12.4, <= 0.15.77",
+        "cwltool",
     ],
     packages=["janis_assistant"] + modules,
     classifiers=[

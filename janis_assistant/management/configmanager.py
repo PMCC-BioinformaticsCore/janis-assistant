@@ -11,7 +11,7 @@ from janis_assistant.data.providers.janisdbprovider import TasksDbProvider, Task
 from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.management.workflowmanager import WorkflowManager
-from janis_assistant.utils import generate_new_id
+from janis_assistant.utils import generate_new_id, fully_qualify_filename
 from janis_assistant.validation import ValidationRequirements
 
 
@@ -84,9 +84,11 @@ class ConfigManager:
             and os.path.exists(outdir)
             and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
         ):
-            raise Exception(f"The specified output director '{outdir}' was not empty")
+            raise Exception(f"The specified output directory '{outdir}' was not empty")
 
-        od = outdir if outdir else os.path.join(config.outputdir, wf.id())
+        od = fully_qualify_filename(
+            outdir if outdir else os.path.join(config.outputdir, wf.id())
+        )
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()

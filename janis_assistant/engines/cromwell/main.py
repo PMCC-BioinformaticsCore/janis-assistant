@@ -84,6 +84,8 @@ class Cromwell(Engine):
         self.stdout = []
         self.error_message = None
 
+        self.connectionerrorcount = 0
+
         if not self.connect_to_instance:
 
             # To avoid conflicts between version of Cromwell, we'll find an open
@@ -405,14 +407,18 @@ class Cromwell(Engine):
         asset = releases.get("assets")[0]
         return asset.get("browser_download_url"), asset.get("name")
 
-    def poll_task(self, identifier) -> TaskStatus:
+    def poll_task(self, identifier) -> Optional[TaskStatus]:
         if self.error_message:
             return TaskStatus.FAILED
 
         url = self.url_poll(identifier=identifier)
-        r = requests.get(url)
-        res = r.json()
-        return cromwell_status_to_status(res["status"])
+        try:
+            r = requests.get(url)
+            res = r.json()
+            return cromwell_status_to_status(res["status"])
+        except Exception as e:
+            Logger.debug("Error polling Cromwell task:" + str(e))
+            return None
 
     def outputs_task(self, identifier):
         url = self.url_outputs(identifier=identifier)
@@ -535,6 +541,7 @@ class Cromwell(Engine):
         try:
             r = requests.get(url)
             r.raise_for_status()
+            self.connectionerrorcount = 0
             return CromwellMetadata(r.json())
 
         except requests.HTTPError as e:
@@ -550,6 +557,13 @@ class Cromwell(Engine):
                 Logger.warn(str(e))
             finally:
                 return None
+        except requests.ConnectionError as e:
+            self.connectionerrorcount += 1
+            if self.connectionerrorcount > 50:
+                raise e
+            else:
+                Logger.warn("Error connecting to cromwell instance: " + str(e))
+            return None
 
     def metadata(self, identifier, expand_subworkflows=True) -> Optional[WorkflowModel]:
         if self.error_message:

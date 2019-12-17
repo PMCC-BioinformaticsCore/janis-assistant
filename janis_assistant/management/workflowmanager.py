@@ -183,7 +183,7 @@ class WorkflowManager:
                 loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
                 command = ["janis", "--logLevel", loglevel, "resume", wid]
                 jc.template.template.submit_detatched_resume(wid, command)
-                Logger.log("Submitted detatched engine")
+                Logger.info("Submitted detatched engine")
 
                 if watch:
                     Logger.log("Watching submitted workflow")
@@ -237,7 +237,7 @@ class WorkflowManager:
             meta = self.database.get_metadata()
             print(meta.format())
 
-            return Logger.log(f"Workflow '{self.wid}' has already finished, skipping")
+            return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
 
         status = None
 
@@ -402,7 +402,7 @@ class WorkflowManager:
         if self.database.progressDB.saveWorkflow:
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
 
-        Logger.log(f"Saving workflow with id '{workflow.id()}'")
+        Logger.debug(f"Saving workflow with id '{workflow.id()}'")
 
         outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
         translator.translate(
@@ -419,7 +419,7 @@ class WorkflowManager:
             max_mem=max_memory,
         )
 
-        Logger.log(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")
+        Logger.info(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")
 
         modifiers = [InputFileQualifierModifier]
         if validation:
@@ -510,7 +510,7 @@ class WorkflowManager:
 
         engine = self.get_engine()
 
-        Logger.log(f"Submitting task '{self.wid}' to '{engine.id()}'")
+        Logger.debug(f"Submitting task '{self.wid}' to '{engine.id()}'")
         self._engine_wid = engine.start_from_paths(
             self.wid,
             fn_wf,
@@ -521,14 +521,14 @@ class WorkflowManager:
             ),
         )
         self.database.workflowmetadata.engine_wid = self._engine_wid
-        Logger.log(
+        Logger.info(
             f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
         )
         self.database.progressDB.submitWorkflow = True
 
     def save_metadata_if_required(self):
         if self.database.progressDB.savedMetadata:
-            return Logger.log(f"Workflow '{self.wid}' has saved metadata, skipping")
+            return Logger.debug(f"Workflow '{self.wid}' has saved metadata, skipping")
 
         engine = self.get_engine()
 
@@ -557,7 +557,7 @@ class WorkflowManager:
 
     def copy_outputs_if_required(self):
         if self.database.progressDB.copiedOutputs:
-            return Logger.log(f"Workflow '{self.wid}' has copied outputs, skipping")
+            return Logger.debug(f"Workflow '{self.wid}' has copied outputs, skipping")
 
         if self.database.workflowmetadata.status != TaskStatus.COMPLETED:
             return Logger.warn(
@@ -802,7 +802,7 @@ class WorkflowManager:
 
     def copy_logs_if_required(self):
         if not self.database.progressDB.savedLogs:
-            return Logger.log(f"Workflow '{self.wid}' has copied logs, skipping")
+            return Logger.debug(f"Workflow '{self.wid}' has copied logs, skipping")
 
         meta = self.save_metadata()
 
@@ -854,7 +854,7 @@ class WorkflowManager:
 
         if prev == status and not force_notification:
             return
-        Logger.log("Status changed to: " + str(status))
+        Logger.info("Status changed to: " + str(status))
         self.database.workflowmetadata.status = status
         self.database.commit()
         # send an email here

@@ -64,7 +64,7 @@ class CWLToolLogger(ProcessLogger):
                     self.process_metadataupdate_if_match(line)
 
                 else:
-                    Logger.log("cwltool: " + line)
+                    Logger.debug("cwltool: " + line)
 
                 if iserroring:
                     self.error = (self.error or "") + "\n" + line
@@ -87,7 +87,7 @@ class CWLToolLogger(ProcessLogger):
                     break
 
             j = ""
-            Logger.log("Process has completed")
+            Logger.info("Process has completed")
             if finalstatus == TaskStatus.COMPLETED:
                 for c in iter(self.process.stdout.readline, "s"):
                     if not c:
@@ -340,7 +340,7 @@ class CWLTool(Engine):
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
         self.taskmeta["status"] = TaskStatus.RUNNING
-        Logger.log("Running command: '" + " ".join(cmd) + "'")
+        Logger.debug("Running command: '" + " ".join(cmd) + "'")
         Logger.info("CWLTool has started with pid=" + str(process.pid))
         self.process_id = process.pid
 
@@ -355,7 +355,7 @@ class CWLTool(Engine):
         return wid
 
     def task_did_exit(self, logger: CWLToolLogger, status: TaskStatus):
-        Logger.log("CWLTool fired 'did exit'")
+        Logger.debug("CWLTool fired 'did exit'")
         self.taskmeta["status"] = status
         self.taskmeta["finish"] = DateUtil.now()
         self.taskmeta["outputs"] = logger.outputs

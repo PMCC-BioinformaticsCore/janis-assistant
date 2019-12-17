@@ -47,7 +47,7 @@ class Toil(Engine):
         scale = ["--scale", str(self.scale)] if self.scale else []
         loglevel = ["--logLevel=" + self.loglevel] if self.loglevel else []
         cmd = ["toil-cwl-runner", "--stats", *loglevel, *scale, source_path, input_path]
-        Logger.log("Running command: '" + " ".join(cmd) + "'")
+        Logger.debug("Running command: '" + " ".join(cmd) + "'")
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
@@ -58,7 +58,7 @@ class Toil(Engine):
             if "Path to job store directory is" in line:
                 idx = line.index("Path to job store directory is")
                 Logger.critical("JOBSTORE DIR: " + line[idx + 1 :])
-            Logger.log("toil: " + line)
+            Logger.debug("toil: " + line)
 
         print("finished")
 

@@ -69,7 +69,7 @@ class Singularity(Container):
             Logger.info("Starting singularity with command: " + " ".join(command))
 
             out = subprocess.check_output(command, env=newenv, stderr=subprocess.STDOUT)
-            Logger.log(f"Singularity output: {out}")
+            Logger.debug(f"Singularity output: {out}")
 
             startprocess = subprocess.Popen(
                 ["singularity", "run", "instance://" + self.instancename],
@@ -147,6 +147,6 @@ class Singularity(Container):
         )
         try:
             build_result = subprocess.check_output(command)
-            Logger.log(build_result)
+            Logger.debug(build_result)
         except subprocess.CalledProcessError as e:
             Logger.log_ex(e)

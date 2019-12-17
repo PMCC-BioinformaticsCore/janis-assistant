@@ -69,7 +69,7 @@ class WorkflowDbManager:
 
     def db_connection(self):
         path = self.get_sql_path()
-        Logger.log("Opening database connection to: " + path)
+        Logger.debug("Opening database connection to: " + path)
         try:
             return sqlite3.connect(path)
         except:

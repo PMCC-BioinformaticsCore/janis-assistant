@@ -71,7 +71,7 @@ def get_file_from_searchname(name, cwd):
     else:
         Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
 
-    Logger.log(
+    Logger.debug(
         f"Couldn't find a file with filename '{name}' in any of the following: "
         f"full path, current working directory ({cwd}) or the search path."
     )

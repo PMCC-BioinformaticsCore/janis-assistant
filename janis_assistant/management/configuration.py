@@ -204,7 +204,7 @@ class JanisConfiguration:
                     fpath = os.path.join(d, f)
                     parsed = self.parseable_yaml_filename_if_valid(fpath)
                     if not parsed:
-                        Logger.log(
+                        Logger.critical(
                             f"Skipping file within recipe directory '{fpath}' as it contained "
                             f"an unrecognised extension: '{os.path.splitext(fpath)[1]}"
                         )
@@ -277,7 +277,7 @@ class JanisConfiguration:
         d = d if d else {}
 
         extra = "" if d is None else " from loaded config"
-        Logger.log("Instantiating JanisConfiguration" + extra)
+        Logger.debug("Instantiating JanisConfiguration" + extra)
 
         self.configdir = self.get_value_for_key(
             d, JanisConfiguration.Keys.ConfigDir, default

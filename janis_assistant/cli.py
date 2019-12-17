@@ -428,6 +428,7 @@ def check_logger_args(args):
 
 def add_init_args(args):
     args.add_argument("template", choices=get_template_names())
+    args.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
     args.add_argument("init_params", nargs=argparse.REMAINDER, default=[])
 

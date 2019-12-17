@@ -154,19 +154,19 @@ class Cromwell(Engine):
         cmd.append(f"-Dwebservice.interface=127.0.0.1")
 
         if self.config_path and os.path.exists(self.config_path):
-            Logger.log("Using configuration file for Cromwell: " + self.config_path)
+            Logger.debug("Using configuration file for Cromwell: " + self.config_path)
             cmd.append("-Dconfig.file=" + self.config_path)
         cmd.extend(["-jar", cromwell_loc, "server"])
 
-        Logger.log(f"Starting Cromwell with command: '{' '.join(cmd)}'")
+        Logger.debug(f"Starting Cromwell with command: '{' '.join(cmd)}'")
         self._process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             # preexec_fn creates a process group https://stackoverflow.com/a/4791612/
             preexec_fn=os.setsid,
         )
-        Logger.log("Cromwell is starting with pid=" + str(self._process.pid))
-        Logger.log(
+        Logger.info("Cromwell is starting with pid=" + str(self._process.pid))
+        Logger.debug(
             "Cromwell will start the HTTP server, reading logs to determine when this occurs"
         )
 
@@ -194,7 +194,7 @@ class Cromwell(Engine):
                 self._logfp.flush()
                 os.fsync(self._logfp.fileno())
 
-            Logger.log("Cromwell: " + line)
+            Logger.debug("Cromwell: " + line)
 
             # self.stdout.append(str(c))
             if "service started on" in line:
@@ -239,7 +239,7 @@ class Cromwell(Engine):
         process = os.getpgid(int(self.process_id))
         if process:
             os.killpg(process, signal.SIGTERM)
-        Logger.log("Stopped cromwell")
+        Logger.info("Stopped cromwell")
         self.is_started = False
 
     # API

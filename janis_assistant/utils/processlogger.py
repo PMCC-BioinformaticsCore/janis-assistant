@@ -46,7 +46,7 @@ class ProcessLogger(threading.Thread):
                 if not line:
                     continue
                 has_error = self.error_keyword and self.error_keyword in line
-                (Logger.critical if has_error else Logger.log)(self.prefix + line)
+                (Logger.critical if has_error else Logger.debug)(self.prefix + line)
 
                 if self.logfp and not self.logfp.closed:
                     self.logfp.write(line + "\n")

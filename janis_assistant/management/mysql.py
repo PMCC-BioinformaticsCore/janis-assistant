@@ -27,7 +27,7 @@ class MySql(object):
     ):
         import os.path
 
-        Logger.log(
+        Logger.debug(
             f"Preparing {container.__name__} MySQL container with info: wid={wid}, port={forwardedport}, confdir={confdir}"
         )
 

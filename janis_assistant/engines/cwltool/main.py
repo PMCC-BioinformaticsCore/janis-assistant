@@ -325,7 +325,7 @@ class CWLTool(Engine):
             "jobs": {},
         }
 
-        cmd = ["cwltool", "--debug", *self.options, "--disable-color"]
+        cmd = ["cwltool", *self.options, "--disable-color"]
 
         # more options
         if execution_dir:

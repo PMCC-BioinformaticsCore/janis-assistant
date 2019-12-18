@@ -497,7 +497,7 @@ String? docker""".strip(),
             {emailparams} \\
             -o ${{cwd}}/execution/stdout \\
             -e ${{cwd}}/execution/stderr \\
-            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime  | awk 'match($0,/[0-9]+/){{print substr($0, RSTART, RLENGTH)}}')  \\
+            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime |  | sed 's/[^0-9]*//g')  \\
         {afternotokaycommand} \\
         && echo $JOBID
     """,

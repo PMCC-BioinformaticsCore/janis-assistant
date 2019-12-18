@@ -488,18 +488,18 @@ String? docker""".strip(),
         {buildinstructions}
     fi
     
-    echo \
+    JOBID=$(echo \
         "{loadinstructions} \\
         singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}" |\\
-        JOBID=$(qsub \\
+        qsub \\
             -v ${{cwd}} \\
             -N $jobname \\
             {emailparams} \\
             -o ${{cwd}}/execution/stdout \\
             -e ${{cwd}}/execution/stderr \\
-            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime |  | sed 's/[^0-9]*//g')  \\
-        {afternotokaycommand} \\
-        && echo $JOBID
+            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime | sed 's/[^0-9]*//g')  \\
+    {afternotokaycommand} \\
+    && echo $JOBID
     """,
                 )
                 return torq

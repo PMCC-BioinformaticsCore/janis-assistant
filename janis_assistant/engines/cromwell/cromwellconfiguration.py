@@ -490,7 +490,7 @@ String? docker""".strip(),
     
     JOBID=$(echo \
         "{loadinstructions} \\
-        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{script}}" |\\
+        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" |\\
         qsub \\
             -v ${{cwd}} \\
             -N $jobname \\

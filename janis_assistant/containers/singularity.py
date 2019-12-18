@@ -71,10 +71,10 @@ class Singularity(Container):
             out = subprocess.check_output(command, env=newenv, stderr=subprocess.STDOUT)
             Logger.debug(f"Singularity output: {out}")
 
+            singrun = ["singularity", "run", "instance://" + self.instancename]
+            Logger.debug("Started container, now running " + str(singrun))
             startprocess = subprocess.Popen(
-                ["singularity", "run", "instance://" + self.instancename],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                singrun, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
             self.run_logger = ProcessLogger(
                 startprocess,

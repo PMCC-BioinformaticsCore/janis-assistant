@@ -46,13 +46,13 @@ def get_file_from_searchname(name, cwd):
         cwd = os.getcwd()
     Logger.log(f"Searching for a file called '{name}'")
     resolved = os.path.expanduser(name)
-    if os.path.exists(resolved):
+    if os.path.exists(resolved) and os.path.isfile(resolved):
         Logger.log(f"Found file called '{name}'")
         return resolved
 
     Logger.log(f"Searching for file '{name}' in the cwd, '{cwd}'")
     with Path(cwd):
-        if os.path.exists(name):
+        if os.path.exists(name) and os.path.isfile(resolved):
             Logger.log(f"Found file in '{cwd}' called '{name}'")
             return name
 
@@ -65,7 +65,7 @@ def get_file_from_searchname(name, cwd):
             f"Got value for env JANIS_SEARCHPATH '{search_path}', searching for file '{name}' here."
         )
         with Path(search_path):
-            if os.path.exists(name):
+            if os.path.exists(name) and os.path.isfile(resolved):
                 Logger.log(f"Found file in '{search_path}' called '{name}'")
                 return search_path + name
     else:

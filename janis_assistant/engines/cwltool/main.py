@@ -40,7 +40,7 @@ class CWLToolLogger(ProcessLogger):
                 if not c:
                     continue
 
-                line = c.decode("utf-8").strip()
+                line = c.decode("utf-8").rstrip()
                 if not line:
                     continue
 
@@ -325,7 +325,7 @@ class CWLTool(Engine):
             "jobs": {},
         }
 
-        cmd = ["cwltool", *self.options, "--disable-color"]
+        cmd = ["cwltool", "--debug", *self.options, "--disable-color"]
 
         # more options
         if execution_dir:

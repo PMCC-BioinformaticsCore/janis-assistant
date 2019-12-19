@@ -11,6 +11,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         queue: str = None,
         mail_program=None,
         sendJobEmails=True,
+        catchPbsErrors=True,
         buildInstructions=f"singularity pull $image docker://${{docker}}",
         singularityLoadInstructions=None,
         max_cores=None,
@@ -39,6 +40,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         self.execution_dir = executionDir
         self.queue = queue
         self.send_job_emails = sendJobEmails
+        self.catch_pbs_errors = catchPbsErrors
 
     def cromwell(self):
 
@@ -53,6 +55,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
                         buildinstructions=self.singularity_build_instructions,
                         send_job_updates=self.send_job_emails,
                         queue=self.queue,
+                        afternotokaycatch=self.catch_pbs_errors,
                     )
                 },
             ),

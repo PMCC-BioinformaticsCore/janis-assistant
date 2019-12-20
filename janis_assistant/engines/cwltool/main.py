@@ -39,6 +39,14 @@ class CWLToolLogger(ProcessLogger):
             for c in iter(self.process.stderr.readline, "b"):
                 if self.should_terminate:
                     return
+
+                if self.process.poll() is not None:
+                    finalstatus = TaskStatus.ABORTED
+                    Logger.warn(
+                        f"CWLTool finished with rc={self.process.returncode} but janis "
+                        f"was unable to capture the workflow status. Marking as aborted"
+                    )
+                    break
                 if not c:
                     continue
 
@@ -78,14 +86,6 @@ class CWLToolLogger(ProcessLogger):
                         finalstatus = TaskStatus.COMPLETED
                     else:
                         finalstatus = TaskStatus.ABORTED
-                    break
-
-                elif self.process.poll() is not None:
-                    finalstatus = TaskStatus.ABORTED
-                    Logger.warn(
-                        f"CWLTool finished with rc={self.process.returncode} but janis "
-                        f"was unable to capture the workflow status. Marking as aborted"
-                    )
                     break
 
             j = ""

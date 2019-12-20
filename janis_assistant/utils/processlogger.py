@@ -39,6 +39,14 @@ class ProcessLogger(threading.Thread):
             ):  # replace '' with b'' for Python 3
                 if self.should_terminate:
                     return
+                rc = self.process.poll()
+                if rc is not None:
+                    # process has terminated
+                    self.rc = rc
+                    print("Process has ended")
+                    if self.exit_function:
+                        self.exit_function(rc)
+                    return
                 if not c:
                     continue
                 line = c.decode("utf-8").rstrip()
@@ -53,14 +61,14 @@ class ProcessLogger(threading.Thread):
                     self.logfp.flush()
                     os.fsync(self.logfp.fileno())
 
-                rc = self.process.poll()
-                if rc is not None or has_error:
+                if has_error:
                     # process has terminated
                     self.rc = rc
                     print("Process has ended")
                     if self.exit_function:
                         self.exit_function(rc)
                     return
+
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")

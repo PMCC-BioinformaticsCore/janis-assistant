@@ -136,6 +136,9 @@ def add_logger_args(parser):
         "-d", "--debug", help="log debug", dest="debug", action="store_true"
     )
     parser.add_argument(
+        "--verbose", "--logVerbose", help="log verbose", action="store_true"
+    )
+    parser.add_argument(
         "--logDebug", help="log debug", dest="debug", action="store_true"
     )
     parser.add_argument("--logInfo", help="log info", action="store_true")
@@ -143,7 +146,9 @@ def add_logger_args(parser):
     parser.add_argument("--logCritical", help="log critical", action="store_true")
     parser.add_argument("--logNone", help="log nothing", action="store_true")
     parser.add_argument(
-        "-L", "--logLevel", choices=["DEBUG", "INFO", "WARN", "CRITICAL", "NONE"]
+        "-L",
+        "--logLevel",
+        choices=["VERBOSE", "DEBUG", "INFO", "WARN", "CRITICAL", "NONE"],
     )
 
     return parser
@@ -409,7 +414,9 @@ def add_query_args(parser):
 
 
 def check_logger_args(args):
-    level = LogLevel.INFO
+    level = LogLevel.DEBUG
+    if args.verbose:
+        level = LogLevel.VERBOSE
     if args.debug:
         level = LogLevel.DEBUG
     if args.logInfo:

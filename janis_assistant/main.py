@@ -449,7 +449,7 @@ def get_engine_from_eng(eng, wid, logfile, confdir, watch=True, **kwargs):
             watch=watch,
         )
 
-    return get_engine_type(eng)(logfile=logfile, watch=watch)
+    return get_engine_type(eng)(logfile=logfile)
 
 
 def get_filescheme_from_fs(fs, **kwargs):

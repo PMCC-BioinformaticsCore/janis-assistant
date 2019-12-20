@@ -1,5 +1,6 @@
 import ruamel.yaml
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
+from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
 from janis_assistant.templates.base import (
     EnvironmentTemplate,
     SingularityEnvironmentTemplate,
@@ -83,15 +84,20 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
 
         return config
 
+    def cwltool(self):
+        config = CWLToolConfiguration()
+        config.singularity = True
+        # config.tmpdir_prefix = self.executionDir + "/"
+
+        return config
+
     def engine_config(self, engine: EngineType):
 
         if engine == EngineType.cromwell:
             return self.cromwell()
 
         elif engine == EngineType.cwltool:
-            raise NotImplementedError(
-                "Janis doesn't currently have a mechanism for configuring CWLTool for Singularity."
-            )
+            return self.cwltool()
 
         # Returning none will allow the engine to run with no config
         raise NotImplementedError(

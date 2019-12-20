@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Type, Optional
 
 from janis_core import Logger
 
@@ -49,8 +49,38 @@ class EnvironmentTemplate(ABC):
 
         configuration.container = self.containertype
 
+    def prejanis_hook(self) -> Optional[str]:
+        """
+        Before Janis starts to run anything, this block of code gets executed.
+        If a string is returned, it is executed in the current environment. This
+        block is also executed on a resume.
 
-class SingularityEnvironmentTemplate(EnvironmentTemplate):
+        This might be a good place to load relevant dependencies
+
+        :return: str: bash script to run
+        """
+        pass
+
+    def postjanis_success_hook(self) -> Optional[str]:
+        """
+        After a workflow successfully completes, this block of code is executed.
+        This might be a good place to unload dependencies if required.
+
+        :return: str: bash script to run
+        """
+        pass
+
+    def postjanis_failure_hook(self) -> Optional[str]:
+        """
+        If a workflow fails to complete, this block of code is executed.
+        This might be a good place to unload dependencies if required.
+
+        :return: str: bash script to run
+        """
+        pass
+
+
+class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(
         self,
         mail_program: str,

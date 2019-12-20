@@ -9,13 +9,12 @@ from janis_assistant.data.enums import TaskStatus
 
 
 class Engine(Archivable, ABC):
-    def __init__(self, identifier: str, engtype: EngineType, watch=True, logfile=None):
+    def __init__(self, identifier: str, engtype: EngineType, logfile=None):
         self.identifier = identifier
         self.engtype = engtype
         self.is_started = False
         self.process_id = None
         self.logfile = logfile
-        self.watch = watch
         self._logfp = None
 
     def id(self):

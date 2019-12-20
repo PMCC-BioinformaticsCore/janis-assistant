@@ -4,10 +4,12 @@ import re
 import subprocess
 from typing import Dict, Any
 
+from janis_core import LogLevel
 from janis_core.utils.logger import Logger
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
 from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
@@ -185,14 +187,31 @@ class CWLToolLogger(ProcessLogger):
 
 class CWLTool(Engine):
     def __init__(
-        self, logfile=None, identifier: str = "cwltool", options=None, watch=True
+        self,
+        logfile=None,
+        identifier: str = "cwltool",
+        config: CWLToolConfiguration = None,
     ):
-        super().__init__(identifier, EngineType.cwltool, logfile=logfile, watch=True)
-        self.options = options if options else []
+        super().__init__(identifier, EngineType.cwltool, logfile=logfile)
         self.process = None
         self._logger = None
 
         self.taskmeta = {}
+
+        self.find_or_generate_config(config)
+
+    def find_or_generate_config(self, config: CWLToolConfiguration):
+        from janis_assistant.management.configuration import JanisConfiguration
+
+        jc = JanisConfiguration.manager()
+
+        if config:
+            self.config = config
+        else:
+            self.config = (
+                jc.template.template.engine_config(EngineType.cwltool)
+                or CWLToolConfiguration()
+            )
 
     def test_connection(self):
         return bool(self.process_id)
@@ -324,23 +343,27 @@ class CWLTool(Engine):
             "status": TaskStatus.PROCESSING,
             "jobs": {},
         }
+        config = self.config
 
-        cmd = ["cwltool", *self.options, "--disable-color"]
+        if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
+            config.debug = True
+
+        config.disable_color = True
 
         # more options
-        if execution_dir:
-            cmd.extend(["--outdir", execution_dir])
+        if not config.tmpdir_prefix:
+            config.outdir = execution_dir + "/"
+            config.tmpdir_prefix = execution_dir + "/"
+            config.leave_tmpdir = True
 
-        cmd.append(source_path)
+        cmd = config.build_command_line(source_path, input_path)
 
-        if input_path:
-            cmd.append(input_path)
+        Logger.debug("Running command: '" + " ".join(cmd) + "'")
 
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
         )
         self.taskmeta["status"] = TaskStatus.RUNNING
-        Logger.debug("Running command: '" + " ".join(cmd) + "'")
         Logger.info("CWLTool has started with pid=" + str(process.pid))
         self.process_id = process.pid
 

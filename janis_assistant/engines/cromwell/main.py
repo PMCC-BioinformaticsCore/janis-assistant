@@ -120,7 +120,11 @@ class Cromwell(Engine):
             Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
             return False
 
-    def start_engine(self, additional_cromwell_options: List[str] = None):
+    def start_engine(
+        self,
+        additional_cromwell_options: List[str] = None,
+        defaultExecutionDir: str = None,
+    ):
 
         if self.test_connection():
             Logger.info("Engine has already been started")

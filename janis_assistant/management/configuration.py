@@ -13,6 +13,7 @@ class JanisConfiguration:
     class Keys(HashableEnum):
         ConfigDir = "configDir"
         OutputDir = "outputDir"
+        ExecutionDir = "executionDir"
         SearchPaths = "searchPaths"
         Engine = "engine"
         Environment = "environment"
@@ -287,6 +288,10 @@ class JanisConfiguration:
             d, JanisConfiguration.Keys.OutputDir, default
         )
 
+        self.executiondir = self.get_value_for_key(
+            d, JanisConfiguration.Keys.ExecutionDir, default
+        )
+
         self.engine = self.get_value_for_key(d, JanisConfiguration.Keys.Engine, default)
         self.cromwell = JanisConfiguration.JanisConfigurationCromwell(
             d.get(JanisConfiguration.Keys.Cromwell),
@@ -358,7 +363,8 @@ class JanisConfiguration:
 
         deflt = {
             JanisConfiguration.Keys.ConfigDir: EnvVariables.config_dir.resolve(True),
-            JanisConfiguration.Keys.OutputDir: EnvVariables.output_dir.resolve(True),
+            JanisConfiguration.Keys.OutputDir: EnvVariables.output_dir.resolve(False),
+            JanisConfiguration.Keys.ExecutionDir: EnvVariables.exec_dir.resolve(False),
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
             JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
             # JanisConfiguration.Keys.Cromwell: {
@@ -384,7 +390,6 @@ class JanisConfiguration:
         These are not defaults during execution
         """
         deflt = {
-            JanisConfiguration.Keys.OutputDir: EnvVariables.exec_dir.resolve(True),
             JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
             JanisConfiguration.Keys.Notifications: {
                 JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
@@ -394,6 +399,8 @@ class JanisConfiguration:
 
 
 def stringify_dict_keys_or_return_value(d):
+    if d is None:
+        return d
     if isinstance(d, list):
         return [stringify_dict_keys_or_return_value(dd) for dd in d]
     if isinstance(d, int) or isinstance(d, float) or isinstance(d, bool):

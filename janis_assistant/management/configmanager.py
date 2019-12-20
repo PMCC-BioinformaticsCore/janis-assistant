@@ -35,7 +35,8 @@ class ConfigManager:
 
         cp = os.path.dirname(config.dbpath)
         os.makedirs(cp, exist_ok=True)
-        os.makedirs(config.outputdir, exist_ok=True)
+        if config.outputdir:
+            os.makedirs(config.outputdir, exist_ok=True)
 
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
@@ -79,29 +80,46 @@ class ConfigManager:
     def create_task_base(self, wf: Workflow, outdir=None):
         config = JanisConfiguration.manager()
 
+        """
+        If you don't spec
+        
+        """
+
+        if not outdir and not config.outputdir:
+            raise Exception(
+                "You must provide an output directory (or specify an 'outpuDir' in your configuration)"
+            )
+
         if (
             outdir
             and os.path.exists(outdir)
             and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
         ):
+            # Todo: Remove this check when output directories can be reused
             raise Exception(f"The specified output directory '{outdir}' was not empty")
 
-        od = fully_qualify_filename(
-            outdir if outdir else os.path.join(config.outputdir, wf.id())
-        )
+        default_outdir = os.path.join(config.outputdir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()
         )
-
-        if os.path.exists(od):
-            forbiddenids = forbiddenids.union(set(os.listdir(od)))
+        if outdir:
+            forbiddenids = forbiddenids.union(set(os.listdir(outdir)))
+        else:
+            forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
 
         wid = generate_new_id(forbiddenids)
+
+        task_path = outdir
+        if not task_path:
+            od = default_outdir
+            dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+            task_path = os.path.join(od, f"{dt}_{wid}/")
+
+        task_path = fully_qualify_filename(task_path)
+
         Logger.info(f"Starting task with id = '{wid}'")
 
-        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-        task_path = os.path.join(od, "" if outdir else f"{dt}_{wid}/")
         row = TaskRow(wid, task_path)
         WorkflowManager.create_dir_structure(task_path)
         self.taskDB.insert_task(row)

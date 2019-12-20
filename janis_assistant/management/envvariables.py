@@ -37,7 +37,7 @@ class EnvVariables(HashableEnum):
         if self == EnvVariables.base_dir:
             return os.path.join(os.getenv("HOME"), "janis")
         if self == EnvVariables.output_dir:
-            return EnvVariables.base_dir.resolve(include_default=True)
+            return None
         elif self == EnvVariables.exec_dir:
             return os.path.join(
                 EnvVariables.base_dir.resolve(include_default=True), "execution/"
@@ -52,7 +52,9 @@ class EnvVariables(HashableEnum):
         raise Exception(f"Couldn't determine default() for '{self.value}'")
 
     def resolve(self, include_default=False):
-        value = getenv(self.value, self.default() if include_default else None)
+        value = getenv(self.value)
+        if value is None and include_default:
+            value = self.default()
         if self == EnvVariables.recipe_paths:
             return value.split(",") if value else None
         if self == EnvVariables.recipe_directory:

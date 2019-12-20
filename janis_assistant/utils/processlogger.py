@@ -49,6 +49,7 @@ class ProcessLogger(threading.Thread):
                     return
                 if not c:
                     continue
+
                 line = c.decode("utf-8").rstrip()
 
                 if not line:

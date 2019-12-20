@@ -30,10 +30,18 @@ class LocalTemplate(EnvironmentTemplate):
 
         return config
 
+    def cwltool(self):
+        config = CWLToolConfiguration()
+
+        return config
+
     def engine_config(self, engine: EngineType):
 
         if engine == EngineType.cromwell:
             return self.cromwell()
+
+        elif engine == EngineType.cwltool:
+            return self.cwltool()
 
         # Returning none will allow the engine to run with no config
         return None

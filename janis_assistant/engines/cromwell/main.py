@@ -61,10 +61,9 @@ class Cromwell(Engine):
         cromwelljar=None,
         config: CromwellConfiguration = None,
         config_path=None,
-        watch=True,
     ):
 
-        super().__init__(identifier, EngineType.cromwell, watch=watch, logfile=logfile)
+        super().__init__(identifier, EngineType.cromwell, logfile=logfile)
 
         # Heirarchy of configs:
         #   - Passed in config

@@ -104,9 +104,11 @@ class ConfigManager:
             t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()
         )
         if outdir:
-            forbiddenids = forbiddenids.union(set(os.listdir(outdir)))
+            if os.path.exists(outdir):
+                forbiddenids = forbiddenids.union(set(os.listdir(outdir)))
         else:
-            forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
+            if os.path.exists(default_outdir):
+                forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
 
         wid = generate_new_id(forbiddenids)
 

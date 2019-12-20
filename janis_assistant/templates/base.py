@@ -51,7 +51,7 @@ class EnvironmentTemplate(ABC):
 
     def prejanis_hook(self) -> Optional[str]:
         """
-        Before Janis starts to run anything, this block of code gets executed.
+        Before Janis starts to run a workflow, this block of code gets executed.
         If a string is returned, it is executed in the current environment. This
         block is also executed on a resume.
 

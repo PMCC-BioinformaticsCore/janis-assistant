@@ -9,26 +9,13 @@ from janis_assistant.engines.enginetypes import EngineType
 
 
 class LocalTemplate(EnvironmentTemplate):
-    def __init__(self, executionDir=None, mailProgram: str = None):
+    def __init__(self):
         """
-        :param executionDir: A location where the execution should take place
-        :param mailProgram: Mail program to pipe email to, eg: 'sendmail -t'
         """
-        super().__init__(mail_program=mailProgram)
-
-        self.executionDir = executionDir
+        super().__init__()
 
     def cromwell(self):
-        if not self.executionDir:
-            return None
-
-        config = CromwellConfiguration(
-            backend=CromwellConfiguration.Backend.with_new_local_exec_dir(
-                self.executionDir
-            )
-        )
-
-        return config
+        return CromwellConfiguration()
 
     def cwltool(self):
         config = CWLToolConfiguration()
@@ -50,7 +37,6 @@ class LocalTemplate(EnvironmentTemplate):
 class LocalSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        executionDir,
         containerDir,
         singularityLoadInstructions=None,
         containerBuildInstructions=f"singularity pull $image docker://${{docker}}",
@@ -58,7 +44,6 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
     ):
         """
 
-        :param executionDir: A location where the execution should take place
         :param containerDir: Location where to save and execute containers from
         :param singularityLoadInstructions: Ensure singularity with this command executed in shell
         :param containerBuildInstructions: Instructions for building singularity, it's recommended to not touch this setting.
@@ -71,11 +56,7 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
             loadInstructions=singularityLoadInstructions,
         )
 
-        self.executionDir = executionDir
-
     def cromwell(self):
-        if not self.executionDir:
-            return None
 
         config = CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
@@ -84,7 +65,6 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
                         singularityloadinstructions=self.singularity_load_instructions,
                         buildinstructions=self.singularity_build_instructions,
                         singularitycontainerdir=self.singularity_container_dir,
-                        executionDirectory=self.executionDir,
                     )
                 }
             )

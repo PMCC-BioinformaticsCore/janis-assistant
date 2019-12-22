@@ -11,6 +11,7 @@ from glob import glob
 from typing import Optional, List
 
 import requests
+from janis_core import LogLevel
 from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
 
@@ -61,9 +62,15 @@ class Cromwell(Engine):
         cromwelljar=None,
         config: CromwellConfiguration = None,
         config_path=None,
+        execution_dir: str = None,
     ):
 
-        super().__init__(identifier, EngineType.cromwell, logfile=logfile)
+        super().__init__(
+            identifier,
+            EngineType.cromwell,
+            logfile=logfile,
+            execution_dir=execution_dir,
+        )
 
         # Heirarchy of configs:
         #   - Passed in config
@@ -119,11 +126,7 @@ class Cromwell(Engine):
             Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
             return False
 
-    def start_engine(
-        self,
-        additional_cromwell_options: List[str] = None,
-        defaultExecutionDir: str = None,
-    ):
+    def start_engine(self, additional_cromwell_options: List[str] = None):
 
         if self.test_connection():
             Logger.info("Engine has already been started")
@@ -142,6 +145,7 @@ class Cromwell(Engine):
             return self
 
         if self.config:
+
             with open(self.config_path, "w+") as f:
                 f.writelines(self.config.output())
 
@@ -149,7 +153,10 @@ class Cromwell(Engine):
         cromwell_loc = self.resolve_jar(self.cromwelljar)
 
         Logger.info(f"Starting cromwell ({os.path.basename(cromwell_loc)})...")
-        cmd = ["java", "-DLOG_MODE=pretty"]
+        cmd = ["java", "-DLOG_MODE=standard"]
+
+        if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
+            cmd.append("-DLOG_LEVEL=DEBUG")
 
         if additional_cromwell_options:
             cmd.extend(additional_cromwell_options)
@@ -522,16 +529,17 @@ class Cromwell(Engine):
             self.config.system.cromwell_id_random_suffix = False
             self.config.system.job_shell = ("job-shell", "/bin/sh")
 
+        if self.config:
             if self.config.backend:
                 if len(self.config.backend.providers) == 1:
                     cnf: CromwellConfiguration.Backend.Provider = first_value(
                         self.config.backend.providers
                     )
                     if not cnf.config.root:
-                        cnf.config.root = EnvVariables.exec_dir.resolve(True)
+                        cnf.config.root = self.execution_dir
             else:
                 self.config.backend = CromwellConfiguration.Backend.with_new_local_exec_dir(
-                    EnvVariables.exec_dir.resolve(True)
+                    self.execution_dir
                 )
 
     def raw_metadata(

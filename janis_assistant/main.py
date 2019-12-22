@@ -432,9 +432,7 @@ def validate_inputs(wf, additional_inputs):
     raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
 
 
-def get_engine_from_eng(eng, wid, logfile, confdir, watch=True, **kwargs):
-    if isinstance(eng, Engine):
-        return eng.start_engine()
+def get_engine_from_eng(eng, wid, logfile, confdir, execdir: str, watch=True, **kwargs):
 
     if eng == "cromwell":
         url = kwargs.get("cromwell_url") or JanisConfiguration.manager().cromwell.url
@@ -446,10 +444,10 @@ def get_engine_from_eng(eng, wid, logfile, confdir, watch=True, **kwargs):
             confdir=confdir,
             host=url,
             cromwelljar=kwargs.get("cromwell_jar"),
-            watch=watch,
+            execution_dir=execdir,
         )
 
-    return get_engine_type(eng)(logfile=logfile)
+    return get_engine_type(eng)(logfile=logfile, execution_dir=execdir)
 
 
 def get_filescheme_from_fs(fs, **kwargs):

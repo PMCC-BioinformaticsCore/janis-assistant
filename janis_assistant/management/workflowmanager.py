@@ -744,7 +744,7 @@ class WorkflowManager:
         if (
             not keep_intermediate
             and status is not None
-            and status == str(TaskStatus.COMPLETED)
+            and status == TaskStatus.COMPLETED
         ):
             execdir = self.database.workflowmetadata.execution_dir
             if execdir and execdir != "None":

@@ -9,9 +9,12 @@ from janis_assistant.data.enums import TaskStatus
 
 
 class Engine(Archivable, ABC):
-    def __init__(self, identifier: str, engtype: EngineType, logfile=None):
+    def __init__(
+        self, identifier: str, engtype: EngineType, execution_dir: str, logfile=None
+    ):
         self.identifier = identifier
         self.engtype = engtype
+        self.execution_dir = execution_dir
         self.is_started = False
         self.process_id = None
         self.logfile = logfile
@@ -35,9 +38,7 @@ class Engine(Archivable, ABC):
         pass
 
     @abstractmethod
-    def start_from_paths(
-        self, wid, source_path: str, input_path: str, deps_path: str, execution_dir: str
-    ):
+    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         pass
 
     @abstractmethod

@@ -188,16 +188,20 @@ class CWLToolLogger(ProcessLogger):
 class CWLTool(Engine):
     def __init__(
         self,
+        execution_dir: str,
         logfile=None,
         identifier: str = "cwltool",
         config: CWLToolConfiguration = None,
     ):
-        super().__init__(identifier, EngineType.cwltool, logfile=logfile)
+        super().__init__(
+            identifier, EngineType.cwltool, logfile=logfile, execution_dir=execution_dir
+        )
         self.process = None
         self._logger = None
 
         self.taskmeta = {}
 
+        self.config = None
         self.find_or_generate_config(config)
 
     def find_or_generate_config(self, config: CWLToolConfiguration):
@@ -235,13 +239,6 @@ class CWLTool(Engine):
             Logger.critical("Couldn't terminate CWLTool as there was no processID")
 
         return self
-
-    def create_task(self, source=None, inputs=None, dependencies=None) -> str:
-        import uuid
-
-        print(self.id())
-
-        return str(uuid.uuid4())
 
     def poll_task(self, identifier) -> TaskStatus:
         return self.taskmeta.get("status", TaskStatus.PROCESSING)
@@ -335,9 +332,7 @@ class CWLTool(Engine):
             # executiondir=None,
         )
 
-    def start_from_paths(
-        self, wid, source_path: str, input_path: str, deps_path: str, execution_dir: str
-    ):
+    def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         self.taskmeta = {
             "start": DateUtil.now(),
             "status": TaskStatus.PROCESSING,
@@ -352,8 +347,8 @@ class CWLTool(Engine):
 
         # more options
         if not config.tmpdir_prefix:
-            config.outdir = execution_dir + "/"
-            config.tmpdir_prefix = execution_dir + "/"
+            config.outdir = self.execution_dir + "/"
+            config.tmpdir_prefix = self.execution_dir + "/"
             config.leave_tmpdir = True
 
         cmd = config.build_command_line(source_path, input_path)

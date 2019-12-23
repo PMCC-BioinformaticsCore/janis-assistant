@@ -128,7 +128,9 @@ class JanisConfiguration:
                 or {}
             )
             rps = JanisConfiguration.get_value_for_key(d, self.Keys.Paths, default)
-            self.recipe_paths = rps if isinstance(rps, list) else [rps]
+            self.recipe_paths = []
+            if rps:
+                self.recipe_paths = rps if isinstance(rps, list) else [rps]
 
             dirs = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Directories, default
@@ -162,7 +164,10 @@ class JanisConfiguration:
         def load_recipes(self, force=False):
             from os import listdir
 
-            if not force and (self._loaded_recipes or not self.recipe_paths):
+            if not force and (
+                self._loaded_recipes
+                or not (self.recipe_paths or self.recipe_directories)
+            ):
                 return
 
             import ruamel.yaml

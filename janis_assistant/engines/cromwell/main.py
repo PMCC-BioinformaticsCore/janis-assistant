@@ -195,6 +195,7 @@ class Cromwell(Engine):
                     f"Cromwell has exited with rc={rc}. The last lines of the logfile ({self.logfile}):"
                 )
                 Logger.critical(tail(self._logfp, 10))
+                return
 
             line = c.decode("utf-8").rstrip()
 

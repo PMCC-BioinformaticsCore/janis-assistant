@@ -478,12 +478,7 @@ class Cromwell(Engine):
         )
 
     def start_from_paths(
-        self,
-        wid: str,
-        source_path: str,
-        input_path: str,
-        deps_path: str,
-        execution_dir: str,
+        self, wid: str, source_path: str, input_path: str, deps_path: str
     ):
         """
         This does NOT watch, it purely schedule the jobs
@@ -527,9 +522,16 @@ class Cromwell(Engine):
                 self.config.system = CromwellConfiguration.System()
             self.config.system.cromwell_id = identifier
             self.config.system.cromwell_id_random_suffix = False
-            self.config.system.job_shell = ("job-shell", "/bin/sh")
+            self.config.system.job_shell = "/bin/sh"
 
         if self.config:
+            if self.config.call_caching:
+                self.config.call_caching.enabled = True
+            else:
+                self.config.call_caching = CromwellConfiguration.CallCaching(
+                    enabled=True
+                )
+
             if self.config.backend:
                 if len(self.config.backend.providers) == 1:
                     cnf: CromwellConfiguration.Backend.Provider = first_value(

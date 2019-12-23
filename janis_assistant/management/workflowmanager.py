@@ -511,15 +511,7 @@ class WorkflowManager:
         engine = self.get_engine()
 
         Logger.debug(f"Submitting task '{self.wid}' to '{engine.id()}'")
-        self._engine_wid = engine.start_from_paths(
-            self.wid,
-            fn_wf,
-            fn_inp,
-            fn_deps,
-            execution_dir=self.get_path_for_component(
-                self.WorkflowManagerPath.execution
-            ),
-        )
+        self._engine_wid = engine.start_from_paths(self.wid, fn_wf, fn_inp, fn_deps)
         self.database.workflowmetadata.engine_wid = self._engine_wid
         Logger.info(
             f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
@@ -746,7 +738,7 @@ class WorkflowManager:
             and status is not None
             and status == TaskStatus.COMPLETED
         ):
-            execdir = self.database.workflowmetadata.execution_dir
+            execdir = self.get_path_for_component(self.WorkflowManagerPath.execution)
             if execdir and execdir != "None":
                 Logger.info("Cleaning up execution directory")
                 self.environment.filescheme.rm_dir(execdir)

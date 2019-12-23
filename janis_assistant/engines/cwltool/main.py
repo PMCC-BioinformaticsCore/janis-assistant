@@ -221,7 +221,7 @@ class CWLTool(Engine):
         return bool(self.process_id)
 
     def start_engine(self):
-        Logger.info(
+        Logger.log(
             "Cwltool doesn't run in a server mode, an instance will "
             "automatically be started when a task is created"
         )
@@ -231,12 +231,15 @@ class CWLTool(Engine):
 
         # we're going to abort!
         if self.process_id:
-            import signal
+            try:
+                import signal
 
-            os.kill(self.process_id, signal.SIGTERM)
+                os.kill(self.process_id, signal.SIGTERM)
+            except Exception as e:
+                Logger.critical("Couldn't terminate CWLTool as " + str(e))
 
         else:
-            Logger.critical("Couldn't terminate CWLTool as there was no processID")
+            Logger.critical("Couldn't terminate CWLTool as there was no process ID")
 
         return self
 

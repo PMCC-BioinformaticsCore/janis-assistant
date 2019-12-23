@@ -268,21 +268,16 @@ def add_run_args(parser):
     )
 
     parser.add_argument(
-        "--stay-connected",
+        "-B",
+        "--background",
         action="store_true",
         default=False,
-        help="useful for debugging when something doesn't start correctly",
+        help="Run the workflow engine in the background (submit to a cluster if your template supports it)",
     )
 
     parser.add_argument(
-        "--no-watch",
-        help="Submit the workflow and return the task id",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--dryrun",
-        help="convert workflow, and do everything except submit the workflow",
+        "--progress",
+        help="Show the progress screen if running in the background",
         action="store_true",
     )
 
@@ -290,6 +285,14 @@ def add_run_args(parser):
         "--keep-intermediate-files",
         action="store_true",
         help="Do not remove execution directory on successful complete",
+    )
+
+    # development settings
+
+    parser.add_argument(
+        "--development",
+        action="store_true",
+        help="Apply common settings (--keep-execution-dir + --mysql) to support incremental development of a pipeline",
     )
 
     # input manipulation
@@ -391,7 +394,7 @@ def add_run_args(parser):
     beta_args = parser.add_argument_group("beta features")
 
     beta_args.add_argument(
-        "--use-mysql",
+        "--mysql",
         action="store_true",
         help="BETA: Run MySQL for persistence with Cromwell",
     )
@@ -549,6 +552,13 @@ def do_run(args):
         ins = required_inputs.pop("inputs")
         inputs.extend(ins if isinstance(ins, list) else [ins])
 
+    mysql = args.mysql
+    keep_intermediate_files = args.keep_intermediate_files is True
+
+    if args.development:
+        mysql = True
+        keep_intermediate_files = True
+
     wid = fromjanis(
         args.workflow,
         name=args.name,
@@ -557,24 +567,22 @@ def do_run(args):
         filescheme=args.filescheme,
         hints=hints,
         output_dir=args.output_dir,
-        dryrun=args.dryrun,
         inputs=inputs,
         required_inputs=required_inputs,
         filescheme_ssh_binding=args.filescheme_ssh_binding,
         cromwell_url=args.cromwell_url,
-        watch=not args.no_watch,
+        watch=args.progress,
         max_cores=args.max_cores,
         max_mem=args.max_memory,
         force=args.no_cache,
         recipes=args.recipe,
-        keep_intermediate_files=args.keep_intermediate_files,
-        should_disconnect=not (args.stay_connected is True),
-        skip_mysql=not args.use_mysql,
+        keep_intermediate_files=keep_intermediate_files,
+        should_disconnect=(args.background is True),
+        skip_mysql=not mysql,
         only_registry=args.registry,
     )
 
     Logger.info("Exiting")
-    print(wid, file=sys.stdout)
     raise SystemExit
 
 

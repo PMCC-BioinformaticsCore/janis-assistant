@@ -357,6 +357,7 @@ def fromjanis(
     validate_inputs(wf, inputsdict)
 
     row = cm.create_task_base(wf, outdir=output_dir)
+    print(row.wid, file=sys.stdout)
 
     engine = engine or jc.engine
 
@@ -400,7 +401,7 @@ def fromjanis(
             skip_mysql=skip_mysql,
         )
         Logger.log("Finished starting task task")
-        return tm.wid
+        return
 
     except KeyboardInterrupt:
         pass

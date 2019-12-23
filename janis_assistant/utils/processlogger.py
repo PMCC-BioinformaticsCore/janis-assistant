@@ -29,8 +29,13 @@ class ProcessLogger(threading.Thread):
     def terminate(self):
         self.should_terminate = True
         if self.logfp:
-            self.logfp.flush()
-            os.fsync(self.logfp.fileno())
+            try:
+                self.logfp.flush()
+                os.fsync(self.logfp.fileno())
+            except Exception as e:
+                # This isn't a proper error, there's nothing we could do
+                # and doesn't prohibit the rest of the shutdown of Janis.
+                Logger.critical("Couldn't flush engine stderr to disk: " + str(e))
 
     def run(self):
         try:

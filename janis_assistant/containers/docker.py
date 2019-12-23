@@ -36,8 +36,7 @@ class Docker(Container):
 
         if self.exposedports:
             for k, v in self.exposedports.items():
-                ex = f":{v}" if v else ""
-                command.extend(["-p", f"{k}{ex}"])
+                command.extend(["-p", f"127.0.0.1:{k}:{v or k}"])
 
         if self.instancename:
             command.extend(["--name", self.instancename])
@@ -93,7 +92,7 @@ class Docker(Container):
             Logger.critical("Docker exec_command failed")
             return (str(e), e.returncode)
 
-        return (val.strip() if val else val, 0)
+        return val.strip() if val else val, 0
 
     def ensure_downloaded(self):
         # meh it'll download itself anyway

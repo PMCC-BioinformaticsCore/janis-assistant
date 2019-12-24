@@ -90,13 +90,13 @@ class ConfigManager:
                 "You must provide an output directory (or specify an 'outpuDir' in your configuration)"
             )
 
-        if (
-            outdir
-            and os.path.exists(outdir)
-            and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
-        ):
-            # Todo: Remove this check when output directories can be reused
-            raise Exception(f"The specified output directory '{outdir}' was not empty")
+        # if (
+        #     outdir
+        #     and os.path.exists(outdir)
+        #     and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
+        # ):
+        #     # Todo: Remove this check when output directories can be reused
+        #     raise Exception(f"The specified output directory '{outdir}' was not empty")
 
         default_outdir = os.path.join(config.outputdir, wf.id())
 
@@ -169,7 +169,7 @@ class ConfigManager:
         ).fetchone()
         if not path:
             raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path(path[0])
+        return WorkflowManager.from_path_with_wid(path[0], wid=wid)
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 

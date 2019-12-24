@@ -9,6 +9,7 @@ from janis_assistant.data.models.workflowjob import WorkflowJobModel
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider
 from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
 from janis_assistant.data.providers.progressdbprovider import ProgressDbProvider
+from janis_assistant.data.providers.rundbprovider import RunDbProvider
 from janis_assistant.data.providers.versionsdbprovider import VersionsDbProvider
 from janis_assistant.data.providers.workflowmetadataprovider import (
     WorkflowMetadataDbProvider,
@@ -40,25 +41,52 @@ class WorkflowDbManager:
         object when getting metadata.
 
 
+    Update 2019-12-23:
+
+        You should be able to respecify the same output directory, which should
+        reuse results from your workflow. For this reason, we're going to scope everything by workflow ID.
+
+
     Every object here should have a class equivalent that the rest of the program interacts with.
     """
 
-    def __init__(self, path):
+    def __init__(self, wid: str, path):
         self.exec_path = path
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
 
         sqlpath = self.get_sql_path()
-        self.workflowmetadata = WorkflowMetadataDbProvider(sqlpath)
-        self.progressDB = ProgressDbProvider(sqlpath)
+        self.runs = RunDbProvider(db=self.connection, cursor=self.cursor)
+        self.workflowmetadata = WorkflowMetadataDbProvider(sqlpath, wid=wid)
+        self.progressDB = ProgressDbProvider(
+            db=self.connection, cursor=self.cursor, wid=wid
+        )
 
-        self.outputsDB = OutputDbProvider(db=self.connection, cursor=self.cursor)
-        self.jobsDB = JobDbProvider(db=self.connection, cursor=self.cursor)
+        self.outputsDB = OutputDbProvider(
+            db=self.connection, cursor=self.cursor, wid=wid
+        )
+        self.jobsDB = JobDbProvider(db=self.connection, cursor=self.cursor, wid=wid)
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath)
 
     @staticmethod
-    def get_workflow_metadatadb(execpath):
-        return WorkflowMetadataDbProvider(WorkflowDbManager.get_sql_path_base(execpath))
+    def get_workflow_metadatadb(execpath, wid):
+
+        sqlpath = WorkflowDbManager.get_sql_path_base(execpath)
+
+        if not wid:
+
+            Logger.debug("Opening database connection to get wid from: " + sqlpath)
+            try:
+                connection = sqlite3.connect(sqlpath)
+            except:
+                Logger.critical("Error when opening DB connection to: " + sqlpath)
+                raise
+
+            wid = RunDbProvider(db=sqlpath, cursor=connection.cursor()).get_latest()
+            if not wid:
+                raise Exception("Couldn't get WID in task directory")
+
+        return WorkflowMetadataDbProvider(sqlpath, wid)
 
     @staticmethod
     def get_sql_path_base(exec_path):
@@ -132,11 +160,6 @@ class WorkflowDbManager:
             self.connection.commit()
         else:
             Logger.critical("Couldn't commit to DB connection")
-
-        if self.connection:
-            self.progressDB.kvdb.commit()
-        else:
-            Logger.critical("Couldn't commit to workflow metadata DB connection")
 
     def close(self):
         self.connection.close()

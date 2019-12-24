@@ -31,7 +31,8 @@ class JobDbProvider(DbProviderBase):
     def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS jobs (
-            jid STRING PRIMARY KEY,
+            wid STRING,
+            jid STRING,
             parentjid NULLABLE STRING,
             name STRING,
             batchid STRING,
@@ -45,16 +46,20 @@ class JobDbProvider(DbProviderBase):
             cached BOOLEAN,
             stdout STRING,
             stderr STRING,
-            FOREIGN KEY (parentjid) REFERENCES jobs
+            PRIMARY KEY (wid, jid),
+            FOREIGN KEY (wid, parentjid) REFERENCES jobs(wid, parentjid)
         )
         """
 
-    def __init__(self, db, cursor):
+    def __init__(self, db, cursor, wid):
         super().__init__(db, cursor)
-        self.eventsDB = JobEventDbProvider(self.db, self.cursor)
+        self.wid = wid
+        self.eventsDB = JobEventDbProvider(self.db, self.cursor, self.wid)
 
     def get(self, jid: str) -> WorkflowJobModel:
-        self.cursor.execute("SELECT * FROM jobs WHERE jid = ?", (jid,))
+        self.cursor.execute(
+            "SELECT * FROM jobs WHERE wid = ? AND jid = ?", (self.wid, jid)
+        )
         row = self.cursor.fetchone()
         if not row:
             raise KeyError("Couldn't find output with id = " + jid)
@@ -67,7 +72,9 @@ class JobDbProvider(DbProviderBase):
         return parent
 
     def get_all_children(self, jids: List[str]) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs WHERE parentjid in ?", (jids,))
+        self.cursor.execute(
+            "SELECT * FROM jobs WHERE wid = ? AND parentjid in ?", (self.wid, jids)
+        )
         rows = self.cursor.fetchall()
         if not rows:
             return []
@@ -82,13 +89,13 @@ class JobDbProvider(DbProviderBase):
 
         return parsed
 
-    def get_all(self, tag: str) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs", (tag,))
+    def get_all(self) -> List[WorkflowJobModel]:
+        self.cursor.execute("SELECT * FROM jobs", (self.wid,))
         rows = self.cursor.fetchall()
         return [WorkflowJobModel.from_row(row) for row in rows]
 
     def get_all_mapped(self) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs")
+        self.cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
         rows = self.cursor.fetchall()
         alljobs = [WorkflowJobModel.from_row(row) for row in rows]
         events = self.eventsDB.get_all()
@@ -112,31 +119,15 @@ class JobDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO jobs (
-            jid, parentjid, name, batchid, shard, attempt, container, status,
+            wid, jid, parentjid, name, batchid, shard, attempt, container, status,
             start, finish, backend, cached, stdout, stderr
         ) VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-    # _update_statement = """\
-    #     UPDATE jobs SET
-    #         parentjid=?,
-    #         name=?,
-    #         batchid=?,
-    #         shard=?,
-    #         attempt=?,
-    #         container=?,
-    #         status=?,
-    #         start=?,
-    #         finish=?,
-    #         backend=?,
-    #         cached=?,
-    #         stdout=?,
-    #         stderr=?
-    #     WHERE jid = ?
-    #     """
 
     def _insert_model_obj(self, model: WorkflowJobModel):
         return (
+            self.wid,
             model.jid,
             model.parentjid,
             model.name,
@@ -173,12 +164,14 @@ class JobDbProvider(DbProviderBase):
         kvs = [(k, v) for k, v in obj.items() if v]
         mapped = ", ".join(f"{k[0]}=?" for k in kvs)
         return (
-            f"UPDATE jobs SET {mapped} WHERE jid= ? ",
-            [v[1] for v in kvs] + [model.jid],
+            f"UPDATE jobs SET {mapped} WHERE wid = ? AND jid = ? ",
+            [v[1] for v in kvs] + [self.wid, model.jid],
         )
 
     def update_or_insert_many(self, jobs: List[WorkflowJobModel]):
-        allidsr = self.cursor.execute("SELECT jid FROM jobs").fetchall()
+        allidsr = self.cursor.execute(
+            "SELECT jid FROM jobs WHERE wid = ?", (self.wid,)
+        ).fetchall()
         allids = set(r[0] for r in allidsr)
 
         inserts = []

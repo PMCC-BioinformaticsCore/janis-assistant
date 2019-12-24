@@ -479,7 +479,7 @@ def abort_wids(wids: List[str]):
     for wid in wids:
         try:
             row = ConfigManager.manager().taskDB.get_by_wid(wid)
-            WorkflowManager.mark_aborted(row.outputdir)
+            WorkflowManager.mark_aborted(row.outputdir, wid)
         except Exception as e:
             Logger.critical(f"Couldn't abort '{wid}': " + str(e))
 

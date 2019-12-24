@@ -14,12 +14,12 @@ class WorkflowOutputModel:
 
     def __init__(
         self,
-        tag,
-        original_path,
-        new_path,
-        timestamp,
-        prefix,
-        tags,
+        tag: str,
+        original_path: Optional[str],
+        new_path: Optional[str],
+        timestamp: Optional[str],
+        prefix: str,
+        tags: str,
         secondaries,
         extension,
     ):
@@ -55,9 +55,7 @@ class WorkflowOutputModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowOutputModel(
-            row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]
-        )
+        return WorkflowOutputModel(*row[1:])
 
     @staticmethod
     def from_array(array):

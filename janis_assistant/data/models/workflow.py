@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Optional, Union, List, Dict
+from datetime import datetime
+from typing import Union, List
 
+from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
 from janis_assistant.utils import second_formatter
-
-from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.utils.dateutil import DateUtil
-from janis_assistant.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 
 
 class WorkflowModel:

@@ -65,7 +65,7 @@ class WorkflowJobModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row)
+        return WorkflowJobModel(*row[1:])
 
     def format(self, pre):
 

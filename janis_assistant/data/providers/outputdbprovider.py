@@ -11,52 +11,59 @@ class OutputDbProvider(DbProviderBase):
     def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS outputs (
-            tag STRING PRIMARY KEY,
+            wid STRING,
+            tag STRING,
             original_path STRING,
             new_path STRING,
             timestamp NULLABLE STRING,
             prefix STRING,
             tags STRING,
             secondaries STRING,
-            extension STRING
+            extension STRING,
+            PRIMARY KEY (wid, tag)
         )
         """
 
-    def __init__(self, db, cursor):
+    def __init__(self, db, cursor, wid):
         super().__init__(db, cursor)
+        self.wid = wid
 
     def get(self, tag: str) -> WorkflowOutputModel:
-        self.cursor.execute("SELECT * FROM outputs WHERE tag = ?", (tag,))
+        self.cursor.execute(
+            "SELECT * FROM outputs WHERE wid = ?, tag = ?", (self.wid, tag)
+        )
         row = self.cursor.fetchone()
         if not row:
             raise KeyError("Couldn't find output with tag: " + tag)
         return WorkflowOutputModel.from_row(row)
 
     def get_all(self) -> List[WorkflowOutputModel]:
-        self.cursor.execute("SELECT * FROM outputs")
+        self.cursor.execute("SELECT * FROM outputs WHERE wid = ?", (self.wid,))
         rows = self.cursor.fetchall()
         return [WorkflowOutputModel.from_row(row) for row in rows]
 
     _insert_statement = """\
         INSERT INTO outputs
-            (tag, original_path, new_path, timestamp, prefix, tags, secondaries, extension)
+            (wid, tag, original_path, new_path, timestamp, prefix, tags, secondaries, extension)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     def insert_many(self, outputs: List[WorkflowOutputModel]):
         self.cursor.executemany(
-            self._insert_statement, [self._insert_model_obj(o) for o in outputs]
+            self._insert_statement,
+            [self._insert_model_obj(self.wid, o) for o in outputs],
         )
         self.commit()
 
     @staticmethod
-    def _insert_model_obj(model: WorkflowOutputModel):
+    def _insert_model_obj(wid, model: WorkflowOutputModel):
         prefix = WorkflowOutputModel.from_array(model.prefix)
         tags = WorkflowOutputModel.from_array(model.tags)
         secs = WorkflowOutputModel.from_array(model.secondaries)
 
         return (
+            wid,
             model.tag,
             model.originalpath,
             model.newpath,
@@ -68,7 +75,9 @@ class OutputDbProvider(DbProviderBase):
         )
 
     def insert(self, model: WorkflowOutputModel):
-        self.cursor.execute(self._insert_statement, self._insert_model_obj(model))
+        self.cursor.execute(
+            self._insert_statement, self._insert_model_obj(self.wid, model)
+        )
         self.commit()
 
     def update_paths(self, tag: str, original_path: str, new_path: str):
@@ -78,9 +87,9 @@ class OutputDbProvider(DbProviderBase):
                 original_path=?,
                 new_path=?,
                 timestamp=?
-            WHERE tag = ?
+            WHERE wid = ? AND tag = ?
             """,
-            (original_path, new_path, DateUtil.now(), tag),
+            (original_path, new_path, DateUtil.now(), self.wid, tag),
         )
         self.commit()
 

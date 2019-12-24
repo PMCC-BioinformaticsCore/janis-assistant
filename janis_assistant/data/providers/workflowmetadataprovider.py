@@ -14,15 +14,15 @@ class WorkflowMetadataDbProvider(KvDB):
 
     @staticmethod
     def new(dblocation: str, wid: str):
-        t = WorkflowMetadataDbProvider(dblocation)
+        t = WorkflowMetadataDbProvider(dblocation, wid)
 
         t.wid = wid
         t.start = datetime.now()
 
         return t
 
-    def __init__(self, dblocation):
-        super().__init__(dblocation, "workflow")
+    def __init__(self, dblocation, wid):
+        super().__init__(dblocation, "workflow-" + wid)
         self.kvdb.autocommit = False
         if WorkflowMetadataDbKeys.wid.value not in self.kvdb:
             # Initialise to give prompts to IDE

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type, Optional
+from typing import Type, Optional, List
 
 from janis_core import Logger
 
@@ -26,10 +26,11 @@ class EnvironmentTemplate(ABC):
     def engine_config(self, engine: EngineType):
         pass
 
-    def submit_detatched_resume(self, wid, command):
+    def submit_detatched_resume(self, wid: str, command: List[str], loglocation: str):
         import subprocess
 
         Logger.info("Starting Janis resume with " + str(command))
+
         subprocess.Popen(
             command,
             close_fds=True,

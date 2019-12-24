@@ -36,7 +36,7 @@ class Docker(Container):
 
         if self.exposedports:
             for k, v in self.exposedports.items():
-                command.extend(["-p", f"127.0.0.1:{k}:{v or k}"])
+                command.extend(["-p", f"{k}:{v or k}"])
 
         if self.instancename:
             command.extend(["--name", self.instancename])
@@ -50,7 +50,7 @@ class Docker(Container):
 
         except subprocess.CalledProcessError as e:
             raise Exception(
-                "An error occurred while starting a docker container: " + str(e)
+                f"An error occurred while starting a docker container: {e} ({e.output or e.stderr})"
             )
 
     def stop_container(self):
@@ -70,7 +70,7 @@ class Docker(Container):
         except subprocess.CalledProcessError as e:
             Logger.critical(
                 f"An error occurred when trying to stop the container '{self.container}'. "
-                f"You may need to stp this manually with: '{' '.join(cmd)}'. Error: "
+                f"You may need to stop this manually with: '{' '.join(cmd)}'. Error: "
                 + str(e)
             )
             raise e
@@ -89,7 +89,16 @@ class Docker(Container):
             )
 
         except subprocess.CalledProcessError as e:
-            Logger.critical("Docker exec_command failed")
+            Logger.critical(f"Docker exec_command failed '{e}': {e.output or e.stderr}")
+
+            # check the logs
+            try:
+                logs_command = ["docker", "logs", self.dockerid]
+                Logger.info("Checking docker logs: " + " ".join(logs_command))
+                Logger.debug(subprocess.check_output(logs_command))
+            except:
+                Logger.critical(f"Failed to get logs for container {self.dockerid}")
+
             return (str(e), e.returncode)
 
         return val.strip() if val else val, 0

@@ -118,7 +118,7 @@ class Singularity(Container):
             val = subprocess.check_output(cmd)
             return val.strip().decode() if val else val, 0
         except subprocess.CalledProcessError as e:
-            Logger.critical("Docker exec_command failed")
+            Logger.critical("Singularity exec_command failed")
             return str(e), e.returncode
 
     def ensure_downloaded(self):

@@ -87,18 +87,13 @@ class ConfigManager:
 
         if not outdir and not config.outputdir:
             raise Exception(
-                "You must provide an output directory (or specify an 'outpuDir' in your configuration)"
+                "You must provide an output directory (or specify an 'outputDir' in your configuration)"
             )
 
-        # if (
-        #     outdir
-        #     and os.path.exists(outdir)
-        #     and len([l for l in os.listdir(outdir) if not l.startswith(".")]) > 0
-        # ):
-        #     # Todo: Remove this check when output directories can be reused
-        #     raise Exception(f"The specified output directory '{outdir}' was not empty")
+        default_outdir = None
 
-        default_outdir = os.path.join(config.outputdir, wf.id())
+        if config.outputdir:
+            default_outdir = os.path.join(config.outputdir, wf.id())
 
         forbiddenids = set(
             t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()

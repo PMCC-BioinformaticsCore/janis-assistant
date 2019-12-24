@@ -8,8 +8,8 @@ from janis_assistant.templates.base import SingularityEnvironmentTemplate
 class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        executionDir: str,
         containerDir: str,
+        executionDir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
         sendSlurmEmails=True,
@@ -76,7 +76,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         beconfig: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
             config.backend.default
         ].config
-        beconfig.root = self.execution_dir
+        if self.execution_dir:
+            beconfig.root = self.execution_dir
         beconfig.filesystems = {
             "local": {
                 "localization": ["cached-copy", "hard-link", "soft-link", "copy"]

@@ -6,8 +6,8 @@ from janis_assistant.templates.base import SingularityEnvironmentTemplate
 class PbsSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        executionDir: str,
         containerDir: str,
+        executionDir: str = None,
         queue: str = None,
         mail_program=None,
         sendJobEmails=True,
@@ -64,7 +64,8 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         beconfig: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
             config.backend.default
         ].config
-        beconfig.root = self.execution_dir
+        if self.execution_dir:
+            beconfig.root = self.execution_dir
         beconfig.filesystems = {
             "local": {
                 "localization": ["cached-copy", "hard-link", "soft-link", "copy"]

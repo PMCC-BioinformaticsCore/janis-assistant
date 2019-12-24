@@ -32,17 +32,30 @@ class FileScheme(Archivable, abc.ABC):
         return self.identifier
 
     @abc.abstractmethod
-    def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+    def cp_from(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
         """
         :param source: Source to go from
         :param dest: Destination to go to
+        :param force: Force override the file if it exists
         :param report_progress: function that a FileScheme can report progress to
         :return:
         """
         pass
 
     @abc.abstractmethod
-    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+    def cp_to(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
         pass
 
     @abc.abstractmethod
@@ -87,11 +100,23 @@ class LocalFileScheme(FileScheme):
     def __init__(self):
         super().__init__("local", FileScheme.FileSchemeType.local)
 
-    def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        self.link_copy_or_fail(source, dest)
+    def cp_from(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
+        self.link_copy_or_fail(source, dest, force=force)
 
-    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        self.link_copy_or_fail(source, dest)
+    def cp_to(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
+        self.link_copy_or_fail(source, dest, force=force)
 
     def rm_dir(self, directory):
         Logger.info(f"Removing local directory '{directory}'")
@@ -105,7 +130,7 @@ class LocalFileScheme(FileScheme):
         return os.makedirs(directory, exist_ok=True)
 
     @staticmethod
-    def link_copy_or_fail(source, dest):
+    def link_copy_or_fail(source, dest, force=False):
         """
         Eventually move this to some generic util class
         :param source: Source to link from
@@ -113,8 +138,18 @@ class LocalFileScheme(FileScheme):
         :return:
         """
         try:
+
+            if os.path.exists(dest) and force:
+                if os.path.isdir(dest):
+                    raise Exception(f"Destination exists and is directory '{dest}'")
+                Logger.info(f"Destination exists, overwriting '{dest}'")
+                os.remove(dest)
             Logger.info(f"Hard linking {source} → {dest}")
             os.link(source, dest)
+        except FileExistsError:
+            Logger.critical(
+                "The file 'dest' already exists. The force flag is required to overwrite."
+            )
         except Exception as e:
             Logger.warn("Couldn't link file: " + str(e))
 
@@ -140,8 +175,8 @@ class HTTPFileScheme(FileScheme):
         self,
         source,
         dest,
-        report_progress: Optional[Callable[[float], None]],
-        force=None,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
     ):
 
         if os.path.exists(dest):
@@ -152,7 +187,13 @@ class HTTPFileScheme(FileScheme):
 
         return urllib.request.urlretrieve(url=source, filename=dest)
 
-    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+    def cp_to(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
         raise NotImplementedError("Not implemented")
 
     def rm_dir(self, directory):
@@ -178,7 +219,15 @@ class SSHFileScheme(FileScheme):
         args = ["ssh", self.connectionstring, "mkdir -p " + location]
         subprocess.call(args)
 
-    def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+    def cp_from(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
+        if force:
+            Logger.critical("SSHFileScheme does not support the 'force' flag")
         args = ["scp", self.connectionstring + ":" + source, dest]
 
         if dest.endswith("bam"):
@@ -192,8 +241,15 @@ class SSHFileScheme(FileScheme):
         )
         subprocess.call(args)
 
-    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
-        import subprocess
+    def cp_to(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
+        if force:
+            Logger.critical("SSHFileScheme does not support the 'force' flag")
 
         Logger.info(
             f"Secure copying (SCP) from local:{source} to {self.connectionstring}:{dest}"
@@ -229,10 +285,22 @@ class GCSFileScheme(FileScheme):
     def is_valid_prefix(prefix: str):
         return prefix.lower().startswith("gs://")
 
-    def cp_from(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+    def cp_from(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
         pass
 
-    def cp_to(self, source, dest, report_progress: Optional[Callable[[float], None]]):
+    def cp_to(
+        self,
+        source,
+        dest,
+        force=False,
+        report_progress: Optional[Callable[[float], None]] = None,
+    ):
         pass
 
     def mkdirs(self, directory):

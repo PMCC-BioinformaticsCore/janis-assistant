@@ -226,6 +226,9 @@ class WorkflowManager:
         tm = WorkflowManager(outdir=path, wid=wid, environment=env)
         return tm
 
+    def show_status_screen(self):
+        self.poll_stored_metadata(None)
+
     def poll_stored_metadata(self, stdscr, seconds=3):
         """
         This function just polls the database for metadata every so often,
@@ -234,8 +237,6 @@ class WorkflowManager:
 
         It's presumed that there's a janis-monitor that's watching the engine
         """
-        if stdscr:
-            stdscr
 
         def log_to_screen(text, clear=True):
             if stdscr:

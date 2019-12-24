@@ -27,7 +27,7 @@ from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 from janis_assistant.management.configuration import JanisConfiguration
 
 from janis_assistant.data.models.filescheme import FileScheme, LocalFileScheme
-from janis_assistant.data.enums import TaskStatus
+from janis_assistant.data.enums import TaskStatus, ProgressKeys
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
@@ -74,7 +74,7 @@ class WorkflowManager:
         self.path = outdir
         self.create_dir_structure(self.path)
 
-        self.database = WorkflowDbManager(self.get_task_path_safe())
+        self.database = WorkflowDbManager(wid, self.get_task_path_safe())
         self.environment = environment
         self.dbcontainer: MySql = None
 
@@ -102,7 +102,7 @@ class WorkflowManager:
         return metadb if has else False
 
     def watch(self):
-        self.poll_stored_metadata()
+        self.show_status_screen()
 
     @staticmethod
     def from_janis(
@@ -129,6 +129,8 @@ class WorkflowManager:
         environment.identifier += "_" + wid
 
         tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
+
+        tm.database.runs.insert(wid)
 
         tm.database.workflowmetadata.wid = wid
         tm.database.workflowmetadata.engine = environment.engine
@@ -187,7 +189,7 @@ class WorkflowManager:
 
                 if watch:
                     Logger.log("Watching submitted workflow")
-                    tm.poll_stored_metadata()
+                    tm.show_status_screen()
             else:
                 tm.resume()
 
@@ -199,7 +201,7 @@ class WorkflowManager:
         return tm
 
     @staticmethod
-    def from_path(path):
+    def from_path_with_wid(path, wid):
         """
         :param config_manager:
         :param path: Path should include the $wid if relevant
@@ -209,7 +211,7 @@ class WorkflowManager:
         # database path
 
         path = WorkflowManager.get_task_path_for(path)
-        db = WorkflowDbManager.get_workflow_metadatadb(path)
+        db = WorkflowDbManager.get_workflow_metadatadb(path, wid)
 
         wid = db.wid  # .get_meta_info(InfoKeys.taskId)
         envid = db.environment  # .get_meta_info(InfoKeys.environment)
@@ -224,7 +226,7 @@ class WorkflowManager:
         tm = WorkflowManager(outdir=path, wid=wid, environment=env)
         return tm
 
-    def poll_stored_metadata(self, seconds=3):
+    def poll_stored_metadata(self, stdscr, seconds=3):
         """
         This function just polls the database for metadata every so often,
         and simply displays it. It will keep doing that until the task
@@ -232,11 +234,24 @@ class WorkflowManager:
 
         It's presumed that there's a janis-monitor that's watching the engine
         """
+        if stdscr:
+            stdscr
 
-        if self.database.progressDB.workflowMovedToFinalState:
+        def log_to_screen(text, clear=True):
+            if stdscr:
+                if clear:
+                    stdscr.clear()
+                stdscr.addstr(text)
+                stdscr.refresh()
+            else:
+                if clear:
+                    call("clear")
+                print(text)
+
+        if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState):
             meta = self.database.get_metadata()
-            print(meta.format())
-
+            formatted = meta.format()
+            log_to_screen(formatted, clear=False)
             return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
 
         status = None
@@ -244,8 +259,7 @@ class WorkflowManager:
         while status not in TaskStatus.final_states():
             meta = self.database.get_metadata()
             if meta:
-                call("clear")
-                print(meta.format())
+                log_to_screen(meta.format())
                 status = meta.status
 
             if status not in TaskStatus.final_states():
@@ -263,6 +277,9 @@ class WorkflowManager:
             logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
 
             Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
+
+            # in case anything relies on CD, we'll throw it into janis/execution
+            os.chdir(self.get_path_for_component(self.WorkflowManagerPath.execution))
 
             self.start_engine_if_required()
 
@@ -399,7 +416,7 @@ class WorkflowManager:
         max_cores=None,
         max_memory=None,
     ):
-        if self.database.progressDB.saveWorkflow:
+        if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
 
         Logger.debug(f"Saving workflow with id '{workflow.id()}'")
@@ -447,7 +464,7 @@ class WorkflowManager:
             wf=workflow_to_evaluate, additional_inputs=additional_inputs
         )
 
-        self.database.progressDB.saveWorkflow = True
+        self.database.progressDB.set(ProgressKeys.saveWorkflow)
         return workflow_to_evaluate
 
     def evaluate_output_params(self, wf: Workflow, additional_inputs: dict):
@@ -501,7 +518,7 @@ class WorkflowManager:
         )
 
     def submit_workflow_if_required(self):
-        if self.database.progressDB.submitWorkflow:
+        if self.database.progressDB.has(ProgressKeys.submitWorkflow):
             return Logger.log(f"Workflow '{self.wid}' has submitted, skipping")
 
         fn_wf = self.database.workflowmetadata.submission_workflow
@@ -516,10 +533,10 @@ class WorkflowManager:
         Logger.info(
             f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
         )
-        self.database.progressDB.submitWorkflow = True
+        self.database.progressDB.set(ProgressKeys.submitWorkflow)
 
     def save_metadata_if_required(self):
-        if self.database.progressDB.savedMetadata:
+        if self.database.progressDB.has(ProgressKeys.savedMetadata):
             return Logger.debug(f"Workflow '{self.wid}' has saved metadata, skipping")
 
         engine = self.get_engine()
@@ -545,10 +562,10 @@ class WorkflowManager:
                 f"Don't know how to save metadata for engine '{engine.id()}'"
             )
 
-        self.database.progressDB.savedMetadata = True
+        self.database.progressDB.set(ProgressKeys.savedMetadata)
 
     def copy_outputs_if_required(self):
-        if self.database.progressDB.copiedOutputs:
+        if self.database.progressDB.has(ProgressKeys.copiedOutputs):
             return Logger.debug(f"Workflow '{self.wid}' has copied outputs, skipping")
 
         if self.database.workflowmetadata.status != TaskStatus.COMPLETED:
@@ -590,7 +607,7 @@ class WorkflowManager:
                 tag=out.tag, original_path=originalfile, new_path=newfilepath
             )
 
-        self.database.progressDB.copiedOutputs = True
+        self.database.progressDB.set(ProgressKeys.copiedOutputs)
         Logger.info(f"View the task outputs: file://{self.get_task_path()}")
 
     def copy_output(
@@ -713,7 +730,7 @@ class WorkflowManager:
                 dot = "" if ext[0] == "." else "."
                 outfn += dot + ext
                 newoutputfilepath += dot + ext
-            fs.cp_from(engine_output.originalpath, newoutputfilepath, None)
+            fs.cp_from(engine_output.originalpath, newoutputfilepath, force=True)
         else:
             original_filepath = engine_output
             if isinstance(fs, LocalFileScheme):
@@ -725,7 +742,7 @@ class WorkflowManager:
             frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
             tofn = apply_secondary_file_format_to_filename(outfn, sec)
             topath = os.path.join(outdir, tofn)
-            fs.cp_from(frompath, topath, None)
+            fs.cp_from(frompath, topath, force=True)
 
         return [original_filepath, newoutputfilepath]
 
@@ -742,7 +759,7 @@ class WorkflowManager:
             if execdir and execdir != "None":
                 Logger.info("Cleaning up execution directory")
                 self.environment.filescheme.rm_dir(execdir)
-                self.database.progressDB.cleanedUp = True
+                self.database.progressDB.set(ProgressKeys.cleanedUp)
 
     def log_dbtaskinfo(self):
         import tabulate
@@ -793,7 +810,7 @@ class WorkflowManager:
             )
 
     def copy_logs_if_required(self):
-        if not self.database.progressDB.savedLogs:
+        if not self.database.progressDB.has(ProgressKeys.savedLogs):
             return Logger.debug(f"Workflow '{self.wid}' has copied logs, skipping")
 
         meta = self.save_metadata()
@@ -866,9 +883,9 @@ class WorkflowManager:
         return meta
 
     @staticmethod
-    def mark_aborted(outputdir) -> bool:
+    def mark_aborted(outputdir, wid) -> bool:
         try:
-            db = WorkflowDbManager.get_workflow_metadatadb(outputdir)
+            db = WorkflowDbManager.get_workflow_metadatadb(outputdir, wid)
             db.please_abort = True
             db.kvdb.commit()
             Logger.info("Marked workflow as aborted, this may take some time full exit")

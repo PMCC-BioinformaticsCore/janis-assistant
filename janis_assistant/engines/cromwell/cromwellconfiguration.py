@@ -252,9 +252,9 @@ class CromwellConfiguration(Serializable):
                         self.__setattr__(k, v)
 
                 key_map = {
-                    "default_runtime_attributes  ": "default-runtime-attributes",
-                    "concurrent_job_limit  ": "concurrent-job-limit",
-                    "runtime_attributes   ": "runtime-attributes",
+                    "default_runtime_attributes": "default-runtime-attributes",
+                    "concurrent_job_limit": "concurrent-job-limit",
+                    "runtime_attributes": "runtime-attributes",
                     "submit_docker": "submit-docker",
                     "kill_docker": "kill-docker",
                     "check_alive": "check-alive",

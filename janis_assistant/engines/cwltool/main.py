@@ -94,7 +94,13 @@ class CWLToolLogger(ProcessLogger):
                 for c in iter(self.process.stdout.readline, "s"):
                     if not c:
                         continue
-                    j += c.decode("utf-8")
+                    line = c.decode("utf-8").rstrip()
+                    Logger.debug(line)
+                    if self.logfp and not self.logfp.closed:
+                        self.logfp.write(line + "\n")
+                        self.logfp.flush()
+                        os.fsync(self.logfp.fileno())
+                    j += line
                     try:
                         self.outputs = json.loads(j)
                         break

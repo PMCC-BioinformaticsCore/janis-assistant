@@ -490,7 +490,7 @@ class WorkflowManager:
                     original_path=None,
                     new_path=None,
                     timestamp=None,
-                    prefix=self.evaluate_output_selector(o.output_prefix, mapped_inps),
+                    prefix=self.evaluate_output_selector(o.output_name, mapped_inps),
                     tags=self.evaluate_output_selector(o.output_tag, mapped_inps),
                     secondaries=o.datatype.secondary_files(),
                     extension=ext,
@@ -628,7 +628,6 @@ class WorkflowManager:
 
         if isinstance(engine_output, list):
             outs = []
-            s = 0
             nshards = len(engine_output)
             prev_shards = shard or []
 
@@ -660,16 +659,18 @@ class WorkflowManager:
             for i in range(nshards):
                 eout = engine_output[i]
 
+                new_shard = [*prev_shards, i]
+
                 # choose tag
-                new_prefix = (
-                    prefix[i]
-                    if (isinstance(prefix, list) and len(prefix) > 1)
-                    else prefix
-                )
+                new_prefix = prefix
+                if isinstance(new_prefix, list) and len(new_prefix) > 1:
+                    new_prefix = new_prefix[i]
+                    new_shard = new_shard[min(len(new_shard), 1) :]
 
                 new_tag = tag
                 if tag_index_to_explode is not None:
                     new_tag = explode_at_index(tag, tag_index_to_explode, i)
+                    new_shard = new_shard[min(len(new_shard), 1) :]
 
                 outs.append(
                     self.copy_output(
@@ -678,16 +679,17 @@ class WorkflowManager:
                         tag=new_tag,
                         prefix=new_prefix,
                         engine_output=eout,
-                        shard=[*prev_shards, s],
+                        shard=new_shard,
                         secondaries=secondaries,
                         extension=extension,
                     )
                 )
-                s += 1
+
             return [o[0] for o in outs], [o[1] for o in outs]
 
         final_tags = tag
-        final_prefix = prefix
+
+        outfn = outputid
 
         if final_tags and any(isinstance(t, list) for t in final_tags):
             Logger.critical(
@@ -696,15 +698,16 @@ class WorkflowManager:
             )
             final_tags = None
 
-        if isinstance(final_prefix, list):
-            if len(final_prefix) > 1:
-                final_prefix = None
-            else:
-                if len(final_prefix) > 1:
+        if prefix:
+            if isinstance(prefix, list):
+                if len(prefix) > 1:
                     Logger.critical(
-                        f"Expected only one prefix for this copy, but found ({', '.join(final_prefix)}) [{len(final_prefix)}], using the first"
+                        f"Expected only one output_name for this copy, but found ({', '.join(prefix)}) [{len(prefix)}], using the first"
                     )
-                final_prefix = final_prefix[0]
+                else:
+                    outfn = prefix[0]
+            else:
+                outfn = prefix
 
         if not final_tags:
             final_tags = ["output"]
@@ -712,9 +715,6 @@ class WorkflowManager:
         outdir = os.path.join(self.path, "/".join(final_tags))
 
         fs.mkdirs(outdir)
-
-        pr = (final_prefix + "_") if final_prefix else ""
-        outfn = pr + outputid
 
         if shard is not None:
             for s in shard:

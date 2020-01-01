@@ -52,7 +52,7 @@ class ValidatorPipelineModifier(PipelineModifierBase):
                     identifier=o.id(),
                     source=toolstp[o.id()],
                     output_tag=o.output_tag,
-                    output_prefix=o.output_prefix,
+                    output_name=o.output_name,
                 )
         else:
             for o in tool.tool_outputs():

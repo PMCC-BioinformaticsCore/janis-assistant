@@ -1,6 +1,6 @@
 import threading
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Callable
 
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines.enginetypes import EngineType
@@ -19,6 +19,15 @@ class Engine(Archivable, ABC):
         self.process_id = None
         self.logfile = logfile
         self._logfp = None
+
+        self.progress_callbacks: Dict[str, List[Callable[[WorkflowModel], None]]] = {}
+
+    def add_callback(
+        self, engine_identifier: str, callback: Callable[[WorkflowModel], None]
+    ):
+        self.progress_callbacks[engine_identifier] = self.progress_callbacks.get(
+            engine_identifier, []
+        ) + [callback]
 
     def id(self):
         return self.identifier

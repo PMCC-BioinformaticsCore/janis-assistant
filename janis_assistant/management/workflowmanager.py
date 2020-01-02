@@ -15,8 +15,10 @@ Run / monitor separation:
 
 """
 import os
+import threading
 import time
 from enum import Enum
+import queue
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
@@ -77,6 +79,7 @@ class WorkflowManager:
         self.database = WorkflowDbManager(wid, self.get_task_path_safe())
         self.environment = environment
         self.dbcontainer: MySql = None
+        self.main_queue = queue.Queue()
 
         self._prev_status = None
         self._engine = None
@@ -267,6 +270,23 @@ class WorkflowManager:
             if status not in TaskStatus.final_states():
                 time.sleep(seconds)
 
+    def process_completed_task(self):
+        Logger.info(
+            f"Task has finished with status: {self.database.workflowmetadata.status}"
+        )
+
+        if self.database.workflowmetadata.status == TaskStatus.COMPLETED:
+            self.save_metadata_if_required()
+            self.copy_outputs_if_required()
+            self.copy_logs_if_required()
+            self.remove_exec_dir()
+
+        self.get_engine().stop_engine()
+        if self.dbcontainer:
+            self.dbcontainer.stop()
+
+        Logger.info(f"Finished managing task '{self.wid}'.")
+
     def resume(self):
         """
         Resume takes an initialised DB, looks for the engine (if it's around),
@@ -293,29 +313,29 @@ class WorkflowManager:
             self.submit_workflow_if_required()
 
             self.database.commit()
-            self.watch_engine()
-            Logger.info(
-                f"Task has finished with status: {self.database.workflowmetadata.status}"
+            self.get_engine().add_callback(
+                self._engine_wid,
+                lambda meta: self.main_queue.put(lambda: self.save_metadata(meta)),
             )
 
-            if self.database.workflowmetadata.status == TaskStatus.COMPLETED:
-                self.save_metadata_if_required()
-                self.copy_outputs_if_required()
-                self.remove_exec_dir()
+            while True:
+                try:
+                    cb = self.main_queue.get(False)
+                    # callback from add_callback() returns True if in TaskStatus.final_states()
+                    res = cb()
+                    if res is True:
+                        break
+                except queue.Empty:
+                    continue
 
-            self.get_engine().stop_engine()
-            if self.dbcontainer:
-                self.dbcontainer.stop()
-
-            Logger.info(f"Finished managing task '{self.wid}'.")
+            self.process_completed_task()
 
         except Exception as e:
             import traceback
 
             err = traceback.format_exc()
             Logger.critical(
-                f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: "
-                + err
+                f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: {e}: {err}"
             )
 
             try:
@@ -532,6 +552,7 @@ class WorkflowManager:
         Logger.debug(f"Submitting task '{self.wid}' to '{engine.id()}'")
         self._engine_wid = engine.start_from_paths(self.wid, fn_wf, fn_inp, fn_deps)
         self.database.workflowmetadata.engine_wid = self._engine_wid
+
         Logger.info(
             f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
         )
@@ -815,7 +836,25 @@ class WorkflowManager:
         if not self.database.progressDB.has(ProgressKeys.savedLogs):
             return Logger.debug(f"Workflow '{self.wid}' has copied logs, skipping")
 
-        meta = self.save_metadata()
+        jobs = self.database.jobsDB.get_all()
+
+        # iterate through all jobs
+        for j in jobs:
+            od = self.get_path_for_component(self.WorkflowManagerPath.logs)
+            base = j.jid
+            if j.shard:
+                base += "shard-" + str(j.shard)
+            on_base = os.path.join(od, base)
+
+            if j.stdout:
+                self.environment.filescheme.cp_from(
+                    j.stdout, on_base + "_stdout", force=True
+                )
+
+            if j.stderr:
+                self.environment.filescheme.cp_from(
+                    j.stderr, on_base + "_stderr", force=True
+                )
 
     @staticmethod
     def get_logs_from_jobs_meta(meta: List[WorkflowJobModel]):
@@ -825,46 +864,12 @@ class WorkflowManager:
             ms.append((f"{j.batchid}-stderr", j.stderr))
             ms.append((f"{j.batchid}-stdout", j.stderr))
 
-    def watch_engine(self):
-        import time
-
-        status = None
-
-        while status not in TaskStatus.final_states() and (
-            self._failed_engine_attempts is None
-            or self._failed_engine_attempts <= self.MAX_ENGINE_ATTEMPTS
-        ):
-            meta = self.save_metadata()
-            if meta:
-                Logger.log("Got metadata from engine")
-                status = meta.status
-                self.set_status(status)
-                self._failed_engine_attempts = 0
-            elif self._failed_engine_attempts is not None:
-                # We'll only add a failed attempt if we've contacted it before
-                self._failed_engine_attempts += 1
-
-            if status not in TaskStatus.final_states():
-                time.sleep(5)
-
-            if self.database.workflowmetadata.please_abort:
-                Logger.info("Detected please_abort request during poll, aborting")
-                return self.abort()
-
-            if (
-                self._failed_engine_attempts
-                and self._failed_engine_attempts >= self.MAX_ENGINE_ATTEMPTS
-            ):
-                Logger.critical(
-                    f"Failed to contact the engine at least {self.MAX_ENGINE_ATTEMPTS}, "
-                    f"you might need to restart janis by: `janis resume {self.wid}`"
-                )
-
     def set_status(self, status: TaskStatus, force_notification=False):
         prev = self.database.workflowmetadata.status
 
         if prev == status and not force_notification:
             return
+
         Logger.info("Status changed to: " + str(status))
         self.database.workflowmetadata.status = status
         self.database.commit()
@@ -872,9 +877,7 @@ class WorkflowManager:
 
         NotificationManager.notify_status_change(status, self.database.get_metadata())
 
-    def save_metadata(self) -> Optional[WorkflowModel]:
-        meta = self.get_engine().metadata(self.get_engine_wid())
-
+    def save_metadata(self, meta: WorkflowModel) -> Optional[bool]:
         if not meta:
             return None
 
@@ -882,7 +885,7 @@ class WorkflowManager:
 
         self.set_status(meta.status)
 
-        return meta
+        return meta.status in TaskStatus.final_states()
 
     @staticmethod
     def mark_aborted(outputdir, wid) -> bool:

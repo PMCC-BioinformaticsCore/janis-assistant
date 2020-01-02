@@ -5,7 +5,7 @@ import shutil
 import signal
 import subprocess
 import sys
-import time
+import threading
 import urllib.request
 from glob import glob
 from typing import Optional, List
@@ -89,6 +89,7 @@ class Cromwell(Engine):
         self._logger = None
         self.stdout = []
         self.error_message = None
+        self.timer_thread: Optional[threading.Event] = None
 
         self.connectionerrorcount = 0
 
@@ -222,8 +223,8 @@ class Cromwell(Engine):
         self.is_started = True
 
         if self._process:
-
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
+
         return self
 
     def did_fail(self, rc):
@@ -239,6 +240,9 @@ class Cromwell(Engine):
     def stop_engine(self):
         if self._logger:
             self._logger.terminate()
+
+        if self.timer_thread:
+            self.timer_thread.set()
 
         if self._logfp:
             self._logfp.flush()
@@ -332,7 +336,24 @@ class Cromwell(Engine):
             raise Exception(res)
 
         task_id = res["id"]
+
+        self.timer_thread = threading.Event()
+        self.poll_metadata()
+
         return task_id
+
+    def poll_metadata(self):
+        if not self.timer_thread.is_set():
+
+            for engine_id_to_poll in self.progress_callbacks:
+                meta = self.metadata(engine_id_to_poll)
+                if meta:
+                    for callback in self.progress_callbacks[engine_id_to_poll]:
+                        callback(meta)
+
+            # call timer again
+            time = 6
+            threading.Timer(time, self.poll_metadata).start()
 
     def resolve_jar(self, cromwelljar):
         from janis_assistant.management.configuration import JanisConfiguration

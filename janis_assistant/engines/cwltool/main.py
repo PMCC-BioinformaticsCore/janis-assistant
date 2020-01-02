@@ -396,6 +396,12 @@ class CWLTool(Engine):
         if logger.error:
             self.taskmeta["error"] = logger.error
 
+        for callback in self.progress_callbacks.get(logger.wid, []):
+            callback(self.metadata(logger.wid))
+
     def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
         Logger.info(f"Updated task {job.jid} with status={job.status}")
         self.taskmeta["jobs"][job.jid] = job
+
+        for callback in self.progress_callbacks.get(logger.wid, []):
+            callback(self.metadata(logger.wid))

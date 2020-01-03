@@ -92,6 +92,7 @@ class Cromwell(Engine):
         self.timer_thread: Optional[threading.Event] = None
 
         self.connectionerrorcount = 0
+        self.should_stop = False
 
         if not self.connect_to_instance:
 
@@ -241,6 +242,7 @@ class Cromwell(Engine):
         if self._logger:
             self._logger.terminate()
 
+        self.should_stop = True
         if self.timer_thread:
             self.timer_thread.set()
 
@@ -343,17 +345,19 @@ class Cromwell(Engine):
         return task_id
 
     def poll_metadata(self):
-        if not self.timer_thread.is_set():
 
-            for engine_id_to_poll in self.progress_callbacks:
-                meta = self.metadata(engine_id_to_poll)
-                if meta:
-                    for callback in self.progress_callbacks[engine_id_to_poll]:
-                        callback(meta)
+        if self.timer_thread.is_set() or self.should_stop:
+            return
 
-            # call timer again
-            time = 6
-            threading.Timer(time, self.poll_metadata).start()
+        for engine_id_to_poll in self.progress_callbacks:
+            meta = self.metadata(engine_id_to_poll)
+            if meta:
+                for callback in self.progress_callbacks[engine_id_to_poll]:
+                    callback(meta)
+
+        # call timer again
+        time = 6
+        threading.Timer(time, self.poll_metadata).start()
 
     def resolve_jar(self, cromwelljar):
         from janis_assistant.management.configuration import JanisConfiguration
@@ -611,4 +615,7 @@ class Cromwell(Engine):
         url = self.url_abort(identifier)
         r = requests.post(url)
         Logger.log("Cromwell (Abort): " + str(r))
+
+        self.progress_callbacks.pop(identifier)
+
         return TaskStatus.ABORTED

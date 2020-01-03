@@ -326,6 +326,11 @@ class WorkflowManager:
                     if res is True:
                         break
                 except queue.Empty:
+
+                    if self.database.workflowmetadata.please_abort:
+                        self.abort()
+                        return
+
                     continue
 
             self.process_completed_task()

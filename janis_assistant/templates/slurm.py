@@ -80,7 +80,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             beconfig.root = self.execution_dir
         beconfig.filesystems = {
             "local": {
-                "localization": ["cached-copy", "hard-link", "soft-link", "copy"]
+                "localization": ["hard-link", "cached-copy", "soft-link", "copy"]
             },
             # "caching": {"hashing-strategy": "path+modtime"},
         }

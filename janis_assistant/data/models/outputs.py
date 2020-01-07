@@ -18,8 +18,8 @@ class WorkflowOutputModel:
         original_path: Optional[str],
         new_path: Optional[str],
         timestamp: Optional[str],
-        prefix: str,
-        tags: str,
+        output_name: str,
+        output_folder: str,
         secondaries,
         extension,
     ):
@@ -28,18 +28,18 @@ class WorkflowOutputModel:
         self.newpath = new_path
 
         self.prefix: Optional[List[str]] = None
-        if prefix:
-            if isinstance(prefix, str):
-                self.prefix = self.to_array(prefix)
+        if output_name:
+            if isinstance(output_name, str):
+                self.prefix = self.to_array(output_name)
             else:
-                self.prefix = [t for t in prefix if t is not None]
+                self.prefix = [t for t in output_name if t is not None]
 
         self.tags = None
-        if tags:
-            if isinstance(tags, str):
-                self.tags = self.to_array(tags)
+        if output_folder:
+            if isinstance(output_folder, str):
+                self.tags = self.to_array(output_folder)
             else:
-                self.tags = [t for t in tags if t is not None]
+                self.tags = [t for t in output_folder if t is not None]
 
         self.secondaries = None
         if secondaries:

@@ -16,8 +16,8 @@ class OutputDbProvider(DbProviderBase):
             original_path STRING,
             new_path STRING,
             timestamp NULLABLE STRING,
-            prefix STRING,
-            tags STRING,
+            output_name STRING,
+            output_folder STRING,
             secondaries STRING,
             extension STRING,
             PRIMARY KEY (wid, tag)
@@ -44,7 +44,7 @@ class OutputDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO outputs
-            (wid, tag, original_path, new_path, timestamp, prefix, tags, secondaries, extension)
+            (wid, tag, original_path, new_path, timestamp, output_name, output_folder, secondaries, extension)
         VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """

@@ -515,8 +515,12 @@ class WorkflowManager:
                     original_path=None,
                     new_path=None,
                     timestamp=None,
-                    prefix=self.evaluate_output_selector(o.output_name, mapped_inps),
-                    tags=self.evaluate_output_selector(o.output_tag, mapped_inps),
+                    output_name=self.evaluate_output_selector(
+                        o.output_name, mapped_inps
+                    ),
+                    output_folder=self.evaluate_output_selector(
+                        o.output_folder, mapped_inps
+                    ),
                     secondaries=o.datatype.secondary_files(),
                     extension=ext,
                 )
@@ -650,7 +654,7 @@ class WorkflowManager:
         shard=None,
     ):
 
-        # the output_tag is an array of an array, for each
+        # the output_folder is an array of an array, for each
 
         if isinstance(engine_output, list):
             outs = []
@@ -860,14 +864,6 @@ class WorkflowManager:
                 self.environment.filescheme.cp_from(
                     j.stderr, on_base + "_stderr", force=True
                 )
-
-    @staticmethod
-    def get_logs_from_jobs_meta(meta: List[WorkflowJobModel]):
-        ms = []
-
-        for j in meta:
-            ms.append((f"{j.batchid}-stderr", j.stderr))
-            ms.append((f"{j.batchid}-stdout", j.stderr))
 
     def set_status(self, status: TaskStatus, force_notification=False):
         prev = self.database.workflowmetadata.status

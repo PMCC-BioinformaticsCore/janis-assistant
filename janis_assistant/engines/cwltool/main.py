@@ -285,8 +285,8 @@ class CWLTool(Engine):
                 original_path=out["path"],
                 timestamp=DateUtil.now(),
                 new_path=None,
-                tags=None,
-                prefix=None,
+                output_folder=None,
+                output_name=None,
                 secondaries=None,
                 extension=None,
             )
@@ -299,8 +299,8 @@ class CWLTool(Engine):
                 original_path=path,
                 timestamp=DateUtil.now(),
                 new_path=None,
-                tags=None,
-                prefix=None,
+                output_folder=None,
+                output_name=None,
                 secondaries=None,
                 extension=None,
             )

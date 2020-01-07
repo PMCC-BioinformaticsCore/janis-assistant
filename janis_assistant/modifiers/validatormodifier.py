@@ -51,7 +51,7 @@ class ValidatorPipelineModifier(PipelineModifierBase):
                 w.output(
                     identifier=o.id(),
                     source=toolstp[o.id()],
-                    output_tag=o.output_tag,
+                    output_folder=o.output_folder,
                     output_name=o.output_name,
                 )
         else:
@@ -77,7 +77,7 @@ class ValidatorPipelineModifier(PipelineModifierBase):
                 w.output(
                     f"validated_{o}_{vo.id()}",
                     source=valstp[vo.id()],
-                    output_tag="validated",
+                    output_folder="validated",
                 )
 
         return w

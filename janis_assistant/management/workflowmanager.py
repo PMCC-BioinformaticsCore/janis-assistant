@@ -90,11 +90,12 @@ class WorkflowManager:
     @staticmethod
     def has(
         outdir: str,
+        wid: str,
         status: Optional[TaskStatus],
         name: Optional[str] = None,
         environment: Optional[str] = None,
     ):
-        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir)
+        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir, wid)
 
         has = True
         if has and status:
@@ -207,8 +208,8 @@ class WorkflowManager:
     @staticmethod
     def from_path_with_wid(path, wid):
         """
-        :param config_manager:
-        :param path: Path should include the $wid if relevant
+        :param wid: Workflow ID
+        :param path: Path to workflow
         :return: TaskManager after resuming (might include a wait)
         """
         # get everything and pass to constructor
@@ -229,6 +230,12 @@ class WorkflowManager:
 
         tm = WorkflowManager(outdir=path, wid=wid, environment=env)
         return tm
+
+    @staticmethod
+    def from_path_get_latest(path):
+        path = WorkflowManager.get_task_path_for(path)
+        wid = WorkflowDbManager.get_latest_workflow(path=path)
+        return WorkflowManager.from_path_with_wid(path, wid)
 
     def show_status_screen(self):
         self.poll_stored_metadata(None)

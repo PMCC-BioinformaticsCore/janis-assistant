@@ -21,7 +21,7 @@ class RunDbProvider(DbProviderBase):
         super().__init__(db, cursor)
 
     def get_latest(self):
-        self.cursor.execute("SELECT wid FROM runs ORDER BY timestamp")
+        self.cursor.execute("SELECT wid FROM runs ORDER BY timestamp DESC LIMIT 1")
         return self.cursor.fetchone()[0]
 
     def get(self, wid: str) -> Optional[datetime]:

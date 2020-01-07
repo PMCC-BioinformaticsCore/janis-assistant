@@ -89,6 +89,17 @@ class WorkflowDbManager:
         return WorkflowMetadataDbProvider(sqlpath, wid)
 
     @staticmethod
+    def get_latest_workflow(path) -> str:
+        try:
+            connection = sqlite3.connect(WorkflowDbManager.get_sql_path_base(path))
+            runDb = RunDbProvider(db=connection, cursor=connection.cursor())
+            return runDb.get_latest()
+
+        except:
+            Logger.critical("Error when opening DB connection to: " + path)
+            raise
+
+    @staticmethod
     def get_sql_path_base(exec_path):
         return ospathjoin(exec_path, "janis/task.db")
 

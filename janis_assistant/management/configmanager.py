@@ -163,6 +163,10 @@ class ConfigManager:
             "SELECT outputdir FROM tasks where wid=?", (wid,)
         ).fetchone()
         if not path:
+
+            if os.path.exists(wid):
+                return WorkflowManager.from_path_get_latest(wid)
+
             raise Exception(f"Couldn't find task with id='{wid}'")
         return WorkflowManager.from_path_with_wid(path[0], wid=wid)
 
@@ -178,7 +182,9 @@ class ConfigManager:
                 failed.append(row.wid)
                 continue
             try:
-                metadb = WorkflowManager.has(row.outputdir, name=name, status=status)
+                metadb = WorkflowManager.has(
+                    row.outputdir, wid=row.wid, name=name, status=status
+                )
                 if metadb:
                     model = metadb.to_model()
                     model.outdir = row.outputdir

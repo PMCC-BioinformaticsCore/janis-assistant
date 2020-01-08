@@ -279,7 +279,21 @@ class CWLTool(Engine):
             return ups
 
         updates = {}
-        if "path" in out:
+
+        if isinstance(out, str):
+            updates[key] = WorkflowOutputModel(
+                tag=key,
+                original_path=None,
+                timestamp=DateUtil.now(),
+                value=out,
+                new_path=None,
+                output_folder=None,
+                output_name=None,
+                secondaries=None,
+                extension=None,
+            )
+
+        elif "path" in out:
             updates[key] = WorkflowOutputModel(
                 tag=key,
                 original_path=out["path"],
@@ -290,20 +304,20 @@ class CWLTool(Engine):
                 secondaries=None,
                 extension=None,
             )
-        for s in out.get("secondaryFiles", []):
-            path = s["path"]
-            ext = path.rpartition(".")[-1]
-            newk = f"{key}_{ext}"
-            updates[newk] = WorkflowOutputModel(
-                tag=newk,
-                original_path=path,
-                timestamp=DateUtil.now(),
-                new_path=None,
-                output_folder=None,
-                output_name=None,
-                secondaries=None,
-                extension=None,
-            )
+            for s in out.get("secondaryFiles", []):
+                path = s["path"]
+                ext = path.rpartition(".")[-1]
+                newk = f"{key}_{ext}"
+                updates[newk] = WorkflowOutputModel(
+                    tag=newk,
+                    original_path=path,
+                    timestamp=DateUtil.now(),
+                    new_path=None,
+                    output_folder=None,
+                    output_name=None,
+                    secondaries=None,
+                    extension=None,
+                )
 
         return updates
 

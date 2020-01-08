@@ -10,10 +10,10 @@ import sys, os
 from inspect import isclass
 
 import janis_core as j
+from janis_core.code.codetool import CodeTool
 from typing import Optional, Dict, Union, Type, List
 
 from janis_assistant.templates import TemplateInput
-from janis_core.translations import TranslatorBase
 
 from janis_assistant.management.workflowmanager import WorkflowManager
 
@@ -322,6 +322,8 @@ def fromjanis(
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
     if isinstance(wf, j.CommandTool):
+        wf = wf.wrapped_in_wf()
+    elif isinstance(wf, CodeTool):
         wf = wf.wrapped_in_wf()
 
     # organise inputs

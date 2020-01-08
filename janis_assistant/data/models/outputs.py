@@ -18,10 +18,11 @@ class WorkflowOutputModel:
         original_path: Optional[str],
         new_path: Optional[str],
         timestamp: Optional[str],
-        output_name: str,
-        output_folder: str,
+        output_name: Optional[str],
+        output_folder: Optional[str],
         secondaries,
         extension,
+        value: str = None,
     ):
         self.tag = tag
         self.originalpath = original_path
@@ -52,6 +53,7 @@ class WorkflowOutputModel:
             timestamp = DateUtil.parse_iso(timestamp)
         self.timestamp = timestamp
         self.extension = extension
+        self.value = value
 
     @staticmethod
     def from_row(row):

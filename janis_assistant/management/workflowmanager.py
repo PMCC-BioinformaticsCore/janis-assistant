@@ -22,7 +22,7 @@ import queue
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
-from janis_core import InputSelector, Logger, Workflow, File, Array, LogLevel
+from janis_core import InputSelector, Logger, Workflow, File, Array, LogLevel, Directory
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
@@ -512,6 +512,10 @@ class WorkflowManager:
             # We'll
             ext = None
             innertype = o.datatype
+            iscopyable = isinstance(o.datatype, (File, Directory)) or (
+                isinstance(o.datatype, Array)
+                and isinstance(o.datatype.fundamental_type(), (File, Directory))
+            )
             while isinstance(innertype, Array):
                 innertype = innertype.subtype()
             if isinstance(o.datatype, File):
@@ -519,6 +523,7 @@ class WorkflowManager:
             outputs.append(
                 WorkflowOutputModel(
                     tag=o.id(),
+                    iscopyable=iscopyable,
                     original_path=None,
                     new_path=None,
                     timestamp=None,
@@ -634,6 +639,7 @@ class WorkflowManager:
                 secondaries=out.secondaries,
                 extension=out.extension,
                 engine_output=eout,
+                iscopyable=out.iscopyable,
             )
 
             if isinstance(originalfile, list):
@@ -657,6 +663,7 @@ class WorkflowManager:
         tag,
         secondaries,
         extension,
+        iscopyable,
         engine_output: Union[WorkflowOutputModel, Any, List[Any]],
         shard=None,
     ):
@@ -719,6 +726,7 @@ class WorkflowManager:
                         shard=new_shard,
                         secondaries=secondaries,
                         extension=extension,
+                        iscopyable=iscopyable,
                     )
                 )
 
@@ -764,7 +772,7 @@ class WorkflowManager:
 
         if isinstance(engine_output, WorkflowOutputModel):
             original_filepath = engine_output.originalpath
-            if original_filepath:
+            if original_filepath and iscopyable:
                 ext = extension or get_extension(engine_output.originalpath)
                 if ext:
                     dot = "" if ext[0] == "." else "."

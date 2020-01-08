@@ -15,6 +15,7 @@ class WorkflowOutputModel:
     def __init__(
         self,
         tag: str,
+        iscopyable: bool,
         original_path: Optional[str],
         new_path: Optional[str],
         timestamp: Optional[str],
@@ -25,6 +26,7 @@ class WorkflowOutputModel:
         value: str = None,
     ):
         self.tag = tag
+        self.iscopyable = iscopyable
         self.originalpath = original_path
         self.newpath = new_path
 

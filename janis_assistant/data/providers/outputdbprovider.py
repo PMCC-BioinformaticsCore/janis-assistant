@@ -13,6 +13,7 @@ class OutputDbProvider(DbProviderBase):
         CREATE TABLE IF NOT EXISTS outputs (
             wid STRING,
             tag STRING,
+            iscopyable BIT,
             original_path STRING,
             new_path STRING,
             timestamp NULLABLE STRING,
@@ -44,9 +45,9 @@ class OutputDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO outputs
-            (wid, tag, original_path, new_path, timestamp, output_name, output_folder, secondaries, extension)
+            (wid, tag, iscopyable, original_path, new_path, timestamp, output_name, output_folder, secondaries, extension)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     def insert_many(self, outputs: List[WorkflowOutputModel]):
@@ -65,6 +66,7 @@ class OutputDbProvider(DbProviderBase):
         return (
             wid,
             model.tag,
+            model.iscopyable,
             model.originalpath,
             model.newpath,
             model.timestamp,

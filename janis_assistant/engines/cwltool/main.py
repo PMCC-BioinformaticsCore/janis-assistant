@@ -284,6 +284,7 @@ class CWLTool(Engine):
             updates[key] = WorkflowOutputModel(
                 tag=key,
                 original_path=None,
+                iscopyable=False,
                 timestamp=DateUtil.now(),
                 value=out,
                 new_path=None,
@@ -296,6 +297,7 @@ class CWLTool(Engine):
         elif "path" in out:
             updates[key] = WorkflowOutputModel(
                 tag=key,
+                iscopyable=True,
                 original_path=out["path"],
                 timestamp=DateUtil.now(),
                 new_path=None,
@@ -311,6 +313,7 @@ class CWLTool(Engine):
                 updates[newk] = WorkflowOutputModel(
                     tag=newk,
                     original_path=path,
+                    iscopyable=True,
                     timestamp=DateUtil.now(),
                     new_path=None,
                     output_folder=None,

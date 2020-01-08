@@ -489,6 +489,8 @@ class Cromwell(Engine):
         if isinstance(fileloc, list):
             return newkey, [Cromwell.parse_output(key, f)[1] for f in fileloc]
 
+        # It's hard to know whether the value we get is a File or just a value,
+        # so we'll write it in both values and let Janis figure it out later
         return (
             newkey,
             WorkflowOutputModel(
@@ -500,6 +502,8 @@ class Cromwell(Engine):
                 output_name=None,
                 secondaries=None,
                 extension=None,
+                value=fileloc,
+                iscopyable=True,
             ),
         )
 

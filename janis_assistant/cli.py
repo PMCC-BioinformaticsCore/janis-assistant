@@ -6,7 +6,7 @@ import pkg_resources
 import ruamel.yaml
 import tabulate
 
-from janis_core.enums.supportedtranslations import SupportedTranslations
+from janis_core.translationdeps.supportedtranslations import SupportedTranslations
 
 from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.templates.templates import get_template_names
@@ -161,10 +161,12 @@ def add_watch_args(parser):
 
 def add_spider_args(parser):
     parser.add_argument("tool", help="Tool to find")
-    parser.add_argument("--registry", help="Only look for tools in the registry")
+    parser.add_argument(
+        "--registry", action="store_true", help="Only look for tools in the registry"
+    )
     parser.add_argument(
         "--name",
-        help="Optional name of workflow if there are multiple workflows in the tool",
+        help="Optional name of workflow if there are multiple workflows in the file",
     )
     parser.add_argument(
         "--no-cache",

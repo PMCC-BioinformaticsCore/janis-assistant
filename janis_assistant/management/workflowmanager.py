@@ -764,12 +764,18 @@ class WorkflowManager:
 
         if isinstance(engine_output, WorkflowOutputModel):
             original_filepath = engine_output.originalpath
-            ext = extension or get_extension(engine_output.originalpath)
-            if ext:
-                dot = "" if ext[0] == "." else "."
-                outfn += dot + ext
-                newoutputfilepath += dot + ext
-            fs.cp_from(engine_output.originalpath, newoutputfilepath, force=True)
+            if original_filepath:
+                ext = extension or get_extension(engine_output.originalpath)
+                if ext:
+                    dot = "" if ext[0] == "." else "."
+                    outfn += dot + ext
+                    newoutputfilepath += dot + ext
+                fs.cp_from(engine_output.originalpath, newoutputfilepath, force=True)
+            elif engine_output.value:
+                if isinstance(fs, LocalFileScheme):
+                    # Write engine_output to outpath
+                    with open(newoutputfilepath, "w+") as outfile:
+                        outfile.write(engine_output.value)
         else:
             original_filepath = engine_output
             if isinstance(fs, LocalFileScheme):

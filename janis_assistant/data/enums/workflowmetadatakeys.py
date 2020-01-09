@@ -21,6 +21,9 @@ class WorkflowMetadataDbKeys(Enum):
     error = "error"
     keepexecutiondir = "keepexecutiondir"
 
+    containerversion = "containerversion"
+    containertype = "containertype"
+
     author = "author"
 
     configuration = "configuration"

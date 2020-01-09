@@ -181,6 +181,13 @@ class WorkflowManager:
         tm.database.commit()
 
         if not dryrun:
+
+            # check container environment is loaded
+            tm.database.workflowmetadata.containertype = jc.container.__name__
+            tm.database.workflowmetadata.containerversion = (
+                jc.container.test_available_by_getting_version()
+            )
+
             # this happens for all workflows no matter what type
             tm.set_status(TaskStatus.QUEUED)
 
@@ -188,8 +195,13 @@ class WorkflowManager:
             if should_disconnect:
                 loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
                 command = ["janis", "--logLevel", loglevel, "resume", wid]
-                log_location = tm.get_path_for_component(tm.WorkflowManagerPath.logs)
-                jc.template.template.submit_detatched_resume(wid, command, log_location)
+                scriptdir = tm.get_path_for_component(
+                    tm.WorkflowManagerPath.configuration
+                )
+                logdir = tm.get_path_for_component(tm.WorkflowManagerPath.logs)
+                jc.template.template.submit_detatched_resume(
+                    wid, command, scriptdir, logdir
+                )
                 Logger.info("Submitted detatched engine")
 
                 if watch:

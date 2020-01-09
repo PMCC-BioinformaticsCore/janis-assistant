@@ -25,6 +25,13 @@ class Docker(Container):
 
         self.dockerid = None
 
+    @staticmethod
+    def test_available_by_getting_version() -> str:
+        try:
+            return subprocess.check_output(["docker", "-v"]).decode()
+        except subprocess.CalledProcessError as e:
+            raise Container.ContainerEnvNotFound("docker", e)
+
     def start_container(self):
         command = ["docker", "run", "-d"]
 

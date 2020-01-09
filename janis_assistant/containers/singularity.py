@@ -12,7 +12,6 @@ from janis_assistant.utils import generate_new_id, ProcessLogger
 class Singularity(Container):
 
     containerdir: str = None
-    buildinstructions: str = None  # replace ${{docker}} and $image
     loadinstructions: str = None
 
     def __init__(
@@ -34,10 +33,18 @@ class Singularity(Container):
         self.dockerid = None
         self.run_logger = None
 
-    def start_container(self):
+    @staticmethod
+    def get_build_instructions_for(containerlocation: str, docker: str):
+        return ["singularity", "pull", containerlocation, "docker://" + docker]
 
-        if self.loadinstructions:
-            subprocess.check_output(self.loadinstructions, shell=True)
+    @staticmethod
+    def test_available_by_getting_version() -> str:
+        try:
+            return subprocess.check_output(["singularity", "version"]).decode()
+        except subprocess.CalledProcessError as e:
+            raise Container.ContainerEnvNotFound("singularity", e)
+
+    def start_container(self):
 
         command = ["singularity", "instance", "start"]
 
@@ -123,25 +130,12 @@ class Singularity(Container):
 
     def ensure_downloaded(self):
 
-        if self.loadinstructions:
-            subprocess.check_output(self.loadinstructions, shell=True)
-
         pathed_container = self.container_path()
 
         if os.path.exists(pathed_container):
             return True
 
-        # if Singularity.buildinstructions:
-        #     command = Singularity.buildinstructions.replace(
-        #         "$image", pathed_container
-        #     ).replace("${docker}", self.container)
-        # else:
-        command = [
-            "singularity",
-            "pull",
-            pathed_container,
-            "docker://" + self.container,
-        ]
+        command = self.get_build_instructions_for(pathed_container, self.container)
         Logger.info(
             "Couldn't find singularity container, building with: " + " ".join(command)
         )

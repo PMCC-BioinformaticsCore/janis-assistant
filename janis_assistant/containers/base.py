@@ -18,6 +18,24 @@ class Container(ABC):
         self.running = False
         self.instancename = instancename
 
+    class ContainerEnvNotFound(Exception):
+        def __init__(self, container_type, internal: Exception):
+
+            super().__init__(
+                f"Janis wasn't able to access the {container_type} environment, "
+                f"failing with the internal error: {internal}"
+            )
+            self.internal = internal
+
+    @staticmethod
+    @abstractmethod
+    def test_available_by_getting_version() -> str:
+        """
+        Test if the container environment is available, raise the ContainerEnvNotFound if not.
+        :return:
+        """
+        pass
+
     @abstractmethod
     def start_container(self):
         pass

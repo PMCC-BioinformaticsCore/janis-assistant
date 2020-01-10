@@ -26,17 +26,36 @@ class EnvironmentTemplate(ABC):
     def engine_config(self, engine: EngineType):
         pass
 
-    def submit_detatched_resume(self, wid: str, command: List[str], loglocation: str):
+    def submit_detatched_resume(
+        self,
+        wid: str,
+        command: List[str],
+        scriptdir: str,
+        logsdir: str,
+        capture_output: bool = False,
+    ):
         import subprocess
 
         Logger.info("Starting Janis resume with " + str(command))
 
-        subprocess.Popen(
-            command,
-            close_fds=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            if capture_output:
+                out = subprocess.check_output(
+                    command, close_fds=True, stderr=subprocess.STDOUT
+                )
+                Logger.info(out)
+            else:
+                subprocess.Popen(
+                    command,
+                    close_fds=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+        except subprocess.CalledProcessError as e:
+            Logger.critical(
+                f"Couldn't submit janis-monitor, non-zero exit code ({e.returncode})"
+            )
+            raise e
 
     def post_configuration_hook(self, configuration):
         if self._mail_program:

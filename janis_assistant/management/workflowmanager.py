@@ -801,7 +801,7 @@ class WorkflowManager:
             if isinstance(fs, LocalFileScheme):
                 # Write engine_output to outpath
                 with open(newoutputfilepath, "w+") as outfile:
-                    outfile.write(engine_output)
+                    outfile.write(str(engine_output))
 
         for sec in secondaries or []:
             frompath = apply_secondary_file_format_to_filename(original_filepath, sec)

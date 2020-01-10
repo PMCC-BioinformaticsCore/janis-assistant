@@ -795,7 +795,7 @@ class WorkflowManager:
                 if isinstance(fs, LocalFileScheme):
                     # Write engine_output to outpath
                     with open(newoutputfilepath, "w+") as outfile:
-                        outfile.write(engine_output.value)
+                        outfile.write(str(engine_output.value))
         else:
             original_filepath = engine_output
             if isinstance(fs, LocalFileScheme):

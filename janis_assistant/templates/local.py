@@ -15,7 +15,9 @@ class LocalTemplate(EnvironmentTemplate):
         super().__init__()
 
     def cromwell(self):
-        return CromwellConfiguration()
+        return CromwellConfiguration(
+            system=CromwellConfiguration.System(file_hash_cache=True)
+        )
 
     def cwltool(self):
         config = CWLToolConfiguration()
@@ -67,7 +69,8 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
                         singularitycontainerdir=self.singularity_container_dir,
                     )
                 }
-            )
+            ),
+            system=CromwellConfiguration.System(file_hash_cache=True),
         )
 
         return config
@@ -91,3 +94,6 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"
         )
+
+    def prejanis_hook(self):
+        return "exit 4;"

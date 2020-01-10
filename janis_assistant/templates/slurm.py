@@ -56,7 +56,9 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             slurm_email = JanisConfiguration.manager().notifications.email
 
         config = CromwellConfiguration(
-            system=CromwellConfiguration.System(job_shell="/bin/sh"),
+            system=CromwellConfiguration.System(
+                job_shell="/bin/sh", file_hash_cache=True
+            ),
             backend=CromwellConfiguration.Backend(
                 default="slurm-singularity",
                 providers={

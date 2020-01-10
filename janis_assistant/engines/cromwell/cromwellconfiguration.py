@@ -120,6 +120,7 @@ class CromwellConfiguration(Serializable):
             job_shell=None,
             cromwell_id=None,
             cromwell_id_random_suffix=None,
+            file_hash_cache: bool = None,
         ):
             self.io = io
             self.abort_jobs_on_terminate = abort_jobs_on_terminate
@@ -135,6 +136,7 @@ class CromwellConfiguration(Serializable):
             self.job_shell = job_shell
             self.cromwell_id = cromwell_id
             self.cromwell_id_random_suffix = cromwell_id_random_suffix
+            self.file_hash_cache = file_hash_cache
 
         key_map = {
             "abort_jobs_on_terminate": "abort-jobs-on-terminate",
@@ -146,6 +148,7 @@ class CromwellConfiguration(Serializable):
             "number_of_workflow_log_copy_workers": "number-of-workflow-log-copy-workers",
             "number_of_cache_read_workers": "number-of-cache-read-workers",
             "job_shell": "job-shell",
+            "file_hash_cache": "file-hash-cache",
         }
 
     class Database(Serializable):
@@ -233,7 +236,7 @@ class CromwellConfiguration(Serializable):
 
                     self.filesystems = filesystems or {
                         "local": self.Filesystem(
-                            self.Filesystem.Caching(hashing_strategy="path+modtime")
+                            self.Filesystem.Caching(hashing_strategy="File")
                         )
                     }
                     self.runtime_attributes = (runtime_attributes or "").replace(

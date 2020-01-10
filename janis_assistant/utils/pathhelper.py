@@ -3,7 +3,7 @@ import tempfile
 from inspect import isclass, isabstract
 from typing import List, Tuple
 
-from janis_core import Workflow, CommandTool, Logger
+from janis_core import Workflow, CommandTool, Logger, CodeTool
 from path import Path
 
 
@@ -177,7 +177,7 @@ def get_janis_from_module_spec(spec, include_commandtools=False):
             continue
         if issubclass(ptype, Workflow):
             potentials.append((k, ptype()))
-        if include_commandtools and issubclass(ptype, CommandTool):
+        if include_commandtools and issubclass(ptype, (CommandTool, CodeTool)):
             potentials.append((k, ptype()))
 
     return potentials

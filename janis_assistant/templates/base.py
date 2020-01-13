@@ -43,7 +43,7 @@ class EnvironmentTemplate(ABC):
                 out = subprocess.check_output(
                     command, close_fds=True, stderr=subprocess.STDOUT
                 )
-                Logger.info(out)
+                Logger.info(out.decode().strip())
             else:
                 subprocess.Popen(
                     command,

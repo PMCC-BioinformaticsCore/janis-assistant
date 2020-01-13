@@ -10,6 +10,7 @@ import sys, os
 from inspect import isclass
 
 import janis_core as j
+from janis_core import JanisShed
 from janis_core.code.codetool import CodeTool
 from typing import Optional, Dict, Union, Type, List
 
@@ -147,7 +148,9 @@ def spider_tool(
     name=None,
     force=False,
     registry_only=False,
+    trace=False,
 ):
+    JanisShed.should_trace = trace
     toolref = resolve_tool(
         tool, name, from_toolshed=True, force=force, only_registry=registry_only
     )

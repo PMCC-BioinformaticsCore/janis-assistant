@@ -173,6 +173,11 @@ def add_spider_args(parser):
         help="Force re-download of workflow if remote",
         action="store_true",
     )
+    parser.add_argument(
+        "--trace",
+        action="store_true",
+        help="Adds statements to help find why a tool isn't appearing in the registry",
+    )
 
 
 def add_resume_args(parser):
@@ -590,7 +595,11 @@ def do_run(args):
 
 def do_spider(args):
     spider_tool(
-        tool=args.tool, name=args.name, force=args.no_cache, registry_only=args.registry
+        tool=args.tool,
+        name=args.name,
+        force=args.no_cache,
+        registry_only=args.registry,
+        trace=args.trace,
     )
 
 

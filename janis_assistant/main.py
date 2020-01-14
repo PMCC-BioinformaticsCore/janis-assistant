@@ -276,7 +276,7 @@ def init_template(templatename, stream=None, unparsed_init_args=None):
             ruamel.yaml.dump(outd, configpath, default_flow_style=False)
 
     if stream:
-        ruamel.yaml.dump(outd, sys.stderr, default_flow_style=False)
+        ruamel.yaml.dump(outd, sys.stdout, default_flow_style=False)
 
 
 def parse_known_inputs(tool: j.Tool, inps: Dict):

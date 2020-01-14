@@ -200,7 +200,7 @@ class WorkflowManager:
                 )
                 logdir = tm.get_path_for_component(tm.WorkflowManagerPath.logs)
                 jc.template.template.submit_detatched_resume(
-                    wid, command, scriptdir, logdir
+                    wid=wid, command=command, scriptdir=scriptdir, logsdir=logdir
                 )
                 Logger.info("Submitted detatched engine")
 
@@ -766,8 +766,8 @@ class WorkflowManager:
             else:
                 outfn = prefix
 
-        if not final_tags:
-            final_tags = ["output"]
+        if final_tags is None:
+            final_tags = []
 
         outdir = os.path.join(self.path, "/".join(final_tags))
 

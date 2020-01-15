@@ -200,8 +200,13 @@ class WorkflowManager:
                 )
                 logdir = tm.get_path_for_component(tm.WorkflowManagerPath.logs)
                 jc.template.template.submit_detatched_resume(
-                    wid=wid, command=command, scriptdir=scriptdir, logsdir=logdir
+                    wid=wid,
+                    command=command,
+                    scriptdir=scriptdir,
+                    logsdir=logdir,
+                    config=jc,
                 )
+
                 Logger.info("Submitted detatched engine")
 
                 if watch:

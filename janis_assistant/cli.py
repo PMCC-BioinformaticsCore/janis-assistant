@@ -258,20 +258,23 @@ def add_inputs_args(parser):
 def add_run_args(parser):
     from janis_core import HINTS, HintEnum
 
-    parser.add_argument("workflow", help="Run the workflow defined in this file")
+    parser.add_argument(
+        "workflow",
+        help="Run the workflow defined in this file or available within the registry",
+    )
 
     parser.add_argument(
         "-i",
         "--inputs",
-        help="File of inputs (matching the workflow) to override, these inputs will "
-        "take precedence over inputs declared in the workflow",
+        help="YAML or JSON inputs file to provide values for the workflow (can specify multiple times)",
         action="append",
     )
 
     parser.add_argument(
         "-o",
         "--output-dir",
-        help="The output directory to which tasks are saved in, defaults to $HOME.",
+        help="This directory to copy outputs to. By default intermediate results are "
+        "within a janis/execution subfolder (unless overriden by a template)",
     )
 
     parser.add_argument(
@@ -279,7 +282,7 @@ def add_run_args(parser):
         "--background",
         action="store_true",
         default=False,
-        help="Run the workflow engine in the background (submit to a cluster if your template supports it)",
+        help="Run the workflow engine in the background (or submit to a cluster if your template supports it)",
     )
 
     parser.add_argument(

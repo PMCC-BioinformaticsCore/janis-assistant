@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Type, Optional, List
 
+from janis_assistant.management.configuration import JanisConfiguration
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
@@ -32,6 +33,7 @@ class EnvironmentTemplate(ABC):
         command: List[str],
         scriptdir: str,
         logsdir: str,
+        config: JanisConfiguration,
         capture_output: bool = False,
     ):
         import subprocess
@@ -104,9 +106,9 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(
         self,
         mail_program: str,
-        containerDir: str,
-        loadInstructions=None,
-        buildInstructions=f"singularity pull $image docker://${{docker}}",
+        container_dir: str,
+        load_instructions=None,
+        build_instructions=f"singularity pull $image docker://${{docker}}",
         max_cores=None,
         max_ram=None,
     ):
@@ -116,16 +118,16 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
             max_cores=max_cores,
             max_ram=max_ram,
         )
-        self.singularity_load_instructions = loadInstructions
-        self.singularity_container_dir = containerDir
-        self.singularity_build_instructions = buildInstructions
+        self.singularity_load_instructions = load_instructions
+        self.singularity_container_dir = container_dir
+        self.singularity_build_instructions = build_instructions
 
         Logger.log(
-            f"Setting Singularity: containerdir={containerDir}, loadinstructions={loadInstructions}"
+            f"Setting Singularity: containerdir={container_dir}, loadinstructions={load_instructions}"
         )
         # little bit hacky
-        Singularity.containerdir = containerDir
-        Singularity.loadinstructions = loadInstructions
-        Singularity.buildinstructions = buildInstructions
+        Singularity.containerdir = container_dir
+        Singularity.loadinstructions = load_instructions
+        Singularity.buildinstructions = build_instructions
 
         pass

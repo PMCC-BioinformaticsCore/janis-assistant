@@ -39,23 +39,23 @@ class LocalTemplate(EnvironmentTemplate):
 class LocalSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        containerDir,
+        container_dir,
         singularityLoadInstructions=None,
         containerBuildInstructions=f"singularity pull $image docker://${{docker}}",
         mailProgram: str = None,
     ):
         """
 
-        :param containerDir: Location where to save and execute containers from
+        :param container_dir: Location where to save and execute containers from
         :param singularityLoadInstructions: Ensure singularity with this command executed in shell
         :param containerBuildInstructions: Instructions for building singularity, it's recommended to not touch this setting.
         :param mailProgram: Mail program to pipe email to, eg: 'sendmail -t'
         """
         super().__init__(
             mail_program=mailProgram,
-            containerDir=containerDir,
-            buildInstructions=containerBuildInstructions,
-            loadInstructions=singularityLoadInstructions,
+            container_dir=container_dir,
+            build_instructions=containerBuildInstructions,
+            load_instructions=singularityLoadInstructions,
         )
 
     def cromwell(self):

@@ -6,41 +6,41 @@ from janis_assistant.templates.base import SingularityEnvironmentTemplate
 class PbsSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        containerDir: str,
-        executionDir: str = None,
+        container_dir: str,
+        execution_dir: str = None,
         queue: str = None,
         mail_program=None,
-        sendJobEmails=True,
-        catchPbsErrors=True,
-        buildInstructions=f"singularity pull $image docker://${{docker}}",
-        singularityLoadInstructions=None,
+        send_job_emails=True,
+        catch_pbs_errors=True,
+        build_instructions=f"singularity pull $image docker://${{docker}}",
+        singularity_load_instructions=None,
         max_cores=None,
         max_ram=None,
     ):
         """
-        :param executionDir: A location where the execution should take place
-        :param containerDir: Location where to save and execute containers from
+        :param execution_dir: A location where the execution should take place
+        :param container_dir: Location where to save and execute containers from
         :param queue: A queue that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
-        :param sendJobEmails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
-        :param buildInstructions: Instructions for building singularity, it's recommended to not touch this setting.
-        :param singularityLoadInstructions: Ensure singularity with this command executed in shell
+        :param send_job_emails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
+        :param build_instructions: Instructions for building singularity, it's recommended to not touch this setting.
+        :param singularity_load_instructions: Ensure singularity with this command executed in shell
         :param max_cores: Maximum number of cores a task can request
         :param max_ram: Maximum amount of ram (GB) that a task can request
         """
 
         super().__init__(
             mail_program=mail_program,
-            containerDir=containerDir,
-            buildInstructions=buildInstructions,
-            loadInstructions=singularityLoadInstructions,
+            container_dir=container_dir,
+            build_instructions=build_instructions,
+            load_instructions=singularity_load_instructions,
             max_cores=max_cores,
             max_ram=max_ram,
         )
-        self.execution_dir = executionDir
+        self.execution_dir = execution_dir
         self.queue = queue
-        self.send_job_emails = sendJobEmails
-        self.catch_pbs_errors = catchPbsErrors
+        self.send_job_emails = send_job_emails
+        self.catch_pbs_errors = catch_pbs_errors
 
     def cromwell(self):
 

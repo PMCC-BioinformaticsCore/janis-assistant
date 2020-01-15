@@ -8,45 +8,45 @@ from janis_assistant.templates.base import SingularityEnvironmentTemplate
 class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
     def __init__(
         self,
-        containerDir: str,
-        executionDir: str = None,
+        container_dir: str,
+        execution_dir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
-        sendSlurmEmails=True,
-        catchSlurmErrors=False,
-        buildInstructions=f"singularity pull $image docker://${{docker}}",
-        singularityLoadInstructions=None,
-        limitResources=False,
+        send_job_emails=True,
+        catch_slurm_errors=False,
+        build_instructions=f"singularity pull $image docker://${{docker}}",
+        singularity_load_instructions=None,
+        limit_resources=False,
         max_cores=None,
         max_ram=None,
     ):
         """
-        :param executionDir: A location where the execution should take place
-        :param containerDir: Location where to save and execute containers from
+        :param execution_dir: A location where the execution should take place
+        :param container_dir: Location where to save and execute containers from
         :param queues: A single or list of queues that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
-        :param catchSlurmErrors: Catch Slurm errors (like OOM or walltime)
-        :param sendSlurmEmails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
-        :param buildInstructions: Instructions for building singularity, it's recommended to not touch this setting.
-        :param singularityLoadInstructions: Ensure singularity with this command executed in shell
-        :param limitResources: Limit resources with singularity using cgroups (REQUIRES ROOT)
+        :param catch_slurm_errors: Catch Slurm errors (like OOM or walltime)
+        :param send_job_emails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
+        :param build_instructions: Instructions for building singularity, it's recommended to not touch this setting.
+        :param singularity_load_instructions: Ensure singularity with this command executed in shell
+        :param limit_resources: Limit resources with singularity using cgroups (REQUIRES ROOT)
         :param max_cores: Maximum number of cores a task can request
         :param max_ram: Maximum amount of ram (GB) that a task can request
         """
 
         super().__init__(
             mail_program=mail_program,
-            containerDir=containerDir,
-            buildInstructions=buildInstructions,
-            loadInstructions=singularityLoadInstructions,
+            container_dir=container_dir,
+            build_instructions=build_instructions,
+            load_instructions=singularity_load_instructions,
             max_cores=max_cores,
             max_ram=max_ram,
         )
-        self.execution_dir = executionDir
+        self.execution_dir = execution_dir
         self.queues = queues or []
-        self.send_slurm_emails = sendSlurmEmails
-        self.catch_slurm_errors = catchSlurmErrors
-        self.limitResources = limitResources
+        self.send_slurm_emails = send_job_emails
+        self.catch_slurm_errors = catch_slurm_errors
+        self.limitResources = limit_resources
 
     def cromwell(self):
         from janis_assistant.management.configuration import JanisConfiguration

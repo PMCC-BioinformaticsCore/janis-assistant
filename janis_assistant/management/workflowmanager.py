@@ -15,10 +15,9 @@ Run / monitor separation:
 
 """
 import os
-import threading
+import queue
 import time
 from enum import Enum
-import queue
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
@@ -26,21 +25,19 @@ from janis_core import InputSelector, Logger, Workflow, File, Array, LogLevel, D
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
-from janis_assistant.management.configuration import JanisConfiguration
 
-from janis_assistant.data.models.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
+from janis_assistant.data.models.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflow import WorkflowModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
 from janis_assistant.engines import (
     get_ideal_specification_for_engine,
     Cromwell,
     CWLTool,
-    EngineType,
     CromwellConfiguration,
 )
 from janis_assistant.environments.environment import Environment
+from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.management.mysql import MySql
 from janis_assistant.management.notificationmanager import NotificationManager
 from janis_assistant.management.workflowdbmanager import WorkflowDbManager

@@ -16,6 +16,7 @@ Run / monitor separation:
 """
 import os
 import queue
+import threading
 import time
 from enum import Enum
 from subprocess import call
@@ -46,6 +47,7 @@ from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 from janis_assistant.modifiers.validatormodifier import ValidatorPipelineModifier
 from janis_assistant.utils import get_extension, recursively_join, find_free_port
 from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.urwidhelp import translate_text_for_urwid
 from janis_assistant.validation import ValidationRequirements
 
 
@@ -252,9 +254,6 @@ class WorkflowManager:
         return WorkflowManager.from_path_with_wid(path, wid)
 
     def show_status_screen(self):
-        self.poll_stored_metadata(None)
-
-    def poll_stored_metadata(self, stdscr, seconds=3):
         """
         This function just polls the database for metadata every so often,
         and simply displays it. It will keep doing that until the task
@@ -263,33 +262,92 @@ class WorkflowManager:
         It's presumed that there's a janis-monitor that's watching the engine
         """
 
-        def log_to_screen(text, clear=True):
-            if stdscr:
-                if clear:
-                    stdscr.clear()
-                stdscr.addstr(text)
-                stdscr.refresh()
-            else:
-                if clear:
-                    call("clear")
-                print(text)
-
         if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState):
             meta = self.database.get_metadata()
             formatted = meta.format()
-            log_to_screen(formatted, clear=False)
+            print(formatted)
             return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
 
-        status = None
+        uw = None
 
-        while status not in TaskStatus.final_states():
-            meta = self.database.get_metadata()
+        try:
+            import urwid
+
+            uw = urwid
+
+        except Exception as e:
+            txt = (
+                "Couldn't load 'urwid' for screen display, defaulting back to clear(): "
+                + str(e)
+            )
+            Logger.critical(txt)
+
+        if uw:
+            self.poll_stored_metadata_with_urwid(uw)
+        else:
+            self.poll_stored_metadata_no_urwid()
+
+    def get_meta_call(self):
+        meta = self.database.get_metadata()
+        return meta, meta and meta.status in TaskStatus.final_states()
+
+    def poll_stored_metadata_no_urwid(self, seconds=3):
+        is_finished = False
+
+        # We won't clear the screen if we haven't printed (first loop) and it's finished
+        has_printed = False
+        while not is_finished:
+            meta, is_finished = self.get_meta_call()
             if meta:
-                log_to_screen(meta.format())
-                status = meta.status
+                if has_printed or not is_finished:
+                    call("clear")
+                print(meta.format())
+                has_printed = True
 
-            if status not in TaskStatus.final_states():
+            if not is_finished:
                 time.sleep(seconds)
+
+    def poll_stored_metadata_with_urwid(self, urwid, seconds=1):
+
+        # preserve scope
+        this = self
+
+        textbox = urwid.Text("loading...")
+        fill = urwid.Filler(textbox, "top")
+        stopFlag = threading.Event()
+
+        def exit_on_q(key):
+            if key in ("q", "Q"):
+                raise urwid.ExitMainLoop()
+
+        loop = urwid.MainLoop(fill, unhandled_input=exit_on_q)
+
+        def poll_and_set_text(_):
+            meta, is_finished = this.get_meta_call()
+            if meta:
+                translated = translate_text_for_urwid(urwid, meta.format())
+                textbox.set_text(translated)
+
+            if is_finished:
+                Logger.critical("Finishing")
+                stopFlag.set()
+
+        class GetMetaTimer(threading.Thread):
+            def __init__(self, event, poller):
+                super().__init__()
+                self.stopped = event
+                self.poller = poller
+
+            def run(self):
+                os.write(self.poller, "0".encode())
+                while not self.stopped.wait(seconds):
+                    os.write(self.poller, "0".encode())
+
+        poller = loop.watch_pipe(poll_and_set_text)
+        thread = GetMetaTimer(stopFlag, poller)
+        thread.start()
+
+        loop.run()
 
     def process_completed_task(self):
         Logger.info(

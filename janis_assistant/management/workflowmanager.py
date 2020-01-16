@@ -268,11 +268,12 @@ class WorkflowManager:
             print(formatted)
             return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
 
-        uw = None
+        bl = None
 
         try:
-            # import urwid
-            # uw = urwid
+            import blessed
+
+            bl = blessed
             Logger.log("Todo: make urwid text selectable")
 
         except Exception as e:
@@ -282,8 +283,8 @@ class WorkflowManager:
             )
             Logger.critical(txt)
 
-        if uw:
-            self.poll_stored_metadata_with_urwid(uw)
+        if bl:
+            self.poll_stored_metadata_with_blessed(bl)
         else:
             self.poll_stored_metadata_no_urwid()
 
@@ -307,72 +308,40 @@ class WorkflowManager:
             if not is_finished:
                 time.sleep(seconds)
 
-    def poll_stored_metadata_with_urwid(self, urwid, seconds=1):
+    def poll_stored_metadata_with_blessed(self, blessed, seconds=1):
 
-        # preserve scope
-        this = self
+        term = blessed.Terminal()
+        with term.fullscreen(), term.cbreak():
+            try:
+                print("loading...")
 
-        # class SelectableText(urwid.Text):
-        #     def __init__(self, *args, **kwargs):
-        #         super().__init__(*args, **kwargs)
-        #         self.last_mouse_event = None
-        #
-        #     def selectable(self):
-        #         return True
-        #
-        #     def keypress(self, size, key):
-        #         return key
-        #
-        #     def mouse_event(self, size, event, button, col, row, focus):
-        #         if event == self.last_mouse_event:
-        #             return
-        #         self.last_mouse_event = event
-        #         print(event)
-        #         # if event != "mouse drag":
-        #         #     return
-        #         text = self.get_text()
-        #         # print(text)
+                is_finished = False
 
-        textbox = urwid.Text("loading...")
-        fill = urwid.Filler(textbox, "top")
-        stopFlag = threading.Event()
+                # We won't clear the screen if we haven't printed (first loop) and it's finished
+                has_printed = False
+                while not is_finished:
+                    meta, is_finished = self.get_meta_call()
+                    if meta:
+                        if has_printed or not is_finished:
+                            print(term.clear)
+                        print(meta.format())
+                        has_printed = True
 
-        def exit_on_q(key):
-            if key in ("q", "Q"):
-                raise urwid.ExitMainLoop()
+                    val = term.inkey(timeout=0)
+                    if val and val.lower() == "q":
+                        print("Exiting!")
+                        break
 
-        loop = urwid.MainLoop(fill, unhandled_input=exit_on_q)
+                    elif not is_finished:
+                        time.sleep(seconds)
 
-        def poll_and_set_text(_):
-            meta, is_finished = this.get_meta_call()
-            if meta:
-                translated = translate_text_for_urwid(urwid, meta.format())
-                textbox.set_text(translated)
+                # Finished
+                with term.location(0, term.height - 1):
+                    print("Finished, press any key to quit")
+                term.inkey(timeout=None)
 
-            if is_finished:
-                Logger.critical("Finishing")
-                stopFlag.set()
-
-        class GetMetaTimer(threading.Thread):
-            def __init__(self, event, poller):
-                super().__init__()
-                self.stopped = event
-                self.poller = poller
-
-            def run(self):
-                os.write(self.poller, "0".encode())
-                while not self.stopped.wait(seconds):
-                    os.write(self.poller, "0".encode())
-
-        try:
-            poller = loop.watch_pipe(poll_and_set_text)
-            thread = GetMetaTimer(stopFlag, poller)
-            thread.start()
-
-            loop.run()
-        except KeyboardInterrupt:
-            stopFlag.set()
-            urwid.ExitMainLoop()
+            except KeyboardInterrupt:
+                Logger.info("Exiting")
 
     def process_completed_task(self):
         Logger.info(

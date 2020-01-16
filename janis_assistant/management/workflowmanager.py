@@ -271,9 +271,9 @@ class WorkflowManager:
         uw = None
 
         try:
-            import urwid
-
-            uw = urwid
+            # import urwid
+            # uw = urwid
+            Logger.log("Todo: make urwid text selectable")
 
         except Exception as e:
             txt = (
@@ -311,6 +311,27 @@ class WorkflowManager:
 
         # preserve scope
         this = self
+
+        # class SelectableText(urwid.Text):
+        #     def __init__(self, *args, **kwargs):
+        #         super().__init__(*args, **kwargs)
+        #         self.last_mouse_event = None
+        #
+        #     def selectable(self):
+        #         return True
+        #
+        #     def keypress(self, size, key):
+        #         return key
+        #
+        #     def mouse_event(self, size, event, button, col, row, focus):
+        #         if event == self.last_mouse_event:
+        #             return
+        #         self.last_mouse_event = event
+        #         print(event)
+        #         # if event != "mouse drag":
+        #         #     return
+        #         text = self.get_text()
+        #         # print(text)
 
         textbox = urwid.Text("loading...")
         fill = urwid.Filler(textbox, "top")

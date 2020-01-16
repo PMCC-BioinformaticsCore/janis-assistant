@@ -1,11 +1,34 @@
 """
-DERVIED FROM: https://github.com/Nanoseb/ncTelegram/blob/master/ncTelegram/ui_msgwidget.py#L218
+Urwid Helper
+
+    Primarily this script converts an ANSII escaped string for display on urwid.
+
+
+    Methods:
+        - translate_color: Convert a 3/4 bit ANSII escape code into the equivalent urwid color
+        - translate_text_for_urwid: Converts an ANSII escaped string into an urwid equivalent.
+
+    Derived from:
+        https://github.com/Nanoseb/ncTelegram/blob/master/ncTelegram/ui_msgwidget.py#L218
 """
 
+import re
 from typing import Tuple, List, Union
 
+"""
+Explained using: https://regex101.com/
 
-ANSI_ESCAPE_REGEX = r"[\x1b\033]\[((?:\d|;)+)m([^\x1b\033]+)"
+    [\x1b\033]          match one of "\x1b" or "\033"
+    \[                  match "[" (literal) 
+    (                   capture group 1
+        [\d;]+              integer or literal ';' literal (one or many)
+    )                   end capture group 1
+    m                   match "m" literal
+    (                   capture group 2
+        [^\x1b\033]+        match all characters but "\x1b" or "\033" (text between next group)
+    )                   end capture group 2
+"""
+ANSI_ESCAPE_REGEX = r"[\x1b\033]\[([\d;]+)m([^\x1b\033]+)"
 
 color_list = [
     "black",
@@ -28,6 +51,14 @@ color_list = [
 
 
 def translate_color(attr: Union[str, Tuple, List[int]]) -> Tuple[str, str]:
+    """
+    Translates a 3/4 bit ANSII escape code into the equivalent urwid color:
+    Source: https://en.wikipedia.org/wiki/ANSI_escape_code#3/4_bit
+
+    :param attr: string (should be semi-colon (;) delimited) | Tuple | List[int]
+    :return: Tuple[foreground: str, background: str]
+
+    """
     if isinstance(attr, int):
         list_attr = [attr]
     elif isinstance(attr, (tuple, list)):
@@ -70,7 +101,15 @@ def translate_color(attr: Union[str, Tuple, List[int]]) -> Tuple[str, str]:
 
 
 def translate_text_for_urwid(urwid, raw_text):
-    import re
+    """
+    Converts an ANSII escaped string into an urwid equivalent.
+    First by finding all the matches for "\033[" or "\x1b[",
+    reading the ANSII escape code(s) (semi-colon delimited),
+    and converting these to the an urwid AttrSpec.
+
+    :param raw_text:
+    :return:
+    """
 
     formated_text = []
     if hasattr(raw_text, "decode"):

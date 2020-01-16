@@ -343,11 +343,15 @@ class WorkflowManager:
                 while not self.stopped.wait(seconds):
                     os.write(self.poller, "0".encode())
 
-        poller = loop.watch_pipe(poll_and_set_text)
-        thread = GetMetaTimer(stopFlag, poller)
-        thread.start()
+        try:
+            poller = loop.watch_pipe(poll_and_set_text)
+            thread = GetMetaTimer(stopFlag, poller)
+            thread.start()
 
-        loop.run()
+            loop.run()
+        except KeyboardInterrupt:
+            stopFlag.set()
+            urwid.ExitMainLoop()
 
     def process_completed_task(self):
         Logger.info(

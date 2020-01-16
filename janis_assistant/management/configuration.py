@@ -11,10 +11,10 @@ from janis_assistant.templates import from_template
 
 class JanisConfiguration:
     class Keys(HashableEnum):
-        ConfigDir = "configDir"
-        OutputDir = "outputDir"
-        ExecutionDir = "executionDir"
-        SearchPaths = "searchPaths"
+        ConfigDir = "config_dir"
+        OutputDir = "output_dir"
+        ExecutionDir = "execution_dir"
+        SearchPaths = "search_paths"
         Engine = "engine"
         Environment = "environment"
         Cromwell = "cromwell"
@@ -83,8 +83,8 @@ class JanisConfiguration:
 
     class JanisConfigurationEnvironment:
         class Keys(HashableEnum):
-            MaxCores = "maxCores"
-            MaxRam = "maxRam"
+            MaxCores = "max_cores"
+            MaxRam = "max_ram"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -99,7 +99,7 @@ class JanisConfiguration:
     class JanisConfigurationCromwell:
         class Keys(HashableEnum):
             JarPath = "jar"
-            ConfigPath = "configPath"
+            ConfigPath = "config_path"
             Url = "url"
 
         def __init__(self, d: dict, default: dict):
@@ -264,7 +264,7 @@ class JanisConfiguration:
         class Keys(HashableEnum):
             # Events = "events"   # All events currently
             Email = "email"
-            MailProgram = "mailProgram"
+            MailProgram = "mail_program"
             # Slack = "slack"     # unused
 
         def __init__(self, d: dict, default: dict):

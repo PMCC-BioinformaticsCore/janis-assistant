@@ -7,7 +7,7 @@ from janis_assistant.data.models.filescheme import SSHFileScheme
 
 @unittest.skipUnless(
     os.getenv("unittest_ssh_location") is not None,
-    "These tests only work with pretty specific ",
+    "These tests only work with pretty specific environment setup",
 )
 class TestSSHFileScheme(unittest.TestCase):
     """

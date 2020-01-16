@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Type, Optional, List
 
-from janis_assistant.management.configuration import JanisConfiguration
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
@@ -33,7 +32,7 @@ class EnvironmentTemplate(ABC):
         command: List[str],
         scriptdir: str,
         logsdir: str,
-        config: JanisConfiguration,
+        config,
         capture_output: bool = False,
     ):
         import subprocess

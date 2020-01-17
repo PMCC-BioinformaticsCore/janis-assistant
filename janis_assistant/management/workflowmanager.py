@@ -314,6 +314,7 @@ class WorkflowManager:
                 print("loading...")
 
                 is_finished = False
+                did_exit = False
 
                 # We won't clear the screen if we haven't printed (first loop) and it's finished
                 has_printed = False
@@ -327,16 +328,17 @@ class WorkflowManager:
 
                     val = term.inkey(timeout=0)
                     if val and val.lower() == "q":
-                        print("Exiting!")
+                        did_exit = True
                         break
 
                     elif not is_finished:
                         time.sleep(seconds)
 
                 # Finished
-                with term.location(0, term.height - 1):
-                    print("Finished, press any key to quit")
-                term.inkey(timeout=None)
+                if not did_exit:
+                    with term.location(0, term.height - 1):
+                        print("Finished, press any key to quit")
+                    term.inkey(timeout=None)
 
             except KeyboardInterrupt:
                 Logger.info("Exiting")

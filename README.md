@@ -39,13 +39,14 @@ for more information.
 
 ## CLI options:
 
-- `run` - Run a janis workflow
-- `watch` - Watch an existing execution
+- `run` - Run a janis workflow (see the run parameters below)
+- `watch` - Watch an existing execution (folder or workflow ID)
 - `abort` - Issue an abort request to an existing execution
 - `inputs` - Generate an inputs file for a workflow
 - `translate` - Translate a workflow into CWL / WDL
 - `metadata` - Get the available metadata on an execution
-- `version` - Print the version of `janis_assistant`
+- `version` - Print the version of `janis` submodules.
+- `spider` - Print documentation for a tool (allows to trace problems with the JanisRegistry)
 
 ### `run`
 
@@ -58,26 +59,60 @@ janis run hello
 View the help guide 
 
 ```
+# $ janis run -h
+
 positional arguments:
-  workflow              Run the workflow defined in this file
+  workflow              Run the workflow defined in this file or available
+                        within the registry
+  extra_inputs
 
 optional arguments:
   -h, --help            show this help message and exit
+  -i INPUTS, --inputs INPUTS
+                        YAML or JSON inputs file to provide values for the
+                        workflow (can specify multiple times)
+  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                        This directory to copy outputs to. By default
+                        intermediate results are within a janis/execution
+                        subfolder (unless overriden by a template)
+  -B, --background      Run the workflow engine in the background (or submit
+                        to a cluster if your template supports it)
+  --progress            Show the progress screen if running in the background
+  --keep-intermediate-files
+                        Do not remove execution directory on successful
+                        complete
+  --development         Apply common settings (--keep-execution-dir + --mysql)
+                        to support incremental development of a pipeline
+
+input manipulation:
+  -r RECIPE, --recipe RECIPE
+                        Use a provided recipe from a provided template
+  --max-cores MAX_CORES
+                        maximum number of cores to use when generating
+                        resource overrides
+  --max-memory MAX_MEMORY
+                        maximum GB of memory to use when generating resource
+                        overrides
+
+hints:
+  --hint-captureType {targeted,exome,chromosome,30x,90x,300x}
+  --hint-engine {cromwell}
+
+workflow collection arguments:
+  --registry            Skip looking through the search path, and only look in
+                        the registry
   -n NAME, --name NAME  If you have multiple workflows in your file, you may
                         want to help Janis out to select the right workflow to
                         run
-  --inputs INPUTS       File of inputs (matching the workflow) to override,
-                        these inputs will take precedence over inputs declared
-                        in the workflow
-  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
-                        The output directory to which tasks are saved in,
-                        defaults to $HOME.
-  -e ENVIRONMENT, --environment ENVIRONMENT
-                        Select a preconfigured environment (takes precendence
-                        over engine and filescheme). See the list of
-                        environments with `janis environment list`
-  --engine {cromwell,cwltool}
+  --no-cache            Force re-download of workflow if remote
+
+engine arguments:
+  --engine {cwltool,cromwell}
                         Choose an engine to start
+  --cromwell-url CROMWELL_URL
+                        Location to Cromwell
+
+filescheme arguments:
   -f {local,ssh}, --filescheme {local,ssh}
                         Choose the filescheme required to retrieve the output
                         files where your engine is located. By selecting SSH,
@@ -86,8 +121,8 @@ optional arguments:
   --filescheme-ssh-binding FILESCHEME_SSH_BINDING
                         Only valid if you've selected the ssh filescheme. (eg:
                         scp cluster:/path/to/output local/output/dir)
-  --cromwell-url CROMWELL_URL
-                        Location to Cromwell
+
+validation arguments:
   --validation-reference VALIDATION_REFERENCE
                         reference file for validation
   --validation-truth-vcf VALIDATION_TRUTH_VCF
@@ -96,17 +131,9 @@ optional arguments:
                         intervals to validate between
   --validation-fields VALIDATION_FIELDS [VALIDATION_FIELDS ...]
                         outputs from the workflow to validate
-  --dryrun              convert workflow, and do everything except submit the
-                        workflow
-  --no-watch            Submit the workflow and return the task id
-  --max-cores MAX_CORES
-                        maximum number of cores to use when generating
-                        resource overrides
-  --max-memory MAX_MEMORY
-                        maximum GB of memory to use when generating resource
-                        overrides
-  --hint-captureType {targeted,exome,chromosome,30x,90x,300x}
-  --hint-engine {cromwell}
+
+beta features:
+  --mysql               BETA: Run MySQL for persistence with Cromwell
 ```
 
 ## Configuration
@@ -148,10 +175,9 @@ There are currently 2 engines that `janis_assistant` supports:
 ### CWLTool (default)
     
 Due to the way CWLTool provides metadata, support for CWLTool is very basic, and limited to submitting 
-workflows and linking the outputs. It doesn't allow you to disconnect and reconnect later. It's enough 
-as a proof of concept and for very basic workflows. 
+workflows and linking the outputs. Janis can manage CWLTool in the background, except if CWLTool is 
+terminated (through some transient cluster error), Janis is unable to restart it.
 
-You should include the `--logDebug` parmeter to see the output of CWLTool. 
 
 ### Cromwell
 
@@ -161,13 +187,11 @@ Cromwell can be run in two modes:
     allow the Janis assistant to correctly connect to this instance.
     
 2. Run and manage it's own instance. When the task is started, the `process_id` of the started Cromwell instance
-    is stored in the `taskdb`, when the task finishes execution, the process is manually stopped. You are able to
-    disconnect from the task, but note that the Cromwell instance will be kept running until you `watch` the task
-    again, it recognises that it has finished and then manually shuts it down.
+    is stored in the `taskdb`, when the task finishes execution, Janis stops this Cromwell instance. Janis
+    can manage a MySQL (in fact MariaDB) instance with the `--mysql` flag for durability and to reduce memory overhead.
     
 Both of these options provide reporting and progress tracking due to Cromwell's extensive metadata endpoint. The TaskID
-(6 hex characters) is included as a label on the workflow. You can disconnect from a job and reconnect with this TaskID
-through the command:
+(6 hex characters) is included as a label on the workflow.
 
 ```bash
 janis watch $tid
@@ -181,26 +205,10 @@ A screenshot of the running the example [whole genome germline pipeline](https:/
 
 Extra Cromwell comments:
 
-- The TaskID is bound as a label on GCP instances (as `tid`, allowing you to query this information).
+- The TaskID is bound as a label on GCP instances (as `wid`, allowing you to query this information).
 - Janis uses the development spec of WDL, requiring Cromwell-42 or higher.
 - If asking Janis to start its own Cromwell instance, it requires the jar to be exported as `$cromwelljar`.
 
-
-## Environments
-
-Environments are a combination of an Engine and a Filesystem. They save you from having to constantly specify your
-engine (+ parameters).
-
-Environment information is used as a template, in which the task stores its own copy of the filesystem and engine.
-This was chosen as it allows a task's output to be relocated without losing workflow metadata.
-
-> Adding and deleting environments is currently UNAVAILABLE.
-
-Actions:
-
-- List: `janis environment list`
-- Create: _unavailable_ (proposed: `janis environment create 'env' --engine 'engineId' --filescheme 'fsid'`)
-- Delete _unavailable_ (proposed: `janis environment -d 'env'`)
 
 ### Filesystem
 
@@ -215,13 +223,9 @@ Supported filesystems:
     database. Janis uses the connection string like so: `scp connectionstring:/path/to/output /local/persist/path`
 
 
-## Datbases
+## Databases
 
 Janis stores a global SQLite database at `{configDir}/janis.db` of environments and task pointers 
 (default: `~/.janis/janis.db`). When a task is started, a database and workflow files are copied 
-to a generated output folder  (default: `~/janis/execution/{workflowName}/${yyyymmdd_hhMM}_{tid}/task.db`).
+to your specified output directory.
  
-## v0.6.0
-
-Version v0.6.0 brings new backwards-incompatible changes to the metadata structure, as well as significant changes
-to the Janis API.

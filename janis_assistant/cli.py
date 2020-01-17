@@ -588,7 +588,7 @@ def do_run(args):
         recipes=args.recipe,
         keep_intermediate_files=keep_intermediate_files,
         run_in_background=(args.background is True),
-        mysql=not mysql,
+        mysql=mysql,
         only_registry=args.registry,
     )
 

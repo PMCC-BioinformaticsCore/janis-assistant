@@ -306,8 +306,8 @@ def fromjanis(
     force=False,
     keep_intermediate_files=False,
     recipes=None,
-    should_disconnect=True,
-    skip_mysql=False,
+    run_in_background=True,
+    mysql=False,
     only_registry=False,
     **kwargs,
 ):
@@ -402,8 +402,8 @@ def fromjanis(
             max_cores=max_cores,
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
-            should_disconnect=should_disconnect,
-            skip_mysql=skip_mysql,
+            run_in_background=run_in_background,
+            mysql=mysql,
         )
         Logger.log("Finished starting task task")
         return

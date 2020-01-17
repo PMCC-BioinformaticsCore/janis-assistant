@@ -137,8 +137,8 @@ class ConfigManager:
         max_cores=None,
         max_memory=None,
         keep_intermediate_files=False,
-        should_disconnect=True,
-        skip_mysql=False,
+        run_in_background=True,
+        mysql=False,
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
@@ -154,8 +154,8 @@ class ConfigManager:
             max_cores=max_cores,
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
-            should_disconnect=should_disconnect,
-            skip_mysql=skip_mysql,
+            run_in_background=run_in_background,
+            mysql=mysql,
         )
 
     def from_wid(self, wid):

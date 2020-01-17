@@ -120,8 +120,8 @@ class WorkflowManager:
         max_cores=None,
         max_memory=None,
         keep_intermediate_files=False,
-        should_disconnect=True,
-        skip_mysql=False,
+        run_in_background=True,
+        mysql=False,
     ):
 
         jc = JanisConfiguration.manager()
@@ -143,7 +143,7 @@ class WorkflowManager:
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
         tm.database.workflowmetadata.configuration = jc
-        tm.database.workflowmetadata.should_manage_database = not skip_mysql
+        tm.database.workflowmetadata.should_manage_database = mysql
 
         # This is the only time we're allowed to skip the tm.set_status
         # This is a temporary stop gap until "notification on status" is implemented.
@@ -190,7 +190,7 @@ class WorkflowManager:
             tm.set_status(TaskStatus.QUEUED)
 
             # resubmit the engine
-            if should_disconnect:
+            if run_in_background:
                 loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
                 command = ["janis", "--logLevel", loglevel, "resume", wid]
                 scriptdir = tm.get_path_for_component(
@@ -279,7 +279,7 @@ class WorkflowManager:
                 "Couldn't load 'blessed' for screen display, defaulting back to clear(): "
                 + str(e)
             )
-            Logger.critical(txt)
+            Logger.warn(txt)
 
         if bl:
             self.poll_stored_metadata_with_blessed(bl)

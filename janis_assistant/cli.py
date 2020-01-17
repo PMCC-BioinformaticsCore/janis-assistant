@@ -587,8 +587,8 @@ def do_run(args):
         force=args.no_cache,
         recipes=args.recipe,
         keep_intermediate_files=keep_intermediate_files,
-        should_disconnect=(args.background is True),
-        skip_mysql=not mysql,
+        run_in_background=(args.background is True),
+        mysql=not mysql,
         only_registry=args.registry,
     )
 

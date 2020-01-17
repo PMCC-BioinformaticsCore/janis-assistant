@@ -1,3 +1,4 @@
+blessed
 janis-pipelines.core
 janis-pipelines.templates
 black

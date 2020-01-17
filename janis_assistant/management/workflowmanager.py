@@ -47,7 +47,6 @@ from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 from janis_assistant.modifiers.validatormodifier import ValidatorPipelineModifier
 from janis_assistant.utils import get_extension, recursively_join, find_free_port
 from janis_assistant.utils.dateutil import DateUtil
-from janis_assistant.utils.urwidhelp import translate_text_for_urwid
 from janis_assistant.validation import ValidationRequirements
 
 
@@ -274,11 +273,10 @@ class WorkflowManager:
             import blessed
 
             bl = blessed
-            Logger.log("Todo: make urwid text selectable")
 
         except Exception as e:
             txt = (
-                "Couldn't load 'urwid' for screen display, defaulting back to clear(): "
+                "Couldn't load 'blessed' for screen display, defaulting back to clear(): "
                 + str(e)
             )
             Logger.critical(txt)
@@ -286,13 +284,13 @@ class WorkflowManager:
         if bl:
             self.poll_stored_metadata_with_blessed(bl)
         else:
-            self.poll_stored_metadata_no_urwid()
+            self.poll_stored_metadata_with_clear()
 
     def get_meta_call(self):
         meta = self.database.get_metadata()
         return meta, meta and meta.status in TaskStatus.final_states()
 
-    def poll_stored_metadata_no_urwid(self, seconds=3):
+    def poll_stored_metadata_with_clear(self, seconds=3):
         is_finished = False
 
         # We won't clear the screen if we haven't printed (first loop) and it's finished

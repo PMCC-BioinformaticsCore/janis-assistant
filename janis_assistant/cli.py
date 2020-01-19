@@ -61,7 +61,6 @@ def process_args(sysargs=None):
     parser = DefaultHelpArgParser(description="Execute a workflow")
 
     add_logger_args(parser)
-    parser.add_argument("-c", "--config", help="Path to config file")
     parser.add_argument("-v", "--version", action="store_true")
 
     subparsers = parser.add_subparsers(dest="command")
@@ -126,7 +125,8 @@ def process_args(sysargs=None):
         parser.print_help()
         sys.exit(2)
 
-    JanisConfiguration.initial_configuration(args.config)
+    # Don't load the config here anymore, do it conditionally on the route
+    # JanisConfiguration.initial_configuration(args.config)
 
     return cmds[args.command](args)
 
@@ -262,6 +262,8 @@ def add_run_args(parser):
         "workflow",
         help="Run the workflow defined in this file or available within the registry",
     )
+
+    parser.add_argument("-c", "--config", help="Path to config file")
 
     parser.add_argument(
         "-i",
@@ -533,6 +535,8 @@ def do_rm(args):
 
 
 def do_run(args):
+    JanisConfiguration.initial_configuration(args.config)
+
     v = None
 
     if args.validation_fields:

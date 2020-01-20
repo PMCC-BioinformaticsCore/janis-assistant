@@ -34,7 +34,7 @@ setup(
         "progressbar2",
         "sqlitedict",
         "tabulate",
-        "ruamel.yaml >= 0.12.4, <= 0.15.77",
+        "ruamel.yaml",
         "cwltool",
         "blessed",
     ],

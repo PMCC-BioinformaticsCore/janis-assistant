@@ -164,23 +164,30 @@ class JanisConfiguration:
         def load_recipes(self, force=False):
             from os import listdir
 
-            if not force and (
-                self._loaded_recipes
-                or not (self.recipe_paths or self.recipe_directories)
-            ):
+            dirs: List[str] = []
+            paths: List[str] = []
+
+            paths_from_env = EnvVariables.recipe_paths.resolve(True)
+            dirs_from_env = EnvVariables.recipe_directory.resolve(True) or []
+
+            if paths_from_env:
+                paths.extend(paths_from_env)
+            if self.recipe_paths:
+                paths.extend(self.recipe_paths)
+            if dirs_from_env:
+                dirs.extend(dirs_from_env)
+            if self.recipe_directories:
+                dirs.extend(self.recipe_directories)
+
+            self._files_by_key = {}
+
+            # Do if: force or (we haven't loaded recipes and we have recipes to load)
+            if not (force or not self._loaded_recipes and (paths or dirs)):
                 return
 
             import ruamel.yaml
 
-            paths = []
-
             # Do the env first, then ones from the config can cascade over them
-            paths_from_env = EnvVariables.recipe_paths.resolve(True)
-            if paths_from_env:
-                paths.extend(paths_from_env)
-
-            if self.recipe_paths:
-                paths.extend(self.recipe_paths)
 
             for recipe_location in paths:
                 try:
@@ -191,11 +198,6 @@ class JanisConfiguration:
                 except Exception as e:
                     Logger.critical(f"Couldn't load recipe '{recipe_location}': {e}")
 
-            dirs: List[str] = []
-            dirs.extend(EnvVariables.recipe_directory.resolve(True) or [])
-            dirs.extend(self.recipe_directories or [])
-
-            self._files_by_key = {}
             for d in dirs:
                 if not os.path.exists(d):
                     Logger.critical(f"Couldn't find recipe directory: '{d}', skipping")

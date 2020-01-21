@@ -87,7 +87,8 @@ class ConfigManager:
 
         if not outdir and not config.outputdir:
             raise Exception(
-                "You must provide an output directory (or specify an 'outputDir' in your configuration)"
+                f"You must specify an output directory (or specify an '{JanisConfiguration.Keys.OutputDir.value}' "
+                f"in your configuration)"
             )
 
         default_outdir = None

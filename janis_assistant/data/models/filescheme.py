@@ -6,7 +6,6 @@ import subprocess
 from enum import Enum
 from shutil import copyfile
 from typing import Optional, Callable
-import urllib.request
 
 from janis_assistant.management import Archivable
 from janis_assistant.management.configuration import JanisConfiguration
@@ -178,6 +177,7 @@ class HTTPFileScheme(FileScheme):
         force=False,
         report_progress: Optional[Callable[[float], None]] = None,
     ):
+        import urllib.request
 
         if os.path.exists(dest):
             if not force:
@@ -197,10 +197,12 @@ class HTTPFileScheme(FileScheme):
         raise NotImplementedError("Not implemented")
 
     def rm_dir(self, directory):
-        import requests
+        import urllib.request
 
         Logger.info(f"Issuing HTTP.DELETE request for directory '{directory}'")
-        return requests.delete(directory)
+        req = urllib.request.Request(directory)
+        req.get_method = lambda: "DELETE"
+        return urllib.request.urlopen(req)
 
     def mkdirs(self, directory):
         return None

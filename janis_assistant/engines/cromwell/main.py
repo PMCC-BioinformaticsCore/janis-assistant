@@ -6,11 +6,11 @@ import signal
 import subprocess
 import sys
 import threading
-import urllib.request
+from urllib import request, parse
+
 from glob import glob
 from typing import Optional, List
 
-import requests
 from janis_core import LogLevel
 from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
@@ -120,7 +120,7 @@ class Cromwell(Engine):
             return False
 
         try:
-            r = requests.get(self.url_test())
+            r = request.urlopen(self.url_test())
             r.raise_for_status()
             return True
 
@@ -298,6 +298,8 @@ class Cromwell(Engine):
         #   -F "workflowInputs=@whole_genome_germline-local.yml;type=" \
         #   -F "workflowDependencies=@tools-gatk4.0.1.2.zip;type=application/zip
 
+        from requests import post
+
         url = self.url_create()
 
         max_inputs = 5
@@ -326,7 +328,8 @@ class Cromwell(Engine):
             files[k] = inputs[i]
 
         Logger.log("Posting to " + url)
-        r = requests.post(url, files=files)
+
+        r = post(url, files=files)
         try:
             res = r.json()
         except Exception as e:
@@ -431,14 +434,14 @@ class Cromwell(Engine):
                 f"Couldn't find cromwell at any of the usual spots, downloading '{cromwellfilename}' now"
             )
             cromwelljar = os.path.join(man.configdir, cromwellfilename)
-            urllib.request.urlretrieve(cromwellurl, cromwelljar, show_progress)
+            request.urlretrieve(cromwellurl, cromwelljar, show_progress)
             Logger.info(f"Downloaded {cromwellfilename}")
 
         return cromwelljar
 
     @staticmethod
     def get_latest_cromwell_url():
-        data = urllib.request.urlopen(CROMWELL_RELEASES).read()
+        data = request.urlopen(CROMWELL_RELEASES).read()
         releases = json.loads(data)
         asset = releases.get("assets")[0]
         return asset.get("browser_download_url"), asset.get("name")
@@ -449,7 +452,7 @@ class Cromwell(Engine):
 
         url = self.url_poll(identifier=identifier)
         try:
-            r = requests.get(url)
+            r = request.urlopen(url)
             res = r.json()
             return cromwell_status_to_status(res["status"])
         except Exception as e:
@@ -458,7 +461,7 @@ class Cromwell(Engine):
 
     def outputs_task(self, identifier):
         url = self.url_outputs(identifier=identifier)
-        r = requests.get(url)
+        r = request.urlopen(url)
         if not r.ok:
             return Logger.warn(
                 f"Couldn't get outputs with identifier='${identifier}', got status: "
@@ -582,12 +585,12 @@ class Cromwell(Engine):
         )
         Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
         try:
-            r = requests.get(url)
+            r = request.urlopen(url)
             r.raise_for_status()
             self.connectionerrorcount = 0
             return CromwellMetadata(r.json())
 
-        except requests.HTTPError as e:
+        except request.HTTPError as e:
             if e.response.status_code == 404:
                 # Usually means Cromwell hasn't loaded properly yet
                 return None
@@ -600,7 +603,7 @@ class Cromwell(Engine):
                 Logger.warn(str(e))
             finally:
                 return None
-        except requests.ConnectionError as e:
+        except request.URLError as e:
             self.connectionerrorcount += 1
             if self.connectionerrorcount > 50:
                 raise e
@@ -617,7 +620,11 @@ class Cromwell(Engine):
 
     def terminate_task(self, identifier) -> TaskStatus:
         url = self.url_abort(identifier)
-        r = requests.post(url)
+
+        data = parse.urlencode({}).encode()
+        req = request.Request(url, data=data)  # this will make the method "POST"
+        r = request.urlopen(req)
+
         Logger.log("Cromwell (Abort): " + str(r))
 
         self.progress_callbacks.pop(identifier)

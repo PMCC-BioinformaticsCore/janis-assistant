@@ -453,7 +453,8 @@ class Cromwell(Engine):
         url = self.url_poll(identifier=identifier)
         try:
             r = request.urlopen(url)
-            res = r.json()
+            data = r.read()
+            res = json.loads(data.decode(r.info().get_content_charset("utf-8")))
             return cromwell_status_to_status(res["status"])
         except Exception as e:
             Logger.debug("Error polling Cromwell task:" + str(e))
@@ -461,14 +462,10 @@ class Cromwell(Engine):
 
     def outputs_task(self, identifier):
         url = self.url_outputs(identifier=identifier)
-        r = request.urlopen(url)
-        if not r.ok:
-            return Logger.warn(
-                f"Couldn't get outputs with identifier='${identifier}', got status: "
-                + str(r.status_code)
-            )
         try:
-            res = r.json()
+            r = request.urlopen(url)
+            data = r.read()
+            res = json.loads(data.decode(r.info().get_content_charset("utf-8")))
             outs = res.get("outputs")
         except Exception as e:
             return Logger.warn(
@@ -586,9 +583,12 @@ class Cromwell(Engine):
         Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
         try:
             r = request.urlopen(url)
-            r.raise_for_status()
             self.connectionerrorcount = 0
-            return CromwellMetadata(r.json())
+
+            data = r.read()
+            jsonobj = json.loads(data.decode(r.info().get_content_charset("utf-8")))
+
+            return CromwellMetadata(jsonobj)
 
         except request.HTTPError as e:
             if e.response.status_code == 404:
@@ -596,8 +596,11 @@ class Cromwell(Engine):
                 return None
 
             try:
-                res = e.response.json()
-                message = res["message"]
+                body = e.read().decode()
+                jsonobj = json.loads(body) if body else {}
+                message = jsonobj.get(
+                    "message", "An unexpected error occurred: " + str(e)
+                )
                 Logger.warn("Response when getting Cromwell metadata: " + str(message))
             except Exception as ee:
                 Logger.warn(str(e))

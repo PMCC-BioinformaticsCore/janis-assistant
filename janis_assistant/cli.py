@@ -2,7 +2,6 @@ import sys
 import argparse
 import json
 
-import pkg_resources
 import ruamel.yaml
 import tabulate
 
@@ -462,13 +461,15 @@ def do_init(args):
 
 def do_version(_):
     from tabulate import tabulate
+    import importlib_metadata
 
     from janis_assistant.__meta__ import __version__ as jr_version
     from janis_core.__meta__ import __version__ as jc_version
     import janis_core.registry.entrypoints as EP
 
     fields = [["janis-core", jc_version], ["janis-assistant", jr_version]]
-    eps = pkg_resources.iter_entry_points(group=EP.EXTENSIONS)
+    # eps = pkg_resources.iter_entry_points(group=EP.EXTENSIONS)
+    eps = importlib_metadata.entry_points().get(EP.EXTENSIONS, [])
     skip_eps = {"assistant"}
     for entrypoint in eps:
         if entrypoint.name in skip_eps:

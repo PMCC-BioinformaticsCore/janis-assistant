@@ -1,4 +1,3 @@
-import pkg_resources
 from janis_core import Logger
 from janis_core.registry.entrypoints import TEMPLATES as TEMPLATE_EP
 
@@ -18,10 +17,13 @@ additional_templates = None
 
 
 def load_templates_if_required():
+    import importlib_metadata
+
     global additional_templates
     if additional_templates is None:
         additional_templates = {}
-        for entrypoint in pkg_resources.iter_entry_points(group=TEMPLATE_EP):
+        eps = importlib_metadata.entry_points().get(TEMPLATE_EP, [])
+        for entrypoint in eps:  # pkg_resources.iter_entry_points(group=TEMPLATE_EP):
             try:
                 additional_templates[entrypoint.name] = entrypoint.load()
             except ImportError as e:

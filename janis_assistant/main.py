@@ -10,8 +10,6 @@ import sys, os
 from inspect import isclass
 
 import janis_core as j
-from janis_core import JanisShed
-from janis_core.code.codetool import CodeTool
 from typing import Optional, Dict, Union, Type, List
 
 from janis_assistant.templates import TemplateInput
@@ -38,8 +36,6 @@ from janis_assistant.utils import (
     parse_dict,
     get_file_from_searchname,
 )
-
-import hashlib
 
 
 def resolve_tool(
@@ -68,6 +64,8 @@ def resolve_tool(
                 f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
             )
             # Get some unique name for the workflow
+            import hashlib
+
             fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
             outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
             os.makedirs(outdir, exist_ok=True)
@@ -150,7 +148,7 @@ def spider_tool(
     registry_only=False,
     trace=False,
 ):
-    JanisShed.should_trace = trace
+    j.JanisShed.should_trace = trace
     toolref = resolve_tool(
         tool, name, from_toolshed=True, force=force, only_registry=registry_only
     )
@@ -246,37 +244,45 @@ def init_template(templatename, stream=None, unparsed_init_args=None):
 
     outpath = EnvVariables.config_path.resolve(True)
 
-    outd = JanisConfiguration.default()
+    cached_outd = None
 
-    if templatename:
-        schema = janistemplates.get_schema_for_template(
-            janistemplates.get_template(templatename)
-        )
+    def get_config():
+        nonlocal cached_outd
+        if not cached_outd:
 
-        # parse extra params
+            outd = JanisConfiguration.default()
 
-        parser = InitArgParser(templatename, schema)
-        parsed = parser.parse_args(unparsed_init_args)
+            if templatename:
+                schema = janistemplates.get_schema_for_template(
+                    janistemplates.get_template(templatename)
+                )
 
-        outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
-        outd[JanisConfiguration.Keys.Template] = {
-            s.id(): parsed[s.id()] for s in schema if s.identifier in parsed
-        }
-        outd[JanisConfiguration.Keys.Template][
-            JanisConfiguration.JanisConfigurationTemplate.Keys.Id
-        ] = templatename
+                # parse extra params
 
-    outd = stringify_dict_keys_or_return_value(outd)
+                parser = InitArgParser(templatename, schema)
+                parsed = parser.parse_args(unparsed_init_args)
+
+                outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
+                outd[JanisConfiguration.Keys.Template] = {
+                    s.id(): parsed[s.id()] for s in schema if s.identifier in parsed
+                }
+                outd[JanisConfiguration.Keys.Template][
+                    JanisConfiguration.JanisConfigurationTemplate.Keys.Id
+                ] = templatename
+
+            cached_outd = stringify_dict_keys_or_return_value(outd)
+        return cached_outd
 
     if os.path.exists(outpath):
         Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
     else:
         os.makedirs(os.path.dirname(outpath), exist_ok=True)
+        val = get_config()
         with open(outpath, "w+") as configpath:
-            ruamel.yaml.dump(outd, configpath, default_flow_style=False)
+            ruamel.yaml.dump(val, configpath, default_flow_style=False)
 
     if stream:
-        ruamel.yaml.dump(outd, sys.stdout, default_flow_style=False)
+        ruamel.yaml.dump(get_config(), sys.stdout, default_flow_style=False)
 
 
 def parse_known_inputs(tool: j.Tool, inps: Dict):
@@ -326,7 +332,7 @@ def fromjanis(
 
     if isinstance(wf, j.CommandTool):
         wf = wf.wrapped_in_wf()
-    elif isinstance(wf, CodeTool):
+    elif isinstance(wf, j.CodeTool):
         wf = wf.wrapped_in_wf()
 
     # organise inputs

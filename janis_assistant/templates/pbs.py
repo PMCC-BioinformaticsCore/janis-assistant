@@ -1,3 +1,5 @@
+from typing import List, Union
+
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -8,7 +10,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         self,
         container_dir: str,
         execution_dir: str = None,
-        queue: str = None,
+        queues: Union[str, List[str]] = None,
         mail_program=None,
         send_job_emails=True,
         catch_pbs_errors=True,
@@ -20,7 +22,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         """
         :param execution_dir: A location where the execution should take place
         :param container_dir: Location where to save and execute containers from
-        :param queue: A queue that work should be submitted to
+        :param queues: A queue that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
         :param send_job_emails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
         :param build_instructions: Instructions for building singularity, it's recommended to not touch this setting.
@@ -38,7 +40,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
             max_ram=max_ram,
         )
         self.execution_dir = execution_dir
-        self.queue = queue
+        self.queues = queues
         self.send_job_emails = send_job_emails
         self.catch_pbs_errors = catch_pbs_errors
 
@@ -56,7 +58,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
                         singularitycontainerdir=self.singularity_container_dir,
                         buildinstructions=self.singularity_build_instructions,
                         send_job_updates=self.send_job_emails,
-                        queue=self.queue,
+                        queues=self.queues,
                         afternotokaycatch=self.catch_pbs_errors,
                     )
                 },

@@ -1,5 +1,5 @@
 import json
-from typing import Tuple, Any, Dict, Union
+from typing import Tuple, Any, Dict, Union, List
 
 from janis_core.utils.logger import Logger
 
@@ -430,23 +430,29 @@ String? docker""".strip(),
 
             # noinspection PyPep8
             @classmethod
-            def torque(cls, queue):
+            def torque(cls, queues: Union[str, List[str]]):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
                 """
+
+                qparam = ""
+                if queues:
+                    qparam = "-q " + (
+                        ",".join(queues) if isinstance(queues, list) else queues
+                    )
+
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes=f"""
-    String queue = "{queue}"
     Int runtime_minutes = 1439
     Int? cpu = 1
     Int memory_mb = 3500
      """,
-                        submit="""
-    chmod +x ${script}
-    echo "${job_shell} ${script}" | qsub -V -d ${cwd} -N ${job_name} -o ${out} -e ${err} -q ${queue} -l nodes=1:ppn=${cpu}" \
-        -l walltime=${walltime} -l mem=${memory_mb}
+                        submit=f"""
+    chmod +x ${{script}}
+    echo "${{job_shell}} ${{script}}" | qsub -V -d ${{cwd}} -N ${{job_name}} -o ${{out}} -e ${{err}} {qparam} -l nodes=1:ppn=${{cpu}}" \
+        -l walltime=${{walltime}} -l mem=${{memory_mb}}
             """,
                         job_id_regex="^(\\d+).*",
                         kill="qdel ${job_id}",
@@ -457,7 +463,7 @@ String? docker""".strip(),
             @classmethod
             def torque_singularity(
                 cls,
-                queue,
+                queues: Union[str, List[str]],
                 singularityloadinstructions,
                 singularitycontainerdir,
                 buildinstructions,
@@ -470,11 +476,17 @@ String? docker""".strip(),
 
                 from janis_assistant.management.configuration import JanisConfiguration
 
-                torq = cls.torque(queue)
+                torq = cls.torque(queues)
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
                     afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub depend=afternotok:$JOBID)"
+
+                qparam = ""
+                if queues:
+                    qparam = "-q " + (
+                        ",".join(queues) if isinstance(queues, list) else queues
+                    )
 
                 emailparams = ""
                 email = JanisConfiguration.manager().notifications.email
@@ -519,6 +531,7 @@ String? docker""".strip(),
             -v ${{cwd}} \\
             -N $jobname \\
             {emailparams} \\
+            {qparam} \\
             -o ${{cwd}}/execution/stdout \\
             -e ${{cwd}}/execution/stderr \\
             -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime | sed 's/[^0-9]*//g')  \\

@@ -315,6 +315,7 @@ def fromjanis(
     run_in_background=True,
     mysql=False,
     only_registry=False,
+    no_store=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -367,7 +368,7 @@ def fromjanis(
 
     validate_inputs(wf, inputsdict)
 
-    row = cm.create_task_base(wf, outdir=output_dir)
+    row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
     print(row.wid, file=sys.stdout)
 
     engine = engine or jc.engine

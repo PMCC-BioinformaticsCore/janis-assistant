@@ -410,6 +410,14 @@ def add_run_args(parser):
         help="BETA: Run MySQL for persistence with Cromwell",
     )
 
+    beta_args.add_argument(
+        "--no-store",
+        action="store_true",
+        help="Don't store the workflow ID in the primary database. This means you're unable to watch the workflow by "
+        "the ID, and must instead specify the path. This may be useful where multiple jobs are launched at once, and "
+        "Janis is unable to appropriately manage locks on the central task database.",
+    )
+
     parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
 
     return parser
@@ -595,6 +603,7 @@ def do_run(args):
         run_in_background=(args.background is True),
         mysql=mysql,
         only_registry=args.registry,
+        no_store=args.no_store,
     )
 
     Logger.info("Exiting")

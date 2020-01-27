@@ -269,17 +269,17 @@ class WorkflowManager:
 
         bl = None
 
-        try:
-            import blessed
-
-            bl = blessed
-
-        except Exception as e:
-            txt = (
-                "Couldn't load 'blessed' for screen display, defaulting back to clear(): "
-                + str(e)
-            )
-            Logger.warn(txt)
+        # try:
+        #     import blessed
+        #
+        #     bl = blessed
+        #
+        # except Exception as e:
+        #     txt = (
+        #         "Couldn't load 'blessed' for screen display, defaulting back to clear(): "
+        #         + str(e)
+        #     )
+        #     Logger.warn(txt)
 
         if bl:
             self.poll_stored_metadata_with_blessed(bl)

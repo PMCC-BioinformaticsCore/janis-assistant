@@ -77,7 +77,7 @@ class ConfigManager:
         self.taskDB.remove_by_id(task.wid)
         Logger.info("Deleted task: " + task.wid)
 
-    def create_task_base(self, wf: Workflow, outdir=None):
+    def create_task_base(self, wf: Workflow, outdir=None, store_in_centraldb=True):
         config = JanisConfiguration.manager()
 
         """
@@ -120,7 +120,13 @@ class ConfigManager:
 
         row = TaskRow(wid, task_path)
         WorkflowManager.create_dir_structure(task_path)
-        self.taskDB.insert_task(row)
+
+        if store_in_centraldb:
+            self.taskDB.insert_task(row)
+        else:
+            Logger.info(
+                f"Not storing task '{wid}' in database. To watch, use: 'janis watch {task_path}'"
+            )
 
         return row
 

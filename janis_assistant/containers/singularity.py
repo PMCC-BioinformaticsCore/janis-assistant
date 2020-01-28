@@ -10,10 +10,6 @@ from janis_assistant.utils import generate_new_id, ProcessLogger
 
 
 class Singularity(Container):
-
-    containerdir: str = None
-    loadinstructions: str = None
-
     def __init__(
         self,
         container: str,
@@ -21,6 +17,8 @@ class Singularity(Container):
         bindpoints: Dict[str, str] = None,
         exposedports: Dict[int, int] = None,
         instancename: str = None,
+        containerdir: str = None,
+        **kwargs,  # Extra kwargs to throw away
     ):
         super().__init__(
             container=container,
@@ -30,6 +28,7 @@ class Singularity(Container):
             instancename=instancename,
         )
 
+        self.containerdir = containerdir
         self.dockerid = None
         self.run_logger = None
 

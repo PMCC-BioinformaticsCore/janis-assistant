@@ -24,6 +24,7 @@ class MySql(object):
         datadirectory: str,
         forwardedport: int,
         confdir: str,
+        containerdir: str,  # for singularity containers
     ):
         import os.path
 
@@ -34,7 +35,9 @@ class MySql(object):
         self._containertype = container
 
         self.container: Container = container(
-            self.MYSQL_CONTAINERNAME, instancename="mariadb-" + wid
+            self.MYSQL_CONTAINERNAME,
+            instancename="mariadb-" + wid,
+            containerdir=containerdir,
         )
         self.datadirectory = datadirectory
         self.forwardedport = forwardedport

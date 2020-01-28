@@ -14,6 +14,7 @@ class Docker(Container):
         bindpoints: Dict[str, str] = None,
         exposedports: Dict[int, int] = None,
         instancename: str = None,
+        **kwargs,  # Extra kwargs to throw away
     ):
         super().__init__(
             container=container,

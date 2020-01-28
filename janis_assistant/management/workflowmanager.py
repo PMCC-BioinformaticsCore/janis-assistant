@@ -45,6 +45,7 @@ from janis_assistant.management.workflowdbmanager import WorkflowDbManager
 from janis_assistant.modifiers.base import PipelineModifierBase
 from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 from janis_assistant.modifiers.validatormodifier import ValidatorPipelineModifier
+from janis_assistant.templates.base import SingularityEnvironmentTemplate
 from janis_assistant.utils import get_extension, recursively_join, find_free_port
 from janis_assistant.utils.dateutil import DateUtil
 from janis_assistant.validation import ValidationRequirements
@@ -483,6 +484,15 @@ class WorkflowManager:
     def start_mysql_and_prepare_cromwell(self):
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
 
+        containerdir = self.get_path_for_component(self.WorkflowManagerPath.database)
+        conf = JanisConfiguration.manager()
+        if (
+            conf
+            and conf.template
+            and isinstance(conf.template.template, SingularityEnvironmentTemplate)
+        ):
+            containerdir = conf.template.template.singularity_container_dir
+
         self.dbcontainer = MySql(
             wid=self.wid,
             container=JanisConfiguration.manager().container,
@@ -491,6 +501,7 @@ class WorkflowManager:
             ),
             confdir=scriptsdir,
             forwardedport=find_free_port(),
+            containerdir=containerdir,
         )
         self.dbcontainer.start()
 

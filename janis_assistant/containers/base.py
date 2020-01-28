@@ -10,6 +10,7 @@ class Container(ABC):
         bindpoints: Dict[str, str] = None,
         exposedports: Dict[int, int] = None,
         instancename: str = None,
+        **kwargs,  # extra kwargs to throw away
     ):
         self.container = container
         self.environment_variables = environment_variables or {}

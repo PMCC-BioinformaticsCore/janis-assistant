@@ -38,9 +38,9 @@ class ConfigManager:
         if config.outputdir:
             os.makedirs(config.outputdir, exist_ok=True)
 
-        self._connection = None
-        self._cursor = None
-        self._taskDB = None
+        self._connection: Optional[sqlite3.Connection] = None
+        self._cursor: Optional[sqlite3.Cursor] = None
+        self._taskDB: Optional[TasksDbProvider] = None
         # self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
         # self.engineDB = EngineDbProvider(self.connection, self.cursor)
         # self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
@@ -49,7 +49,7 @@ class ConfigManager:
         #     self.insert_default_environments()
 
     def get_lazy_db_connection(self):
-        if self.taskDB is None:
+        if self._taskDB is None:
             self._connection = self.db_connection()
             self._cursor = self._connection.cursor()
 
@@ -142,6 +142,12 @@ class ConfigManager:
                 f"Not storing task '{wid}' in database. To watch, use: 'janis watch {task_path}'"
             )
 
+        if self._connection:
+            self._connection.commit()
+            self._connection.close()
+            self._taskDB = None
+            self._cursor = None
+            self._connection = None
         return row
 
     def start_task(

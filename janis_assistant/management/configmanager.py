@@ -38,10 +38,9 @@ class ConfigManager:
         if config.outputdir:
             os.makedirs(config.outputdir, exist_ok=True)
 
-        self.connection = self.db_connection()
-        self.cursor = self.connection.cursor()
-
-        self.taskDB = TasksDbProvider(self.connection, self.cursor)
+        self._connection = None
+        self._cursor = None
+        self._taskDB = None
         # self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
         # self.engineDB = EngineDbProvider(self.connection, self.cursor)
         # self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
@@ -49,22 +48,32 @@ class ConfigManager:
         # if self.is_new:
         #     self.insert_default_environments()
 
+    def get_lazy_db_connection(self):
+        if self.taskDB is None:
+            self._connection = self.db_connection()
+            self._cursor = self._connection.cursor()
+
+            self._taskDB = TasksDbProvider(self._connection, self._cursor)
+
+        return self._taskDB
+
     def db_connection(self):
         config = JanisConfiguration.manager()
         Logger.log("Opening database connection to: " + config.dbpath)
         return sqlite3.connect(config.dbpath)
 
     def commit(self):
-        return self.connection.commit()
+        self.get_lazy_db_connection()
+        return self._connection.commit()
 
     def remove_task(self, task: Union[str, TaskRow], keep_output: bool):
         if isinstance(task, str):
             wid = task
-            task = self.taskDB.get_by_wid(task)
+            task = self.get_lazy_db_connection().get_by_wid(task)
             if task is None:
                 raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path(task.wid)
+        tm = WorkflowManager.from_path_with_wid(task.outputdir, task.wid)
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -74,7 +83,7 @@ class ConfigManager:
         else:
             Logger.info("Skipping output dir deletion, can't find: " + task.outputdir)
 
-        self.taskDB.remove_by_id(task.wid)
+        self.get_lazy_db_connection().remove_by_id(task.wid)
         Logger.info("Deleted task: " + task.wid)
 
     def create_task_base(self, wf: Workflow, outdir=None, store_in_centraldb=True):
@@ -96,11 +105,16 @@ class ConfigManager:
         if config.outputdir:
             default_outdir = os.path.join(config.outputdir, wf.id())
 
-        forbiddenids = set(
-            t[0] for t in self.cursor.execute("SELECT wid FROM tasks").fetchall()
-        )
+        forbiddenids = set()
+        if store_in_centraldb:
+            self.get_lazy_db_connection()
+            forbiddenids = set(
+                t[0] for t in self._cursor.execute("SELECT wid FROM tasks").fetchall()
+            )
         if outdir:
             if os.path.exists(outdir):
+                # this should theoretically scoop through all the ones in the taskDB and
+                # add them to the forbidden ones, though this might cause more issues for now.
                 forbiddenids = forbiddenids.union(set(os.listdir(outdir)))
         else:
             if os.path.exists(default_outdir):
@@ -122,7 +136,7 @@ class ConfigManager:
         WorkflowManager.create_dir_structure(task_path)
 
         if store_in_centraldb:
-            self.taskDB.insert_task(row)
+            self.get_lazy_db_connection().insert_task(row)
         else:
             Logger.info(
                 f"Not storing task '{wid}' in database. To watch, use: 'janis watch {task_path}'"
@@ -166,7 +180,8 @@ class ConfigManager:
         )
 
     def from_wid(self, wid):
-        path = self.cursor.execute(
+        self.get_lazy_db_connection()
+        path = self._cursor.execute(
             "SELECT outputdir FROM tasks where wid=?", (wid,)
         ).fetchone()
         if not path:
@@ -179,7 +194,7 @@ class ConfigManager:
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 
-        rows: [TaskRow] = self.taskDB.get_all_tasks()
+        rows: [TaskRow] = self.get_lazy_db_connection().get_all_tasks()
 
         failed = []
         relevant = {}

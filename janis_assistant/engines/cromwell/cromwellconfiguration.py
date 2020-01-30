@@ -351,13 +351,13 @@ String? docker
                 slurm.config.submit = None
                 slurm.config.submit_docker = f"""\
             {singularityloadinstructions}
-            
+
             docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
             image={singularitycontainerdir}/$docker_subbed.sif
             lock_path={singularitycontainerdir}/$docker_subbed.lock
 
             {cgroups_creation}
-            
+
             if [ ! -f "$image" ]; then
               {buildinstructions}
             fi
@@ -480,7 +480,7 @@ String? docker""".strip(),
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub depend=afternotok:$JOBID)"
+                    afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub -W depend=afternotok:$JOBID -l nodes=1:ppn=1,mem=1GB,walltime=00:01:00)"
 
                 qparam = ""
                 if queues:
@@ -523,7 +523,7 @@ String? docker""".strip(),
         {singularityloadinstructions}
         {buildinstructions}
     fi
-    
+
     JOBID=$(echo \
         "{loadinstructions} \\
         singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" |\\
@@ -534,7 +534,7 @@ String? docker""".strip(),
             {qparam} \\
             -o ${{cwd}}/execution/stdout \\
             -e ${{cwd}}/execution/stderr \\
-            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime | sed 's/[^0-9]*//g')  \\
+            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime | cut -d. -f1 )  \\
     {afternotokaycommand} \\
     && echo $JOBID
     """

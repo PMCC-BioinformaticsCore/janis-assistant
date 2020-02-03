@@ -90,7 +90,7 @@ class JobDbProvider(DbProviderBase):
         return parsed
 
     def get_all(self) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs", (self.wid,))
+        self.cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
         rows = self.cursor.fetchall()
         return [WorkflowJobModel.from_row(row) for row in rows]
 

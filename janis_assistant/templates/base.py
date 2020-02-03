@@ -37,7 +37,10 @@ class EnvironmentTemplate(ABC):
     ):
         import subprocess
 
-        Logger.info("Starting Janis resume with " + str(command))
+        Logger.info(
+            "Starting Janis in the background with: "
+            + (" ".join(command) if isinstance(command, list) else str(command))
+        )
 
         try:
             if capture_output:

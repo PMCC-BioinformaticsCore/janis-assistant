@@ -36,6 +36,7 @@ from janis_assistant.engines import (
     Cromwell,
     CWLTool,
     CromwellConfiguration,
+    Engine,
 )
 from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import JanisConfiguration
@@ -81,7 +82,7 @@ class WorkflowManager:
         self.main_queue = queue.Queue()
 
         self._prev_status = None
-        self._engine = None
+        self._engine: Optional[Engine] = None
 
         if not self.wid:
             self.wid = self.get_engine_wid()
@@ -391,6 +392,12 @@ class WorkflowManager:
                 self._engine_wid,
                 lambda meta: self.main_queue.put(lambda: self.save_metadata(meta)),
             )
+
+            # add extra check for engine on resume
+            meta = self._engine.metadata(self._engine_wid)
+            if meta and meta.status in TaskStatus.final_states():
+                self.save_metadata(meta)
+                return self.process_completed_task()
 
             while True:
                 try:
@@ -940,8 +947,8 @@ class WorkflowManager:
             )
 
     def copy_logs_if_required(self):
-        if not self.database.progressDB.has(ProgressKeys.savedLogs):
-            return Logger.debug(f"Workflow '{self.wid}' has copied logs, skipping")
+        # if not self.database.progressDB.has(ProgressKeys.savedLogs):
+        #     return Logger.debug(f"Workflow '{self.wid}' has copied logs, skipping")
 
         jobs = self.database.jobsDB.get_all()
 

@@ -456,15 +456,31 @@ def check_logger_args(args):
 
 
 def add_init_args(args):
-    args.add_argument("template", choices=get_template_names())
     args.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
+    args.add_argument(
+        "-f", "--force", help="Overwrite the template if it exits", action="store_true"
+    )
+    args.add_argument(
+        "-o",
+        "--output",
+        help="Location to overwrite to, defaults to: ~/.janis/janis.conf",
+    )
+
+    args.add_argument("template", choices=get_template_names())
+
     args.add_argument("init_params", nargs=argparse.REMAINDER, default=[])
 
 
 def do_init(args):
     stream = sys.stdout if args.stdout else None
-    init_template(args.template, stream=stream, unparsed_init_args=args.init_params)
+    init_template(
+        args.template,
+        stream=stream,
+        unparsed_init_args=args.init_params,
+        output_location=args.output,
+        force=args.force,
+    )
 
 
 def do_version(_):

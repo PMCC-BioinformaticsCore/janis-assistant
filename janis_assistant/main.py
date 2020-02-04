@@ -35,6 +35,7 @@ from janis_assistant.utils import (
     get_janis_workflow_from_searchname,
     parse_dict,
     get_file_from_searchname,
+    fully_qualify_filename,
 )
 
 
@@ -236,7 +237,13 @@ class InitArgParser(argparse.ArgumentParser):
         sys.exit(2)
 
 
-def init_template(templatename, stream=None, unparsed_init_args=None):
+def init_template(
+    templatename,
+    stream=None,
+    unparsed_init_args=None,
+    output_location=None,
+    force=False,
+):
     """
     :param templatename:
     :param force:
@@ -244,11 +251,16 @@ def init_template(templatename, stream=None, unparsed_init_args=None):
     """
     import ruamel.yaml
 
-    outpath = EnvVariables.config_path.resolve(True)
+    outpath = fully_qualify_filename(
+        output_location or EnvVariables.config_path.resolve(True)
+    )
 
     cached_outd = None
 
     def get_config():
+        """
+        This is here to lazily instantiate the config
+        """
         nonlocal cached_outd
         if not cached_outd:
 
@@ -275,9 +287,15 @@ def init_template(templatename, stream=None, unparsed_init_args=None):
             cached_outd = stringify_dict_keys_or_return_value(outd)
         return cached_outd
 
-    if os.path.exists(outpath):
-        Logger.info(f"Skipping writing init as config exists at: '{outpath}'")
+    if any(k in unparsed_init_args for k in ("-h", "--help")):
+        get_config()
+
+    does_exist = os.path.exists(outpath)
+    if does_exist and not force:
+        Logger.info(f"Janis will skip writing config as file exists at: '{outpath}'")
     else:
+        if does_exist:
+            Logger.info("Overwriting template at '{outpath}'")
         os.makedirs(os.path.dirname(outpath), exist_ok=True)
         val = get_config()
         with open(outpath, "w+") as configpath:

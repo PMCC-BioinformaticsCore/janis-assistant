@@ -127,15 +127,17 @@ def translate(
             hints=hints,
             additional_inputs=inputsdict,
         )
-    elif isinstance(toolref, j.CommandTool):
+    elif isinstance(toolref, (j.CommandTool, j.CodeTool)):
         wfstr = toolref.translate(
             translation=translation,
             to_console=False,
             to_disk=bool(output_dir),
             export_path=output_dir or "./{language}",
         )
+
     else:
-        raise Exception("Unsupported tool type: " + toolref.__name__)
+        name = toolref.__name__ if isclass(toolref) else toolref.__class__.__name__
+        raise Exception("Unsupported tool type: " + name)
 
     print(wfstr, file=sys.stdout)
     return wfstr

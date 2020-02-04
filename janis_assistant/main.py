@@ -203,7 +203,7 @@ class InitArgParser(argparse.ArgumentParser):
             action = None
 
             if s.type == bool:
-                action = "store_true"
+                action = "store_false" if s.default else "store_true"
 
             group = optional_parser
             if not s.optional:
@@ -211,7 +211,7 @@ class InitArgParser(argparse.ArgumentParser):
                 self.required_args.add(s.identifier)
 
             hlp = s.doc
-            if s.default:
+            if s.default is not None:
                 hlp = f"(default: {s.default}) {hlp}"
 
             group.add_argument(
@@ -271,6 +271,10 @@ def init_template(
                     janistemplates.get_template(templatename)
                 )
 
+                mapped_schema_to_default = {
+                    s.identifier: s.default for s in schema if s.default is not None
+                }
+
                 # parse extra params
 
                 parser = InitArgParser(templatename, schema)
@@ -278,7 +282,10 @@ def init_template(
 
                 outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
                 outd[JanisConfiguration.Keys.Template] = {
-                    s.id(): parsed[s.id()] for s in schema if s.identifier in parsed
+                    s.id(): parsed.get(s.id(), mapped_schema_to_default.get(s.id()))
+                    for s in schema
+                    if s.identifier in parsed
+                    or s.identifier in mapped_schema_to_default
                 }
                 outd[JanisConfiguration.Keys.Template][
                     JanisConfiguration.JanisConfigurationTemplate.Keys.Id

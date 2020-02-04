@@ -90,6 +90,7 @@ class Cromwell(Engine):
         self.stdout = []
         self.error_message = None
         self.timer_thread: Optional[threading.Event] = None
+        self.config: Optional[CromwellConfiguration] = None
 
         self.connectionerrorcount = 0
         self.should_stop = False
@@ -98,8 +99,6 @@ class Cromwell(Engine):
 
             # To avoid conflicts between version of Cromwell, we'll find an open
             # port, and allow Cromwell to bind there.
-            self.port = find_free_port()
-            self.host = f"localhost:{self.port}"
 
             self.config = None
             self.config_path = os.path.join(confdir, "cromwell.conf")
@@ -163,8 +162,10 @@ class Cromwell(Engine):
         if additional_cromwell_options:
             cmd.extend(additional_cromwell_options)
 
-        if self.port:
-            cmd.append(f"-Dwebservice.port={self.port}")
+        self.port = find_free_port()
+        self.host = f"localhost:{self.port}"
+
+        cmd.append(f"-Dwebservice.port={self.port}")
         cmd.append(f"-Dwebservice.interface=127.0.0.1")
 
         if self.config_path and os.path.exists(self.config_path):
@@ -580,7 +581,9 @@ class Cromwell(Engine):
         url = self.url_metadata(
             identifier=identifier, expand_subworkflows=expand_subworkflows
         )
-        Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
+        Logger.debug(
+            f"Getting Cromwell metadata for task '{identifier}' with url: {url}"
+        )
         try:
             r = request.urlopen(url)
             self.connectionerrorcount = 0
@@ -591,7 +594,8 @@ class Cromwell(Engine):
             return CromwellMetadata(jsonobj)
 
         except request.HTTPError as e:
-            if e.response.status_code == 404:
+
+            if e.code == 404:
                 # Usually means Cromwell hasn't loaded properly yet
                 return None
 

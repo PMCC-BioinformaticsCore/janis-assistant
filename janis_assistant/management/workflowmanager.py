@@ -394,7 +394,7 @@ class WorkflowManager:
             )
 
             # add extra check for engine on resume
-            meta = self._engine.metadata(self._engine_wid)
+            meta = self._engine.metadata(self.get_engine_wid())
             if meta and meta.status in TaskStatus.final_states():
                 self.save_metadata(meta)
                 return self.process_completed_task()
@@ -467,7 +467,6 @@ class WorkflowManager:
                 if engine.config:
                     if self.database.workflowmetadata.should_manage_database and (
                         self.database.workflowmetadata.manages_database
-                        or not engine.config.database
                     ):
                         # only here do we start mysql
                         self.start_mysql_and_prepare_cromwell()

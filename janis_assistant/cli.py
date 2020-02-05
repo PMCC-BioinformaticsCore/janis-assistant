@@ -436,7 +436,7 @@ def add_query_args(parser):
 
 
 def check_logger_args(args):
-    level = LogLevel.DEBUG
+    level = LogLevel.INFO
     if args.verbose:
         level = LogLevel.VERBOSE
     if args.debug:

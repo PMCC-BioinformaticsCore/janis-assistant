@@ -556,12 +556,12 @@ class Cromwell(Engine):
             self.config.system.job_shell = "/bin/sh"
 
         if self.config:
-            if self.config.call_caching:
-                self.config.call_caching.enabled = True
-            else:
-                self.config.call_caching = CromwellConfiguration.CallCaching(
-                    enabled=True
-                )
+            # if self.config.call_caching:
+            #     self.config.call_caching.enabled = True
+            # else:
+            #     self.config.call_caching = CromwellConfiguration.CallCaching(
+            #         enabled=True
+            #     )
 
             if self.config.backend:
                 if len(self.config.backend.providers) == 1:

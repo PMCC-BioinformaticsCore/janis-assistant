@@ -48,7 +48,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
 
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(
-                job_shell="/bin/sh", file_hash_cache=True
+                job_shell="/bin/sh"  # file_hash_cache=True
             ),
             backend=CromwellConfiguration.Backend(
                 default="pbs-singularity",

@@ -656,7 +656,7 @@ String? docker""".strip(),
                 self.size = size
 
         def __init__(
-            self, enabled=True, invalidate_bad_cache_results=None, blacklist_cache=None
+            self, enabled=False, invalidate_bad_cache_results=None, blacklist_cache=None
         ):
             if blacklist_cache is not None and not isinstance(
                 blacklist_cache, self.BlacklistCache

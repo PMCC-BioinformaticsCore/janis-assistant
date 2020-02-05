@@ -15,9 +15,7 @@ class LocalTemplate(EnvironmentTemplate):
         super().__init__()
 
     def cromwell(self):
-        return CromwellConfiguration(
-            system=CromwellConfiguration.System(file_hash_cache=True)
-        )
+        return CromwellConfiguration(system=CromwellConfiguration.System())
 
     def cwltool(self):
         config = CWLToolConfiguration()
@@ -70,7 +68,7 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
                     )
                 }
             ),
-            system=CromwellConfiguration.System(file_hash_cache=True),
+            # system=CromwellConfiguration.System(file_hash_cache=True),
         )
 
         return config

@@ -36,6 +36,7 @@ class WorkflowMetadataDbProvider(KvDB):
             self.finish = None
             self.last_updated = None
             self.please_abort = False
+            self.please_pause = False
 
             self.execution_dir = None
             self.keepexecutiondir = None
@@ -49,7 +50,6 @@ class WorkflowMetadataDbProvider(KvDB):
             self.error = None
 
             self.configuration = None
-            self.manages_database = None
             self.should_manage_database = True
 
             self.author = lookup_username()

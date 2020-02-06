@@ -23,6 +23,7 @@ from janis_assistant.main import (
     resume,
     abort_wids,
     spider_tool,
+    pause,
 )
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.utils import parse_additional_arguments
@@ -55,6 +56,7 @@ def process_args(sysargs=None):
         "cleanup": do_cleanup,
         "init": do_init,
         "resume": do_resume,
+        "pause": do_pause,
         "spider": do_spider,
     }
 
@@ -88,6 +90,13 @@ def process_args(sysargs=None):
             "resume", help="INTERNAL: used after submission to monitor the engine"
         )
     )
+    add_pause_args(
+        subparsers.add_parser(
+            "pause",
+            help="DEV: If something goes wrong, gracefully shut down Janis without ABORTing the workflow",
+        )
+    )
+
     add_abort_args(
         subparsers.add_parser("abort", help="Abort a running Janis Workflow")
     )
@@ -181,8 +190,12 @@ def add_spider_args(parser):
 
 
 def add_resume_args(parser):
-    parser.add_argument("wid", help="WID to watch")
+    parser.add_argument("wid", help="WID to resume")
     return parser
+
+
+def add_pause_args(parser):
+    parser.add_argument("wid", help="WID to pause")
 
 
 def add_metadata_args(parser):
@@ -544,6 +557,10 @@ def do_watch(args):
 
 def do_resume(args):
     resume(args.wid)
+
+
+def do_pause(args):
+    pause(args.wid)
 
 
 def do_metadata(args):

@@ -89,7 +89,7 @@ class Cromwell(Engine):
         self._logger = None
         self.stdout = []
         self.error_message = None
-        self.timer_thread: Optional[threading.Event] = None
+        self._timer_thread: Optional[threading.Event] = None
         self.config: Optional[CromwellConfiguration] = None
 
         self.connectionerrorcount = 0
@@ -227,6 +227,9 @@ class Cromwell(Engine):
         if self._process:
             self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
 
+        self._timer_thread = threading.Event()
+        self.poll_metadata()
+
         return self
 
     def did_fail(self, rc):
@@ -244,8 +247,8 @@ class Cromwell(Engine):
             self._logger.terminate()
 
         self.should_stop = True
-        if self.timer_thread:
-            self.timer_thread.set()
+        if self._timer_thread:
+            self._timer_thread.set()
 
         if self._logfp:
             self._logfp.flush()
@@ -343,14 +346,11 @@ class Cromwell(Engine):
 
         task_id = res["id"]
 
-        self.timer_thread = threading.Event()
-        self.poll_metadata()
-
         return task_id
 
     def poll_metadata(self):
 
-        if self.timer_thread.is_set() or self.should_stop:
+        if self._timer_thread.is_set() or self.should_stop:
             return
 
         for engine_id_to_poll in self.progress_callbacks:

@@ -495,6 +495,13 @@ def resume(wid):
     wm.resume()
 
 
+def pause(wid):
+    wm = ConfigManager.manager().from_wid(wid)
+    if not wm:
+        raise Exception("Couldn't find workflow manager with wid = " + str(wid))
+    wm.mark_paused()
+
+
 def abort_wids(wids: List[str]):
     for wid in wids:
         try:

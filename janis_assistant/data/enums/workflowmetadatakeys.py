@@ -11,6 +11,7 @@ class WorkflowMetadataDbKeys(Enum):
     status = "status"
     lastupdated = "last_updated"
     pleaseabort = "please_abort"
+    pleasepause = "please_pause"
 
     engine = "engine"
     engine_url = "engine_url"
@@ -31,5 +32,4 @@ class WorkflowMetadataDbKeys(Enum):
     submission_workflow = "submission_workflow"
     submission_inputs = "submission_inputs"
     submission_resources = "submission_resources"
-    manages_database = "manages_database"
     should_manage_database = "should_manage_database"

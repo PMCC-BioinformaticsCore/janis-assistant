@@ -393,12 +393,16 @@ class WorkflowManager:
                 Logger.info("Detected please_abort request, aborting")
                 return self.abort()
 
+            if self.database.workflowmetadata.please_pause:
+                Logger.info("Detecting please_pause request, exiting")
+                return self.stop_computation()
+
             # check status and see if we can resume
             self.submit_workflow_if_required()
 
             self.database.commit()
             self.get_engine().add_callback(
-                self._engine_wid,
+                self.get_engine_wid(),
                 lambda meta: self.main_queue.put(lambda: self.save_metadata(meta)),
             )
 
@@ -420,6 +424,9 @@ class WorkflowManager:
                     if self.database.workflowmetadata.please_abort:
                         self.abort()
                         return
+                    if self.database.workflowmetadata.please_pause:
+                        self.database.workflowmetadata.please_pause = False
+                        return self.stop_computation()
 
                     continue
 
@@ -455,6 +462,18 @@ class WorkflowManager:
 
         return self
 
+    def mark_paused(self):
+        try:
+            self.database.workflowmetadata.please_pause = True
+            Logger.info(
+                "Marked workflow as paused, this may take some time properly pause"
+            )
+            self.database.workflowmetadata.commit()
+            return True
+        except Exception as e:
+            Logger.critical("Couldn't mark paused: " + str(e))
+            return False
+
     def get_engine(self):
         if not self._engine:
             self._engine = self.environment.engine
@@ -474,9 +493,7 @@ class WorkflowManager:
             # start mysql if it's cromwell, and then slightly change the config if one exists
             if isinstance(engine, Cromwell):
                 if engine.config:
-                    if self.database.workflowmetadata.should_manage_database and (
-                        self.database.workflowmetadata.manages_database
-                    ):
+                    if self.database.workflowmetadata.should_manage_database:
                         # only here do we start mysql
                         self.start_mysql_and_prepare_cromwell()
                         self.database.workflowmetadata.manages_database = True
@@ -1036,6 +1053,26 @@ class WorkflowManager:
             Logger.critical("Couldn't stop engine: " + str(e))
 
         return status
+
+    def stop_computation(self):
+        try:
+            # reset pause flag
+            self.database.commit()
+
+            self.get_engine().stop_engine()
+            if self.dbcontainer:
+                self.dbcontainer.stop()
+
+            self.database.close()
+
+        except Exception as e:
+            Logger.critical(
+                "An error occurred while trying to pause Janis state: "
+                + str(e)
+                + "\n\nSee the logfile for more information: "
+                + Logger.WRITE_LOCATION
+            )
+        Logger.close_file()
 
     @staticmethod
     def _create_dir_if_needed(path):

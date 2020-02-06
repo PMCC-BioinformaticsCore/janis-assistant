@@ -136,19 +136,28 @@ def try_parse_primitive_type(value: Union[str, list]):
 
 def parse_additional_arguments(largs: List[str]):
     parsed = {}
+    seen_twice = set()
     if not largs:
         return parsed
 
     curprefix = None
     curvalue = None
 
+    def add_value_to_parsed(key, value):
+        if curprefix not in parsed:
+            parsed[key] = value
+        elif curprefix not in seen_twice:
+            parsed[key] = [parsed[key], value]
+            seen_twice.add(key)
+        else:
+            parsed[key].append(value)
+
     for arg in largs:
-        if arg.startswith("-"):
+        if arg.startswith("-"):  # starting a new prefix
+
             if curprefix:
-                # Todo: Check if curprefix in the already parsed arguments and convert to an array
-                parsed[curprefix] = (
-                    try_parse_primitive_type(curvalue) if curvalue else True
-                )
+                val = try_parse_primitive_type(curvalue) if curvalue else True
+                add_value_to_parsed(curprefix, val)
                 curvalue = None
 
             curprefix = convert_prefix_to_argname(arg)
@@ -164,7 +173,7 @@ def parse_additional_arguments(largs: List[str]):
                 )
 
     if curprefix:
-        parsed[curprefix] = curvalue if curvalue else True
+        add_value_to_parsed(curprefix, curvalue if curvalue else True)
 
     return parsed
 

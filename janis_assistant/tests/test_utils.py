@@ -179,6 +179,17 @@ class TestSimpleArgParser(TestCase):
             ),
         )
 
+    def test_specified_multiple(self):
+        self.assertDictEqual(
+            {"t": [1, 2]}, parse_additional_arguments(["-t", "1", "-t", "2"])
+        )
+
+    def test_specified_multiple_nargs(self):
+        self.assertDictEqual(
+            {"t": [[1, 2], ["a", "b"]]},
+            parse_additional_arguments(["-t", "1", "2", "-t", "a", "b"]),
+        )
+
 
 class TestFullyQualityPath(TestCase):
     @classmethod

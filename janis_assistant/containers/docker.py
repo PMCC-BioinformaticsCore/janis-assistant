@@ -78,8 +78,7 @@ class Docker(Container):
         except subprocess.CalledProcessError as e:
             Logger.critical(
                 f"An error occurred when trying to stop the container '{self.container}'. "
-                f"You may need to stop this manually with: '{' '.join(cmd)}'. Error: "
-                + str(e)
+                f"You may need to stop this manually with: '{cmd}'. Error: " + str(e)
             )
             raise e
 

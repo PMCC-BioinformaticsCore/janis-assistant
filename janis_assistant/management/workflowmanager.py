@@ -359,10 +359,11 @@ class WorkflowManager:
             f"Task has finished with status: {self.database.workflowmetadata.status}"
         )
 
+        self.save_metadata_if_required()
+        self.copy_logs_if_required()
+        self.copy_outputs_if_required()
+
         if self.database.workflowmetadata.status == TaskStatus.COMPLETED:
-            self.save_metadata_if_required()
-            self.copy_outputs_if_required()
-            self.copy_logs_if_required()
             self.remove_exec_dir()
 
         self.get_engine().stop_engine()

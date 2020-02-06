@@ -318,6 +318,7 @@ def parse_known_inputs(tool: j.Tool, inps: Dict):
     for k in inps:
         if k not in inmap:
             continue
+
         q[k] = inmap[k].intype.parse_value(inps[k])
     return q
 
@@ -328,6 +329,7 @@ def fromjanis(
     engine: Union[str, Engine] = None,
     filescheme: Union[str, FileScheme] = LocalFileScheme(),
     validation_reqs=None,
+    batchrun_reqs=None,
     hints: Optional[Dict[str, str]] = None,
     output_dir: Optional[str] = None,
     dryrun: bool = False,
@@ -393,8 +395,6 @@ def fromjanis(
 
         inputsdict.update(parse_known_inputs(wf, required_inputs))
 
-    validate_inputs(wf, inputsdict)
-
     row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
     print(row.wid, file=sys.stdout)
 
@@ -428,6 +428,7 @@ def fromjanis(
             wf=wf,
             environment=environment,
             validation_requirements=validation_reqs,
+            batchrun_requirements=batchrun_reqs,
             task_path=row.outputdir,
             hints=hints,
             inputs_dict=inputsdict,
@@ -450,26 +451,6 @@ def fromjanis(
         # janis to exit early
         environment.engine.stop_engine()
         raise e
-
-
-def validate_inputs(wf, additional_inputs):
-    errors = {}
-
-    for inpkey, inp in wf.input_nodes.items():
-        value = additional_inputs.get(inpkey, inp.value)
-
-        if inp.datatype.validate_value(value, allow_null_if_not_optional=False):
-            continue
-
-        errors[inpkey] = (
-            inp.datatype.invalid_value_hint(value)
-            or f"An internal error occurred when validating {inpkey} from {inp.datatype.id()}"
-        )
-
-    if len(errors) == 0:
-        return True
-
-    raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
 
 
 def get_engine_from_eng(eng, wid, logfile, confdir, execdir: str, watch=True, **kwargs):

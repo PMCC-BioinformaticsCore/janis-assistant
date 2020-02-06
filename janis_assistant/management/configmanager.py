@@ -12,6 +12,7 @@ from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.management.workflowmanager import WorkflowManager
 from janis_assistant.utils import generate_new_id, fully_qualify_filename
+from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.validation import ValidationRequirements
 
 
@@ -158,6 +159,7 @@ class ConfigManager:
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
+        batchrun_requirements: Optional[BatchRunRequirements],
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
@@ -176,6 +178,7 @@ class ConfigManager:
             hints=hints,
             inputs_dict=inputs_dict,
             validation_requirements=validation_requirements,
+            batchrun_requirements=batchrun_requirements,
             dryrun=dryrun,
             watch=watch,
             max_cores=max_cores,

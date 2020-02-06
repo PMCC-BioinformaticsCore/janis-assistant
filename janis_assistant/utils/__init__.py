@@ -185,3 +185,23 @@ def recursively_join(iterable, separator: str):
             for i in iterable
         ]
     )
+
+
+def validate_inputs(wf, additional_inputs):
+    errors = {}
+
+    for inpkey, inp in wf.input_nodes.items():
+        value = additional_inputs.get(inpkey, inp.value)
+
+        if inp.datatype.validate_value(value, allow_null_if_not_optional=False):
+            continue
+
+        errors[inpkey] = (
+            inp.datatype.invalid_value_hint(value)
+            or f"An internal error occurred when validating {inpkey} from {inp.datatype.id()}"
+        )
+
+    if len(errors) == 0:
+        return True
+
+    raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))

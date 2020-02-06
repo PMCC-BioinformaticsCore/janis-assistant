@@ -44,10 +44,17 @@ from janis_assistant.management.mysql import MySql
 from janis_assistant.management.notificationmanager import NotificationManager
 from janis_assistant.management.workflowdbmanager import WorkflowDbManager
 from janis_assistant.modifiers.base import PipelineModifierBase
+from janis_assistant.modifiers.batchmodifier import BatchPipelineModifier
 from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 from janis_assistant.modifiers.validatormodifier import ValidatorPipelineModifier
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
-from janis_assistant.utils import get_extension, recursively_join, find_free_port
+from janis_assistant.utils import (
+    get_extension,
+    recursively_join,
+    find_free_port,
+    validate_inputs,
+)
+from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
 from janis_assistant.validation import ValidationRequirements
 
@@ -116,6 +123,7 @@ class WorkflowManager:
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
+        batchrun_requirements: Optional[BatchRunRequirements],
         inputs_dict: dict = None,
         dryrun=False,
         watch=True,
@@ -158,6 +166,7 @@ class WorkflowManager:
             workflow=wf,
             translator=spec_translator,
             validation=validation_requirements,
+            batchrun=batchrun_requirements,
             hints=hints,
             additional_inputs=inputs_dict,
             max_cores=max_cores or jc.environment.max_cores,
@@ -527,7 +536,8 @@ class WorkflowManager:
         self,
         workflow,
         translator: TranslatorBase,
-        validation: ValidationRequirements,
+        validation: Optional[ValidationRequirements],
+        batchrun: Optional[BatchRunRequirements],
         hints: Dict[str, str],
         additional_inputs: dict,
         max_cores=None,
@@ -559,9 +569,14 @@ class WorkflowManager:
         if validation:
             modifiers.append(ValidatorPipelineModifier(validation))
 
+        if batchrun:
+            modifiers.append(BatchPipelineModifier(batchrun))
+
         workflow_to_evaluate, additional_inputs = PipelineModifierBase.apply_many(
             modifiers, workflow, additional_inputs, hints=hints
         )
+
+        validate_inputs(workflow_to_evaluate, additional_inputs)
 
         translator.translate(
             workflow_to_evaluate,

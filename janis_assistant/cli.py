@@ -28,6 +28,7 @@ from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.utils import parse_additional_arguments
 from janis_core.utils.logger import Logger, LogLevel
 
+from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
 from janis_assistant.validation import ValidationRequirements
 
@@ -367,6 +368,23 @@ def add_run_args(parser):
 
     engine_args.add_argument("--cromwell-url", help="Location to Cromwell")
 
+    # batchrun
+
+    batchrun_group = parser.add_argument_group(
+        "batchrun arguments",
+        # help="This batchrun group modifies the input of the input YAML. "
+        # "It will now stack input values that appear in the batchrun ",
+    )
+
+    batchrun_group.add_argument(
+        "--batchrun", action="store_true", help="Enable the batchrun Pipeline Modifier"
+    )
+    batchrun_group.add_argument("--batchrun-fields", nargs="+")
+    batchrun_group.add_argument(
+        "--batchrun-groupby",
+        help="Which field should we use to group the samples by, this field should be UNIQUE in the run.",
+    )
+
     # filescheme
 
     fs_args = parser.add_argument_group("filescheme arguments")
@@ -562,15 +580,21 @@ def do_rm(args):
 def do_run(args):
     JanisConfiguration.initial_configuration(args.config)
 
-    v = None
+    validation_reqs, batchrun_reqs = None, None
 
     if args.validation_fields:
         Logger.info("Will prepare validation")
-        v = ValidationRequirements(
+        validation_reqs = ValidationRequirements(
             truthVCF=args.validation_truth_vcf,
             reference=args.validation_reference,
             fields=args.validation_fields,
             intervals=args.validation_intervals,
+        )
+
+    if args.batchrun:
+        Logger.info("Will prepare batch run")
+        batchrun_reqs = BatchRunRequirements(
+            fields=args.batchrun_fields, groupby=args.batchrun_groupby
         )
 
     hints = {
@@ -601,7 +625,8 @@ def do_run(args):
     wid = fromjanis(
         args.workflow,
         name=args.name,
-        validation_reqs=v,
+        validation_reqs=validation_reqs,
+        batchrun_reqs=batchrun_reqs,
         engine=args.engine,
         filescheme=args.filescheme,
         hints=hints,

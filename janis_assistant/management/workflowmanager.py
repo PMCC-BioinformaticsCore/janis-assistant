@@ -571,14 +571,12 @@ class WorkflowManager:
             workflow,
             to_console=False,
             to_disk=True,
-            with_resource_overrides=True,
-            merge_resources=True,
             hints=hints,
-            write_inputs_file=True,
-            export_path=outdir_workflow,
-            additional_inputs=additional_inputs,
-            max_cores=max_cores,
-            max_mem=max_memory,
+            # This is just the base workflow, we're going to potentially transform the inputs
+            # and we only really care about the inputs for the workflow we're going to run.
+            # We'll store the original workflow to run for provenance, but not to easily rerun
+            write_inputs_file=False,
+            export_path=os.path.join(outdir_workflow, "original"),
         )
 
         Logger.info(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")

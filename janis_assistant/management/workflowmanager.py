@@ -70,7 +70,7 @@ class WorkflowManager:
         logs = "logs"
         configuration = "configuration"
         database = "database"
-        mysql = "mysql"
+        mysql = "configuration/mysql"
 
     def __init__(self, outdir: str, wid: str, environment: Environment = None):
         # do stuff here
@@ -242,9 +242,17 @@ class WorkflowManager:
         # database path
 
         path = WorkflowManager.get_task_path_for(path)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Couldn't find path '{path}'")
+
         db = WorkflowDbManager.get_workflow_metadatadb(path, wid)
 
-        wid = db.wid  # .get_meta_info(InfoKeys.taskId)
+        if not wid:
+            wid = db.wid  # .get_meta_info(InfoKeys.taskId)
+
+        if not wid:
+            raise Exception(f"Couldn't find workflow with id '{wid}'")
+
         envid = db.environment  # .get_meta_info(InfoKeys.environment)
         eng = db.engine
         fs = db.filescheme
@@ -990,12 +998,12 @@ class WorkflowManager:
                 base += "shard-" + str(j.shard)
             on_base = os.path.join(od, base)
 
-            if j.stdout:
+            if j.stdout and os.path.exists(j.stdout):
                 self.environment.filescheme.cp_from(
                     j.stdout, on_base + "_stdout", force=True
                 )
 
-            if j.stderr:
+            if j.stderr and os.path.exists(j.stderr):
                 self.environment.filescheme.cp_from(
                     j.stderr, on_base + "_stderr", force=True
                 )

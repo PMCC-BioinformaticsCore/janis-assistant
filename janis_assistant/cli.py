@@ -157,7 +157,7 @@ def add_logger_args(parser):
     parser.add_argument(
         "-L",
         "--logLevel",
-        choices=["VERBOSE", "DEBUG", "INFO", "WARN", "CRITICAL", "NONE"],
+        choices=["VERB", "DEBUG", "INFO", "WARN", "CRITICAL", "NONE"],
     )
 
     return parser

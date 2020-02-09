@@ -625,11 +625,15 @@ def do_run(args):
     required_inputs = parse_additional_arguments(args.extra_inputs)
 
     inputs = args.inputs or []
+    # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
+    # annoying if you forget to put the inputs before the workflow positional argument.
+    # TBH, we could automatically do this for all params, but it's a little trickier
+
     if "inputs" in required_inputs:
-        # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
-        # annoying if you forget to put the inputs before the workflow positional argument.
-        # TBH, we could automatically do this for all params, but it's a little trickier
         ins = required_inputs.pop("inputs")
+        inputs.extend(ins if isinstance(ins, list) else [ins])
+    if "i" in required_inputs:
+        ins = required_inputs.pop("i")
         inputs.extend(ins if isinstance(ins, list) else [ins])
 
     mysql = args.mysql

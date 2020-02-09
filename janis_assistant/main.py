@@ -37,6 +37,7 @@ from janis_assistant.utils import (
     get_file_from_searchname,
     fully_qualify_filename,
 )
+from janis_assistant.utils.inputshelper import cascade_inputs
 
 
 def resolve_tool(
@@ -48,9 +49,7 @@ def resolve_tool(
 ):
     if isinstance(tool, j.Tool):
         return tool
-    elif isclass(tool) and (
-        issubclass(tool, j.Workflow) or issubclass(tool, j.CommandTool)
-    ):
+    elif isclass(tool) and issubclass(tool, (j.Workflow, j.Tool)):
         return tool()
 
     if not isinstance(tool, str):
@@ -312,17 +311,6 @@ def init_template(
         ruamel.yaml.dump(get_config(), sys.stdout, default_flow_style=False)
 
 
-def parse_known_inputs(tool: j.Tool, inps: Dict):
-    q = {**inps}
-    inmap = tool.inputs_map()
-    for k in inps:
-        if k not in inmap:
-            continue
-
-        q[k] = inmap[k].intype.parse_value(inps[k])
-    return q
-
-
 def fromjanis(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
@@ -372,28 +360,14 @@ def fromjanis(
         valuesfromrecipe = jc.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    if inputs:
-        if not isinstance(inputs, list):
-            inputs = [inputs]
-        for inp in inputs:
-            if isinstance(inp, dict):
-                inputsdict.update(inp)
-            else:
-                inputsfile = get_file_from_searchname(inp, ".")
-                if inputsfile is None:
-                    raise FileNotFoundError("Couldn't find inputs file: " + str(inp))
-                inputsdict.update(parse_dict(inputsfile))
-
-    if required_inputs:
-        reqkeys = set(required_inputs.keys())
-        inkeys = set(wf.all_input_keys())
-        invalid_keys = reqkeys - inkeys
-        if len(invalid_keys) > 0:
-            raise Exception(
-                f"There were unrecognised inputs provided to the tool \"{wf.id()}\", keys: {', '.join(invalid_keys)}"
-            )
-
-        inputsdict.update(parse_known_inputs(wf, required_inputs))
+    inputsdict.update(
+        cascade_inputs(
+            wf=wf,
+            inputs=inputs,
+            required_inputs=required_inputs,
+            batchrun_options=batchrun_reqs,
+        )
+    )
 
     row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
     print(row.wid, file=sys.stdout)

@@ -153,7 +153,8 @@ class BatchPipelineModifier(PipelineModifierBase):
         valid_fields = valid_fields - fields_that_are_not_arrays
         invalid_fields.update(
             {
-                k: f"incorrect length ({len(inputs[k])}) compared to groupBy {valid_length}"
+                k: f"incorrect length ({len(inputs[k])}) compared to the "
+                f"groupby field '{self.batch.groupby}' which has {valid_length}"
                 for k in fields_that_have_invalid_length
             }
         )

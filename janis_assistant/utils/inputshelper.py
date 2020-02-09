@@ -1,4 +1,4 @@
-from janis_core import Workflow
+from janis_core import Workflow, DataType, Array
 from typing import Union, Dict, List, Optional
 
 from janis_assistant.utils import get_file_from_searchname, parse_dict
@@ -39,7 +39,7 @@ def cascade_inputs(
 
     ins = None
     if batchrun_options:
-        ins = cascade_batchrun_inputs(list_of_input_dicts, batchrun_options)
+        ins = cascade_batchrun_inputs(wf, list_of_input_dicts, batchrun_options)
     else:
         ins = cascade_regular_inputs(list_of_input_dicts)
 
@@ -64,22 +64,46 @@ def cascade_regular_inputs(inputs: List[Dict]):
     return ins
 
 
-def cascade_batchrun_inputs(inputs: List[Dict], options: BatchRunRequirements):
+def cascade_batchrun_inputs(
+    workflow: Workflow, inputs: List[Dict], options: BatchRunRequirements
+):
     fields_to_group = set(options.fields)
     fields_to_group.add(options.groupby)
+
+    wfins = workflow.inputs_map()
+
+    required_ar_depth_of_groupby_fields = {
+        f: 1 + count_janisarray_depth(wfins[f].intype) for f in fields_to_group
+    }
 
     ins = {}
 
     for inp in inputs:
         for k, v in inp.items():
-            if k not in fields_to_group:
-                # overwrite the previous value
-                ins[k] = v
-            else:
-                # Add the value to an array
+            if k in fields_to_group:
                 if k not in ins:
                     ins[k] = []
-                ins[k].append(v)
+
+                # We'll look at the shape of the data, and decide whether
+                # we can just use the value, or we need to wrap it in another array
+                if count_array_depth(v) < required_ar_depth_of_groupby_fields[k]:
+                    v = [v]
+                ins[k].extend(v)
+            else:
+                # overwrite the previous value
+                ins[k] = v
 
     # If inputs
     return ins
+
+
+def count_janisarray_depth(ar: DataType):
+    if not isinstance(ar, Array):
+        return 0
+    return 1 + count_janisarray_depth(ar.subtype())
+
+
+def count_array_depth(ar):
+    if not isinstance(ar, list) or len(ar) == 0:
+        return 0
+    return 1 + count_janisarray_depth(ar[0])

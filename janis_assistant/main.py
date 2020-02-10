@@ -163,6 +163,7 @@ def spider_tool(
 
 def generate_inputs(
     tool: Union[str, j.CommandTool, j.Workflow],
+    all=False,
     name=None,
     force=False,
     additional_inputs=None,
@@ -178,7 +179,9 @@ def generate_inputs(
         raise Exception("Couldn't find workflow with name: " + str(tool))
 
     return toolref.generate_inputs_override(
-        additional_inputs=inputsdict, with_resource_overrides=with_resources
+        additional_inputs=inputsdict,
+        with_resource_overrides=with_resources,
+        include_defaults=all,
     )
 
 

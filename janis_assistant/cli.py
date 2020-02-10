@@ -245,6 +245,12 @@ def add_translate_args(parser):
 def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
+    parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        help="Include inputs that have default values",
+    )
     parser.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
     parser.add_argument(
         "--resources",
@@ -686,6 +692,7 @@ def do_spider(args):
 def do_inputs(args):
     outd = generate_inputs(
         args.workflow,
+        all=args.all,
         name=args.name,
         force=args.no_cache,
         additional_inputs=args.inputs,

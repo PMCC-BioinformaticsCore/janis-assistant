@@ -533,6 +533,7 @@ def do_version(_):
             version = entrypoint.load().__version__
             if version:
                 fields.append(["janis-" + entrypoint.name, version])
+            skip_eps.add(entrypoint.name)
 
         except Exception as e:
             Logger.log_ex(e)

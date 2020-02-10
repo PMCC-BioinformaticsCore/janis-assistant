@@ -106,4 +106,4 @@ def count_janisarray_depth(ar: DataType):
 def count_array_depth(ar):
     if not isinstance(ar, list) or len(ar) == 0:
         return 0
-    return 1 + count_janisarray_depth(ar[0])
+    return 1 + count_array_depth(ar[0])

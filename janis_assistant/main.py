@@ -204,8 +204,10 @@ class InitArgParser(argparse.ArgumentParser):
         for s in schema:
             action = None
 
+            default = None
             if s.type == bool:
                 action = "store_false" if s.default else "store_true"
+                default = argparse.SUPPRESS
 
             group = optional_parser
             if not s.optional:
@@ -217,7 +219,11 @@ class InitArgParser(argparse.ArgumentParser):
                 hlp = f"(default: {s.default}) {hlp}"
 
             group.add_argument(
-                "--" + s.identifier, action=action, required=not s.optional, help=hlp
+                "--" + s.identifier,
+                action=action,
+                required=not s.optional,
+                help=hlp,
+                default=default,
             )
 
     def parse_args(self, args=None, namespace=None):
@@ -269,9 +275,8 @@ def init_template(
             outd = JanisConfiguration.default()
 
             if templatename:
-                schema = janistemplates.get_schema_for_template(
-                    janistemplates.get_template(templatename)
-                )
+                tmpl = janistemplates.get_template(templatename)
+                schema = janistemplates.get_schema_for_template(tmpl)
 
                 mapped_schema_to_default = {
                     s.identifier: s.default for s in schema if s.default is not None
@@ -282,12 +287,24 @@ def init_template(
                 parser = InitArgParser(templatename, schema)
                 parsed = parser.parse_args(unparsed_init_args)
 
+                try:
+                    # "easier to ask for forgiveness than permission" https://stackoverflow.com/a/610923
+                    keys_to_skip = set(tmpl.ignore_init_keys)
+                except AttributeError:
+                    Logger.log(
+                        f"Template '{templatename}' didn't have 'ignore_init_keys'"
+                    )
+                    keys_to_skip = set()
+
                 outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
                 outd[JanisConfiguration.Keys.Template] = {
                     s.id(): parsed.get(s.id(), mapped_schema_to_default.get(s.id()))
                     for s in schema
-                    if s.identifier in parsed
-                    or s.identifier in mapped_schema_to_default
+                    if (s.identifier in parsed)
+                    or (
+                        s.identifier in mapped_schema_to_default
+                        and s.identifier not in keys_to_skip
+                    )
                 }
                 outd[JanisConfiguration.Keys.Template][
                     JanisConfiguration.JanisConfigurationTemplate.Keys.Id
@@ -333,6 +350,7 @@ def fromjanis(
     keep_intermediate_files=False,
     recipes=None,
     run_in_background=True,
+    run_in_foreground=None,
     mysql=False,
     only_registry=False,
     no_store=False,
@@ -400,6 +418,13 @@ def fromjanis(
 
     try:
 
+        # Note: run_in_foreground can be None, so
+        # (not (run_in_foreground is True)) != (run_in_foreground is False)
+
+        should_run_in_background = (
+            run_in_background is True or jc.run_in_background is True
+        ) and not (run_in_foreground is True)
+
         tm = cm.start_task(
             wid=row.wid,
             wf=wf,
@@ -414,7 +439,7 @@ def fromjanis(
             max_cores=max_cores,
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
-            run_in_background=run_in_background,
+            run_in_background=should_run_in_background,
             mysql=mysql,
         )
         Logger.log("Finished starting task task")

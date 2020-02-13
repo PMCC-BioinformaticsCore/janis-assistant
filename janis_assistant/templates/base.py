@@ -10,17 +10,25 @@ from janis_assistant.engines.enginetypes import EngineType
 
 
 class EnvironmentTemplate(ABC):
+
+    ignore_init_keys = ["can_run_in_foreground", "run_in_background"]
+
     def __init__(
         self,
         mail_program=None,
         max_cores=None,
         max_ram=None,
+        can_run_in_foreground=True,
+        run_in_background=None,
         containertype: Type[Container] = Docker,
     ):
         self._mail_program = mail_program
         self.containertype = containertype
         self.max_cores = max_cores
         self.max_ram = max_ram
+
+        self.can_run_in_foreground = can_run_in_foreground
+        self.run_in_background = run_in_background
 
     @abstractmethod
     def engine_config(self, engine: EngineType):
@@ -71,6 +79,9 @@ class EnvironmentTemplate(ABC):
         if self.max_ram and not configuration.environment.max_ram:
             configuration.environment.max_ram = self.max_ram
 
+        if self.run_in_background is not None:
+            configuration.run_in_background = self.run_in_background
+
         configuration.container = self.containertype
 
     def prejanis_hook(self) -> Optional[str]:
@@ -113,12 +124,16 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
         build_instructions=f"singularity pull $image docker://${{docker}}",
         max_cores=None,
         max_ram=None,
+        can_run_in_foreground=True,
+        run_in_background=False,
     ):
         super().__init__(
             mail_program=mail_program,
             containertype=Singularity,
             max_cores=max_cores,
             max_ram=max_ram,
+            can_run_in_foreground=can_run_in_foreground,
+            run_in_background=run_in_background,
         )
         self.singularity_load_instructions = load_instructions
         self.singularity_container_dir = container_dir

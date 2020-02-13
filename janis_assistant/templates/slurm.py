@@ -6,6 +6,17 @@ from janis_assistant.templates.base import SingularityEnvironmentTemplate
 
 
 class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
+
+    ignore_init_keys = [
+        "build_instructions",
+        "singularity_load_instructions",
+        "limit_resources",
+        "max_cores",
+        "max_ram",
+        "can_run_in_foreground",
+        "run_in_background",
+    ]
+
     def __init__(
         self,
         container_dir: str,
@@ -19,6 +30,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         limit_resources=False,
         max_cores=None,
         max_ram=None,
+        can_run_in_foreground=True,
+        run_in_background=False,
     ):
         """
         :param execution_dir: A location where the execution should take place
@@ -41,6 +54,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             load_instructions=singularity_load_instructions,
             max_cores=max_cores,
             max_ram=max_ram,
+            can_run_in_foreground=can_run_in_foreground,
+            run_in_background=run_in_background,
         )
         self.execution_dir = execution_dir
         self.queues = queues or []

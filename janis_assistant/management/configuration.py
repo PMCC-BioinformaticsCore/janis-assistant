@@ -21,6 +21,7 @@ class JanisConfiguration:
         Template = "template"
         Recipes = "recipes"
         Notifications = "notifications"
+        RunInBackground = "run_in_background"
 
     _managed = None  # type: JanisConfiguration
 
@@ -325,6 +326,10 @@ class JanisConfiguration:
             default.get(JanisConfiguration.Keys.Environment),
         )
 
+        self.run_in_background = self.get_value_for_key(
+            d, JanisConfiguration.Keys.RunInBackground, default
+        )
+
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
         self.searchpaths = sp if isinstance(sp, list) else [sp]
         env_sp = EnvVariables.search_path.resolve(False)
@@ -385,6 +390,7 @@ class JanisConfiguration:
             JanisConfiguration.Keys.Notifications: {
                 JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
             },
+            JanisConfiguration.Keys.RunInBackground: None,
         }
         return stringify_dict_keys_or_return_value(deflt)
 

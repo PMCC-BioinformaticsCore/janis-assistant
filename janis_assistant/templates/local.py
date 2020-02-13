@@ -9,6 +9,9 @@ from janis_assistant.engines.enginetypes import EngineType
 
 
 class LocalTemplate(EnvironmentTemplate):
+
+    ignore_init_keys = []
+
     def __init__(self):
         """
         """
@@ -35,6 +38,14 @@ class LocalTemplate(EnvironmentTemplate):
 
 
 class LocalSingularityTemplate(SingularityEnvironmentTemplate):
+
+    ignore_init_keys = [
+        "can_run_in_foreground",
+        "run_in_background",
+        "container_build_instructions",
+        "singularity_load_instructions",
+    ]
+
     def __init__(
         self,
         container_dir,

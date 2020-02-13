@@ -1,5 +1,5 @@
 import inspect
-from typing import Type
+from typing import Type, List
 
 from janis_core import Logger
 

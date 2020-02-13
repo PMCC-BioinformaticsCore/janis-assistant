@@ -13,6 +13,9 @@ Run / monitor separation:
 
 
 
+
+
+
 """
 import os
 import queue
@@ -222,6 +225,15 @@ class WorkflowManager:
                     Logger.log("Watching submitted workflow")
                     tm.show_status_screen()
             else:
+                if (
+                    jc.template
+                    and jc.template.template
+                    and jc.template.template.can_run_in_foreground is False
+                ):
+                    raise Exception(
+                        f"Your template '{jc.template.template.__class__.__name__}' is not allowed to run "
+                        f"in the foreground, try adding the '--background' argument"
+                    )
                 tm.resume()
 
         else:
@@ -860,8 +872,7 @@ class WorkflowManager:
 
         if final_tags and any(isinstance(t, list) for t in final_tags):
             Logger.critical(
-                f"One of the final output tags {str(final_tags)} was still an array. This is an issue, "
-                f"so we're going to default to the generic 'output' directory"
+                f"One of the final output tags {str(final_tags)} was still an array, outputs will be written directly into the output directory"
             )
             final_tags = None
 
@@ -869,7 +880,7 @@ class WorkflowManager:
             if isinstance(prefix, list):
                 if len(prefix) > 1:
                     Logger.critical(
-                        f"Expected only one output_name for this copy, but found ({', '.join(prefix)}) [{len(prefix)}], using the first"
+                        f"Expected only one output_name for this copy, but found ({', '.join(prefix)}) [{len(prefix)}], using the first outputname"
                     )
                 else:
                     outfn = prefix[0]

@@ -6,6 +6,16 @@ from janis_assistant.templates.base import SingularityEnvironmentTemplate
 
 
 class PbsSingularityTemplate(SingularityEnvironmentTemplate):
+
+    ignore_init_keys = [
+        "can_run_in_foreground",
+        "run_in_background",
+        "build_instructions",
+        "singularity_load_instructions",
+        "max_cores",
+        "max_ram",
+    ]
+
     def __init__(
         self,
         container_dir: str,
@@ -18,6 +28,8 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         singularity_load_instructions=None,
         max_cores=None,
         max_ram=None,
+        can_run_in_foreground=True,
+        run_in_background=False,
     ):
         """
         :param execution_dir: A location where the execution should take place
@@ -38,6 +50,8 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
             load_instructions=singularity_load_instructions,
             max_cores=max_cores,
             max_ram=max_ram,
+            can_run_in_foreground=can_run_in_foreground,
+            run_in_background=run_in_background,
         )
         self.execution_dir = execution_dir
         self.queues = queues

@@ -102,6 +102,7 @@ class JanisConfiguration:
             JarPath = "jar"
             ConfigPath = "config_path"
             Url = "url"
+            Memory = "memory_mb"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -114,6 +115,9 @@ class JanisConfiguration:
             )
 
             self.url = JanisConfiguration.get_value_for_key(d, self.Keys.Url, default)
+            self.memory = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Memory, default
+            )
 
     class JanisConfigurationRecipes:
         class Keys(HashableEnum):

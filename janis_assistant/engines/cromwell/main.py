@@ -129,6 +129,10 @@ class Cromwell(Engine):
 
     def start_engine(self, additional_cromwell_options: List[str] = None):
 
+        from janis_assistant.management.configuration import JanisConfiguration
+
+        jc = JanisConfiguration.manager()
+
         if self.test_connection():
             Logger.info("Engine has already been started")
             return self
@@ -155,6 +159,9 @@ class Cromwell(Engine):
 
         Logger.info(f"Starting cromwell ({os.path.basename(cromwell_loc)})...")
         cmd = ["java", "-DLOG_MODE=standard"]
+
+        if jc.cromwell and jc.cromwell.memory:
+            cmd.append(f"-Xmx{jc.cromwell.memory}M")
 
         if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
             cmd.append("-DLOG_LEVEL=DEBUG")

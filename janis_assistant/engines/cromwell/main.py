@@ -161,7 +161,9 @@ class Cromwell(Engine):
         cmd = ["java", "-DLOG_MODE=standard"]
 
         if jc.cromwell and jc.cromwell.memory:
-            cmd.append(f"-Xmx{jc.cromwell.memory}M")
+            cmd.extend(
+                [f"-Xmx{jc.cromwell.memory}M", f"-Xms{max(jc.cromwell.memory/2, 1)}M"]
+            )
 
         if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
             cmd.append("-DLOG_LEVEL=DEBUG")
@@ -588,9 +590,7 @@ class Cromwell(Engine):
         url = self.url_metadata(
             identifier=identifier, expand_subworkflows=expand_subworkflows
         )
-        Logger.debug(
-            f"Getting Cromwell metadata for task '{identifier}' with url: {url}"
-        )
+        Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
         try:
             r = request.urlopen(url)
             self.connectionerrorcount = 0

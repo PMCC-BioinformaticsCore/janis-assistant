@@ -12,10 +12,16 @@ from janis_assistant.templates import from_template
 class NoAttributeErrors:
     def __getattr__(self, item):
         try:
-            return super().__getattribute__(item)
+            return self.__getattribute__(item)
         except AttributeError:
             # Give None to support backwards compatible JanisConfigurations
             return None
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
 
 
 class JanisConfiguration(NoAttributeErrors):

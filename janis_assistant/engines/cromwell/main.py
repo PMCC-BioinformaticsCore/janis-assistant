@@ -162,7 +162,7 @@ class Cromwell(Engine):
 
         if jc.cromwell and jc.cromwell.memory:
             cmd.extend(
-                [f"-Xmx{jc.cromwell.memory}M", f"-Xms{max(jc.cromwell.memory/2, 1)}M"]
+                [f"-Xmx{jc.cromwell.memory}M", f"-Xms{max(jc.cromwell.memory//2, 1)}M"]
             )
 
         if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:

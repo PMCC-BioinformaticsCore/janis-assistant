@@ -120,6 +120,9 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     import importlib.util
 
     try:
+        import sys
+
+        sys.path.append(os.path.dirname(file))
         spec = importlib.util.spec_from_file_location("module.name", file)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)

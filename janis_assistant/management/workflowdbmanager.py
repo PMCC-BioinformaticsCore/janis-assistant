@@ -50,14 +50,18 @@ class WorkflowDbManager:
     Every object here should have a class equivalent that the rest of the program interacts with.
     """
 
-    def __init__(self, wid: str, path):
+    def __init__(self, wid: str, path: str, readonly=False):
         self.exec_path = path
+        self.readonly = readonly
+
         self.connection = self.db_connection()
         self.cursor = self.connection.cursor()
 
         sqlpath = self.get_sql_path()
         self.runs = RunDbProvider(db=self.connection, cursor=self.cursor)
-        self.workflowmetadata = WorkflowMetadataDbProvider(sqlpath, wid=wid)
+        self.workflowmetadata = WorkflowMetadataDbProvider(
+            sqlpath, wid=wid, readonly=readonly
+        )
         self.progressDB = ProgressDbProvider(
             db=self.connection, cursor=self.cursor, wid=wid
         )
@@ -66,18 +70,19 @@ class WorkflowDbManager:
             db=self.connection, cursor=self.cursor, wid=wid
         )
         self.jobsDB = JobDbProvider(db=self.connection, cursor=self.cursor, wid=wid)
-        self.versionsDB = VersionsDbProvider(dblocation=sqlpath)
+        self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
     @staticmethod
     def get_workflow_metadatadb(execpath, wid):
 
+        connection = None
         sqlpath = WorkflowDbManager.get_sql_path_base(execpath)
 
         if not wid:
 
             Logger.debug("Opening database connection to get wid from: " + sqlpath)
             try:
-                connection = sqlite3.connect(sqlpath)
+                connection = sqlite3.connect(f"file:{sqlpath}?mode=ro")
             except:
                 Logger.critical("Error when opening DB connection to: " + sqlpath)
                 raise
@@ -86,12 +91,17 @@ class WorkflowDbManager:
             if not wid:
                 raise Exception("Couldn't get WID in task directory")
 
-        return WorkflowMetadataDbProvider(sqlpath, wid)
+        retval = WorkflowMetadataDbProvider(sqlpath, wid)
+        if connection:
+            connection.close()
+        return retval
 
     @staticmethod
     def get_latest_workflow(path) -> str:
         try:
-            connection = sqlite3.connect(WorkflowDbManager.get_sql_path_base(path))
+            connection = sqlite3.connect(
+                f"file:{WorkflowDbManager.get_sql_path_base(path)}?mode=ro"
+            )
             runDb = RunDbProvider(db=connection, cursor=connection.cursor())
             return runDb.get_latest()
 
@@ -110,6 +120,8 @@ class WorkflowDbManager:
         path = self.get_sql_path()
         Logger.debug("Opening database connection to: " + path)
         try:
+            if self.readonly:
+                return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
             return sqlite3.connect(path)
         except:
             Logger.critical("Error when opening DB connection to: " + path)

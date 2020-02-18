@@ -21,8 +21,8 @@ class WorkflowMetadataDbProvider(KvDB):
 
         return t
 
-    def __init__(self, dblocation, wid):
-        super().__init__(dblocation, "workflow-" + wid)
+    def __init__(self, dblocation, wid, readonly=False):
+        super().__init__(dblocation, "workflow-" + wid, readonly=readonly)
         self.kvdb.autocommit = False
         if WorkflowMetadataDbKeys.wid.value not in self.kvdb:
             # Initialise to give prompts to IDE

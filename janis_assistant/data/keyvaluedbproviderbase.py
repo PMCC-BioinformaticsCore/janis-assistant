@@ -5,10 +5,11 @@ class KvDB(object):
 
     attributes_to_persist = {}
 
-    def __init__(self, dblocation, tablename):
+    def __init__(self, dblocation, tablename, readonly=False):
         sqlitedict.logger.disabled = True
+        ro = "r" if readonly else "c"
         self.kvdb = sqlitedict.SqliteDict(
-            dblocation, tablename=tablename, autocommit=True
+            dblocation, tablename=tablename, autocommit=True, flag=ro
         )
 
     def __setattr__(self, name, value):

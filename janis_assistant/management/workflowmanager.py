@@ -75,7 +75,9 @@ class WorkflowManager:
         database = "database"
         mysql = "configuration/mysql"
 
-    def __init__(self, outdir: str, wid: str, environment: Environment = None):
+    def __init__(
+        self, outdir: str, wid: str, environment: Environment = None, readonly=False
+    ):
         # do stuff here
         self.wid = wid
 

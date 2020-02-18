@@ -12,8 +12,8 @@ class VersionsDbProvider(KvDB):
         "jobeventsSchema",
     }
 
-    def __init__(self, dblocation):
-        super().__init__(dblocation, tablename="versions")
+    def __init__(self, dblocation, readonly: bool = False):
+        super().__init__(dblocation, tablename="versions", readonly=readonly)
 
         if "janis" not in self.kvdb:
             self.janis_assistant = janisassistantversion

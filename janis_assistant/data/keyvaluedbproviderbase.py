@@ -1,4 +1,5 @@
 import sqlitedict
+from janis_core import Logger
 
 
 class KvDB(object):
@@ -8,6 +9,7 @@ class KvDB(object):
     def __init__(self, dblocation, tablename, readonly=False):
         sqlitedict.logger.disabled = True
         ro = "r" if readonly else "c"
+        Logger.debug(f"Opening connection to {dblocation}/{tablename} with mode {ro}")
         self.kvdb = sqlitedict.SqliteDict(
             dblocation, tablename=tablename, autocommit=True, flag=ro
         )

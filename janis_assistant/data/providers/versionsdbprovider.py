@@ -15,7 +15,7 @@ class VersionsDbProvider(KvDB):
     def __init__(self, dblocation, readonly: bool = False):
         super().__init__(dblocation, tablename="versions", readonly=readonly)
 
-        if "janis" not in self.kvdb:
+        if "janis_core" not in self.kvdb:
             self.janis_assistant = janisassistantversion
             self.janis_core = janiscoreversion
             self.jobsSchema = 1

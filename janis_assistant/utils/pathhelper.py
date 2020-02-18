@@ -133,6 +133,14 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     if name:
         ptypes = [(k, v) for (k, v) in ptypes if k == name]
 
+    wftypes = [
+        t
+        for t in ptypes
+        if (issubclass(t[1], Workflow) if isclass(t[1]) else isinstance(t[1], Workflow))
+    ]
+    if len(wftypes) == 1:
+        return wftypes[0][1]
+
     if len(ptypes) == 0:
         return None
     if len(ptypes) > 1:

@@ -11,14 +11,11 @@ from janis_assistant.templates import from_template
 
 class NoAttributeErrors:
     def __getattr__(self, item):
-        if item in self.__dict__:
-            return self.__dict__[item]
-
-        if item.startswith("__"):
+        try:
             return super().__getattribute__(item)
-
-        # Give None to support backwards compatible JanisConfigurations
-        return None
+        except AttributeError:
+            # Give None to support backwards compatible JanisConfigurations
+            return None
 
 
 class JanisConfiguration(NoAttributeErrors):

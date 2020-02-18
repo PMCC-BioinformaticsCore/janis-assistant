@@ -246,7 +246,7 @@ class WorkflowManager:
         return tm
 
     @staticmethod
-    def from_path_with_wid(path, wid):
+    def from_path_with_wid(path, wid, readonly=False):
         """
         :param wid: Workflow ID
         :param path: Path to workflow
@@ -276,14 +276,14 @@ class WorkflowManager:
 
         db.close()
 
-        tm = WorkflowManager(outdir=path, wid=wid, environment=env)
+        tm = WorkflowManager(outdir=path, wid=wid, environment=env, readonly=True)
         return tm
 
     @staticmethod
-    def from_path_get_latest(path):
+    def from_path_get_latest(path, readonly=False):
         path = WorkflowManager.get_task_path_for(path)
         wid = WorkflowDbManager.get_latest_workflow(path=path)
-        return WorkflowManager.from_path_with_wid(path, wid)
+        return WorkflowManager.from_path_with_wid(path, wid, readonly=readonly)
 
     def show_status_screen(self):
         """

@@ -188,7 +188,7 @@ class ConfigManager:
             mysql=mysql,
         )
 
-    def from_wid(self, wid):
+    def from_wid(self, wid, readonly=False):
         self.get_lazy_db_connection()
         path = self._cursor.execute(
             "SELECT outputdir FROM tasks where wid=?", (wid,)
@@ -196,10 +196,10 @@ class ConfigManager:
         if not path:
 
             if os.path.exists(wid):
-                return WorkflowManager.from_path_get_latest(wid)
+                return WorkflowManager.from_path_get_latest(wid, readonly=readonly)
 
             raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path_with_wid(path[0], wid=wid)
+        return WorkflowManager.from_path_with_wid(path[0], wid=wid, readonly=readonly)
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 

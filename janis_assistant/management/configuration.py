@@ -14,6 +14,9 @@ class NoAttributeErrors:
         if item in self.__dict__:
             return self.__dict__[item]
 
+        if item.startswith("__"):
+            return super().__getattribute__(item)
+
         # Give None to support backwards compatible JanisConfigurations
         return None
 

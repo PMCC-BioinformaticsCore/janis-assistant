@@ -9,7 +9,16 @@ from janis_assistant.management.envvariables import EnvVariables, HashableEnum
 from janis_assistant.templates import from_template
 
 
-class JanisConfiguration:
+class NoAttributeErrors:
+    def __getattr__(self, item):
+        if item in self.__dict__:
+            return self.__dict__[item]
+
+        # Give None to support backwards compatible JanisConfigurations
+        return None
+
+
+class JanisConfiguration(NoAttributeErrors):
     class Keys(HashableEnum):
         ConfigDir = "config_dir"
         OutputDir = "output_dir"
@@ -67,7 +76,7 @@ class JanisConfiguration:
 
         return JanisConfiguration._managed
 
-    class JanisConfigurationTemplate:
+    class JanisConfigurationTemplate(NoAttributeErrors):
         class Keys(HashableEnum):
             Id = "id"
 
@@ -82,7 +91,7 @@ class JanisConfiguration:
             d.pop(self.Keys.Id.value, None)
             self.template = from_template(self.id, d)
 
-    class JanisConfigurationEnvironment:
+    class JanisConfigurationEnvironment(NoAttributeErrors):
         class Keys(HashableEnum):
             MaxCores = "max_cores"
             MaxRam = "max_ram"
@@ -97,7 +106,7 @@ class JanisConfiguration:
                 d, self.Keys.MaxRam, default
             )
 
-    class JanisConfigurationCromwell:
+    class JanisConfigurationCromwell(NoAttributeErrors):
         class Keys(HashableEnum):
             JarPath = "jar"
             ConfigPath = "config_path"
@@ -119,7 +128,7 @@ class JanisConfiguration:
                 d, self.Keys.Memory, default
             )
 
-    class JanisConfigurationRecipes:
+    class JanisConfigurationRecipes(NoAttributeErrors):
         class Keys(HashableEnum):
             Recipes = "recipes"
             Paths = "paths"

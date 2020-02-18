@@ -56,6 +56,7 @@ from janis_assistant.utils import (
     recursively_join,
     find_free_port,
     validate_inputs,
+    fully_qualify_filename,
 )
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
@@ -85,7 +86,7 @@ class WorkflowManager:
 
         # hydrate from here if required
         self._engine_wid = None
-        self.path = outdir
+        self.path = fully_qualify_filename(outdir)
         self.create_dir_structure(self.path)
 
         self.database = WorkflowDbManager(wid, self.get_task_path_safe())
@@ -272,7 +273,14 @@ class WorkflowManager:
         fs = db.filescheme
         env = Environment(envid, eng, fs)
 
-        JanisConfiguration._managed = db.configuration
+        try:
+            JanisConfiguration._managed = db.configuration
+        except Exception as e:
+            Logger.critical(
+                "The JanisConfiguration could not be loaded from the DB, this might be due to an older version, we'll load your current config instead. Error: "
+                + str(e)
+            )
+            JanisConfiguration.initial_configuration(None)
 
         db.close()
 

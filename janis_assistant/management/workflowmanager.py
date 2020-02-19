@@ -571,7 +571,7 @@ class WorkflowManager:
         engine: Cromwell = self.get_engine()
 
         engine.config.database = CromwellConfiguration.Database.mysql(username="root")
-        engine.config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
+        # engine.config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
 
         port = self.dbcontainer.forwardedport
         url = CromwellConfiguration.Database.MYSQL_URL.format(

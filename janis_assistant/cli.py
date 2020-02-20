@@ -578,7 +578,7 @@ def do_metadata(args):
         for t in tasks:
             try:
                 print("--- TASKID = " + t.wid + " ---")
-                ConfigManager.manager().from_wid(t.wid).log_dbtaskinfo()
+                ConfigManager.manager().from_wid(t.wid, readonly=True).log_dbtaskinfo()
             except Exception as e:
                 print("\tAn error occurred: " + str(e))
     else:

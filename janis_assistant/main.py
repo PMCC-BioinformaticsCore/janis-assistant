@@ -73,9 +73,11 @@ def resolve_tool(
             Logger.log(f"Localising '{tool}' to '{dest}'")
 
             fileschemewherelocated("internal").cp_from(
-                tool.lower(),
-                dest,
-                lambda progress: print(f"Download progress: {progress}"),
+                source=tool.lower(),
+                dest=dest,
+                report_progress=lambda progress: print(
+                    f"Download progress: {progress}"
+                ),
                 force=force,
             )
             tool = dest

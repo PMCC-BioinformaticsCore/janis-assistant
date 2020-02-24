@@ -84,7 +84,7 @@ class BatchPipelineModifier(PipelineModifierBase):
                     f"{gbvalue}_{out.id()}",
                     source=w[stepid_from_gb(gbvalue)][out.id()],
                     output_name=output_name,
-                    output_folder=[gbvalue, *output_folders],
+                    output_folder=[gbvalue],
                 )
 
         return w

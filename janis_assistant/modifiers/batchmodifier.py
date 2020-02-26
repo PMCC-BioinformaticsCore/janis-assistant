@@ -1,11 +1,10 @@
-from abc import ABC
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
-from janis_core import Tool, Logger, WorkflowBuilder, Workflow, Array
-from janis_core.workflow.workflow import OutputNode
+from janis_core import Tool, WorkflowBuilder, Workflow, Array
+from janis_core.utils import find_duplicates
 
-from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.modifiers.base import PipelineModifierBase
+from janis_assistant.utils.batchrun import BatchRunRequirements
 
 
 class BatchPipelineModifier(PipelineModifierBase):
@@ -54,7 +53,7 @@ class BatchPipelineModifier(PipelineModifierBase):
 
         groupby_values = inputs[self.batch.groupby]
 
-        duplicate_keys = BatchPipelineModifier.find_duplicates(groupby_values)
+        duplicate_keys = find_duplicates(groupby_values)
         if len(duplicate_keys) > 0:
             raise Exception(
                 f"There are duplicate group_by ({self.batch.groupby}) keys in the input: "
@@ -96,14 +95,6 @@ class BatchPipelineModifier(PipelineModifierBase):
                 )
 
         return w
-
-    @staticmethod
-    def find_duplicates(ar) -> List:
-        counts = {}
-        for x in ar:
-            counts[x] = counts.get(x, 0) + 1
-
-        return list(k for k, v in counts.items() if v > 1)
 
     def inputs_modifier(self, wf: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
 

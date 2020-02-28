@@ -37,6 +37,7 @@ class JanisConfiguration(NoAttributeErrors):
         Recipes = "recipes"
         Notifications = "notifications"
         RunInBackground = "run_in_background"
+        CallCachingEnabled = "call_caching_enabled"
 
     _managed = None  # type: JanisConfiguration
 
@@ -118,6 +119,7 @@ class JanisConfiguration(NoAttributeErrors):
             ConfigPath = "config_path"
             Url = "url"
             Memory = "memory_mb"
+            CallCachingMethod = "call_caching_method"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -132,6 +134,10 @@ class JanisConfiguration(NoAttributeErrors):
             self.url = JanisConfiguration.get_value_for_key(d, self.Keys.Url, default)
             self.memory = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Memory, default
+            )
+
+            self.call_caching_method = JanisConfiguration.get_value_for_key(
+                d, self.Keys.CallCachingMethod, default
             )
 
     class JanisConfigurationRecipes(NoAttributeErrors):
@@ -318,6 +324,9 @@ class JanisConfiguration(NoAttributeErrors):
         self.executiondir = self.get_value_for_key(
             d, JanisConfiguration.Keys.ExecutionDir, default
         )
+        self.call_caching_enabled = JanisConfiguration.get_value_for_key(
+            d, self.Keys.CallCachingEnabled, default
+        )
 
         self.engine = self.get_value_for_key(d, JanisConfiguration.Keys.Engine, default)
         self.cromwell = JanisConfiguration.JanisConfigurationCromwell(
@@ -410,6 +419,7 @@ class JanisConfiguration(NoAttributeErrors):
                 JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
             },
             JanisConfiguration.Keys.RunInBackground: None,
+            JanisConfiguration.Keys.CallCachingEnabled: None,
         }
         return stringify_dict_keys_or_return_value(deflt)
 

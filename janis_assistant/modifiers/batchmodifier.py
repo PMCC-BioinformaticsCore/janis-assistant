@@ -68,7 +68,7 @@ class BatchPipelineModifier(PipelineModifierBase):
         duplicate_keys = find_duplicates(groupby_values)
         if len(duplicate_keys) > 0:
             raise Exception(
-                f"Janis transformed values in the group_by field  ({self.batch.groupby}) to be a valid identifier, "
+                f"Janis transformed values in the group_by field ({self.batch.groupby}) to be a valid identifiers, "
                 f"after this transformation, there were duplicates keys: "
                 + ", ".join(duplicate_keys)
             )

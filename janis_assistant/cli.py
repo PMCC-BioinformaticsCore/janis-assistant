@@ -298,6 +298,8 @@ def add_run_args(parser):
         "within a janis/execution subfolder (unless overriden by a template)",
     )
 
+    parser.add_argument("-F", "--foreground", action="store_true", default=False)
+
     parser.add_argument(
         "-B",
         "--background",
@@ -649,6 +651,7 @@ def do_run(args):
     if args.development:
         mysql = True
         keep_intermediate_files = True
+        JanisConfiguration.manager().cromwell.call_caching_enabled = True
 
     wid = fromjanis(
         args.workflow,
@@ -670,6 +673,7 @@ def do_run(args):
         recipes=args.recipe,
         keep_intermediate_files=keep_intermediate_files,
         run_in_background=(args.background is True),
+        run_in_foreground=(args.foreground is True),
         mysql=mysql,
         only_registry=args.registry,
         no_store=args.no_store,

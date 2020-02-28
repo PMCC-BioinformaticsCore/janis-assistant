@@ -1,7 +1,8 @@
 from typing import Dict, List
 
 from janis_core import Tool, WorkflowBuilder, Workflow, Array
-from janis_core.utils import find_duplicates
+from janis_core.utils import find_duplicates, validators
+from janis_core.utils.validators import Validators
 
 from janis_assistant.modifiers.base import PipelineModifierBase
 from janis_assistant.utils.batchrun import BatchRunRequirements
@@ -51,12 +52,24 @@ class BatchPipelineModifier(PipelineModifierBase):
                 i.id(), i.intype, default=i.default, doc=i.doc
             )
 
-        groupby_values = inputs[self.batch.groupby]
+        raw_groupby_values = inputs[self.batch.groupby]
 
-        duplicate_keys = find_duplicates(groupby_values)
+        duplicate_keys = find_duplicates(raw_groupby_values)
         if len(duplicate_keys) > 0:
             raise Exception(
                 f"There are duplicate group_by ({self.batch.groupby}) keys in the input: "
+                + ", ".join(duplicate_keys)
+            )
+
+        groupby_values = [
+            Validators.transform_identifier_to_be_valid(ident)
+            for ident in raw_groupby_values
+        ]
+        duplicate_keys = find_duplicates(groupby_values)
+        if len(duplicate_keys) > 0:
+            raise Exception(
+                f"Janis transformed values in the group_by field  ({self.batch.groupby}) to be a valid identifier, "
+                f"after this transformation, there were duplicates keys: "
                 + ", ".join(duplicate_keys)
             )
 

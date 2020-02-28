@@ -17,21 +17,48 @@ class LocalTemplate(EnvironmentTemplate):
         """
         super().__init__()
 
-    def cromwell(self):
-        return CromwellConfiguration(system=CromwellConfiguration.System())
+    def cromwell(self, janis_configuration):
+        config = CromwellConfiguration(
+            system=CromwellConfiguration.System(),
+            # equiv to providers.Local.config.filesystems.local.caching.hashing-strategy = "path+modtime"
+            backend=CromwellConfiguration.Backend(
+                providers={
+                    "Local": CromwellConfiguration.Backend.Provider(
+                        config=CromwellConfiguration.Backend.Provider.Config(
+                            filesystems={
+                                "local": CromwellConfiguration.Backend.Provider.Config.Filesystem.Caching(
+                                    duplication_strategy=[
+                                        "hard-link",
+                                        "cached-copy",
+                                        "copy",
+                                        "soft-link",
+                                    ],
+                                    hashing_strategy="path+modtime",
+                                )
+                            }
+                        )
+                    )
+                }
+            ),
+        )
 
-    def cwltool(self):
+        if janis_configuration.call_caching_enabled:
+            config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
+
+        return config
+
+    def cwltool(self, janis_configuration):
         config = CWLToolConfiguration()
 
         return config
 
-    def engine_config(self, engine: EngineType):
+    def engine_config(self, engine: EngineType, janis_configuration):
 
         if engine == EngineType.cromwell:
-            return self.cromwell()
+            return self.cromwell(janis_configuration=janis_configuration)
 
         elif engine == EngineType.cwltool:
-            return self.cwltool()
+            return self.cwltool(janis_configuration=janis_configuration)
 
         # Returning none will allow the engine to run with no config
         return None
@@ -67,7 +94,7 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
             load_instructions=singularity_load_instructions,
         )
 
-    def cromwell(self):
+    def cromwell(self, janis_configuration):
 
         config = CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
@@ -78,31 +105,30 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
                         singularitycontainerdir=self.singularity_container_dir,
                     )
                 }
-            ),
-            # system=CromwellConfiguration.System(file_hash_cache=True),
+            )
         )
 
+        if janis_configuration.call_caching_enabled:
+            config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
+
         return config
 
-    def cwltool(self):
+    def cwltool(self, janis_configuration):
+
         config = CWLToolConfiguration()
         config.singularity = True
-        # config.tmpdir_prefix = self.executionDir + "/"
 
         return config
 
-    def engine_config(self, engine: EngineType):
+    def engine_config(self, engine: EngineType, janis_configuration):
 
         if engine == EngineType.cromwell:
-            return self.cromwell()
+            return self.cromwell(janis_configuration=janis_configuration)
 
         elif engine == EngineType.cwltool:
-            return self.cwltool()
+            return self.cwltool(janis_configuration=janis_configuration)
 
         # Returning none will allow the engine to run with no config
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"
         )
-
-    def prejanis_hook(self):
-        return "exit 4;"

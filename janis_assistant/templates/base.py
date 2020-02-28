@@ -31,7 +31,7 @@ class EnvironmentTemplate(ABC):
         self.run_in_background = run_in_background
 
     @abstractmethod
-    def engine_config(self, engine: EngineType):
+    def engine_config(self, engine: EngineType, janis_configuration):
         pass
 
     def submit_detatched_resume(

@@ -58,7 +58,11 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         self.send_job_emails = send_job_emails
         self.catch_pbs_errors = catch_pbs_errors
 
-    def cromwell(self):
+    def cromwell(self, janis_configuration):
+
+        job_email = None
+        if self.send_job_emails:
+            job_email = janis_configuration.notifications.email
 
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(
@@ -71,9 +75,10 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
                         singularityloadinstructions=self.singularity_load_instructions,
                         singularitycontainerdir=self.singularity_container_dir,
                         buildinstructions=self.singularity_build_instructions,
-                        send_job_updates=self.send_job_emails,
+                        jobemail=job_email,
                         queues=self.queues,
                         afternotokaycatch=self.catch_pbs_errors,
+                        call_caching_method=janis_configuration.cromwell.call_caching_method,
                     )
                 },
             ),
@@ -84,18 +89,15 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         ].config
         if self.execution_dir:
             beconfig.root = self.execution_dir
-        beconfig.filesystems = {
-            "local": {
-                "localization": ["hard-link", "cached-copy", "soft-link", "copy"]
-            },
-            # "caching": {"hashing-strategy": "path+modtime"},
-        }
+
+        if janis_configuration.call_caching_enabled:
+            config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
 
         return config
 
-    def engine_config(self, engine: EngineType):
+    def engine_config(self, engine: EngineType, janis_configuration):
         if engine == EngineType.cromwell:
-            return self.cromwell()
+            return self.cromwell(janis_configuration=janis_configuration)
 
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"

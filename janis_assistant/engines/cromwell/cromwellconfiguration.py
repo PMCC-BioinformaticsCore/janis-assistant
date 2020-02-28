@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 from typing import Tuple, Any, Dict, Union, List
 
 from janis_core.utils.logger import Logger
@@ -88,6 +89,18 @@ class CromwellConfiguration(Serializable):
             "binding_timeout": "binding-timeout",
             "instance_name": "instance.name",
         }
+
+    class CromwellFilesystem(Enum):
+        """
+        Filesystems must be one of these: https://cromwell.readthedocs.io/en/stable/filesystems/Filesystems/
+        """
+
+        local = "local"  # Shared file system
+        s3 = "s3"  # Simple Storage Service
+        gcs = "gcs"
+        oss = "oss"
+        http = "http"
+        ftp = "ftp"
 
     class Akka(Serializable):
         pass
@@ -210,8 +223,26 @@ class CromwellConfiguration(Serializable):
                             "check_sibling_md5": "check-sibling-md5",
                         }
 
-                    def __init__(self, caching: Caching = None):
+                    def __init__(self, enabled: bool = True, caching: Caching = None):
+                        self.enabled = enabled
                         self.caching = caching
+
+                    @staticmethod
+                    def default_filesystem(cache_method: str = None):
+
+                        return {
+                            "local": CromwellConfiguration.Backend.Provider.Config.Filesystem(
+                                caching=CromwellConfiguration.Backend.Provider.Config.Filesystem.Caching(
+                                    duplication_strategy=[
+                                        "hard-link",
+                                        "cached-copy",
+                                        "copy",
+                                        "soft-link",
+                                    ],
+                                    hashing_strategy=(cache_method or "path+modtime"),
+                                )
+                            )
+                        }
 
                 def __init__(
                     self,
@@ -233,12 +264,8 @@ class CromwellConfiguration(Serializable):
                     self.default_runtime_attributes = default_runtime_attributes
 
                     self.concurrent_job_limit = concurrent_job_limit
+                    self.filesystems = filesystems
 
-                    self.filesystems = filesystems or {
-                        "local": self.Filesystem(
-                            self.Filesystem.Caching(hashing_strategy="File")
-                        )
-                    }
                     self.runtime_attributes = (runtime_attributes or "").replace(
                         "\n", "\\n"
                     )
@@ -276,7 +303,8 @@ class CromwellConfiguration(Serializable):
             key_map = {"actor_factory": "actor-factory"}
 
             @classmethod
-            def slurm(cls):
+            def slurm(cls, call_caching_method: str = None):
+
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
@@ -300,6 +328,9 @@ String? docker""".strip(),
                         kill="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*",
+                        filesystems=cls.Config.Filesystem.default_filesystem(
+                            call_caching_method
+                        ),
                     ),
                 )
 
@@ -312,9 +343,9 @@ String? docker""".strip(),
                 jobemail,
                 jobqueues,
                 afternotokaycatch: bool = True,
-                limit_resources: bool = False,
+                call_caching_method: str = None,
             ):
-                slurm = cls.slurm()
+                slurm = cls.slurm(call_caching_method=call_caching_method)
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
@@ -326,19 +357,6 @@ String? docker""".strip(),
                 partition_string = ("-p " + partitions) if partitions else ""
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
-                )
-
-                cgroups_creation = (
-                    """# Generate singularity cgroups command
-                cgroupsfile="${cwd}/execution/singularity-cgroup.toml"
-                printf "[memory]\\n  limit = $((${memory_mb} * 1048576))" > $cgroupsfile\
-                """
-                    if limit_resources
-                    else ""
-                )
-
-                cgroups_binding = (
-                    " --apply-cgroups $cgroupsfile" if limit_resources else ""
                 )
 
                 slurm.config.runtime_attributes = """\
@@ -355,8 +373,6 @@ String? docker
             docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
             image={singularitycontainerdir}/$docker_subbed.sif
             lock_path={singularitycontainerdir}/$docker_subbed.lock
-
-            {cgroups_creation}
 
             if [ ! -f "$image" ]; then
               {buildinstructions}
@@ -375,7 +391,7 @@ String? docker
                 -e ${{cwd}}/execution/stderr \\
                 -t ${{runtime_minutes}} \\
                 {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}}{cgroups_binding} $image ${{job_shell}} ${{docker_script}}") \\
+                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
                 {afternotokaycommand} \\
                 && echo Submitted batch job $JOBID
             """
@@ -387,30 +403,20 @@ String? docker
                 singularityloadinstructions,
                 singularitycontainerdir,
                 buildinstructions,
-                limit_resources: bool = False,
-                executionDirectory: str = None,
+                execution_directory: str = None,
+                call_caching_method: str = None,
             ):
 
                 config = cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
-                        runtime_attributes="""\
-String? docker""".strip(),
+                        runtime_attributes="""String? docker""".strip(),
                         run_in_background=True,
-                        root=executionDirectory,
+                        root=execution_directory,
+                        filesystems=CromwellConfiguration.Backend.Provider.Config.Filesystem.default_filesystem(
+                            call_caching_method
+                        ),
                     ),
-                )
-
-                cgroups_creation = (
-                    """# Generate singularity cgroups command
-                cgroupsfile="${{cwd}}/execution/singularity-cgroup.toml"
-                printf "[memory]\\n  limit = $((${{memory_mb}} * 1048576))" > $cgroupsfile\
-                """
-                    if limit_resources
-                    else ""
-                )
-                cgroups_binding = (
-                    " --apply-cgroups $cgroupsfile" if limit_resources else ""
                 )
 
                 config.config.submit_docker = f"""
@@ -422,15 +428,15 @@ String? docker""".strip(),
 
                     {buildinstructions}
 
-                    {cgroups_creation}
-
-                    singularity exec --bind ${{cwd}}:${{docker_cwd}}{cgroups_binding} $image ${{job_shell}} ${{docker_script}}
+                    singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}
                     """
                 return config
 
             # noinspection PyPep8
             @classmethod
-            def torque(cls, queues: Union[str, List[str]]):
+            def torque(
+                cls, queues: Union[str, List[str]], call_caching_method: str = None
+            ):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
                 """
@@ -457,6 +463,9 @@ String? docker""".strip(),
                         job_id_regex="^(\\d+).*",
                         kill="qdel ${job_id}",
                         check_alive="qstat ${job_id}",
+                        filesystems=CromwellConfiguration.Backend.Provider.Config.Filesystem.default_filesystem(
+                            call_caching_method
+                        ),
                     ),
                 )
 
@@ -467,16 +476,15 @@ String? docker""".strip(),
                 singularityloadinstructions,
                 singularitycontainerdir,
                 buildinstructions,
-                send_job_updates,
+                jobemail: str = None,
                 afternotokaycatch=False,
+                call_caching_method: str = None,
             ):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
                 """
 
-                from janis_assistant.management.configuration import JanisConfiguration
-
-                torq = cls.torque(queues)
+                torq = cls.torque(queues, call_caching_method=call_caching_method)
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
@@ -488,15 +496,7 @@ String? docker""".strip(),
                         ",".join(queues) if isinstance(queues, list) else queues
                     )
 
-                emailparams = ""
-                email = JanisConfiguration.manager().notifications.email
-                if send_job_updates:
-                    if not email:
-                        Logger.info(
-                            "Skipping send_job_updates for Torque as no email was found in the configuration"
-                        )
-                    else:
-                        emailparams = f"-m ea -M {email}"
+                emailparams = f"-m ea -M {jobemail}" if jobemail else ""
 
                 loadinstructions = (
                     (singularityloadinstructions + " &&")
@@ -584,7 +584,8 @@ String? docker""".strip(),
                 providers={
                     "Local": CromwellConfiguration.Backend.Provider(
                         config=CromwellConfiguration.Backend.Provider.Config(
-                            root=execution_directory
+                            root=execution_directory,
+                            filesystems=CromwellConfiguration.Backend.Provider.Config.Filesystem.default_filesystem(),
                         )
                     )
                 }

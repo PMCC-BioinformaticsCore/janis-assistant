@@ -219,7 +219,7 @@ class CWLTool(Engine):
             self.config = config
         else:
             self.config = (
-                jc.template.template.engine_config(EngineType.cwltool)
+                jc.template.template.engine_config(EngineType.cwltool, jc)
                 or CWLToolConfiguration()
             )
 
@@ -359,12 +359,17 @@ class CWLTool(Engine):
         )
 
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
+
+        from janis_assistant.management.configuration import JanisConfiguration
+
+        jc = JanisConfiguration.manager()
+
         self.taskmeta = {
             "start": DateUtil.now(),
             "status": TaskStatus.PROCESSING,
             "jobs": {},
         }
-        config = self.config
+        config: CWLToolConfiguration = self.config
 
         if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
             config.debug = True
@@ -376,6 +381,9 @@ class CWLTool(Engine):
             config.outdir = self.execution_dir + "/"
             config.tmpdir_prefix = self.execution_dir + "/"
             config.leave_tmpdir = True
+
+        if jc.call_caching_enabled:
+            config.cachedir = os.path.join(self.execution_dir, "cached/")
 
         cmd = config.build_command_line(source_path, input_path)
 

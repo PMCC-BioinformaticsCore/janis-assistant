@@ -98,13 +98,13 @@ class BatchPipelineModifier(PipelineModifierBase):
                 output_folders = on.output_folder or []
                 output_name = on.output_name
 
-            for gbvalue in groupby_values:
+            for gbvalue, raw_gbvalue in zip(groupby_values, raw_groupby_values):
 
                 w.output(
                     f"{gbvalue}_{out.id()}",
                     source=w[stepid_from_gb(gbvalue)][out.id()],
                     output_name=output_name,
-                    output_folder=[gbvalue],
+                    output_folder=[raw_gbvalue],
                 )
 
         return w

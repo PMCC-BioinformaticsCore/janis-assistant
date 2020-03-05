@@ -92,11 +92,12 @@ class BatchPipelineModifier(PipelineModifierBase):
 
         for out in tool.tool_outputs():
             output_folders = []
-            output_name = None
+            output_name = out.id()
             if isinstance(tool, Workflow):
                 on = tool.output_nodes[out.id()]
                 output_folders = on.output_folder or []
-                output_name = on.output_name
+                if on.output_name:
+                    output_name = on.output_name
 
             for gbvalue, raw_gbvalue in zip(groupby_values, raw_groupby_values):
 

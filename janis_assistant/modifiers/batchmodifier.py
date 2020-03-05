@@ -117,7 +117,11 @@ class BatchPipelineModifier(PipelineModifierBase):
             )
 
         # batch_inputs is seen as the source of truth for the length operations
-        groupby_values = inputs[self.batch.groupby]
+        raw_groupby_values = inputs[self.batch.groupby]
+        groupby_values = [
+            Validators.transform_identifier_to_be_valid(ident)
+            for ident in raw_groupby_values
+        ]
         if not isinstance(groupby_values, list):
             raise ValueError(
                 f"The value of the groupBy field '{self.batch.groupby}' was not a 'list', got '{type(groupby_values)}'"

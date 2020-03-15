@@ -84,11 +84,13 @@ def validate_template_params(template, options: dict):
 
     if len(missing_params) > 0:
         raise Exception(
-            f"Couldn't construct the template '{template.__name__}', missing the params: {', '.join(missing_params)}"
+            f"There was an error initialising the template '{template.__name__}', as the template "
+            f"is missing the following keys: {', '.join(missing_params)}"
         )
     if len(extra_params) > 0:
         raise Exception(
-            f"Couldn't construct the template '{template.__name__}', unrecognised params: {', '.join(extra_params)}"
+            f"There was an error initialising the template '{template.__name__}', there were unrecognised parameters "
+            f"{', '.join(extra_params)} (the template might have been updated and some of your keys are now invalid)"
         )
 
     return True

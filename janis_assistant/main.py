@@ -12,6 +12,8 @@ from inspect import isclass
 import janis_core as j
 from typing import Optional, Dict, Union, Type, List
 
+from janis_core import InputQualityType
+
 from janis_assistant.templates import TemplateInput
 
 from janis_assistant.management.workflowmanager import WorkflowManager
@@ -170,12 +172,20 @@ def generate_inputs(
     force=False,
     additional_inputs=None,
     with_resources=False,
+    quality_type=List[InputQualityType],
+    recipes=List[str],
 ):
     toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
     inputsdict = None
     if additional_inputs:
         inputsfile = get_file_from_searchname(additional_inputs, ".")
         inputsdict = parse_dict(inputsfile)
+
+    values_to_ignore = set()
+    if recipes:
+        jc = JanisConfiguration.manager()
+        for k in jc.recipes.get_recipe_for_keys(recipes):
+            values_to_ignore.add(k)
 
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(tool))
@@ -184,6 +194,8 @@ def generate_inputs(
         additional_inputs=inputsdict,
         with_resource_overrides=with_resources,
         include_defaults=all,
+        values_to_ignore=values_to_ignore,
+        quality_type=quality_type,
     )
 
 

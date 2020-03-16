@@ -4,6 +4,7 @@ import json
 
 import ruamel.yaml
 import tabulate
+from janis_core import InputQualityType
 
 from janis_core.translationdeps.supportedtranslations import SupportedTranslations
 
@@ -244,6 +245,8 @@ def add_translate_args(parser):
 
 def add_inputs_args(parser):
     parser.add_argument("workflow", help="workflow to generate inputs for")
+    parser.add_argument("-c", "--config", help="Path to config file")
+
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
     parser.add_argument(
         "-a",
@@ -251,11 +254,30 @@ def add_inputs_args(parser):
         action="store_true",
         help="Include inputs that have default values",
     )
-    parser.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
+
+    parser.add_argument(
+        "--user",
+        action="store_true",
+        help="Only include user inputs (ignore inputs with a qualityType of static or configuration). "
+        "Note, this is only available for pilelines that have inputs that are annotated with input qualities.",
+    )
+    parser.add_argument(
+        "--static",
+        action="store_true",
+        help="Include all inputs with a quality type of static or configuration. "
+        "Note, this is only available for pilelines that have inputs that are annotated with input qualities.",
+    )
+
+    parser.add_argument(
+        "-r",
+        "--recipes",
+        help="If you have values available from these recipes, they will be ignored from the output",
+        nargs="+",
+    )
     parser.add_argument(
         "--resources",
         action="store_true",
-        help="Add resource overrides into inputs file",
+        help="Add resource overrides into inputs file (eg: runtime_cpu / runtime_memory)",
     )
     parser.add_argument(
         "--json", action="store_true", help="Output to JSON instead of yaml"
@@ -694,6 +716,17 @@ def do_spider(args):
 
 
 def do_inputs(args):
+
+    if args.config or args.recipes:
+        JanisConfiguration.initial_configuration(args.config)
+
+    quality_type = None
+
+    if args.user:
+        quality_type = [InputQualityType.user]
+    elif args.static:
+        quality_type = [InputQualityType.static, InputQualityType.configuration]
+
     outd = generate_inputs(
         args.workflow,
         all=args.all,
@@ -701,6 +734,8 @@ def do_inputs(args):
         force=args.no_cache,
         additional_inputs=args.inputs,
         with_resources=args.resources,
+        quality_type=quality_type,
+        recipes=args.recipes,
     )
 
     if args.json:

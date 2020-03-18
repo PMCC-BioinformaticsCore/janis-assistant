@@ -241,6 +241,12 @@ def add_translate_args(parser):
         help="Force re-download of workflow if remote",
         action="store_true",
     )
+    parser.add_argument(
+        "--allow-empty-container",
+        action="store_true",
+        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
+        "Including this flag will disable this check, and empty containers can be used.",
+    )
 
 
 def add_inputs_args(parser):
@@ -343,6 +349,13 @@ def add_run_args(parser):
     )
 
     # development settings
+
+    parser.add_argument(
+        "--allow-empty-container",
+        action="store_true",
+        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
+        "Including this flag will disable this check, and empty containers can be used.",
+    )
 
     parser.add_argument(
         "--development",
@@ -699,6 +712,7 @@ def do_run(args):
         mysql=mysql,
         only_registry=args.registry,
         no_store=args.no_store,
+        allow_empty_container=args.allow_empty_container,
     )
 
     Logger.info("Exiting")
@@ -793,6 +807,7 @@ def do_translate(args):
         name=args.name,
         output_dir=args.output_dir,
         force=args.no_cache,
+        allow_empty_container=args.allow_empty_container,
     )
 
 

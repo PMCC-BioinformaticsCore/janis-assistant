@@ -168,6 +168,7 @@ class ConfigManager:
         keep_intermediate_files=False,
         run_in_background=True,
         mysql=False,
+        allow_empty_container=False,
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
@@ -186,6 +187,7 @@ class ConfigManager:
             keep_intermediate_files=keep_intermediate_files,
             run_in_background=run_in_background,
             mysql=mysql,
+            allow_empty_container=allow_empty_container,
         )
 
     def from_wid(self, wid, readonly=False):

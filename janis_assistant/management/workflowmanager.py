@@ -138,6 +138,7 @@ class WorkflowManager:
         keep_intermediate_files=False,
         run_in_background=True,
         mysql=False,
+        allow_empty_container=False,
     ):
 
         jc = JanisConfiguration.manager()
@@ -177,6 +178,7 @@ class WorkflowManager:
             additional_inputs=inputs_dict,
             max_cores=max_cores or jc.environment.max_cores,
             max_memory=max_memory or jc.environment.max_ram,
+            allow_empty_container=allow_empty_container,
         )
 
         outdir_workflow = tm.get_path_for_component(
@@ -590,6 +592,7 @@ class WorkflowManager:
         additional_inputs: dict,
         max_cores=None,
         max_memory=None,
+        allow_empty_container=False,
     ):
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
@@ -607,6 +610,7 @@ class WorkflowManager:
             # We'll store the original workflow to run for provenance, but not to easily rerun
             write_inputs_file=False,
             export_path=os.path.join(outdir_workflow, "original"),
+            allow_empty_container=allow_empty_container,
         )
 
         Logger.info(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")
@@ -636,6 +640,7 @@ class WorkflowManager:
             additional_inputs=additional_inputs,
             max_cores=max_cores,
             max_mem=max_memory,
+            allow_empty_container=allow_empty_container,
         )
 
         self.evaluate_output_params(

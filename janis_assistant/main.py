@@ -8,6 +8,7 @@
 """
 import sys, os
 from inspect import isclass
+from textwrap import dedent
 
 import janis_core as j
 from typing import Optional, Dict, Union, Type, List
@@ -206,8 +207,10 @@ import argparse
 
 
 class InitArgParser(argparse.ArgumentParser):
-    def __init__(self, templatename, schema: List[TemplateInput]):
-        super().__init__(f"janis init {templatename}")
+    def __init__(
+        self, templatename, schema: List[TemplateInput], description: str = None
+    ):
+        super().__init__(f"janis init {templatename}", description=description)
         # self.add_usage(
         #     , self._actions, self._mutually_exclusive_groups
         # )
@@ -300,8 +303,9 @@ def init_template(
                 }
 
                 # parse extra params
+                description = dedent(tmpl.__doc__) if tmpl.__doc__ else None
 
-                parser = InitArgParser(templatename, schema)
+                parser = InitArgParser(templatename, schema, description=description)
                 parsed = parser.parse_args(unparsed_init_args)
 
                 try:

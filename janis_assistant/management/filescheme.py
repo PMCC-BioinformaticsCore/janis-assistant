@@ -82,6 +82,14 @@ class FileScheme(Archivable, abc.ABC):
         return None
 
     @staticmethod
+    def is_local_path(prefix: str):
+        return (
+            prefix.startswith(".")
+            or prefix.startswith("/")
+            or prefix.startswith("file://")
+        )
+
+    @staticmethod
     def get_type(identifier):
         if identifier == "local":
             return LocalFileScheme

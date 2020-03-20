@@ -2,7 +2,7 @@ import os
 import tempfile
 from shutil import rmtree
 import unittest
-from janis_assistant.data.models.filescheme import SSHFileScheme
+from janis_assistant.management.filescheme import SSHFileScheme
 
 
 @unittest.skipUnless(

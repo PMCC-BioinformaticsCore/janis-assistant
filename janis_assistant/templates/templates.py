@@ -1,5 +1,5 @@
 from janis_core import Logger
-from janis_core.registry.entrypoints import TEMPLATES as TEMPLATE_EP
+from janis_core.toolbox.entrypoints import TEMPLATES as TEMPLATE_EP
 
 from janis_assistant.templates.local import LocalTemplate, LocalSingularityTemplate
 from janis_assistant.templates.pbs import PbsSingularityTemplate

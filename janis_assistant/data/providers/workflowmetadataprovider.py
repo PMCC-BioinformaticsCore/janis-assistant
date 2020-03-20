@@ -2,7 +2,7 @@ from datetime import datetime
 
 from janis_assistant.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
-from janis_assistant.data.models.filescheme import FileScheme
+from janis_assistant.management.filescheme import FileScheme
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines import Engine
 from janis_assistant.utils.getuser import lookup_username

@@ -1,4 +1,4 @@
-from janis_assistant.data.models.filescheme import FileScheme, LocalFileScheme
+from janis_assistant.management.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.engines import Engine, Cromwell
 from janis_assistant.management import Archivable
 

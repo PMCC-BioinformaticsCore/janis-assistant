@@ -2,7 +2,7 @@ import unittest
 
 from janis_core import CaptureType
 
-from janis_assistant.data.models.filescheme import LocalFileScheme
+from janis_assistant.management.filescheme import LocalFileScheme
 from janis_assistant.engines.toil.main import Toil
 from janis_assistant.environments.environment import Environment
 from janis_assistant.main import fromjanis

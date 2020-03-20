@@ -46,7 +46,7 @@ for more information.
 - `translate` - Translate a workflow into CWL / WDL
 - `metadata` - Get the available metadata on an execution
 - `version` - Print the version of `janis` submodules.
-- `spider` - Print documentation for a tool (allows to trace problems with the JanisRegistry)
+- `spider` - Print documentation for a tool (allows to trace problems with the Janistoolbox)
 
 ### `run`
 
@@ -63,7 +63,7 @@ View the help guide
 
 positional arguments:
   workflow              Run the workflow defined in this file or available
-                        within the registry
+                        within the toolbox
   extra_inputs
 
 optional arguments:
@@ -81,6 +81,13 @@ optional arguments:
   --keep-intermediate-files
                         Do not remove execution directory on successful
                         complete
+  --skip-file-check     Skip checking if files exist before the start of a
+                        workflow.
+  --allow-empty-container
+                        Some tools you use may not include a container, this
+                        would usually (and intentionally) cause an error.
+                        Including this flag will disable this check, and empty
+                        containers can be used.
   --development         Apply common settings (--keep-execution-dir + --mysql)
                         to support incremental development of a pipeline
 
@@ -99,8 +106,8 @@ hints:
   --hint-engine {cromwell}
 
 workflow collection arguments:
-  --registry            Skip looking through the search path, and only look in
-                        the registry
+  --toolbox            Skip looking through the search path, and only look in
+                        the toolbox
   -n NAME, --name NAME  If you have multiple workflows in your file, you may
                         want to help Janis out to select the right workflow to
                         run

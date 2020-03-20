@@ -307,7 +307,7 @@ def add_run_args(parser):
 
     parser.add_argument(
         "workflow",
-        help="Run the workflow defined in this file or available within the registry",
+        help="Run the workflow defined in this file or available within the toolbox",
     )
 
     parser.add_argument("-c", "--config", help="Path to config file")

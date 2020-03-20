@@ -22,7 +22,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         execution_dir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
-        send_job_emails=True,
+        send_job_emails=False,
         catch_pbs_errors=True,
         build_instructions=f"singularity pull $image docker://${{docker}}",
         singularity_load_instructions=None,

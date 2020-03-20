@@ -18,7 +18,7 @@ from janis_assistant.templates import TemplateInput
 
 from janis_assistant.management.workflowmanager import WorkflowManager
 
-from janis_assistant.data.models.filescheme import (
+from janis_assistant.management.filescheme import (
     FileScheme,
     LocalFileScheme,
     SSHFileScheme,
@@ -47,7 +47,7 @@ def resolve_tool(
     name=None,
     from_toolshed=False,
     force=False,
-    only_registry=False,
+    only_toolbox=False,
 ):
     if isinstance(tool, j.Tool):
         return tool
@@ -59,7 +59,7 @@ def resolve_tool(
             f"Janis is not sure how to resolve a workflow of type: '{type(tool)}'"
         )
 
-    if not only_registry:
+    if not only_toolbox:
         fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
         if fileschemewherelocated:
             Logger.info(
@@ -154,12 +154,12 @@ def spider_tool(
     tool: Union[str, j.CommandTool, j.Workflow],
     name=None,
     force=False,
-    registry_only=False,
+    only_toolbox=False,
     trace=False,
 ):
     j.JanisShed.should_trace = trace
     toolref = resolve_tool(
-        tool, name, from_toolshed=True, force=force, only_registry=registry_only
+        tool, name, from_toolshed=True, force=force, only_toolbox=only_toolbox
     )
 
     if not toolref:
@@ -369,9 +369,10 @@ def fromjanis(
     run_in_background=True,
     run_in_foreground=None,
     mysql=False,
-    only_registry=False,
+    only_toolbox=False,
     no_store=False,
     allow_empty_container=False,
+    check_files=True,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -381,7 +382,7 @@ def fromjanis(
         tool=workflow,
         name=name,
         from_toolshed=True,
-        only_registry=only_registry,
+        only_toolbox=only_toolbox,
         force=force,
     )
     if not wf:
@@ -460,6 +461,7 @@ def fromjanis(
             run_in_background=should_run_in_background,
             mysql=mysql,
             allow_empty_container=allow_empty_container,
+            check_files=check_files,
         )
         Logger.log("Finished starting task task")
         return

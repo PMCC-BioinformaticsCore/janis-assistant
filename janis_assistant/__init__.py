@@ -1,5 +1,5 @@
 from janis_assistant.main import fromjanis
-from janis_assistant.data.models.filescheme import (
+from janis_assistant.management.filescheme import (
     FileScheme,
     LocalFileScheme,
     SSHFileScheme,

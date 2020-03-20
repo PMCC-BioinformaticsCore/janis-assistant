@@ -172,7 +172,7 @@ def add_watch_args(parser):
 def add_spider_args(parser):
     parser.add_argument("tool", help="Tool to find")
     parser.add_argument(
-        "--registry", action="store_true", help="Only look for tools in the registry"
+        "--toolbox", action="store_true", help="Only look for tools in the toolbox"
     )
     parser.add_argument(
         "--name",
@@ -186,7 +186,7 @@ def add_spider_args(parser):
     parser.add_argument(
         "--trace",
         action="store_true",
-        help="Adds statements to help find why a tool isn't appearing in the registry",
+        help="Adds statements to help find why a tool isn't appearing in the toolbox",
     )
 
 
@@ -348,6 +348,12 @@ def add_run_args(parser):
         help="Do not remove execution directory on successful complete",
     )
 
+    parser.add_argument(
+        "--skip-file-check",
+        action="store_true",
+        help="Skip checking if files exist before the start of a workflow.",
+    )
+
     # development settings
 
     parser.add_argument(
@@ -398,9 +404,7 @@ def add_run_args(parser):
     wfcol_group = parser.add_argument_group("workflow collection arguments")
 
     wfcol_group.add_argument(
-        "--registry",
-        help="Skip looking through the search path, and only look in the registry",
-        action="store_true",
+        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
     )
 
     wfcol_group.add_argument(
@@ -563,7 +567,7 @@ def do_version(_):
 
     from janis_assistant.__meta__ import __version__ as jr_version
     from janis_core.__meta__ import __version__ as jc_version
-    import janis_core.registry.entrypoints as EP
+    import janis_core.toolbox.entrypoints as EP
 
     fields = [["janis-core", jc_version], ["janis-assistant", jr_version]]
     # eps = pkg_resources.iter_entry_points(group=EP.EXTENSIONS)
@@ -710,9 +714,10 @@ def do_run(args):
         run_in_background=(args.background is True),
         run_in_foreground=(args.foreground is True),
         mysql=mysql,
-        only_registry=args.registry,
+        only_toolbox=args.toolbox,
         no_store=args.no_store,
         allow_empty_container=args.allow_empty_container,
+        check_files=not args.skip_file_check,
     )
 
     Logger.info("Exiting")
@@ -724,7 +729,7 @@ def do_spider(args):
         tool=args.tool,
         name=args.name,
         force=args.no_cache,
-        registry_only=args.registry,
+        only_toolbox=args.toolbox,
         trace=args.trace,
     )
 

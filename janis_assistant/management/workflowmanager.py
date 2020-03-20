@@ -19,7 +19,6 @@ Run / monitor separation:
 """
 import os
 import queue
-import threading
 import time
 from enum import Enum
 from subprocess import call
@@ -31,7 +30,6 @@ from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
-from janis_assistant.data.models.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines import (
@@ -43,11 +41,13 @@ from janis_assistant.engines import (
 )
 from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import JanisConfiguration
+from janis_assistant.management.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.management.mysql import MySql
 from janis_assistant.management.notificationmanager import NotificationManager
 from janis_assistant.management.workflowdbmanager import WorkflowDbManager
 from janis_assistant.modifiers.base import PipelineModifierBase
 from janis_assistant.modifiers.batchmodifier import BatchPipelineModifier
+from janis_assistant.modifiers.inputchecker import InputChecker
 from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 from janis_assistant.modifiers.validatormodifier import ValidatorPipelineModifier
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -55,7 +55,6 @@ from janis_assistant.utils import (
     get_extension,
     recursively_join,
     find_free_port,
-    validate_inputs,
     fully_qualify_filename,
 )
 from janis_assistant.utils.batchrun import BatchRunRequirements
@@ -139,6 +138,7 @@ class WorkflowManager:
         run_in_background=True,
         mysql=False,
         allow_empty_container=False,
+        check_files=True,
     ):
 
         jc = JanisConfiguration.manager()
@@ -179,6 +179,7 @@ class WorkflowManager:
             max_cores=max_cores or jc.environment.max_cores,
             max_memory=max_memory or jc.environment.max_ram,
             allow_empty_container=allow_empty_container,
+            check_files=check_files,
         )
 
         outdir_workflow = tm.get_path_for_component(
@@ -593,6 +594,7 @@ class WorkflowManager:
         max_cores=None,
         max_memory=None,
         allow_empty_container=False,
+        check_files=True,
     ):
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
@@ -622,11 +624,13 @@ class WorkflowManager:
         if batchrun:
             modifiers.append(BatchPipelineModifier(batchrun))
 
+        # THIS ONE SHOULD BE LAST
+
+        modifiers.append(InputChecker(check_file_existence=check_files))
+
         workflow_to_evaluate, additional_inputs = PipelineModifierBase.apply_many(
             modifiers, workflow, additional_inputs, hints=hints
         )
-
-        validate_inputs(workflow_to_evaluate, additional_inputs)
 
         translator.translate(
             workflow_to_evaluate,

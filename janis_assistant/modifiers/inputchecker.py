@@ -16,11 +16,9 @@ from janis_assistant.utils import validate_inputs
 
 class InputChecker(PipelineModifierBase):
     """
-    InputFileQualifier is designed to take relative file paths from the CWD and turn
-    them into fully qualified paths. It also expands path components like '~' or '.'.
-
-    The InputFileQualifier allows you to override the 'cwd' during the init, otherwise
-    the current cwd is captured on initialise.
+    InputChecker is designed to check the existence and validity of inputs.
+    The file-existence currently only works for LOCAL files. (prefix: '/' or '.' or 'file://),
+    and can be disabled with check_file_existence=False (or --skip-file-check)
     """
 
     def __init__(self, check_file_existence=True):

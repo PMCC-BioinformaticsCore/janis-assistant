@@ -88,7 +88,9 @@ class WorkflowManager:
         self.path = fully_qualify_filename(outdir)
         self.create_dir_structure(self.path)
 
-        self.database = WorkflowDbManager(wid, self.get_task_path_safe())
+        self.database = WorkflowDbManager(
+            wid, self.get_task_path_safe(), readonly=readonly
+        )
         self.environment = environment
         self.dbcontainer: MySql = None
         self.main_queue = queue.Queue()

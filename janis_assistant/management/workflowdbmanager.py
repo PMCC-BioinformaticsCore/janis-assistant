@@ -87,13 +87,11 @@ class WorkflowDbManager:
                 Logger.critical("Error when opening DB connection to: " + sqlpath)
                 raise
 
-            wid = RunDbProvider(
-                db=connection, cursor=connection.cursor(), readonly=True
-            ).get_latest()
+            wid = RunDbProvider(db=connection, cursor=connection.cursor()).get_latest()
             if not wid:
                 raise Exception("Couldn't get WID in task directory")
 
-        retval = WorkflowMetadataDbProvider(sqlpath, wid)
+        retval = WorkflowMetadataDbProvider(sqlpath, wid, readonly=True)
         if connection:
             connection.close()
         return retval
@@ -120,10 +118,12 @@ class WorkflowDbManager:
 
     def db_connection(self):
         path = self.get_sql_path()
-        Logger.debug("Opening database connection to: " + path)
         try:
             if self.readonly:
+                Logger.debug("Opening database connection to in READONLY mode: " + path)
                 return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+
+            Logger.debug("Opening database connection: " + path)
             return sqlite3.connect(path)
         except:
             Logger.critical("Error when opening DB connection to: " + path)

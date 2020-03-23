@@ -26,12 +26,13 @@ class ConfigManager:
             ConfigManager._manager = ConfigManager()
         return ConfigManager._manager
 
-    def __init__(self):
+    def __init__(self, readonly=False):
 
         # Before the manager() is called, someone (the CLI definitely) MUST call
         # JanisConfiguration.inital_configuration(potential_config_paths), this
         # will search os.env for potential configs
         config = JanisConfiguration.manager()
+        self.readonly = readonly
         self.is_new = not os.path.exists(config.dbpath)
 
         cp = os.path.dirname(config.dbpath)
@@ -60,8 +61,18 @@ class ConfigManager:
 
     def db_connection(self):
         config = JanisConfiguration.manager()
-        Logger.log("Opening database connection to: " + config.dbpath)
-        return sqlite3.connect(config.dbpath)
+        try:
+            if self.readonly:
+                Logger.debug(
+                    "Opening database connection to in READONLY mode: " + config.dbpath
+                )
+                return sqlite3.connect(f"file:{config.dbpath}?mode=ro", uri=True)
+
+            Logger.debug("Opening database connection: " + config.dbpath)
+            return sqlite3.connect(config.dbpath)
+        except:
+            Logger.critical("Error when opening DB connection to: " + config.dbpath)
+            raise
 
     def commit(self):
         self.get_lazy_db_connection()
@@ -193,14 +204,17 @@ class ConfigManager:
         )
 
     def from_wid(self, wid, readonly=False):
+        self.readonly = readonly
         self.get_lazy_db_connection()
         path = self._cursor.execute(
             "SELECT outputdir FROM tasks where wid=?", (wid,)
         ).fetchone()
         if not path:
-
-            if os.path.exists(wid):
-                return WorkflowManager.from_path_get_latest(wid, readonly=readonly)
+            expanded_path = fully_qualify_filename(wid)
+            if os.path.exists(expanded_path):
+                return WorkflowManager.from_path_get_latest(
+                    expanded_path, readonly=readonly
+                )
 
             raise Exception(f"Couldn't find task with id='{wid}'")
         return WorkflowManager.from_path_with_wid(path[0], wid=wid, readonly=readonly)

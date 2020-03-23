@@ -59,6 +59,7 @@ def process_args(sysargs=None):
         "resume": do_resume,
         "pause": do_pause,
         "spider": do_spider,
+        "rawquery": do_rawquery,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -115,6 +116,12 @@ def process_args(sysargs=None):
     )
     add_query_args(
         subparsers.add_parser("query", help="Search known workflows by some criteria")
+    )
+
+    add_rawquery_args(
+        subparsers.add_parser(
+            "rawquery", help="Perform a raw SQL query on the sqlite database of a task"
+        )
     )
 
     subparsers.add_parser("version", help="Print the versions of Janis and exit")
@@ -513,6 +520,13 @@ def add_query_args(parser):
     return parser
 
 
+def add_rawquery_args(parser):
+    parser.add_argument("wid", help="Workflow ID or task directory")
+    parser.add_argument("query", help="RAW SQL query")
+
+    return parser
+
+
 def check_logger_args(args):
     level = LogLevel.INFO
     if args.verbose:
@@ -599,7 +613,7 @@ def do_docs(args):
 
 def do_watch(args):
     wid = args.wid
-    tm = ConfigManager.manager().from_wid(wid)
+    tm = ConfigManager.manager().from_wid(wid, readonly=True)
     tm.watch()
 
 
@@ -803,6 +817,13 @@ def do_query(args):
         ),
         file=sys.stdout,
     )
+
+
+def do_rawquery(args):
+    wid = args.wid
+    wm = ConfigManager.manager().from_wid(wid, readonly=True)
+    result = wm.database.cursor.execute(args.query).fetchall()
+    return print(tabulate.tabulate(result))
 
 
 def do_translate(args):

@@ -239,7 +239,7 @@ class CromwellConfiguration(Serializable):
                                         "copy",
                                         "soft-link",
                                     ],
-                                    hashing_strategy=(cache_method or "path+modtime"),
+                                    hashing_strategy=(cache_method or "file"),
                                 )
                             )
                         }

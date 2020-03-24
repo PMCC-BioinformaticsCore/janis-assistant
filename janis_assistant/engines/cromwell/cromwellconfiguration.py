@@ -488,8 +488,7 @@ String? docker
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub -W depend=afternotok:$JOBID -l nodes=1:ppn=1,mem=1GB,walltime=00:01:00)"
-
+                    afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub -m p -W depend=afternotok:$JOBID -l nodes=1:ppn=1,mem=1GB,walltime=00:01:00)"
                 qparam = ""
                 if queues:
                     qparam = "-q " + (

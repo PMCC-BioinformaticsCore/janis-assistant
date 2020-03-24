@@ -1,11 +1,10 @@
-import ruamel.yaml
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
+from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.base import (
     EnvironmentTemplate,
     SingularityEnvironmentTemplate,
 )
-from janis_assistant.engines.enginetypes import EngineType
 
 
 class LocalTemplate(EnvironmentTemplate):
@@ -18,6 +17,8 @@ class LocalTemplate(EnvironmentTemplate):
         super().__init__()
 
     def cromwell(self, janis_configuration):
+        hashing_strategy = janis_configuration.cromwell.call_caching_method or "file"
+
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(),
             # equiv to providers.Local.config.filesystems.local.caching.hashing-strategy = "path+modtime"
@@ -33,7 +34,7 @@ class LocalTemplate(EnvironmentTemplate):
                                         "copy",
                                         "soft-link",
                                     ],
-                                    hashing_strategy="path+modtime",
+                                    hashing_strategy=hashing_strategy,
                                 )
                             }
                         )
@@ -95,6 +96,7 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
         )
 
     def cromwell(self, janis_configuration):
+        hashing_strategy = janis_configuration.cromwell.call_caching_method or "file"
 
         config = CromwellConfiguration(
             backend=CromwellConfiguration.Backend(
@@ -103,6 +105,7 @@ class LocalSingularityTemplate(SingularityEnvironmentTemplate):
                         singularityloadinstructions=self.singularity_load_instructions,
                         buildinstructions=self.singularity_build_instructions,
                         singularitycontainerdir=self.singularity_container_dir,
+                        call_caching_method=hashing_strategy,
                     )
                 }
             )

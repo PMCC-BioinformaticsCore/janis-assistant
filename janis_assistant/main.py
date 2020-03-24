@@ -516,7 +516,7 @@ def get_filescheme_from_fs(fs, **kwargs):
 
 
 def resume(wid):
-    wm = ConfigManager.manager().from_wid(wid)
+    wm = ConfigManager.manager().from_wid(wid, readonly=False)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
     wm.resume()

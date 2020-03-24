@@ -265,7 +265,7 @@ class WorkflowManager:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Couldn't find path '{path}'")
 
-        db = WorkflowDbManager.get_workflow_metadatadb(path, wid)
+        db = WorkflowDbManager.get_workflow_metadatadb(path, wid, readonly=readonly)
 
         if not wid:
             wid = db.wid  # .get_meta_info(InfoKeys.taskId)
@@ -289,7 +289,7 @@ class WorkflowManager:
 
         db.close()
 
-        tm = WorkflowManager(outdir=path, wid=wid, environment=env, readonly=True)
+        tm = WorkflowManager(outdir=path, wid=wid, environment=env, readonly=readonly)
         return tm
 
     @staticmethod
@@ -1066,7 +1066,9 @@ class WorkflowManager:
     @staticmethod
     def mark_aborted(outputdir, wid) -> bool:
         try:
-            db = WorkflowDbManager.get_workflow_metadatadb(outputdir, wid)
+            db = WorkflowDbManager.get_workflow_metadatadb(
+                outputdir, wid, readonly=False
+            )
             db.please_abort = True
             db.kvdb.commit()
             Logger.info("Marked workflow as aborted, this may take some time full exit")

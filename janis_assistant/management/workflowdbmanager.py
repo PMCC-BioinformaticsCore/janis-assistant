@@ -73,7 +73,7 @@ class WorkflowDbManager:
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
     @staticmethod
-    def get_workflow_metadatadb(execpath, wid):
+    def get_workflow_metadatadb(execpath, wid, readonly=False):
 
         connection = None
         sqlpath = WorkflowDbManager.get_sql_path_base(execpath)
@@ -91,7 +91,7 @@ class WorkflowDbManager:
             if not wid:
                 raise Exception("Couldn't get WID in task directory")
 
-        retval = WorkflowMetadataDbProvider(sqlpath, wid, readonly=True)
+        retval = WorkflowMetadataDbProvider(sqlpath, wid, readonly=readonly)
         if connection:
             connection.close()
         return retval

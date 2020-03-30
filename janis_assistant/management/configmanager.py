@@ -250,3 +250,30 @@ class ConfigManager:
             )
 
         return relevant
+
+    def cleanup_missing_tasks(self):
+        from tabulate import tabulate
+
+        rows: [TaskRow] = self.get_lazy_db_connection().get_all_tasks()
+
+        failed = []
+
+        for row in rows:
+            if not os.path.exists(row.outputdir):
+                failed.append((row.wid, row.outputdir))
+                continue
+            try:
+                _ = WorkflowManager.from_path_with_wid(
+                    row.outputdir, row.wid, readonly=True
+                )
+            except Exception as e:
+                failed.append((row.wid, row.outputdir))
+
+        if failed:
+            Logger.warn(f"Removing the following tasks:\n" + tabulate(failed))
+
+            if "y" in str(input(f"Remove {len(failed)} tasks (Y / n)? ")).lower():
+                self.get_lazy_db_connection().remove_by_ids([r[0] for r in failed])
+                Logger.info("Cleaned up tasks")
+            else:
+                Logger.info("Skipping cleaning of tasks")

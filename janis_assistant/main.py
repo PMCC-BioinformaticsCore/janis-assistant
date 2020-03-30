@@ -15,6 +15,7 @@ from typing import Optional, Dict, Union, Type, List
 
 from janis_core import InputQualityType
 
+from janis_assistant.data.providers.janisdbprovider import TaskRow
 from janis_assistant.templates import TemplateInput
 
 from janis_assistant.management.workflowmanager import WorkflowManager
@@ -540,6 +541,4 @@ def abort_wids(wids: List[str]):
 
 
 def cleanup():
-    raise NotImplementedError("Implementation coming soon")
-    # rows = ConfigManager.manager().taskDB.get_all_tasks()
-    # try:
+    ConfigManager.manager().cleanup_missing_tasks()

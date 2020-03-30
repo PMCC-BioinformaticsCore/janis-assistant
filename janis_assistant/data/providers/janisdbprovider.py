@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 
@@ -79,5 +79,16 @@ class TasksDbProvider(DbProviderBase):
         Logger.info(f"Removing '{wid}' from database")
         self.cursor.execute(
             f"DELETE FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
+        )
+        self.commit()
+
+    def remove_by_ids(self, wids: List[str]) -> None:
+        if not isinstance(wids, list):
+            wids = [wids]
+
+        Logger.info("Removing ids: " + ", ".join(wids))
+        seq = ", ".join(["?"] * len(wids))
+        self.cursor.execute(
+            f"DELETE FROM {TasksDbProvider.table_name} WHERE wid in ({seq})", wids
         )
         self.commit()

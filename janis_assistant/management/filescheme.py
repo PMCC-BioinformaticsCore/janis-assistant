@@ -4,7 +4,7 @@ import shutil
 
 import subprocess
 from enum import Enum
-from shutil import copyfile
+from shutil import copyfile, rmtree
 from typing import Optional, Callable
 
 from janis_assistant.management import Archivable
@@ -140,29 +140,44 @@ class LocalFileScheme(FileScheme):
     def link_copy_or_fail(source, dest, force=False):
         """
         Eventually move this to some generic util class
-        :param source: Source to link from
-        :param dest: Place to link to
+        :param s: Source to link from
+        :param d: Place to link to
         :return:
         """
         try:
 
-            if os.path.exists(dest) and force:
-                if os.path.isdir(dest):
-                    raise Exception(f"Destination exists and is directory '{dest}'")
-                Logger.info(f"Destination exists, overwriting '{dest}'")
-                os.remove(dest)
-            Logger.info(f"Hard linking {source} → {dest}")
-            os.link(source, dest)
-        except FileExistsError:
-            Logger.critical(
-                "The file 'dest' already exists. The force flag is required to overwrite."
-            )
-        except Exception as e:
-            Logger.warn("Couldn't link file: " + str(e))
+            to_copy = [(source, dest)]
 
-            # if this fails, it should error
-            Logger.info(f"Copying file {source} → {dest}")
-            copyfile(source, dest)
+            while len(to_copy) > 0:
+                s, d = to_copy.pop(0)
+
+                if os.path.exists(d) and force:
+                    Logger.info(f"Destination exists, overwriting '{d}'")
+                    if os.path.isdir(d):
+                        rmtree(d)
+                    else:
+                        os.remove(d)
+                Logger.info(f"Hard linking {s} → {d}")
+
+                if os.path.isdir(s):
+                    os.makedirs(d, exist_ok=True)
+                    for f in os.listdir(s):
+                        to_copy.append((os.path.join(s, f), os.path.join(d, f)))
+                    continue
+                try:
+                    os.link(s, d)
+                except FileExistsError:
+                    Logger.critical(
+                        "The file 'd' already exists. The force flag is required to overwrite."
+                    )
+                except Exception as e:
+                    Logger.warn("Couldn't link file: " + str(e))
+
+                    # if this fails, it should error
+                    Logger.info(f"Copying file {s} → {d}")
+                    copyfile(s, d)
+        except Exception as e:
+            Logger.critical(f"An unexpected error occurred when link/copying {s}: {e}")
 
     @staticmethod
     def is_valid_prefix(prefix: str):

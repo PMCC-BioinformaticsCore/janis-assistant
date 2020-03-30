@@ -4,7 +4,7 @@ import shutil
 
 import subprocess
 from enum import Enum
-from shutil import copyfile
+from shutil import copyfile, rmtree
 from typing import Optional, Callable
 
 from janis_assistant.management import Archivable
@@ -147,22 +147,36 @@ class LocalFileScheme(FileScheme):
         try:
 
             if os.path.exists(dest) and force:
-                if os.path.isdir(dest):
-                    raise Exception(f"Destination exists and is directory '{dest}'")
                 Logger.info(f"Destination exists, overwriting '{dest}'")
-                os.remove(dest)
+                if os.path.isdir(dest):
+                    rmtree(dest)
+                else:
+                    os.remove(dest)
             Logger.info(f"Hard linking {source} → {dest}")
-            os.link(source, dest)
-        except FileExistsError:
-            Logger.critical(
-                "The file 'dest' already exists. The force flag is required to overwrite."
-            )
-        except Exception as e:
-            Logger.warn("Couldn't link file: " + str(e))
 
-            # if this fails, it should error
-            Logger.info(f"Copying file {source} → {dest}")
-            copyfile(source, dest)
+            if os.path.isdir(source):
+                os.makedirs(dest, exist_ok=True)
+                for f in os.listdir(source):
+                    LocalFileScheme.link_copy_or_fail(
+                        os.path.join(source, f), os.path.join(dest, f), force=force
+                    )
+                return
+            try:
+                os.link(source, dest)
+            except FileExistsError:
+                Logger.critical(
+                    "The file 'dest' already exists. The force flag is required to overwrite."
+                )
+            except Exception as e:
+                Logger.warn("Couldn't link file: " + str(e))
+
+                # if this fails, it should error
+                Logger.info(f"Copying file {source} → {dest}")
+                copyfile(source, dest)
+        except Exception as e:
+            Logger.critical(
+                f"An unexpected error occurred when link/copying {source}: {e}"
+            )
 
     @staticmethod
     def is_valid_prefix(prefix: str):

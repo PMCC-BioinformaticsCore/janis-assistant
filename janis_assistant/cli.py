@@ -118,6 +118,10 @@ def process_args(sysargs=None):
         subparsers.add_parser("query", help="Search known workflows by some criteria")
     )
 
+    add_cleanup_args(
+        subparsers.add_parser("cleanup", help="Cleanup the central db of workflow runs")
+    )
+
     add_rawquery_args(
         subparsers.add_parser(
             "rawquery", help="Perform a raw SQL query on the sqlite database of a task"

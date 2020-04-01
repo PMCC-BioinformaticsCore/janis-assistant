@@ -177,8 +177,9 @@ def generate_inputs(
     force=False,
     additional_inputs=None,
     with_resources=False,
-    quality_type=List[InputQualityType],
-    recipes=List[str],
+    quality_type: List[InputQualityType] = None,
+    recipes: List[str] = None,
+    hints: dict = None,
 ):
     toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
     inputsdict = None
@@ -201,6 +202,7 @@ def generate_inputs(
         include_defaults=all,
         values_to_ignore=values_to_ignore,
         quality_type=quality_type,
+        hints=hints,
     )
 
 

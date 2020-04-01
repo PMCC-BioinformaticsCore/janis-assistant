@@ -261,51 +261,71 @@ def add_translate_args(parser):
 
 
 def add_inputs_args(parser):
+    from janis_core import HINTS, HintEnum
+
     parser.add_argument("workflow", help="workflow to generate inputs for")
     parser.add_argument("-c", "--config", help="Path to config file")
 
     parser.add_argument("-o", "--output", help="file to output to, else stdout")
+
     parser.add_argument(
+        "--resources",
+        action="store_true",
+        help="Add resource overrides into inputs file (eg: runtime_cpu / runtime_memory)",
+    )
+
+    parser.add_argument(
+        "--json", action="store_true", help="Output to JSON instead of yaml"
+    )
+    parser.add_argument("-i", "--inputs", help="additional inputs to pull values from")
+
+    input_manip_args = parser.add_argument_group("filtering")
+
+    input_manip_args.add_argument(
+        "-r",
+        "--recipes",
+        help="If you have values available from these recipes, they will be ignored from the output",
+        nargs="+",
+    )
+
+    input_manip_args.add_argument(
         "-a",
         "--all",
         action="store_true",
         help="Include inputs that have default values",
     )
 
-    parser.add_argument(
+    input_manip_args.add_argument(
         "--user",
         action="store_true",
         help="Only include user inputs (ignore inputs with a qualityType of static or configuration). "
         "Note, this is only available for pilelines that have inputs that are annotated with input qualities.",
     )
-    parser.add_argument(
+    input_manip_args.add_argument(
         "--static",
         action="store_true",
         help="Include all inputs with a quality type of static or configuration. "
         "Note, this is only available for pilelines that have inputs that are annotated with input qualities.",
     )
 
-    parser.add_argument(
-        "-r",
-        "--recipes",
-        help="If you have values available from these recipes, they will be ignored from the output",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--resources",
-        action="store_true",
-        help="Add resource overrides into inputs file (eg: runtime_cpu / runtime_memory)",
-    )
-    parser.add_argument(
-        "--json", action="store_true", help="Output to JSON instead of yaml"
-    )
-    parser.add_argument("-i", "--inputs", help="additional inputs to pull values from")
-    parser.add_argument(
+    # add hints
+    hint_args = parser.add_argument_group("hints")
+    for HintType in HINTS:
+        if issubclass(HintType, HintEnum):
+            hint_args.add_argument(
+                "--hint-" + HintType.key(), choices=HintType.symbols()
+            )
+
+    # workflow selection
+
+    selection = parser.add_argument_group("selecting workflow")
+
+    selection.add_argument(
         "-n",
         "--name",
         help="If you have multiple workflows in your file, help Janis out to select the right workflow to run",
     )
-    parser.add_argument(
+    selection.add_argument(
         "--no-cache",
         help="Force re-download of workflow if remote",
         action="store_true",
@@ -764,6 +784,12 @@ def do_inputs(args):
     elif args.static:
         quality_type = [InputQualityType.static, InputQualityType.configuration]
 
+    hints = {
+        k[5:]: v
+        for k, v in vars(args).items()
+        if k.startswith("hint_") and v is not None
+    }
+
     outd = generate_inputs(
         args.workflow,
         all=args.all,
@@ -773,6 +799,7 @@ def do_inputs(args):
         with_resources=args.resources,
         quality_type=quality_type,
         recipes=args.recipes,
+        hints=hints,
     )
 
     if args.json:

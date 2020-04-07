@@ -259,6 +259,12 @@ def add_translate_args(parser):
         "Including this flag will disable this check, and empty containers can be used.",
     )
 
+    parser.add_argument(
+        "--container-override",
+        help="Override a tool's container by specifying a new container. This argument should be specified in the "
+        "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
+    )
+
 
 def add_inputs_args(parser):
     from janis_core import HINTS, HintEnum
@@ -392,6 +398,12 @@ def add_run_args(parser):
         action="store_true",
         help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
         "Including this flag will disable this check, and empty containers can be used.",
+    )
+
+    parser.add_argument(
+        "--container-override",
+        help="Override a tool's container by specifying a new container. This argument should be specified in the "
+        "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
     )
 
     parser.add_argument(
@@ -756,6 +768,7 @@ def do_run(args):
         no_store=args.no_store,
         allow_empty_container=args.allow_empty_container,
         check_files=not args.skip_file_check,
+        container_override=parse_container_override_format(args.container_override),
     )
 
     Logger.info("Exiting")
@@ -857,7 +870,27 @@ def do_rawquery(args):
     return print(tabulate.tabulate(result))
 
 
+def parse_container_override_format(container_override):
+    if not container_override:
+        return None
+
+    co = {}
+
+    for s in container_override.split(","):
+        split = s.split("=")
+        if len(split) != 2:
+            raise Exception(
+                f"The container-override parameter '{s}' is NOT in the correct format, expected k=v"
+            )
+        co[split[0]] = split[1]
+
+    return co
+
+
 def do_translate(args):
+
+    container_override = parse_container_override_format(args.container_override)
+
     translate(
         tool=args.workflow,
         translation=args.translation,
@@ -865,6 +898,7 @@ def do_translate(args):
         output_dir=args.output_dir,
         force=args.no_cache,
         allow_empty_container=args.allow_empty_container,
+        container_override=container_override,
     )
 
 

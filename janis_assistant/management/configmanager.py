@@ -180,6 +180,7 @@ class ConfigManager:
         run_in_background=True,
         mysql=False,
         allow_empty_container=False,
+        container_override: dict = None,
         check_files=True,
     ) -> WorkflowManager:
 
@@ -200,6 +201,7 @@ class ConfigManager:
             run_in_background=run_in_background,
             mysql=mysql,
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
             check_files=check_files,
         )
 

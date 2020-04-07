@@ -112,6 +112,7 @@ def translate(
     output_dir: Optional[str] = None,
     inputs: Union[str, dict] = None,
     allow_empty_container=False,
+    container_override=None,
     **kwargs,
 ):
 
@@ -134,6 +135,7 @@ def translate(
             hints=hints,
             additional_inputs=inputsdict,
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
         )
     elif isinstance(toolref, (j.CommandTool, j.CodeTool)):
         wfstr = toolref.translate(
@@ -142,6 +144,7 @@ def translate(
             to_disk=bool(output_dir),
             export_path=output_dir or "./{language}",
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
         )
 
     else:
@@ -380,6 +383,7 @@ def fromjanis(
     no_store=False,
     allow_empty_container=False,
     check_files=True,
+    container_override: dict = None,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -468,6 +472,7 @@ def fromjanis(
             run_in_background=should_run_in_background,
             mysql=mysql,
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
             check_files=check_files,
         )
         Logger.log("Finished starting task task")

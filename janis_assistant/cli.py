@@ -874,6 +874,9 @@ def parse_container_override_format(container_override):
     if not container_override:
         return None
 
+    if "," not in container_override and "=" not in container_override:
+        return {"*": container_override}
+
     co = {}
 
     for s in container_override.split(","):

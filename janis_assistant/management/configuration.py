@@ -484,15 +484,6 @@ class JanisConfiguration(NoAttributeErrors):
 
 
 class JanisDatabaseConfigurationHelper:
-    """
-    Heirarchy:
-
-    - provided mysql_url
-    - skip database
-    - managed_mysql_instance
-    -
-    """
-
     class DatabaseTypeToUse(Enum):
         none = "none"
         existing = "existing"

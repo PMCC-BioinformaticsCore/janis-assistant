@@ -217,6 +217,19 @@ Extra Cromwell comments:
 - If asking Janis to start its own Cromwell instance, it requires the jar to be exported as `$cromwelljar`.
 
 
+### Databases
+
+Cromwell requires a database to use some features: call-caching, resumability for cluster failures and so on.
+
+There are two ways to do this:
+
+- Run a mysql instance,
+    - Have Janis run you a mysql instance 
+- Use the [file-based database](https://cromwell.readthedocs.io/en/stable/Configuring/#using-cromwell-with-postgresql) for Cromwell.
+
+This functionality has been optional in the past, but it's now REQUIRED.
+
+
 ### Filesystem
 
 There is a weak concept of a filesystem for where your workflow is executed. This tool is really only developed

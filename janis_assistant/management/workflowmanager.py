@@ -202,7 +202,8 @@ class WorkflowManager:
 
         if not dryrun:
             if (
-                jc.template
+                not run_in_background
+                and jc.template
                 and jc.template.template
                 and jc.template.template.can_run_in_foreground is False
             ):

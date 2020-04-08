@@ -201,55 +201,53 @@ class WorkflowManager:
         tm.database.commit()
 
         if not dryrun:
-
-            # check container environment is loaded
-            tm.database.workflowmetadata.containertype = jc.container.__name__
-            tm.database.workflowmetadata.containerversion = (
-                jc.container.test_available_by_getting_version()
-            )
-
-            # this happens for all workflows no matter what type
-            tm.set_status(TaskStatus.QUEUED)
-
-            # resubmit the engine
-            if run_in_background:
-                loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
-                command = ["janis", "--logLevel", loglevel, "resume", wid]
-                scriptdir = tm.get_path_for_component(
-                    tm.WorkflowManagerPath.configuration
+            if (
+                jc.template
+                and jc.template.template
+                and jc.template.template.can_run_in_foreground is False
+            ):
+                raise Exception(
+                    f"Your template '{jc.template.template.__class__.__name__}' is not allowed to run "
+                    f"in the foreground, try adding the '--background' argument"
                 )
-                logdir = tm.get_path_for_component(tm.WorkflowManagerPath.logs)
-                jc.template.template.submit_detatched_resume(
-                    wid=wid,
-                    command=command,
-                    scriptdir=scriptdir,
-                    logsdir=logdir,
-                    config=jc,
-                )
-
-                Logger.info("Submitted detatched engine")
-
-                if watch:
-                    Logger.log("Watching submitted workflow")
-                    tm.show_status_screen()
-            else:
-                if (
-                    jc.template
-                    and jc.template.template
-                    and jc.template.template.can_run_in_foreground is False
-                ):
-                    raise Exception(
-                        f"Your template '{jc.template.template.__class__.__name__}' is not allowed to run "
-                        f"in the foreground, try adding the '--background' argument"
-                    )
-                tm.resume()
-
+            tm.start_or_submit(run_in_background=run_in_background, watch=watch)
         else:
             tm.set_status(TaskStatus.DRY_RUN)
 
         tm.database.commit()
 
         return tm
+
+    def start_or_submit(self, run_in_background, watch=False):
+        # check container environment is loaded
+        metadb = self.database.workflowmetadata
+
+        jc = metadb.configuration
+        metadb.containertype = jc.container.__name__
+        metadb.containerversion = jc.container.test_available_by_getting_version()
+
+        # this happens for all workflows no matter what type
+        self.set_status(TaskStatus.QUEUED)
+
+        wid = metadb.wid
+
+        # resubmit the engine
+        if not run_in_background:
+            return self.resume()
+
+        loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
+        command = ["janis", "--logLevel", loglevel, "resume", "--foreground", wid]
+        scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
+        logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
+        jc.template.template.submit_detatched_resume(
+            wid=wid, command=command, scriptdir=scriptdir, logsdir=logdir, config=jc
+        )
+
+        Logger.info("Submitted detatched engine")
+
+        if watch:
+            Logger.log("Watching submitted workflow")
+            self.show_status_screen()
 
     @staticmethod
     def from_path_with_wid(path, wid, readonly=False):

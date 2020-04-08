@@ -16,7 +16,7 @@ from typing import Optional, Dict, Union, Type, List
 from janis_core import InputQualityType
 
 from janis_assistant.data.providers.janisdbprovider import TaskRow
-from janis_assistant.templates import TemplateInput
+from janis_assistant.templates import TemplateInput, EnvironmentTemplate
 
 from janis_assistant.management.workflowmanager import WorkflowManager
 
@@ -373,7 +373,7 @@ def fromjanis(
     recipes=None,
     run_in_background=True,
     run_in_foreground=None,
-    mysql=False,
+    dbconfig=None,
     only_toolbox=False,
     no_store=False,
     allow_empty_container=False,
@@ -464,7 +464,7 @@ def fromjanis(
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
             run_in_background=should_run_in_background,
-            mysql=mysql,
+            dbconfig=dbconfig,
             allow_empty_container=allow_empty_container,
             check_files=check_files,
         )
@@ -481,7 +481,7 @@ def fromjanis(
         raise e
 
 
-def get_engine_from_eng(eng, wid, logfile, confdir, execdir: str, watch=True, **kwargs):
+def get_engine_from_eng(eng, wid, logfile, confdir, execdir: str, **kwargs):
 
     if eng == "cromwell":
         url = kwargs.get("cromwell_url") or JanisConfiguration.manager().cromwell.url

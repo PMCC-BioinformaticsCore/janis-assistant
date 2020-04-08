@@ -383,7 +383,7 @@ def add_run_args(parser):
     parser.add_argument(
         "--development",
         action="store_true",
-        help="Apply common settings (--keep-execution-dir + --mysql) to support incremental development of a pipeline",
+        help="Apply common settings (--keep-execution-dir) to support incremental development of a pipeline",
     )
 
     # input manipulation
@@ -502,7 +502,12 @@ def add_run_args(parser):
     beta_args.add_argument(
         "--mysql",
         action="store_true",
-        help="BETA: Run MySQL for persistence with Cromwell",
+        help="BETA: Ask Janis to run a managed MySQL for persistence with Cromwell",
+    )
+    beta_args.add_argument(
+        "--no-database",
+        action="store_true",
+        help="Skip running a database with Cromwell",
     )
 
     beta_args.add_argument(
@@ -628,7 +633,7 @@ def do_watch(args):
 
 
 def do_resume(args):
-    resume(args.wid)
+    resume(args.wid, foreground=args.foreground)
 
 
 def do_pause(args):
@@ -667,7 +672,7 @@ def do_rm(args):
 
 
 def do_run(args):
-    JanisConfiguration.initial_configuration(args.config)
+    jc = JanisConfiguration.initial_configuration(args.config)
 
     validation_reqs, batchrun_reqs = None, None
 
@@ -708,11 +713,18 @@ def do_run(args):
         ins = required_inputs.pop("i")
         inputs.extend(ins if isinstance(ins, list) else [ins])
 
-    mysql = args.mysql
     keep_intermediate_files = args.keep_intermediate_files is True
 
+    db_config = jc.cromwell.get_database_config_helper()
+
+    if args.mysql:
+        db_config.should_manage_mysql = True
+
+    if args.no_database:
+        db_config.skip_database = True
+
     if args.development:
-        mysql = True
+        # no change for using mysql, as a database is the default
         keep_intermediate_files = True
         JanisConfiguration.manager().cromwell.call_caching_enabled = True
 
@@ -737,7 +749,7 @@ def do_run(args):
         keep_intermediate_files=keep_intermediate_files,
         run_in_background=(args.background is True),
         run_in_foreground=(args.foreground is True),
-        mysql=mysql,
+        dbconfig=db_config,
         only_toolbox=args.toolbox,
         no_store=args.no_store,
         allow_empty_container=args.allow_empty_container,

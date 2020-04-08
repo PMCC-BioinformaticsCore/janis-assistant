@@ -516,11 +516,18 @@ def get_filescheme_from_fs(fs, **kwargs):
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
 
 
-def resume(wid):
+def resume(wid, foreground: bool = False):
     wm = ConfigManager.manager().from_wid(wid, readonly=False)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
-    wm.resume()
+
+    run_in_background = False
+    if foreground:
+        run_in_background = False
+    elif wm.database.workflowmetadata.configuration.run_in_background:
+        run_in_background = True
+
+    wm.start_or_submit(run_in_background=run_in_background)
 
 
 def pause(wid):

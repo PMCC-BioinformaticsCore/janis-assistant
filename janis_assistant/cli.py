@@ -203,6 +203,12 @@ def add_spider_args(parser):
 
 def add_resume_args(parser):
     parser.add_argument("wid", help="WID to resume")
+    parser.add_argument(
+        "--foreground",
+        action="store_true",
+        help="By default, the workflow will be resubmitted per your template's recommendation. "
+        "(This is often in the background). Use this option to force running in the foreground.",
+    )
     return parser
 
 

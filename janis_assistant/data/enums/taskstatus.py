@@ -10,6 +10,7 @@ class TaskStatus(Enum):
     ABORTED = "aborted"
     DRY_RUN = "dry-run"
     ON_HOLD = "on-hold"
+    SUSPENDED = "suspended"
 
     @staticmethod
     def all():

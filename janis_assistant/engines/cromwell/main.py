@@ -39,8 +39,6 @@ CROMWELL_RELEASES = (
     "https://api.github.com/repos/broadinstitute/cromwell/releases/latest"
 )
 
-LAST_UPDATED_THRESHOLD = 1  # minutes before it moves workflow into a suspended state
-
 ansi_escape = re.compile(r"\x1B[@-_][0-?]*[ -/]*[@-~]")
 
 
@@ -96,6 +94,7 @@ class Cromwell(Engine):
         self.config: Optional[CromwellConfiguration] = None
         # Last contacted is used to determine
         self.last_contacted = None
+        self.timeout = 10  # minutes
 
         self.connectionerrorcount = 0
         self.should_stop = False
@@ -155,6 +154,8 @@ class Cromwell(Engine):
         from janis_assistant.management.configuration import JanisConfiguration
 
         jc = JanisConfiguration.manager()
+
+        self.timeout = jc.cromwell.timeout or 10
 
         if self.test_connection():
             Logger.info("Engine has already been started")
@@ -657,7 +658,7 @@ class Cromwell(Engine):
             self.connectionerrorcount += 1
             if (
                 datetime.now() - self.last_contacted
-            ).total_seconds() / 60 > LAST_UPDATED_THRESHOLD:
+            ).total_seconds() / 60 > self.timeout:
                 self.something_has_happened_to_cromwell(
                     "last_updated_threshold"
                 )  # idk, pick a number

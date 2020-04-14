@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import threading
+from datetime import datetime
 from urllib import request, parse
 
 from glob import glob
@@ -91,6 +92,9 @@ class Cromwell(Engine):
         self.error_message = None
         self._timer_thread: Optional[threading.Event] = None
         self.config: Optional[CromwellConfiguration] = None
+        # Last contacted is used to determine
+        self.last_contacted = None
+        self.timeout = 10  # minutes
 
         self.connectionerrorcount = 0
         self.should_stop = False
@@ -127,11 +131,31 @@ class Cromwell(Engine):
             Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
             return False
 
+    def something_has_happened_to_cromwell(self, rc):
+        # Something happpened to cromwell, idk what, but let's report back and say NOT good news
+
+        message = f"Cromwell has exited with returncode={rc}. Your workflow has been suspended"
+
+        for eid, callbacks in self.progress_callbacks.items():
+            for cb in callbacks:
+                cb(
+                    WorkflowModel(
+                        engine_wid=eid, status=TaskStatus.SUSPENDED, error=message
+                    )
+                )
+
+        # wipe all callbacks
+        self.progress_callbacks = {}
+
+        self.stop_engine()
+
     def start_engine(self, additional_cromwell_options: List[str] = None):
 
         from janis_assistant.management.configuration import JanisConfiguration
 
         jc = JanisConfiguration.manager()
+
+        self.timeout = jc.cromwell.timeout or 10
 
         if self.test_connection():
             Logger.info("Engine has already been started")
@@ -234,7 +258,12 @@ class Cromwell(Engine):
         self.is_started = True
 
         if self._process:
-            self._logger = ProcessLogger(self._process, "Cromwell: ", self._logfp)
+            self._logger = ProcessLogger(
+                process=self._process,
+                prefix="Cromwell: ",
+                logfp=self._logfp,
+                # exit_function=self.something_has_happened_to_cromwell,
+            )
 
         self._timer_thread = threading.Event()
         self.poll_metadata()
@@ -268,10 +297,18 @@ class Cromwell(Engine):
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return
         Logger.info("Stopping cromwell")
-        process = os.getpgid(int(self.process_id))
-        if process:
-            os.killpg(process, signal.SIGTERM)
-        Logger.info("Stopped cromwell")
+        if self.process_id:
+            try:
+                process = os.getpgid(int(self.process_id))
+                os.killpg(process, signal.SIGTERM)
+                Logger.info("Stopped cromwell")
+            except Exception as e:
+                # can't do
+                Logger.warn("Couldn't stop Cromwell process: " + str(e))
+                pass
+        else:
+            Logger.warn("Couldn't stop Cromwell process as Janis wasn't managing it")
+
         self.is_started = False
 
     # API
@@ -584,10 +621,16 @@ class Cromwell(Engine):
         url = self.url_metadata(
             identifier=identifier, expand_subworkflows=expand_subworkflows
         )
+
+        if not self.last_contacted:
+            self.last_contacted = datetime.now()
+
         Logger.log(f"Getting Cromwell metadata for task '{identifier}' with url: {url}")
         try:
             r = request.urlopen(url)
             self.connectionerrorcount = 0
+
+            self.last_contacted = datetime.now()
 
             data = r.read()
             jsonobj = json.loads(data.decode(r.info().get_content_charset("utf-8")))
@@ -613,6 +656,13 @@ class Cromwell(Engine):
                 return None
         except request.URLError as e:
             self.connectionerrorcount += 1
+            if (
+                datetime.now() - self.last_contacted
+            ).total_seconds() / 60 > self.timeout:
+                self.something_has_happened_to_cromwell(
+                    "last_updated_threshold"
+                )  # idk, pick a number
+                return None
             if self.connectionerrorcount > 50:
                 raise e
             else:

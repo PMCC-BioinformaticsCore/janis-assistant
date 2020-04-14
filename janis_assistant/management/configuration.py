@@ -121,6 +121,7 @@ class JanisConfiguration(NoAttributeErrors):
             Url = "url"
             Memory = "memory_mb"
             CallCachingMethod = "call_caching_method"
+            Timeout = "timeout"
             MySqlURL = "mysql_url"
             MySqlUsername = "mysql_username"
             MySqlPassword = "mysql_password"
@@ -147,6 +148,8 @@ class JanisConfiguration(NoAttributeErrors):
                 d, self.Keys.CallCachingMethod, default
             )
 
+            self.timeout = JanisConfiguration.get_value_for_key(
+                d, self.Keys.Timeout, default
             self.mysql_url = JanisConfiguration.get_value_for_key(
                 d, self.Keys.MySqlURL, default
             )
@@ -450,10 +453,11 @@ class JanisConfiguration(NoAttributeErrors):
             JanisConfiguration.Keys.ExecutionDir: EnvVariables.exec_dir.resolve(False),
             JanisConfiguration.Keys.SearchPaths: [os.path.expanduser("~/janis/")],
             JanisConfiguration.Keys.Engine: EngineType.cromwell.value,
-            # JanisConfiguration.Keys.Cromwell: {
-            #     # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
-            #     JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
-            # },
+            JanisConfiguration.Keys.Cromwell: {
+                # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
+                JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
+                JanisConfiguration.JanisConfigurationCromwell.Keys.Timeout: 10,
+            },
             JanisConfiguration.Keys.Environment: {},
             JanisConfiguration.Keys.Template: {
                 JanisConfiguration.JanisConfigurationTemplate.Keys.Id: "local"

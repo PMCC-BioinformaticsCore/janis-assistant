@@ -10,6 +10,7 @@ class TaskStatus(Enum):
     ABORTED = "aborted"
     DRY_RUN = "dry-run"
     ON_HOLD = "on-hold"
+    SUSPENDED = "suspended"
 
     @staticmethod
     def all():
@@ -22,6 +23,7 @@ class TaskStatus(Enum):
             TaskStatus.FAILED,
             TaskStatus.ABORTED,
             TaskStatus.DRY_RUN,
+            TaskStatus.SUSPENDED,
         ]
 
     def __str__(self):
@@ -34,6 +36,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTED.value: "Terminated",
             TaskStatus.DRY_RUN.value: "Dry run",
             TaskStatus.ON_HOLD.value: "On hold",
+            TaskStatus.SUSPENDED.value: "Suspended",
         }
         return __str[self.value]
 
@@ -47,5 +50,6 @@ class TaskStatus(Enum):
             TaskStatus.ABORTED.value: "T",
             TaskStatus.DRY_RUN.value: "DR",
             TaskStatus.ON_HOLD.value: "?",
+            TaskStatus.SUSPENDED.value: "II",
         }
         return __str[self.value]

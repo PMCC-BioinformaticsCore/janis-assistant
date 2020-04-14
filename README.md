@@ -219,15 +219,20 @@ Extra Cromwell comments:
 
 ### Databases
 
-Cromwell requires a database to use some features: call-caching, resumability for cluster failures and so on.
+> This feature requires better documentation in the primary Janis documentation.
 
-There are two ways to do this:
+Some features of Cromwell require a database to use: call-caching, resumability for cluster failures and so on.
 
-- Run a mysql instance,
-    - Have Janis run you a mysql instance 
-- Use the [file-based database](https://cromwell.readthedocs.io/en/stable/Configuring/#using-cromwell-with-postgresql) for Cromwell.
+Previously, this has been managed through automatically spinning up a mysql instance with Docker / Singularity, however this has been unstable. Now, as Cromwell supports a [file-based database](https://cromwell.readthedocs.io/en/stable/Configuring/#database), this is now the default.
 
-This functionality has been optional in the past, but it's now REQUIRED.
+- No options -> file-based DB
+- `--no-database` -> No database is ran
+- `--mysql` -> Automatically provision and manage a mysql server (unchanged)
+- Configure an existing 
+
+Call caching has been enabled by default using the `file` based method, we strongly recommend downloading Cromwell >50 and using `fingerprint`, see [call caching documentation](https://janis.readthedocs.io/en/latest/references/callcaching.html) for more information.
+
+WARNING: `fingerprint` will become the default once Cromwell 50 has been released. This might break if you're using older versions of Cromwell.
 
 
 ### Filesystem

@@ -40,7 +40,10 @@ from janis_assistant.engines import (
     Engine,
 )
 from janis_assistant.environments.environment import Environment
-from janis_assistant.management.configuration import JanisConfiguration
+from janis_assistant.management.configuration import (
+    JanisConfiguration,
+    JanisDatabaseConfigurationHelper,
+)
 from janis_assistant.management.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.management.mysql import MySql
 from janis_assistant.management.notificationmanager import NotificationManager
@@ -138,7 +141,7 @@ class WorkflowManager:
         max_memory=None,
         keep_intermediate_files=False,
         run_in_background=True,
-        mysql=False,
+        dbconfig=None,
         allow_empty_container=False,
         check_files=True,
     ):
@@ -162,7 +165,7 @@ class WorkflowManager:
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
         tm.database.workflowmetadata.configuration = jc
-        tm.database.workflowmetadata.should_manage_database = mysql
+        tm.database.workflowmetadata.dbconfig = dbconfig
 
         # This is the only time we're allowed to skip the tm.set_status
         # This is a temporary stop gap until "notification on status" is implemented.
@@ -326,7 +329,7 @@ class WorkflowManager:
         #     )
         #     Logger.warn(txt)
 
-        if bl:
+        if bl is not None:
             self.poll_stored_metadata_with_blessed(bl)
         else:
             self.poll_stored_metadata_with_clear()
@@ -521,34 +524,42 @@ class WorkflowManager:
 
         is_allegedly_started = engine.test_connection()
 
-        if not is_allegedly_started:
+        if is_allegedly_started:
+            return
 
-            was_manually_started = False
+        if not isinstance(engine, Cromwell):
+            engine.start_engine()
+            return
 
-            # start mysql if it's cromwell, and then slightly change the config if one exists
-            if isinstance(engine, Cromwell):
-                if engine.config:
-                    if self.database.workflowmetadata.should_manage_database:
-                        # only here do we start mysql
-                        self.start_mysql_and_prepare_cromwell()
-                        self.database.workflowmetadata.manages_database = True
-                        was_manually_started = True
-                    else:
-                        Logger.info(
-                            "Skipping start mysql as database configuration already exists"
-                        )
+        additional_cromwell_params = []
+        if not engine.config:
+            Logger.info("Skipping start mysql as Janis is not managing the config")
+        else:
+            dbconfig: JanisDatabaseConfigurationHelper = self.database.workflowmetadata.dbconfig
+            dbtype = dbconfig.which_db_to_use()
+            if dbtype == dbconfig.DatabaseTypeToUse.existing:
+                engine.config.database = dbconfig.get_config_for_existing_config()
+            elif dbtype == dbconfig.DatabaseTypeToUse.filebased:
+                engine.config.database = dbconfig.get_config_for_filebased_db(
+                    path=self.get_path_for_component(self.WorkflowManagerPath.database)
+                    + "/cromwelldb"
+                )
+            elif dbtype == dbconfig.DatabaseTypeToUse.managed:
+                cromwelldb_config = self.start_mysql_and_prepare_cromwell_config()
+                additional_cromwell_params.append(
+                    "-Ddatabase.db.url=" + cromwelldb_config.db.url
+                )
+                engine.config.database = cromwelldb_config
+            else:
+                Logger.warn(
+                    "Skipping database config as '--no-database' option was provided."
+                )
 
-                else:
-                    Logger.info(
-                        "Skipping start mysql as Janis is not managing the config"
-                    )
-
-            if not was_manually_started:
-                engine.start_engine()
+            engine.start_engine(additional_cromwell_options=additional_cromwell_params)
             # Write the new engine details back into the database (for like PID, host and is_started)
             self.database.workflowmetadata.engine = engine
 
-    def start_mysql_and_prepare_cromwell(self):
+    def start_mysql_and_prepare_cromwell_config(self):
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
 
         containerdir = self.get_path_for_component(self.WorkflowManagerPath.database)
@@ -572,17 +583,10 @@ class WorkflowManager:
         )
         self.dbcontainer.start()
 
-        engine: Cromwell = self.get_engine()
-
-        engine.config.database = CromwellConfiguration.Database.mysql(username="root")
-        # engine.config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
-
         port = self.dbcontainer.forwardedport
-        url = CromwellConfiguration.Database.MYSQL_URL.format(
-            url=f"127.0.0.1:{port}", database="cromwell"
+        return CromwellConfiguration.Database.mysql(
+            username="root", url=f"127.0.0.1:{port}"
         )
-        engine.start_engine(additional_cromwell_options=["-Ddatabase.db.url=" + url])
-        self.database.workflowmetadata.engine = engine
 
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,

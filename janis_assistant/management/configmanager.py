@@ -178,7 +178,7 @@ class ConfigManager:
         max_memory=None,
         keep_intermediate_files=False,
         run_in_background=True,
-        mysql=False,
+        dbconfig=None,
         allow_empty_container=False,
         check_files=True,
     ) -> WorkflowManager:
@@ -198,7 +198,7 @@ class ConfigManager:
             max_memory=max_memory,
             keep_intermediate_files=keep_intermediate_files,
             run_in_background=run_in_background,
-            mysql=mysql,
+            dbconfig=dbconfig,
             allow_empty_container=allow_empty_container,
             check_files=check_files,
         )

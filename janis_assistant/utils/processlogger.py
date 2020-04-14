@@ -13,7 +13,7 @@ class ProcessLogger(threading.Thread):
         :param prefix:
         :param logfp:
         :param error_keyword: If this error keyword is found, stop the ProcessLogger and call the exit function
-        :param exit_function:
+        :param exit_function: A function that is called if the process exits
         """
         threading.Thread.__init__(self)
         self.should_terminate = False

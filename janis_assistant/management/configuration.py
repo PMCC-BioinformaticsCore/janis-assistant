@@ -150,6 +150,7 @@ class JanisConfiguration(NoAttributeErrors):
 
             self.timeout = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Timeout, default
+            )
             self.mysql_url = JanisConfiguration.get_value_for_key(
                 d, self.Keys.MySqlURL, default
             )

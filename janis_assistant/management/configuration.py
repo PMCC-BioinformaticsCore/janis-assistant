@@ -1,4 +1,5 @@
 import os.path
+from enum import Enum
 from typing import Optional, List, Union
 import ruamel.yaml
 
@@ -120,6 +121,12 @@ class JanisConfiguration(NoAttributeErrors):
             Url = "url"
             Memory = "memory_mb"
             CallCachingMethod = "call_caching_method"
+            MySqlURL = "mysql_url"
+            MySqlUsername = "mysql_username"
+            MySqlPassword = "mysql_password"
+            MySqlDbName = "mysql_dbname"
+            UseManagedMySqlInstance = "should_manage_mysql"
+            UseDatabase = "use_database"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -138,6 +145,42 @@ class JanisConfiguration(NoAttributeErrors):
 
             self.call_caching_method = JanisConfiguration.get_value_for_key(
                 d, self.Keys.CallCachingMethod, default
+            )
+
+            self.mysql_url = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MySqlURL, default
+            )
+            self.mysql_username = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MySqlUsername, default
+            )
+            self.mysql_password = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MySqlPassword, default
+            )
+            self.mysql_dbname = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MySqlDbName, default
+            )
+            self.mysql_instance = JanisConfiguration.get_value_for_key(
+                d, self.Keys.UseManagedMySqlInstance, default
+            )
+
+            self.use_database = JanisConfiguration.get_value_for_key(
+                d, self.Keys.UseDatabase, default
+            )
+
+        def get_database_config_helper(self):
+            existing_config = None
+            if self.mysql_url:
+                existing_config = JanisDatabaseConfigurationHelper.MySqlInstanceConfig(
+                    url=self.mysql_url,
+                    username=self.mysql_username,
+                    password=self.mysql_password,
+                    dbname=self.mysql_dbname,
+                )
+
+            return JanisDatabaseConfigurationHelper(
+                mysql_config=existing_config,
+                skip_database=self.use_database is False,
+                run_managed_mysql_instance=self.mysql_instance,
             )
 
     class JanisConfigurationRecipes(NoAttributeErrors):
@@ -438,6 +481,88 @@ class JanisConfiguration(NoAttributeErrors):
             },
         }
         return stringify_dict_keys_or_return_value(deflt)
+
+
+class JanisDatabaseConfigurationHelper:
+    class DatabaseTypeToUse(Enum):
+        none = "none"
+        existing = "existing"
+        managed = "managed"
+        filebased = "filebased"
+
+    class MySqlInstanceConfig:
+        def __init__(self, url, username, password, dbname="cromwell"):
+            self.url = url
+            self.username = username
+            self.password = password
+            self.dbname = dbname
+
+    def __init__(
+        self,
+        mysql_config: MySqlInstanceConfig = None,
+        run_managed_mysql_instance=None,
+        skip_database=None,
+    ):
+        self.mysql_config = mysql_config
+        self.should_manage_mysql = run_managed_mysql_instance
+        self.skip_database = skip_database
+
+    def which_db_to_use(self) -> DatabaseTypeToUse:
+        if self.mysql_config is not None:
+            return self.DatabaseTypeToUse.existing
+        elif self.skip_database:
+            return self.DatabaseTypeToUse.none
+        elif self.should_manage_mysql is True:
+            return self.DatabaseTypeToUse.managed
+        return self.DatabaseTypeToUse.filebased
+
+    def get_config_for_existing_config(self):
+        t = self.which_db_to_use()
+        if t != self.DatabaseTypeToUse.existing:
+            raise Exception(
+                f"Attempted to request database config for {self.DatabaseTypeToUse.existing.value} config, "
+                f"but the database helper wants to use {t.value}"
+            )
+        from janis_assistant.engines.cromwell.cromwellconfiguration import (
+            CromwellConfiguration,
+        )
+
+        config = self.mysql_config
+        return CromwellConfiguration.Database.mysql(
+            url=config.url,
+            username=config.username,
+            password=config.password,
+            database=config.dbname,
+        )
+
+    def get_config_for_filebased_db(self, path):
+        t = self.which_db_to_use()
+        if t != self.DatabaseTypeToUse.filebased:
+            raise Exception(
+                f"Attempted to request database config for {self.DatabaseTypeToUse.filebased.value} config, "
+                f"but the database helper wants to use {t.value}"
+            )
+        from janis_assistant.engines.cromwell.cromwellconfiguration import (
+            CromwellConfiguration,
+        )
+
+        return CromwellConfiguration.Database.filebased_db(location=path)
+
+    def get_config_for_managed_mysql(self, url):
+        t = self.which_db_to_use()
+        if t != self.DatabaseTypeToUse.managed:
+            raise Exception(
+                f"Attempted to request database config for {self.DatabaseTypeToUse.managed.value} "
+                f"config, but the database helper wants to use {t.value}"
+            )
+
+        from janis_assistant.engines.cromwell.cromwellconfiguration import (
+            CromwellConfiguration,
+        )
+
+        return CromwellConfiguration.Database.mysql(
+            username=None, password=None, url=url
+        )
 
 
 def stringify_dict_keys_or_return_value(d):

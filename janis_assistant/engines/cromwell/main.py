@@ -389,7 +389,7 @@ class Cromwell(Engine):
         if cromwelljar:
             potentials.append(os.path.expanduser(cromwelljar))
         if man.cromwell.jarpath:
-            potentials.append(os.path.expanduser(cromwelljar))
+            potentials.append(os.path.expanduser(man.cromwell.jarpath))
         if fromenv:
             potentials.append(fromenv)
         potentials.extend(

@@ -217,6 +217,24 @@ Extra Cromwell comments:
 - If asking Janis to start its own Cromwell instance, it requires the jar to be exported as `$cromwelljar`.
 
 
+### Databases
+
+> This feature requires better documentation in the primary Janis documentation.
+
+Some features of Cromwell require a database to use: call-caching, resumability for cluster failures and so on.
+
+Previously, this has been managed through automatically spinning up a mysql instance with Docker / Singularity, however this has been unstable. Now, as Cromwell supports a [file-based database](https://cromwell.readthedocs.io/en/stable/Configuring/#database), this is now the default.
+
+- No options -> file-based DB
+- `--no-database` -> No database is ran
+- `--mysql` -> Automatically provision and manage a mysql server (unchanged)
+- Configure an existing 
+
+Call caching has been enabled by default using the `file` based method, we strongly recommend downloading Cromwell >50 and using `fingerprint`, see [call caching documentation](https://janis.readthedocs.io/en/latest/references/callcaching.html) for more information.
+
+WARNING: `fingerprint` will become the default once Cromwell 50 has been released. This might break if you're using older versions of Cromwell.
+
+
 ### Filesystem
 
 There is a weak concept of a filesystem for where your workflow is executed. This tool is really only developed

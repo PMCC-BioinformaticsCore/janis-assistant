@@ -166,12 +166,21 @@ class CromwellConfiguration(Serializable):
 
     class Database(Serializable):
         class Db(Serializable):
-            def __init__(self, driver, url, user, password, connection_timeout):
+            def __init__(
+                self,
+                driver,
+                url,
+                connection_timeout,
+                user=None,
+                password=None,
+                num_threads=None,
+            ):
                 self.driver = driver
                 self.url = url
                 self.user = user
                 self.password = password
                 self.connectionTimeout = connection_timeout
+                self.num_threads = num_threads
 
         def __init__(self, profile=None, insert_batch_size=None, db: Db = None):
             self.db = db
@@ -199,6 +208,27 @@ class CromwellConfiguration(Serializable):
                     user=username,
                     password=password,
                     connection_timeout=connection_timeout,
+                ),
+            )
+
+        @classmethod
+        def filebased_db(cls, location, connection_timeout=120000, num_threads=1):
+            return cls(
+                profile="slick.jdbc.HsqldbProfile$",
+                db=cls.Db(
+                    driver="org.hsqldb.jdbcDriver",
+                    url=f"""\
+jdbc:hsqldb:file:{location};
+shutdown=false;
+hsqldb.default_table_type=cached;hsqldb.tx=mvcc;
+hsqldb.result_max_memory_rows=10000;
+hsqldb.large_data=true;
+hsqldb.applog=1;
+hsqldb.lob_compressed=true;
+hsqldb.script_format=3
+""",
+                    connection_timeout=connection_timeout,
+                    num_threads=num_threads,
                 ),
             )
 

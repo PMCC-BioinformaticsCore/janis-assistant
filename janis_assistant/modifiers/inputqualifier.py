@@ -49,6 +49,7 @@ class InputFileQualifierModifier(PipelineModifierBase):
 
                 # (Skip if not one of these conditions)
                 if not (isfiletype or isbasefiletype):
+                    nin[tag] = intype.coerce_value_if_possible(value)
                     continue
 
                 # Qualify the fully qualify the filepath

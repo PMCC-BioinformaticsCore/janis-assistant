@@ -467,7 +467,7 @@ class JanisConfiguration(NoAttributeErrors):
                 JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
             },
             JanisConfiguration.Keys.RunInBackground: None,
-            JanisConfiguration.Keys.CallCachingEnabled: None,
+            JanisConfiguration.Keys.CallCachingEnabled: True,
         }
         return stringify_dict_keys_or_return_value(deflt)
 

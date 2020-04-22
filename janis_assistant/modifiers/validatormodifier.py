@@ -81,7 +81,3 @@ class ValidatorPipelineModifier(PipelineModifierBase):
                 )
 
         return w
-
-    # def inputs_modifier(self, wf: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
-    #     wid = wf.id()
-    #     return {wid + "_" + k: v for k, v in inputs.items()}

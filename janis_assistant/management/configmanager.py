@@ -4,7 +4,7 @@ from datetime import datetime
 from shutil import rmtree
 from typing import Dict, Optional, Union
 
-from janis_core import Workflow, Logger
+from janis_core import Workflow, Logger, Tool
 
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.providers.janisdbprovider import TasksDbProvider, TaskRow
@@ -165,7 +165,7 @@ class ConfigManager:
     def start_task(
         self,
         wid: str,
-        wf: Workflow,
+        tool: Tool,
         task_path: str,
         environment: Environment,
         hints: Dict[str, str],
@@ -185,7 +185,7 @@ class ConfigManager:
 
         return WorkflowManager.from_janis(
             wid,
-            wf=wf,
+            tool=tool,
             outdir=task_path,
             environment=environment,
             hints=hints,

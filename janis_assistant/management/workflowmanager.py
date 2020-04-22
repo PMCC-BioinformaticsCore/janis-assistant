@@ -24,7 +24,16 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
-from janis_core import InputSelector, Logger, Workflow, File, Array, LogLevel, Directory
+from janis_core import (
+    InputSelector,
+    Logger,
+    Workflow,
+    File,
+    Array,
+    LogLevel,
+    Directory,
+    Tool,
+)
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
@@ -129,7 +138,7 @@ class WorkflowManager:
     def from_janis(
         wid: str,
         outdir: str,
-        wf: Workflow,
+        tool: Tool,
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
@@ -160,7 +169,7 @@ class WorkflowManager:
         tm.database.workflowmetadata.engine = environment.engine
         tm.database.workflowmetadata.filescheme = environment.filescheme
         tm.database.workflowmetadata.environment = environment.id()
-        tm.database.workflowmetadata.name = wf.id()
+        tm.database.workflowmetadata.name = tool.id()
         tm.database.workflowmetadata.start = DateUtil.now()
         tm.database.workflowmetadata.executiondir = None
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
@@ -174,8 +183,8 @@ class WorkflowManager:
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)
-        wf_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
-            workflow=wf,
+        tool_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
+            tool=tool,
             translator=spec_translator,
             validation=validation_requirements,
             batchrun=batchrun_requirements,
@@ -192,13 +201,13 @@ class WorkflowManager:
         )
 
         tm.database.workflowmetadata.submission_workflow = os.path.join(
-            outdir_workflow, spec_translator.workflow_filename(wf_evaluate)
+            outdir_workflow, spec_translator.filename(tool_evaluate)
         )
         tm.database.workflowmetadata.submission_inputs = os.path.join(
-            outdir_workflow, spec_translator.inputs_filename(wf_evaluate)
+            outdir_workflow, spec_translator.inputs_filename(tool_evaluate)
         )
         tm.database.workflowmetadata.submission_resources = os.path.join(
-            outdir_workflow, spec_translator.dependencies_filename(wf_evaluate)
+            outdir_workflow, spec_translator.dependencies_filename(tool_evaluate)
         )
 
         tm.database.commit()
@@ -590,7 +599,7 @@ class WorkflowManager:
 
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
-        workflow,
+        tool: Tool,
         translator: TranslatorBase,
         validation: Optional[ValidationRequirements],
         batchrun: Optional[BatchRunRequirements],
@@ -600,19 +609,19 @@ class WorkflowManager:
         max_memory=None,
         allow_empty_container=False,
         check_files=True,
-    ):
+    ) -> Tool:
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
 
-        Logger.debug(f"Saving workflow with id '{workflow.id()}'")
+        Logger.debug(f"Saving workflow with id '{tool.id()}'")
 
         outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
         translator.translate(
-            workflow,
+            tool,
             to_console=False,
             to_disk=True,
             hints=hints,
-            # This is just the base workflow, we're going to potentially transform the inputs
+            # This is just the base tool, we're going to potentially transform the inputs
             # and we only really care about the inputs for the workflow we're going to run.
             # We'll store the original workflow to run for provenance, but not to easily rerun
             write_inputs_file=False,
@@ -620,7 +629,7 @@ class WorkflowManager:
             allow_empty_container=allow_empty_container,
         )
 
-        Logger.info(f"Saved workflow with id '{workflow.id()}' to '{outdir_workflow}'")
+        Logger.info(f"Saved workflow with id '{tool.id()}' to '{outdir_workflow}'")
 
         modifiers = [InputFileQualifierModifier]
         if validation:
@@ -633,12 +642,12 @@ class WorkflowManager:
 
         modifiers.append(InputChecker(check_file_existence=check_files))
 
-        workflow_to_evaluate, additional_inputs = PipelineModifierBase.apply_many(
-            modifiers, workflow, additional_inputs, hints=hints
+        tool_to_evaluate, additional_inputs = PipelineModifierBase.apply_many(
+            modifiers, tool, additional_inputs, hints=hints
         )
 
         translator.translate(
-            workflow_to_evaluate,
+            tool_to_evaluate,
             to_console=False,
             to_disk=True,
             with_resource_overrides=True,
@@ -653,31 +662,43 @@ class WorkflowManager:
         )
 
         self.evaluate_output_params(
-            wf=workflow_to_evaluate, additional_inputs=additional_inputs
+            wf=tool_to_evaluate, additional_inputs=additional_inputs
         )
 
         self.database.progressDB.set(ProgressKeys.saveWorkflow)
-        return workflow_to_evaluate
+        return tool_to_evaluate
 
-    def evaluate_output_params(self, wf: Workflow, additional_inputs: dict):
+    def evaluate_output_params(self, wf: Tool, additional_inputs: dict):
+
         mapped_inps = CwlTranslator().build_inputs_file(
             wf, recursive=False, additional_inputs=additional_inputs
         )
+        output_names: Dict[str, any] = {}
+        output_folders: Dict[str, any] = {}
+
+        if isinstance(wf, Workflow):
+            for o in wf.output_nodes.values():
+                output_names[o.id()] = (
+                    self.evaluate_output_selector(o.output_name, mapped_inps),
+                )
+                output_folders[o.id()] = (
+                    self.evaluate_output_selector(o.output_folder, mapped_inps),
+                )
 
         outputs: List[WorkflowOutputModel] = []
 
-        for o in wf.output_nodes.values():
+        for o in wf.tool_outputs():
             # We'll
             ext = None
-            innertype = o.datatype
-            iscopyable = isinstance(o.datatype, (File, Directory)) or (
-                isinstance(o.datatype, Array)
-                and isinstance(o.datatype.fundamental_type(), (File, Directory))
+            innertype = o.outtype
+            iscopyable = isinstance(o.outtype, (File, Directory)) or (
+                isinstance(o.outtype, Array)
+                and isinstance(o.outtype.fundamental_type(), (File, Directory))
             )
             while isinstance(innertype, Array):
                 innertype = innertype.subtype()
-            if isinstance(o.datatype, File):
-                ext = o.datatype.extension
+            if isinstance(o.outtype, File):
+                ext = o.outtype.extension
             outputs.append(
                 WorkflowOutputModel(
                     tag=o.id(),
@@ -685,13 +706,9 @@ class WorkflowManager:
                     original_path=None,
                     new_path=None,
                     timestamp=None,
-                    output_name=self.evaluate_output_selector(
-                        o.output_name, mapped_inps
-                    ),
-                    output_folder=self.evaluate_output_selector(
-                        o.output_folder, mapped_inps
-                    ),
-                    secondaries=o.datatype.secondary_files(),
+                    output_name=output_names.get(o.id()),
+                    output_folder=output_folders.get(o.id()),
+                    secondaries=o.outtype.secondary_files(),
                     extension=ext,
                 )
             )

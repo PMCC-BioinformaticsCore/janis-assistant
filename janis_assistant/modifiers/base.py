@@ -6,7 +6,7 @@ from janis_core import Tool
 
 
 class PipelineModifierBase(ABC):
-    def workflow_modifier(self, tool, inputs: Dict, hints: Dict[str, str]) -> Tool:
+    def tool_modifier(self, tool, inputs: Dict, hints: Dict[str, str]) -> Tool:
         return tool
 
     def inputs_modifier(self, tool: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
@@ -16,7 +16,7 @@ class PipelineModifierBase(ABC):
         self, tool: Tool, inputs: Dict, hints: Dict[str, str]
     ) -> Tuple[Tool, Dict]:
         return (
-            self.workflow_modifier(tool, inputs, hints),
+            self.tool_modifier(tool, inputs, hints),
             self.inputs_modifier(tool, inputs, hints),
         )
 

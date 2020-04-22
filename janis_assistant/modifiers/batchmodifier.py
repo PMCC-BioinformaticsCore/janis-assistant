@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from janis_core import Tool, WorkflowBuilder, Workflow, Array
+from janis_core import Tool, WorkflowBuilder, Workflow, Array, InputSelector
 from janis_core.utils import find_duplicates, validators
 from janis_core.utils.validators import Validators
 
@@ -15,9 +15,7 @@ class BatchPipelineModifier(PipelineModifierBase):
     def __init__(self, requirements: BatchRunRequirements):
         self.batch = requirements
 
-    def workflow_modifier(
-        self, tool: Tool, inputs: Dict, hints: Dict[str, str]
-    ) -> Tool:
+    def tool_modifier(self, tool: Tool, inputs: Dict, hints: Dict[str, str]) -> Tool:
 
         # Build custom pipeline
 
@@ -90,22 +88,50 @@ class BatchPipelineModifier(PipelineModifierBase):
                 w.step(stepid_from_gb(gbvalue), tool(**innode_base, **extra_ins))
             )
 
+        def transform_token_in_output_namers(token, outputid):
+            if token is None:
+                return token
+            if isinstance(token, list):
+                return [transform_token_in_output_namers(t, outputid) for t in token]
+            if isinstance(token, InputSelector):
+                if token.input_to_select in fields:
+                    # need to transform it
+                    return InputSelector(f"{token.input_to_select}_{outputid}")
+                else:
+                    return token
+            elif isinstance(token, (str, int, float, bool)):
+                return token
+            else:
+                raise Exception(
+                    f"Unsure how to translate token of type {token.__class__.__name__} "
+                )
+
         for out in tool.tool_outputs():
             output_folders = []
             output_name = out.id()
             if isinstance(tool, Workflow):
-                on = tool.output_nodes[out.id()]
-                output_folders = on.output_folder or []
-                if on.output_name:
-                    output_name = on.output_name
+                outnode = tool.output_nodes[out.id()]
+                output_folders = outnode.output_folder or []
+
+                if outnode.output_name:
+                    output_name = outnode.output_name
 
             for gbvalue, raw_gbvalue in zip(groupby_values, raw_groupby_values):
+                # This is pretty hacky, we're relying on the output_folder and output_name to be InputSelectors
+                # or a literal value, otherwise this will probably break (this will probably break for expressions)
+
+                output_folders_transformed = transform_token_in_output_namers(
+                    output_folders, gbvalue
+                )
+                output_name_transformed = transform_token_in_output_namers(
+                    output_name, gbvalue
+                )
 
                 w.output(
                     f"{gbvalue}_{out.id()}",
                     source=w[stepid_from_gb(gbvalue)][out.id()],
-                    output_name=output_name,
-                    output_folder=[raw_gbvalue],
+                    output_name=output_name_transformed,
+                    output_folder=[raw_gbvalue, *(output_folders_transformed or [])],
                 )
 
         return w

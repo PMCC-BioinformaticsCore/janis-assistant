@@ -12,9 +12,7 @@ class ValidatorPipelineModifier(PipelineModifierBase):
     def __init__(self, validation_requirements: ValidationRequirements):
         self.validation = validation_requirements
 
-    def workflow_modifier(
-        self, tool: Tool, inputs: Dict, hints: Dict[str, str]
-    ) -> Tool:
+    def tool_modifier(self, tool: Tool, inputs: Dict, hints: Dict[str, str]) -> Tool:
         from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed
         from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
 

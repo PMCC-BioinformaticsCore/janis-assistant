@@ -13,7 +13,7 @@ from textwrap import dedent
 import janis_core as j
 from typing import Optional, Dict, Union, Type, List
 
-from janis_core import InputQualityType
+from janis_core import InputQualityType, Tool
 
 from janis_assistant.data.providers.janisdbprovider import TaskRow
 from janis_assistant.templates import TemplateInput, EnvironmentTemplate
@@ -385,7 +385,7 @@ def fromjanis(
     cm = ConfigManager.manager()
     jc = JanisConfiguration.manager()
 
-    wf = resolve_tool(
+    wf: Optional[Tool] = resolve_tool(
         tool=workflow,
         name=name,
         from_toolshed=True,
@@ -395,10 +395,10 @@ def fromjanis(
     if not wf:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    if isinstance(wf, j.CommandTool):
-        wf = wf.wrapped_in_wf()
-    elif isinstance(wf, j.CodeTool):
-        wf = wf.wrapped_in_wf()
+    # if isinstance(tool, j.CommandTool):
+    #     tool = tool.wrapped_in_wf()
+    # elif isinstance(tool, j.CodeTool):
+    #     tool = tool.wrapped_in_wf()
 
     # organise inputs
     inputsdict = {}
@@ -453,7 +453,7 @@ def fromjanis(
 
         tm = cm.start_task(
             wid=row.wid,
-            wf=wf,
+            tool=wf,
             environment=environment,
             validation_requirements=validation_reqs,
             batchrun_requirements=batchrun_reqs,

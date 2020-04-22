@@ -3,6 +3,7 @@ import socket
 import os.path
 from typing import Set, List, Union
 
+from janis_core import Tool, Workflow
 from janis_core.utils.logger import Logger
 from .pathhelper import (
     get_janis_workflow_from_searchname,
@@ -187,18 +188,26 @@ def recursively_join(iterable, separator: str):
     )
 
 
-def validate_inputs(wf, additional_inputs):
+def validate_inputs(tool: Tool, additional_inputs):
     errors = {}
 
-    for inpkey, inp in wf.input_nodes.items():
-        value = additional_inputs.get(inpkey, inp.value)
+    input_values_from_workflow = {}
+    if isinstance(tool, Workflow):
+        input_values_from_workflow = {
+            inpkey: inp.value for inpkey, inp in tool.input_nodes.items() if inp.value
+        }
+    input_values_to_use = {**input_values_from_workflow, **additional_inputs}
 
-        if inp.datatype.validate_value(value, allow_null_if_not_optional=False):
+    for inp in tool.tool_inputs():
+        inpkey = inp.id()
+        value = input_values_to_use.get(inpkey)
+
+        if inp.intype.validate_value(value, allow_null_if_not_optional=False):
             continue
 
         errors[inpkey] = (
-            inp.datatype.invalid_value_hint(value)
-            or f"An internal error occurred when validating {inpkey} from {inp.datatype.id()}"
+            inp.intype.invalid_value_hint(value)
+            or f"An internal error occurred when validating {inpkey} from {inp.intype.id()}"
         )
 
     if len(errors) == 0:

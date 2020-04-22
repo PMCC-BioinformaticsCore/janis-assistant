@@ -471,10 +471,10 @@ def fromjanis(
             check_files=check_files,
         )
         Logger.log("Finished starting task task")
-        return
+        return tm
 
     except KeyboardInterrupt:
-        pass
+        Logger.info("Exiting...")
 
     except Exception as e:
         # Have to make sure we stop the engine if something happens when creating the task that causes

@@ -631,13 +631,14 @@ class WorkflowManager:
 
         Logger.info(f"Saved workflow with id '{tool.id()}' to '{outdir_workflow}'")
 
-        modifiers = [InputFileQualifierModifier]
+        modifiers = []
         if validation:
             modifiers.append(ValidatorPipelineModifier(validation))
 
         if batchrun:
             modifiers.append(BatchPipelineModifier(batchrun))
 
+        modifiers.append(InputFileQualifierModifier)
         # THIS ONE SHOULD BE LAST
 
         modifiers.append(InputChecker(check_file_existence=check_files))
@@ -678,11 +679,11 @@ class WorkflowManager:
 
         if isinstance(wf, Workflow):
             for o in wf.output_nodes.values():
-                output_names[o.id()] = (
-                    self.evaluate_output_selector(o.output_name, mapped_inps),
+                output_names[o.id()] = self.evaluate_output_selector(
+                    o.output_name, mapped_inps
                 )
-                output_folders[o.id()] = (
-                    self.evaluate_output_selector(o.output_folder, mapped_inps),
+                output_folders[o.id()] = self.evaluate_output_selector(
+                    o.output_folder, mapped_inps
                 )
 
         outputs: List[WorkflowOutputModel] = []

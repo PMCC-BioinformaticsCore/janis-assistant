@@ -152,6 +152,7 @@ class WorkflowManager:
         run_in_background=True,
         dbconfig=None,
         allow_empty_container=False,
+        container_override: dict = None,
         check_files=True,
     ):
 
@@ -193,6 +194,7 @@ class WorkflowManager:
             max_cores=max_cores or jc.environment.max_cores,
             max_memory=max_memory or jc.environment.max_ram,
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
             check_files=check_files,
         )
 
@@ -608,6 +610,7 @@ class WorkflowManager:
         max_cores=None,
         max_memory=None,
         allow_empty_container=False,
+        container_override: dict = None,
         check_files=True,
     ) -> Tool:
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
@@ -627,6 +630,7 @@ class WorkflowManager:
             write_inputs_file=False,
             export_path=os.path.join(outdir_workflow, "original"),
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
         )
 
         Logger.info(f"Saved workflow with id '{tool.id()}' to '{outdir_workflow}'")
@@ -660,6 +664,7 @@ class WorkflowManager:
             max_cores=max_cores,
             max_mem=max_memory,
             allow_empty_container=allow_empty_container,
+            container_override=container_override,
         )
 
         self.evaluate_output_params(

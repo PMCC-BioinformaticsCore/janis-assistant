@@ -7,6 +7,7 @@ class TaskStatus(Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    ABORTING = "aborting"
     ABORTED = "aborted"
     DRY_RUN = "dry-run"
     ON_HOLD = "on-hold"
@@ -36,6 +37,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTED.value: "Terminated",
             TaskStatus.DRY_RUN.value: "Dry run",
             TaskStatus.ON_HOLD.value: "On hold",
+            TaskStatus.ABORTING.value: "Aborting",
             TaskStatus.SUSPENDED.value: "Suspended",
         }
         return __str[self.value]
@@ -50,6 +52,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTED.value: "T",
             TaskStatus.DRY_RUN.value: "DR",
             TaskStatus.ON_HOLD.value: "?",
+            TaskStatus.ABORTING.value: "~x",
             TaskStatus.SUSPENDED.value: "II",
         }
         return __str[self.value]

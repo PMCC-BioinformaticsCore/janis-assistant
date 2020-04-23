@@ -22,6 +22,8 @@ def cromwell_status_to_status(status: str) -> TaskStatus:
         return TaskStatus.COMPLETED
     elif st == "failed":
         return TaskStatus.FAILED
+    elif st == "aborting":
+        return TaskStatus.ABORTING
     elif st == "aborted":
         return TaskStatus.ABORTED
     else:

@@ -677,14 +677,33 @@ class Cromwell(Engine):
         return raw.standard() if raw else raw
 
     def terminate_task(self, identifier) -> TaskStatus:
-        url = self.url_abort(identifier)
+        from time import sleep
 
-        data = parse.urlencode({}).encode()
-        req = request.Request(url, data=data)  # this will make the method "POST"
-        r = request.urlopen(req)
+        try:
 
-        Logger.log("Cromwell (Abort): " + str(r))
+            url = self.url_abort(identifier)
 
-        self.progress_callbacks.pop(identifier)
+            data = parse.urlencode({}).encode()
+            req = request.Request(url, data=data)  # this will make the method "POST"
+            r = request.urlopen(req)
+            data = r.read()
+
+            Logger.debug("Janis has issued abort request to Cromwell: " + str(data))
+
+            taskstatus = self.poll_task(identifier)
+            while taskstatus not in TaskStatus.final_states():
+                Logger.debug(
+                    f"Task status ({taskstatus}) has not moved to final state after aborting..."
+                )
+                sleep(1)
+                taskstatus = self.poll_task(identifier)
+
+            Logger.info(
+                f"Workflow with Cromwell identifier ({identifier} has been terminated ({taskstatus})."
+            )
+
+            self.progress_callbacks.pop(identifier)
+        except Exception as e:
+            raise Exception(f"Failed to abort workflow with id = {identifier} :: {e}")
 
         return TaskStatus.ABORTED

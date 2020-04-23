@@ -4,7 +4,7 @@ from janis_assistant.data.dbproviderbase import DbProviderBase
 
 
 # different to archivable
-from janis_assistant.utils import Logger
+from janis_assistant.utils import Logger, fully_qualify_filename
 
 
 class TaskRow:
@@ -46,6 +46,15 @@ class TasksDbProvider(DbProviderBase):
             wid varchar(6) PRIMARY KEY, 
             outputdir text
         )"""
+
+    def get_by_wid_or_path(self, widorpath) -> Optional[TaskRow]:
+        row = self.get_by_wid(widorpath)
+        if row:
+            return row
+
+        path = fully_qualify_filename(widorpath)
+
+        self.cursor.execute()
 
     def get_by_wid(self, wid) -> Optional[TaskRow]:
         row = self.cursor.execute(

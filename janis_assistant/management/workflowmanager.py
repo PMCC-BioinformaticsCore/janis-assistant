@@ -1085,13 +1085,19 @@ class WorkflowManager:
         return meta.status in TaskStatus.final_states()
 
     @staticmethod
-    def mark_aborted(outputdir, wid) -> bool:
+    def mark_aborted(outputdir, wid: Optional[str]) -> bool:
         try:
-            db = WorkflowDbManager.get_workflow_metadatadb(
-                outputdir, wid, readonly=False
-            )
+            if not wid:
+                db = WorkflowManager.from_path_get_latest(
+                    outputdir, readonly=False
+                ).database.workflowmetadata
+            else:
+                db = WorkflowDbManager.get_workflow_metadatadb(
+                    outputdir, wid, readonly=False
+                )
             db.please_abort = True
             db.kvdb.commit()
+            db.close()
             Logger.info("Marked workflow as aborted, this may take some time full exit")
             return True
         except Exception as e:

@@ -543,7 +543,10 @@ def abort_wids(wids: List[str]):
     for wid in wids:
         try:
             row = ConfigManager.manager().get_lazy_db_connection().get_by_wid(wid)
-            WorkflowManager.mark_aborted(row.outputdir, wid)
+            if row:
+                WorkflowManager.mark_aborted(row.outputdir, row.wid)
+            else:
+                WorkflowManager.mark_aborted(wid, None)
         except Exception as e:
             Logger.critical(f"Couldn't abort '{wid}': " + str(e))
             raise e

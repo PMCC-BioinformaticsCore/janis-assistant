@@ -29,7 +29,7 @@ setup(
         "janis-pipelines.core>=0.9.10",
         "janis-pipelines.templates>=0.9.0",
         "requests",
-        "path.py",
+        "path",
         "python-dateutil",
         "progressbar2",
         "sqlitedict",

@@ -25,6 +25,7 @@ from janis_assistant.main import (
     abort_wids,
     spider_tool,
     pause,
+    fromspec,
 )
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.utils import parse_additional_arguments
@@ -47,6 +48,7 @@ def process_args(sysargs=None):
         "version": do_version,
         "docs": do_docs,
         "run": do_run,
+        "run-spec": do_run_spec,
         "translate": do_translate,
         "inputs": do_inputs,
         "watch": do_watch,
@@ -70,6 +72,9 @@ def process_args(sysargs=None):
     subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
+    add_run_spec_args(
+        subparsers.add_parser("run-spec", help="Run another type of workflow")
+    )
     add_init_args(
         subparsers.add_parser("init", help="Initialise a Janis configuration")
     )
@@ -397,6 +402,12 @@ def add_run_args(parser):
         help="Skip checking if files exist before the start of a workflow.",
     )
 
+    parser.add_argument(
+        "--copy-partial-outputs",
+        action="store_true",
+        help="Copy outputs, even if the workflow doesn't succesfully complete",
+    )
+
     # development settings
 
     parser.add_argument(
@@ -555,6 +566,22 @@ def add_run_args(parser):
     return parser
 
 
+def add_run_spec_args(parser):
+    parser.add_argument(
+        "workflow",
+        help="Run the workflow defined in this file or available within the toolbox",
+    )
+
+    parser.add_argument("-c", "--config", help="Path to config file")
+
+    parser.add_argument(
+        "-i",
+        "--inputs",
+        help="YAML or JSON inputs file to provide values for the workflow (can specify multiple times)",
+        action="append",
+    )
+
+
 def add_reconnect_args(parser):
     parser.add_argument("wid", help="task-id to reconnect to")
     return parser
@@ -628,6 +655,7 @@ def do_version(_):
 
     from janis_assistant.__meta__ import __version__ as jr_version
     from janis_core.__meta__ import __version__ as jc_version
+    from janis_core.utils.logger import Logger
     import janis_core.toolbox.entrypoints as EP
 
     fields = [["janis-core", jc_version], ["janis-assistant", jr_version]]
@@ -701,6 +729,13 @@ def do_rm(args):
             ConfigManager.manager().remove_task(wid, keep_output=args.keep)
         except Exception as e:
             Logger.critical(f"Can't remove {wid}: " + str(e))
+
+
+def do_run_spec(args):
+    jc = JanisConfiguration.initial_configuration(args.config)
+    wf = args.workflow
+
+    fromspec(workflow=wf, inputs=args.inputs)
 
 
 def do_run(args):
@@ -787,6 +822,7 @@ def do_run(args):
         allow_empty_container=args.allow_empty_container,
         check_files=not args.skip_file_check,
         container_override=parse_container_override_format(args.container_override),
+        copy_partial_outputs=args.copy_partial_outputs,
     )
 
     Logger.info("Exiting")

@@ -33,3 +33,5 @@ class WorkflowMetadataDbKeys(Enum):
     submission_inputs = "submission_inputs"
     submission_resources = "submission_resources"
     dbconfig = "dbconfig"
+
+    copy_partial_outputs = "copy_partial_outputs"

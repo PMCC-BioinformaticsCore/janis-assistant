@@ -98,7 +98,7 @@ class ConfigManager:
         self.get_lazy_db_connection().remove_by_id(task.wid)
         Logger.info("Deleted task: " + task.wid)
 
-    def create_task_base(self, wf: Workflow, outdir=None, store_in_centraldb=True):
+    def create_task_base(self, name: str, outdir=None, store_in_centraldb=True):
         config = JanisConfiguration.manager()
 
         """
@@ -115,7 +115,7 @@ class ConfigManager:
         default_outdir = None
 
         if config.outputdir:
-            default_outdir = os.path.join(config.outputdir, wf.id())
+            default_outdir = os.path.join(config.outputdir, name)
 
         forbiddenids = set()
         if store_in_centraldb:
@@ -182,6 +182,7 @@ class ConfigManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        **kwargs,
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
@@ -203,6 +204,7 @@ class ConfigManager:
             allow_empty_container=allow_empty_container,
             container_override=container_override,
             check_files=check_files,
+            **kwargs,
         )
 
     def from_wid(self, wid, readonly=False):

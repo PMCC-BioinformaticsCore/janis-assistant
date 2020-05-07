@@ -135,6 +135,78 @@ class WorkflowManager:
         self.show_status_screen()
 
     @staticmethod
+    def from_spec(
+        wid: str,
+        wf: str,
+        inputs: str,
+        outdir: str,
+        environment: Environment,
+        watch=True,
+        run_in_background=True,
+        dbconfig=None,
+        dryrun=False,
+    ):
+
+        from os.path import basename
+
+        jc = JanisConfiguration.manager()
+
+        environment.identifier += "_" + wid
+
+        tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
+
+        tm.database.runs.insert(wid)
+
+        tm.database.workflowmetadata.wid = wid
+        tm.database.workflowmetadata.engine = environment.engine
+        tm.database.workflowmetadata.filescheme = environment.filescheme
+        tm.database.workflowmetadata.environment = environment.id()
+        tm.database.workflowmetadata.name = basename(wf)
+        tm.database.workflowmetadata.start = DateUtil.now()
+        tm.database.workflowmetadata.executiondir = None
+        tm.database.workflowmetadata.keepexecutiondir = True
+        tm.database.workflowmetadata.configuration = jc
+        tm.database.workflowmetadata.dbconfig = dbconfig
+
+        # This is the only time we're allowed to skip the tm.set_status
+        # This is a temporary stop gap until "notification on status" is implemented.
+        # tm.set_status(TaskStatus.PROCESSING)
+        tm.database.workflowmetadata.status = TaskStatus.PROCESSING
+
+        spec = get_ideal_specification_for_engine(environment.engine)
+
+        # outdir_workflow = tm.get_path_for_component(
+        #     WorkflowManager.WorkflowManagerPath.workflow
+        # )
+
+        # TODO: Move workflow and inputs to output_dir for better tracking
+        # would then have to consider the deps though...
+
+        tm.database.workflowmetadata.submission_workflow = wf
+        tm.database.workflowmetadata.submission_inputs = inputs
+
+        tm.database.commit()
+
+        if not dryrun:
+            if (
+                not run_in_background
+                and jc.template
+                and jc.template.template
+                and jc.template.template.can_run_in_foreground is False
+            ):
+                raise Exception(
+                    f"Your template '{jc.template.template.__class__.__name__}' is not allowed to run "
+                    f"in the foreground, try adding the '--background' argument"
+                )
+            tm.start_or_submit(run_in_background=run_in_background, watch=watch)
+        else:
+            tm.set_status(TaskStatus.DRY_RUN)
+
+        tm.database.commit()
+
+        return tm
+
+    @staticmethod
     def from_janis(
         wid: str,
         outdir: str,
@@ -154,6 +226,8 @@ class WorkflowManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        copy_partial_outputs=False,
+        **kwargs,
     ):
 
         jc = JanisConfiguration.manager()
@@ -176,6 +250,7 @@ class WorkflowManager:
         tm.database.workflowmetadata.keepexecutiondir = keep_intermediate_files
         tm.database.workflowmetadata.configuration = jc
         tm.database.workflowmetadata.dbconfig = dbconfig
+        tm.database.workflowmetadata.copy_partial_outputs = copy_partial_outputs
 
         # This is the only time we're allowed to skip the tm.set_status
         # This is a temporary stop gap until "notification on status" is implemented.
@@ -793,7 +868,11 @@ class WorkflowManager:
         if self.database.progressDB.has(ProgressKeys.copiedOutputs):
             return Logger.debug(f"Workflow '{self.wid}' has copied outputs, skipping")
 
-        if self.database.workflowmetadata.status != TaskStatus.COMPLETED:
+        should_copy_outputs = (
+            self.database.workflowmetadata.copy_partial_outputs
+            or self.database.workflowmetadata.status == TaskStatus.COMPLETED
+        )
+        if not should_copy_outputs:
             return Logger.warn(
                 f"Skipping copying outputs as workflow "
                 f"status was not completed ({self.database.workflowmetadata.status})"
@@ -809,7 +888,7 @@ class WorkflowManager:
 
             if eout is None:
                 Logger.warn(
-                    f"Couldn't find expected output with tag {out.tag}, found outputs ({', '.join(eoutkeys)}"
+                    f"Couldn't find expected output with tag {out.tag}, found outputs ({', '.join(eoutkeys)})"
                 )
                 continue
             originalfile, newfilepath = self.copy_output(
@@ -833,7 +912,8 @@ class WorkflowManager:
                 tag=out.tag, original_path=originalfile, new_path=newfilepath
             )
 
-        self.database.progressDB.set(ProgressKeys.copiedOutputs)
+        if self.database.workflowmetadata.status == TaskStatus.COMPLETED:
+            self.database.progressDB.set(ProgressKeys.copiedOutputs)
         Logger.info(f"View the task outputs: file://{self.get_task_path()}")
 
     def copy_output(

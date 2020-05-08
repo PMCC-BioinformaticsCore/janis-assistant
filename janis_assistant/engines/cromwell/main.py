@@ -99,6 +99,9 @@ class Cromwell(Engine):
         self.connectionerrorcount = 0
         self.should_stop = False
 
+        self._timer_thread = threading.Event()
+        self.poll_metadata()
+
         if not self.connect_to_instance:
 
             # To avoid conflicts between version of Cromwell, we'll find an open
@@ -264,9 +267,6 @@ class Cromwell(Engine):
                 logfp=self._logfp,
                 # exit_function=self.something_has_happened_to_cromwell,
             )
-
-        self._timer_thread = threading.Event()
-        self.poll_metadata()
 
         return self
 

@@ -39,6 +39,8 @@ class Serializable:
         for k, v in d.items():
             if v is None:
                 continue
+            if k.startswith("__"):
+                continue
             k, v = Serializable.serialize(km.get(k, k), v)
             if not isinstance(v, bool) and not v:
                 continue
@@ -103,7 +105,25 @@ class CromwellConfiguration(Serializable):
         ftp = "ftp"
 
     class Akka(Serializable):
-        pass
+        def __init__(self, d: dict, **kwargs):
+            self.__d = d
+            self.__d.update(kwargs)
+
+        @classmethod
+        def default(cls):
+            return cls(
+                d={
+                    "actor.default-dispatcher.fork-join-executor": {
+                        # Number of threads = min(parallelism-factor * cpus, parallelism-max)
+                        # Below are the default values set by Akka, uncomment to tune these
+                        # 'parallelism-factor': 3.0
+                        "parallelism-max": 3
+                    }
+                }
+            )
+
+        def to_dict(self):
+            return self.__d
 
     class System(Serializable):
         class Io(Serializable):
@@ -705,7 +725,7 @@ String? docker
     def __init__(
         self,
         webservice: Webservice = None,
-        akka: Akka = None,
+        akka: Akka = Akka.default(),
         system: System = None,
         database: Database = None,
         backend: Backend = None,

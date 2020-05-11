@@ -358,6 +358,82 @@ def init_template(
         ruamel.yaml.dump(get_config(), sys.stdout, default_flow_style=False)
 
 
+def fromspec(
+    workflow: str,  # path
+    inputs: str,  # inputs file
+    engine: Union[str, Engine] = None,
+    run_in_background=False,
+    run_in_foreground=True,
+    output_dir: str = None,
+    watch=True,
+    no_store=False,
+    dbconfig=None,
+    **kwargs,
+):
+    cm = ConfigManager.manager()
+    jc = JanisConfiguration.manager()
+
+    try:
+        from os.path import basename
+
+        inputs = inputs[0]
+
+        row = cm.create_task_base(
+            basename(workflow), outdir=output_dir, store_in_centraldb=not no_store
+        )
+        print(row.wid, file=sys.stdout)
+
+        engine = engine or jc.engine
+
+        eng = get_engine_from_eng(
+            engine,
+            wid=row.wid,
+            execdir=WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+            ),
+            confdir=WorkflowManager.get_path_for_component_and_dir(
+                row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
+            ),
+            logfile=os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    row.outputdir, WorkflowManager.WorkflowManagerPath.logs
+                ),
+                "engine.log",
+            ),
+            watch=watch,
+            **kwargs,
+        )
+        fs = get_filescheme_from_fs(LocalFileScheme(), **kwargs)
+        environment = Environment(f"custom_{basename(workflow)}", eng, fs)
+
+        # Note: run_in_foreground can be None, so
+        # (not (run_in_foreground is True)) != (run_in_foreground is False)
+
+        should_run_in_background = (
+            run_in_background is True or jc.run_in_background is True
+        ) and not (run_in_foreground is True)
+
+        tm = WorkflowManager.from_spec(
+            wid=row.wid,
+            wf=workflow,
+            outdir=row.outputdir,
+            inputs=inputs,
+            environment=environment,
+            dryrun=False,
+            watch=watch,
+            run_in_background=should_run_in_background,
+            dbconfig=dbconfig,
+            **kwargs,
+        )
+        Logger.log("Finished starting task task")
+        return tm
+    except Exception as e:
+        Logger.critical(
+            "An error occurred during workflow start, please see exception for more information"
+        )
+        raise e
+
+
 def fromjanis(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
@@ -455,7 +531,7 @@ def fromjanis(
             run_in_background is True or jc.run_in_background is True
         ) and not (run_in_foreground is True)
 
-        tm = cm.start_task(
+        tm = WorkflowManager.from_janis(
             wid=row.wid,
             tool=wf,
             environment=environment,
@@ -474,6 +550,7 @@ def fromjanis(
             allow_empty_container=allow_empty_container,
             container_override=container_override,
             check_files=check_files,
+            **kwargs,
         )
         Logger.log("Finished starting task task")
         return tm

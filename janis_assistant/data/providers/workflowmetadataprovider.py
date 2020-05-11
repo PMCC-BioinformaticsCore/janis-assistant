@@ -53,6 +53,7 @@ class WorkflowMetadataDbProvider(KvDB):
             self.dbconfig = None
 
             self.author = lookup_username()
+            self.copy_partial_outputs = None
 
         self.kvdb.autocommit = True
         self.kvdb.commit()

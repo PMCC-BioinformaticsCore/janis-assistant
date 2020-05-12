@@ -218,7 +218,7 @@ class CromwellConfiguration(Serializable):
             password=None,
             connection_timeout=5000,
             database="cromwell",
-            url="localhost",
+            url="127.0.0.1",
         ):
             return cls(
                 profile="slick.jdbc.MySQLProfile$",

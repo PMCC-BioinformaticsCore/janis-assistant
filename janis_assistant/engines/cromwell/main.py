@@ -199,7 +199,7 @@ class Cromwell(Engine):
             cmd.extend(additional_cromwell_options)
 
         self.port = find_free_port()
-        self.host = f"localhost:{self.port}"
+        self.host = f"127.0.0.1:{self.port}"
 
         cmd.append(f"-Dwebservice.port={self.port}")
         cmd.append(f"-Dwebservice.interface=127.0.0.1")

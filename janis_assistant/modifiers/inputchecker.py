@@ -7,7 +7,10 @@ from janis_core import (
     Directory,
     Logger,
     apply_secondary_file_format_to_filename,
+    Array,
+    TInput,
 )
+from sympy.utilities.codegen import DataType
 
 from janis_assistant.management.filescheme import FileScheme
 from janis_assistant.modifiers.base import PipelineModifierBase
@@ -25,11 +28,11 @@ class InputChecker(PipelineModifierBase):
         self.check_file_existence = check_file_existence
 
     def inputs_modifier(self, wf: Tool, inputs: Dict, hints: Dict[str, str]):
+        validate_inputs(wf, inputs)
+
         # expect fully qualified inputs
         if self.check_file_existence:
             self.check_existence_of_files(wf, inputs)
-
-        validate_inputs(wf, inputs)
 
         return inputs
 
@@ -39,7 +42,13 @@ class InputChecker(PipelineModifierBase):
         doesnt_exist = {}
 
         for inp in wf.tool_inputs():
-            if not isinstance(inp.intype, (File, Directory)):
+            intype = inp.intype
+            is_path = isinstance(intype, (File, Directory))
+            is_array_of_paths = isinstance(intype, Array) and isinstance(
+                intype.fundamental_type(), (File, Directory)
+            )
+
+            if not (is_path or is_array_of_paths):
                 continue
 
             val = inputs.get(inp.id())
@@ -48,26 +57,49 @@ class InputChecker(PipelineModifierBase):
                     continue
                 raise Exception(f"Expected input '{inp.id()}' was not found or is null")
 
-            if not InputChecker.check_if_input_exists(val):
-                doesnt_exist[inp.id()] = val
-
-            if isinstance(inp.intype, Directory):
-                continue
-
-            secs = inp.intype.secondary_files() or []
-            for sec in secs:
-                sec_filename = apply_secondary_file_format_to_filename(val, sec)
-                if not InputChecker.check_if_input_exists(sec_filename):
-                    suffix = sec.replace("^", "").replace(".", "")
-                    doesnt_exist[inp.id() + "_" + suffix] = (
-                        "(SECONDARY) " + sec_filename
-                    )
+            doesnt_exist.update(InputChecker.check_base_with_type(inp, intype, val))
 
         if len(doesnt_exist) > 0:
             import ruamel.yaml
 
             stringified = ruamel.yaml.dump(doesnt_exist, default_flow_style=False)
             raise Exception("The following inputs were not found:\n" + stringified)
+
+    @staticmethod
+    def check_base_with_type(inp: TInput, intype: DataType, val, suffix=""):
+        doesnt_exist = {}
+        if isinstance(intype, Array):
+            st = intype.subtype()
+            if not isinstance(val, list):
+                raise Exception(
+                    f"Expected {inp.id()} to be list, but {str(val)} was a {type(val)}"
+                )
+            for v, idx in zip(val, range(len(val))):
+                nsuffix = f"{suffix}_{idx}"
+                doesnt_exist.update(
+                    InputChecker.check_base_with_type(inp, st, v, suffix=nsuffix)
+                )
+            return doesnt_exist
+
+        if isinstance(val, list):
+            raise Exception(f"Expected singular item for {inp.id()}, received list.")
+
+        if not InputChecker.check_if_input_exists(val):
+            doesnt_exist[inp.id() + suffix] = val
+
+        if not isinstance(intype, File):
+            return doesnt_exist
+
+        secs = intype.secondary_files() or []
+        for sec in secs:
+            sec_filename = apply_secondary_file_format_to_filename(val, sec)
+            if not InputChecker.check_if_input_exists(sec_filename):
+                secsuffix = sec.replace("^", "").replace(".", "")
+                doesnt_exist[inp.id() + "_" + secsuffix + suffix] = (
+                    "(SECONDARY) " + sec_filename
+                )
+
+        return doesnt_exist
 
     @staticmethod
     def check_if_input_exists(path):

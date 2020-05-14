@@ -17,7 +17,10 @@ class KvDB(object):
     def __setattr__(self, name, value):
 
         if name in self.attributes_to_persist:
-            self.kvdb[name] = value
+            try:
+                self.kvdb[name] = value
+            except Exception as e:
+                Logger.critical(f"Failed to write {name}={value} due to: {e}")
             return
 
         super().__setattr__(name, value)

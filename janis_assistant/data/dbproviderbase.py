@@ -1,14 +1,26 @@
 from abc import abstractmethod
-from sqlite3 import Connection, Cursor
+from sqlite3 import Connection
+from contextlib import contextmanager
 
 
 class DbProviderBase:
-    def __init__(self, db, cursor):
+    def __init__(self, db: Connection):
         self.db: Connection = db
-        self.cursor: Cursor = cursor
 
         schema = self.table_schema()
-        self.cursor.execute(schema)
+        with self.with_cursor() as cursor:
+            cursor.execute(schema)
+
+    @contextmanager
+    def with_cursor(self):
+        cursor = None
+        try:
+            cursor = self.db.cursor()
+            yield cursor
+        finally:
+            # Change back up
+            if cursor:
+                cursor.close()
 
     def commit(self):
         return self.db.commit()

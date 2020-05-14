@@ -19,29 +19,35 @@ class JobEventDbProvider(DbProviderBase):
         )
         """
 
-    def __init__(self, db, cursor, wid):
-        super().__init__(db, cursor)
+    def __init__(self, db, wid):
+        super().__init__(db)
         self.wid = wid
 
     def get(self, jid: str) -> List[WorkflowJobEventModel]:
-        self.cursor.execute(
-            "SELECT * FROM jobevents WHERE wid = ? AND jid = ?", (self.wid, jid)
-        )
-        rows = self.cursor.fetchall()
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM jobevents WHERE wid = ? AND jid = ?", (self.wid, jid)
+            )
+            rows = cursor.fetchall()
         if not rows:
             return []
 
         return [WorkflowJobEventModel.from_row(r) for r in rows]
 
     def get_all(self) -> List[WorkflowJobEventModel]:
-        self.cursor.execute("SELECT * FROM jobevents WHERE wid = ?", (self.wid,))
-        rows = self.cursor.fetchall()
+        with self.with_cursor() as cursor:
+
+            cursor.execute("SELECT * FROM jobevents WHERE wid = ?", (self.wid,))
+            rows = cursor.fetchall()
+
         return [WorkflowJobEventModel.from_row(row) for row in rows]
 
     def insert(self, model: WorkflowJobEventModel):
-        self.cursor.execute(
-            self._insert_statement, (self.wid, *self._insert_model_obj(model))
-        )
+        with self.with_cursor() as cursor:
+
+            cursor.execute(
+                self._insert_statement, (self.wid, *self._insert_model_obj(model))
+            )
 
     def _insert_model_obj(self, model: WorkflowJobEventModel):
         return (self.wid, model.jid, model.status, model.timestamp)
@@ -54,20 +60,23 @@ class JobEventDbProvider(DbProviderBase):
         """
 
     def insert_many(self, events: List[WorkflowJobEventModel]):
-        pks = self.cursor.execute(
-            "SELECT jid, status FROM jobevents WHERE wid = ?", (self.wid,)
-        ).fetchall()
-        pkset = {f"{jid}-{status}" for (jid, status) in pks}
+        with self.with_cursor() as cursor:
+            pks = cursor.execute(
+                "SELECT jid, status FROM jobevents WHERE wid = ?", (self.wid,)
+            ).fetchall()
+            pkset = {f"{jid}-{status}" for (jid, status) in pks}
 
-        inserts = []
+            inserts = []
 
-        for e in events:
-            pk = f"{e.jid}-{e.status}"
-            if pk not in pkset:
-                inserts.append(self._insert_model_obj(e))
+            for e in events:
+                pk = f"{e.jid}-{e.status}"
+                if pk not in pkset:
+                    inserts.append(self._insert_model_obj(e))
+            results = None
+            if len(inserts) > 0:
+                results = cursor.executemany(self._insert_statement, inserts)
 
-        if len(inserts) > 0:
-            return self.cursor.executemany(self._insert_statement, inserts)
+        return results
 
     def upgrade_schema(self, from_version: int):
         # if from_version < 2:

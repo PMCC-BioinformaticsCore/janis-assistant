@@ -51,18 +51,20 @@ class JobDbProvider(DbProviderBase):
         )
         """
 
-    def __init__(self, db, cursor, wid):
-        super().__init__(db, cursor)
+    def __init__(self, db, wid):
+        super().__init__(db)
         self.wid = wid
-        self.eventsDB = JobEventDbProvider(self.db, self.cursor, self.wid)
+        self.eventsDB = JobEventDbProvider(self.db, self.wid)
 
     def get(self, jid: str) -> WorkflowJobModel:
-        self.cursor.execute(
-            "SELECT * FROM jobs WHERE wid = ? AND jid = ?", (self.wid, jid)
-        )
-        row = self.cursor.fetchone()
-        if not row:
-            raise KeyError("Couldn't find output with id = " + jid)
+        with self.with_cursor() as cursor:
+
+            cursor.execute(
+                "SELECT * FROM jobs WHERE wid = ? AND jid = ?", (self.wid, jid)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise KeyError("Couldn't find output with id = " + jid)
 
         return WorkflowJobModel.from_row(row)
 
@@ -72,10 +74,12 @@ class JobDbProvider(DbProviderBase):
         return parent
 
     def get_all_children(self, jids: List[str]) -> List[WorkflowJobModel]:
-        self.cursor.execute(
-            "SELECT * FROM jobs WHERE wid = ? AND parentjid in ?", (self.wid, jids)
-        )
-        rows = self.cursor.fetchall()
+        with self.with_cursor() as cursor:
+
+            cursor.execute(
+                "SELECT * FROM jobs WHERE wid = ? AND parentjid in ?", (self.wid, jids)
+            )
+            rows = cursor.fetchall()
         if not rows:
             return []
         parsed = [WorkflowJobModel.from_row(r) for r in rows]
@@ -90,13 +94,17 @@ class JobDbProvider(DbProviderBase):
         return parsed
 
     def get_all(self) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
-        rows = self.cursor.fetchall()
+        with self.with_cursor() as cursor:
+
+            cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
+            rows = cursor.fetchall()
         return [WorkflowJobModel.from_row(row) for row in rows]
 
     def get_all_mapped(self) -> List[WorkflowJobModel]:
-        self.cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
-        rows = self.cursor.fetchall()
+        with self.with_cursor() as cursor:
+
+            cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
+            rows = cursor.fetchall()
         alljobs = [WorkflowJobModel.from_row(row) for row in rows]
         events = self.eventsDB.get_all()
 
@@ -110,12 +118,14 @@ class JobDbProvider(DbProviderBase):
         return [j for j in alljobs if j.parentjid is None]
 
     def insert(self, model: WorkflowJobModel):
-        return self.cursor.execute(
-            self._insert_statement, self._insert_model_obj(model)
-        )
+        with self.with_cursor() as cursor:
+
+            return cursor.execute(self._insert_statement, self._insert_model_obj(model))
 
     def update(self, model: WorkflowJobModel):
-        return self.cursor.execute(*self._update_model_obj(model))
+        with self.with_cursor() as cursor:
+
+            return cursor.execute(*self._update_model_obj(model))
 
     _insert_statement = """\
         INSERT INTO jobs (
@@ -169,29 +179,31 @@ class JobDbProvider(DbProviderBase):
         )
 
     def update_or_insert_many(self, jobs: List[WorkflowJobModel]):
-        allidsr = self.cursor.execute(
-            "SELECT jid FROM jobs WHERE wid = ?", (self.wid,)
-        ).fetchall()
-        allids = set(r[0] for r in allidsr)
+        with self.with_cursor() as cursor:
 
-        inserts = []
-        events = []
+            allidsr = cursor.execute(
+                "SELECT jid FROM jobs WHERE wid = ?", (self.wid,)
+            ).fetchall()
+            allids = set(r[0] for r in allidsr)
 
-        for job in jobs:
-            if job.jid in allids:
-                # Update
-                self.cursor.execute(*self._update_model_obj(job))
-            else:
-                # Insert
-                inserts.append(self._insert_model_obj(job))
-            if job.events:
-                events.extend(job.events)
+            inserts = []
+            events = []
 
-        if inserts:
-            try:
-                self.cursor.executemany(self._insert_statement, inserts)
-            except Exception as e:
-                print(e)
+            for job in jobs:
+                if job.jid in allids:
+                    # Update
+                    cursor.execute(*self._update_model_obj(job))
+                else:
+                    # Insert
+                    inserts.append(self._insert_model_obj(job))
+                if job.events:
+                    events.extend(job.events)
+
+            if inserts:
+                try:
+                    cursor.executemany(self._insert_statement, inserts)
+                except Exception as e:
+                    print(e)
 
         self.db.commit()
 

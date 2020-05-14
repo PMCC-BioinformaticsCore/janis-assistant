@@ -34,7 +34,7 @@ class ContainerRegistry(Enum):
         if self == ContainerRegistry.dockerhub:
             return DockerHubRegistry()
         elif self == ContainerRegistry.quay:
-            raise NotImplementedError("Come back soon!")
+            return QuayRegistry()
         elif self == ContainerRegistry.gcr:
             raise NotImplementedError("Come back soon!")
 
@@ -51,7 +51,7 @@ class ContainerRegistryBase(ABC):
         self, info: ContainerInfo, token: Optional[str]
     ) -> Optional[request.Request]:
         host = self.host_name()
-        repo = info.without_version(empty_repo="library")
+        repo = info.repo_and_image(empty_repo="library")
         url = f"https://{host}/v2/{repo}/manifests/{info.tag}"
 
         headers = {"accept": MANIFEST_V2_MEDIA_TYPE}
@@ -70,9 +70,11 @@ class ContainerRegistryBase(ABC):
             )
             return None
         if token:
-            print(f"Got token for '{info}': {token[: min(5, len(token) - 1)]}...")
+            Logger.debug(
+                f"Got token for '{info}': {token[: min(5, len(token) - 1)]}..."
+            )
         req = self.build_request(info, token)
-        print(f"Requesting digest from: {req.full_url}", req.header_items())
+        Logger.debug(f"Requesting digest from: {req.full_url}")
         with request.urlopen(req) as response:
             rheaders = response.headers
             digest = rheaders.get("etag", rheaders.get("Docker-Content-Digest"))
@@ -83,7 +85,7 @@ class ContainerRegistryBase(ABC):
         req = self.build_token_request(info)
         if req is None:
             return None
-        print("Requesting token with: " + req.full_url)
+        Logger.log(f"Requesting auth token for {info}: " + req.full_url)
         response = request.urlopen(req)
         data = response.read()
         res = json.loads(data.decode(response.info().get_content_charset("utf-8")))
@@ -96,6 +98,14 @@ class DockerHubRegistry(ContainerRegistryBase):
 
     def build_token_request(self, info: ContainerInfo) -> request.Request:
         # In future, might want to insert credentials in here from JanisConfig
-        repo = info.without_version(empty_repo="library")
+        repo = info.repo_and_image(empty_repo="library")
         url = f"https://auth.docker.io/token?service=registry.docker.io&scope=repository:{repo}:pull"
         return request.Request(url=url)
+
+
+class QuayRegistry(ContainerRegistryBase):
+    def host_name(self) -> str:
+        return "quay.io"
+
+    def build_token_request(self, info: ContainerInfo) -> Optional[request.Request]:
+        return None

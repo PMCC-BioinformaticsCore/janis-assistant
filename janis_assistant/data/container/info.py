@@ -77,8 +77,8 @@ class ContainerInfo:
 
         return (None, "/".join(components[:-1]), rest[-1])
 
-    def without_version(self, empty_repo=None):
-        parts = [self.host, self.repository or empty_repo, self.image]
+    def repo_and_image(self, empty_repo=None):
+        parts = [self.repository or empty_repo, self.image]
         return "/".join(str(p) for p in parts if p is not None)
 
     def __str__(self):

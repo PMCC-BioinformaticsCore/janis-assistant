@@ -20,6 +20,7 @@ class ContainerRegistry(Enum):
     dockerhub = "docker"
     quay = "quay"
     gcr = "gcr"
+    custom = "custom"
 
     @staticmethod
     def from_host(host):
@@ -29,21 +30,22 @@ class ContainerRegistry(Enum):
             return ContainerRegistry.quay
         elif "gcr" in host:
             return ContainerRegistry.gcr
-
-        raise Exception("Unsupported host: " + host)
+        return ContainerRegistry.custom
 
     def to_registry(self):
         if self == ContainerRegistry.dockerhub:
-            return DockerHubRegistry()
+            return DockerHubContainerRegistry()
         elif self == ContainerRegistry.quay:
-            return QuayRegistry()
+            return QuayContainerRegistry()
         elif self == ContainerRegistry.gcr:
-            return GCRRegistry()
+            return GcrContainerRegistry()
+        elif self == ContainerRegistry.custom:
+            return CustomContainerRegistry()
 
 
 class ContainerRegistryBase(ABC):
     @abstractmethod
-    def host_name(self) -> str:
+    def host_name(self, info: ContainerInfo) -> str:
         pass
 
     def build_token_request(self, info: ContainerInfo) -> Optional[request.Request]:
@@ -52,7 +54,7 @@ class ContainerRegistryBase(ABC):
     def build_request(
         self, info: ContainerInfo, token: Optional[str]
     ) -> Optional[request.Request]:
-        host = self.host_name()
+        host = self.host_name(info)
         repo = info.repo_and_image(empty_repo="library")
         url = f"https://{host}/v2/{repo}/manifests/{info.tag}"
 
@@ -104,8 +106,8 @@ class ContainerRegistryBase(ABC):
         return res.get("token")
 
 
-class DockerHubRegistry(ContainerRegistryBase):
-    def host_name(self) -> str:
+class DockerHubContainerRegistry(ContainerRegistryBase):
+    def host_name(self, info) -> str:
         return "registry.hub.docker.com"
 
     def build_token_request(self, info: ContainerInfo) -> request.Request:
@@ -115,17 +117,16 @@ class DockerHubRegistry(ContainerRegistryBase):
         return request.Request(url=url)
 
 
-class QuayRegistry(ContainerRegistryBase):
-    def host_name(self) -> str:
+class CustomContainerRegistry(ContainerRegistryBase):
+    def host_name(self, info) -> str:
+        return info.host
+
+
+class QuayContainerRegistry(ContainerRegistryBase):
+    def host_name(self, info) -> str:
         return "quay.io"
 
-    def build_token_request(self, info: ContainerInfo) -> Optional[request.Request]:
-        return None
 
-
-class GCRRegistry(ContainerRegistryBase):
-    def host_name(self) -> str:
+class GcrContainerRegistry(ContainerRegistryBase):
+    def host_name(self, info) -> str:
         return "gcr.io"
-
-    def build_token_request(self, info: ContainerInfo) -> Optional[request.Request]:
-        return None

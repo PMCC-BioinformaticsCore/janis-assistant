@@ -9,9 +9,8 @@ from janis_core import (
     apply_secondary_file_format_to_filename,
     Array,
     TInput,
+    DataType,
 )
-from sympy.utilities.codegen import DataType
-
 from janis_assistant.management.filescheme import FileScheme
 from janis_assistant.modifiers.base import PipelineModifierBase
 from janis_assistant.utils import validate_inputs

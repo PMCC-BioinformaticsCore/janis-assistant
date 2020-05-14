@@ -30,13 +30,15 @@ class ContainerRegistry(Enum):
         elif "gcr" in host:
             return ContainerRegistry.gcr
 
+        raise Exception("Unsupported host: " + host)
+
     def to_registry(self):
         if self == ContainerRegistry.dockerhub:
             return DockerHubRegistry()
         elif self == ContainerRegistry.quay:
             return QuayRegistry()
         elif self == ContainerRegistry.gcr:
-            raise NotImplementedError("Come back soon!")
+            return GCRRegistry()
 
 
 class ContainerRegistryBase(ABC):
@@ -66,20 +68,27 @@ class ContainerRegistryBase(ABC):
             token = self.get_token(info)
         except Exception as e:
             Logger.critical(
-                f"Couldn't get digest for container '{str(info)}': {str(e)}"
+                f"Couldn't get digest for container (couldn't get token): '{str(info)}': {str(e)}"
             )
             return None
         if token:
             Logger.debug(
                 f"Got token for '{info}': {token[: min(5, len(token) - 1)]}..."
             )
-        req = self.build_request(info, token)
-        Logger.debug(f"Requesting digest from: {req.full_url}")
-        with request.urlopen(req) as response:
-            rheaders = response.headers
-            digest = rheaders.get("etag", rheaders.get("Docker-Content-Digest"))
 
-        return digest
+        try:
+            req = self.build_request(info, token)
+            Logger.debug(f"Requesting digest from: {req.full_url}")
+            with request.urlopen(req) as response:
+                rheaders = response.headers
+                digest = rheaders.get("etag", rheaders.get("Docker-Content-Digest"))
+
+            return digest
+
+        except Exception as e:
+            Logger.critical(
+                f"Couldn't get digest for container '{str(info)}': {str(e)}"
+            )
 
     def get_token(self, info: ContainerInfo) -> Optional[str]:
         req = self.build_token_request(info)
@@ -106,6 +115,14 @@ class DockerHubRegistry(ContainerRegistryBase):
 class QuayRegistry(ContainerRegistryBase):
     def host_name(self) -> str:
         return "quay.io"
+
+    def build_token_request(self, info: ContainerInfo) -> Optional[request.Request]:
+        return None
+
+
+class GCRRegistry(ContainerRegistryBase):
+    def host_name(self) -> str:
+        return "gcr.io"
 
     def build_token_request(self, info: ContainerInfo) -> Optional[request.Request]:
         return None

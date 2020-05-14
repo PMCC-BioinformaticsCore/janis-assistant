@@ -21,29 +21,52 @@ class ContainerInfo:
 
     @staticmethod
     def parse(container: str):
-        matched = docker_string_regex.match(container)
-        if not matched:
-            raise Exception(f"Invalid docker container '{container}'")
+        if "/" in container:
+            matched = docker_string_regex.match(container)
+            if not matched:
+                raise Exception(f"Invalid docker container '{container}'")
+            name, tag, chash = matched.groups()
+        else:
+            if ":" in container:
+                parts = container.split(":")
+                if len(parts) != 2:
+                    # This might happen if you use a library container with a tag AND a hash on dockerhub
+                    # raise an issue if this happens
+                    raise Exception(
+                        f"Unexpected format for container: {str(container)}. If you're using a library container with a tag AND a hash, please raise an issue on GitHub"
+                    )
+                name, tagorhash = parts
+                if ContainerInfo.validate_docker_digest(tagorhash) is False:
+                    tag, chash = tagorhash, None
+                else:
+                    tag, chash = None, tagorhash
+            else:
+                name, tag, chash = container, None, None
 
-        name, tag, hash = matched.groups()
         host, repo, image = ContainerInfo.deconstruct_image_name(name)
 
-        has_hash = hash is not None
+        has_hash = chash is not None
         if not has_hash:
             final_tag = "latest" if tag is None else tag
         else:
-            ContainerInfo.validate_docker_digest(hash)
-            final_tag = hash if tag is None else f"{tag}@{hash}"
+            if ContainerInfo.validate_docker_digest(chash) is False:
+                Logger.warn(
+                    "Invalid format for docker hash ({hash}) in container {container}"
+                )
+                return False
+            final_tag = chash if tag is None else f"{tag}@{chash}"
 
         return ContainerInfo(
             host=host, repository=repo, image=image, tag=final_tag, has_hash=has_hash
         )
 
     @staticmethod
-    def validate_docker_digest(hash):
-        matched = docker_hash_regex.match(hash)
+    def validate_docker_digest(chash):
+        if not chash:
+            return False
+        matched = docker_hash_regex.match(chash)
         if not matched:
-            raise Exception("Docker has was invalid")
+            return False
         return matched.groups()
 
     @staticmethod

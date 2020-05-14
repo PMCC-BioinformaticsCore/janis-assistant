@@ -9,7 +9,7 @@ from janis_assistant.data.container.registries import *
 
 
 def get_digests_from_containers(containers: List[str]) -> Dict[str, str]:
-    retval = {c: None for c in containers}
+    retval = {}
     for container in containers:
         digest = get_digest_from_container(container)
         if digest:

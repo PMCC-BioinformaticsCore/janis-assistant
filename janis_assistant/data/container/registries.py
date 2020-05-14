@@ -83,6 +83,9 @@ class ContainerRegistryBase(ABC):
                 rheaders = response.headers
                 digest = rheaders.get("etag", rheaders.get("Docker-Content-Digest"))
 
+            if digest is not None:
+                digest = digest.replace("'", "").replace('"', "")
+
             return digest
 
         except Exception as e:

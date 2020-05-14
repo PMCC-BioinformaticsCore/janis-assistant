@@ -60,14 +60,7 @@ class ConfigManager:
 
     @contextmanager
     def with_cursor(self):
-        cursor = None
-        try:
-            cursor = self.get_lazy_db_connection().db.cursor()
-            yield cursor
-        finally:
-            # Change back up
-            if cursor:
-                cursor.close()
+        yield self.get_lazy_db_connection().db.cursor()
 
     def db_connection(self):
         config = JanisConfiguration.manager()
@@ -216,10 +209,10 @@ class ConfigManager:
 
     def from_wid(self, wid, readonly=False):
         self.readonly = readonly
-        self.get_lazy_db_connection()
-        path = self._cursor.execute(
-            "SELECT outputdir FROM tasks where wid=?", (wid,)
-        ).fetchone()
+        with self.with_cursor() as cursor:
+            path = cursor.execute(
+                "SELECT outputdir FROM tasks where wid=?", (wid,)
+            ).fetchone()
         if not path:
             expanded_path = fully_qualify_filename(wid)
             if os.path.exists(expanded_path):

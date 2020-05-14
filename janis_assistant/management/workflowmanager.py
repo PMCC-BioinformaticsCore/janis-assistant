@@ -599,6 +599,39 @@ class WorkflowManager:
             username="root", url=f"127.0.0.1:{port}"
         )
 
+    def prepare_container_override(
+        self, tool: Tool, container_override: Optional[dict]
+    ):
+        from janis_assistant.data.container import get_digests_from_containers
+
+        containermap = tool.containers()
+        if container_override:
+            containermap.update(container_override)
+
+        reverse_lookup = {}
+        for versioned_toolid, container in containermap.items():
+            key = container.lower()
+            reverse_lookup[key] = reverse_lookup.get(key, []) + [versioned_toolid]
+
+        containers_to_lookup = list(reverse_lookup.keys())
+        Logger.info(
+            f"Looking up digests for {len(containers_to_lookup)} containers (this might take a few minutes...)"
+        )
+        digest_map = get_digests_from_containers(containers_to_lookup)
+        Logger.info(f"Found {len(digest_map)} digests.")
+
+        retval = container_override or {}
+        for rawcontainer, container_digest in digest_map.items():
+            for c in reverse_lookup.get(rawcontainer, []):
+                retval[c] = container_digest
+
+        print(CwlTranslator.stringify_translated_inputs(digest_map))
+        print("Applying MAP")
+        print(CwlTranslator.stringify_translated_inputs(retval))
+        print(CwlTranslator.stringify_translated_inputs(reverse_lookup))
+
+        return retval
+
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
         tool: Tool,
@@ -619,6 +652,7 @@ class WorkflowManager:
         Logger.debug(f"Saving workflow with id '{tool.id()}'")
 
         outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
+
         translator.translate(
             tool,
             to_console=False,
@@ -651,6 +685,8 @@ class WorkflowManager:
             modifiers, tool, additional_inputs, hints=hints
         )
 
+        new_containers = self.prepare_container_override(tool, container_override)
+
         translator.translate(
             tool_to_evaluate,
             to_console=False,
@@ -664,7 +700,7 @@ class WorkflowManager:
             max_cores=max_cores,
             max_mem=max_memory,
             allow_empty_container=allow_empty_container,
-            container_override=container_override,
+            container_override=new_containers,
         )
 
         self.evaluate_output_params(

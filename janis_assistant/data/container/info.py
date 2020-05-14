@@ -105,8 +105,17 @@ class ContainerInfo:
         return "/".join(str(p) for p in parts if p is not None)
 
     def __str__(self):
-        parts = [self.host, self.repository, self.image]
-        end = (":" + self.tag) if self.tag is not None else ""
+        return self.to_string()
+
+    def to_string(self, host=None, repository=None, image=None, tag=None, chash=None):
+        parts = [host or self.host, repository or self.repository, image or self.image]
+
+        end = ""
+        if chash:
+            end = "@" + chash
+        elif tag or self.tag:
+            tag = tag or self.tag
+            end = (":" + tag) if tag is not None else ""
         return "/".join(str(p) for p in parts if p is not None) + end
 
     def __repr__(self):

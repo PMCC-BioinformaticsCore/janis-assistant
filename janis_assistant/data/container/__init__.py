@@ -23,6 +23,6 @@ def get_digest_from_container(container: str):
         ci = ContainerInfo.parse(container)
         registry = ContainerRegistry.from_host(ci.host).to_registry()
         digest = registry.get_digest(ci)
-        return digest
+        return ci.to_string(chash=digest)
     except Exception as e:
         Logger.critical(f"Couldn't get digest for {str(container)}: {str(e)}")

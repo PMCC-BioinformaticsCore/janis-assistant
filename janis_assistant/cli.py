@@ -258,17 +258,31 @@ def add_translate_args(parser):
         help="Force re-download of workflow if remote",
         action="store_true",
     )
-    parser.add_argument(
+    container_args = parser.add_argument_group("container related args")
+
+    container_args.add_argument(
         "--allow-empty-container",
         action="store_true",
         help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
         "Including this flag will disable this check, and empty containers can be used.",
     )
 
-    parser.add_argument(
+    container_args.add_argument(
         "--container-override",
         help="Override a tool's container by specifying a new container. This argument should be specified in the "
         "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
+    )
+
+    container_args.add_argument(
+        "--skip-digest-lookup",
+        action="store_true",
+        help="Janis will not lookup and replace the container digests (sha256 hash).",
+    )
+    container_args.add_argument(
+        "--skip-digest-cache",
+        action="store_true",
+        help="(UNIMPLEMENTED) Janis won't use the digest cache to lookup containers. This cache is shared between tasks "
+        "($JANIS_CONFIGDIR/janis.db) so it might cause locking issues if you run lots of workflows at once",
     )
 
 
@@ -400,19 +414,6 @@ def add_run_args(parser):
     # development settings
 
     parser.add_argument(
-        "--allow-empty-container",
-        action="store_true",
-        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
-        "Including this flag will disable this check, and empty containers can be used.",
-    )
-
-    parser.add_argument(
-        "--container-override",
-        help="Override a tool's container by specifying a new container. This argument should be specified in the "
-        "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
-    )
-
-    parser.add_argument(
         "--development",
         action="store_true",
         help="Apply common settings (--keep-execution-dir) to support incremental development of a pipeline",
@@ -467,6 +468,35 @@ def add_run_args(parser):
         "--no-cache",
         help="Force re-download of workflow if remote",
         action="store_true",
+    )
+
+    # container lookups
+
+    container_args = parser.add_argument_group("container related args")
+
+    container_args.add_argument(
+        "--allow-empty-container",
+        action="store_true",
+        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
+        "Including this flag will disable this check, and empty containers can be used.",
+    )
+
+    container_args.add_argument(
+        "--container-override",
+        help="Override a tool's container by specifying a new container. This argument should be specified in the "
+        "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
+    )
+
+    container_args.add_argument(
+        "--skip-digest-lookup",
+        action="store_true",
+        help="Janis will not lookup and replace the container digests (sha256 hash).",
+    )
+    container_args.add_argument(
+        "--skip-digest-cache",
+        action="store_true",
+        help="(UNIMPLEMENTED) Janis won't use the digest cache to lookup containers. This cache is shared between tasks "
+        "($JANIS_CONFIGDIR/janis.db) so it might cause locking issues if you run lots of workflows at once",
     )
 
     engine_args = parser.add_argument_group("engine arguments")
@@ -787,6 +817,8 @@ def do_run(args):
         allow_empty_container=args.allow_empty_container,
         check_files=not args.skip_file_check,
         container_override=parse_container_override_format(args.container_override),
+        skip_digest_lookup=args.skip_digest_lookup,
+        skip_digest_cache=args.skip_digest_cache,
     )
 
     Logger.info("Exiting")
@@ -920,6 +952,8 @@ def do_translate(args):
         force=args.no_cache,
         allow_empty_container=args.allow_empty_container,
         container_override=container_override,
+        skip_digest_lookup=args.skip_digest_lookup,
+        skip_digest_cache=args.skip_digest_cache,
     )
 
 

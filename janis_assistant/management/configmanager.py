@@ -191,6 +191,7 @@ class ConfigManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        **kwargs,
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
@@ -212,6 +213,7 @@ class ConfigManager:
             allow_empty_container=allow_empty_container,
             container_override=container_override,
             check_files=check_files,
+            **kwargs,
         )
 
     def from_wid(self, wid, readonly=False):

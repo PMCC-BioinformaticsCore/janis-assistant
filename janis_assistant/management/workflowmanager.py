@@ -154,6 +154,9 @@ class WorkflowManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        skip_digest_lookup=False,
+        skip_digest_cache=False,
+        **kwargs,
     ):
 
         jc = JanisConfiguration.manager()
@@ -198,6 +201,8 @@ class WorkflowManager:
             allow_empty_container=allow_empty_container,
             container_override=container_override,
             check_files=check_files,
+            skip_digest_lookup=skip_digest_lookup,
+            skip_digest_cache=skip_digest_cache,
         )
 
         outdir_workflow = tm.get_path_for_component(
@@ -601,8 +606,9 @@ class WorkflowManager:
             username="root", url=f"127.0.0.1:{port}"
         )
 
+    @staticmethod
     def prepare_container_override(
-        self, tool: Tool, container_override: Optional[dict]
+        tool: Tool, container_override: Optional[dict], skip_digest_cache=False
     ):
         from janis_assistant.data.container import get_digests_from_containers
 
@@ -647,6 +653,8 @@ class WorkflowManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        skip_digest_lookup=False,
+        skip_digest_cache=False,
     ) -> Tool:
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
@@ -687,7 +695,11 @@ class WorkflowManager:
             modifiers, tool, additional_inputs, hints=hints
         )
 
-        new_containers = self.prepare_container_override(tool, container_override)
+        container_overrides = container_override
+        if not skip_digest_lookup:
+            container_overrides = self.prepare_container_override(
+                tool, container_override, skip_digest_cache=skip_digest_cache
+            )
 
         translator.translate(
             tool_to_evaluate,
@@ -702,7 +714,7 @@ class WorkflowManager:
             max_cores=max_cores,
             max_mem=max_memory,
             allow_empty_container=allow_empty_container,
-            container_override=new_containers,
+            container_override=container_overrides,
         )
 
         self.evaluate_output_params(

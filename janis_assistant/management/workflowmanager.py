@@ -627,16 +627,18 @@ class WorkflowManager:
         )
         digest_map = get_digests_from_containers(containers_to_lookup)
         Logger.info(f"Found {len(digest_map)} digests.")
+        Logger.log("Found the following container-to-tool lookup table:")
+        Logger.log(CwlTranslator.stringify_translated_inputs(reverse_lookup))
 
         retval = container_override or {}
         for rawcontainer, container_digest in digest_map.items():
             for c in reverse_lookup.get(rawcontainer, []):
                 retval[c] = container_digest
 
-        print(CwlTranslator.stringify_translated_inputs(digest_map))
-        print("Applying MAP")
-        print(CwlTranslator.stringify_translated_inputs(retval))
-        print(CwlTranslator.stringify_translated_inputs(reverse_lookup))
+        Logger.debug(
+            "Found container replacements: \n"
+            + CwlTranslator.stringify_translated_inputs(digest_map)
+        )
 
         return retval
 

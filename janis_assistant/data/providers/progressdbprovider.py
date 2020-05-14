@@ -42,31 +42,35 @@ class ProgressDbProvider(DbProviderBase):
         )
         """
 
-    def __init__(self, db, cursor, wid):
-        super().__init__(db, cursor)
+    def __init__(self, db, wid):
+        super().__init__(db)
         self.wid = wid
 
     def has(self, key: ProgressKeys):
-        self.cursor.execute(
-            "SELECT 1 FROM progress WHERE wid = ? AND key = ?", (self.wid, key.value)
-        )
-        rows = self.cursor.fetchone()
-        return bool(rows)
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM progress WHERE wid = ? AND key = ?",
+                (self.wid, key.value),
+            )
+            rows = cursor.fetchone()
+            return bool(rows)
 
     def get_all(self) -> Dict[str, datetime]:
-        self.cursor.execute(
-            "SELECT key, timestamp FROM progress WHERE wid = ?", (self.wid,)
-        )
-        rows = self.cursor.fetchall()
-        return {row[0]: DateUtil.parse_iso(row[1]) for row in rows}
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                "SELECT key, timestamp FROM progress WHERE wid = ?", (self.wid,)
+            )
+            rows = cursor.fetchall()
+            return {row[0]: DateUtil.parse_iso(row[1]) for row in rows}
 
     def set(self, key: ProgressKeys):
         if self.has(key):
             return
 
-        self.cursor.execute(
-            self._insert_statement, (self.wid, key.value, str(DateUtil.now()))
-        )
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                self._insert_statement, (self.wid, key.value, str(DateUtil.now()))
+            )
 
     _insert_statement = """\
         INSERT INTO progress

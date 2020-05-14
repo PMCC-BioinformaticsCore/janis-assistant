@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime
 from shutil import rmtree
 from typing import Dict, Optional, Union
+from contextlib import contextmanager
 
 from janis_core import Workflow, Logger, Tool
 
@@ -41,7 +42,6 @@ class ConfigManager:
             os.makedirs(config.outputdir, exist_ok=True)
 
         self._connection: Optional[sqlite3.Connection] = None
-        self._cursor: Optional[sqlite3.Cursor] = None
         self._taskDB: Optional[TasksDbProvider] = None
         # self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
         # self.engineDB = EngineDbProvider(self.connection, self.cursor)
@@ -53,11 +53,21 @@ class ConfigManager:
     def get_lazy_db_connection(self):
         if self._taskDB is None:
             self._connection = self.db_connection()
-            self._cursor = self._connection.cursor()
 
-            self._taskDB = TasksDbProvider(self._connection, self._cursor)
+            self._taskDB = TasksDbProvider(self._connection)
 
         return self._taskDB
+
+    @contextmanager
+    def with_cursor(self):
+        cursor = None
+        try:
+            cursor = self.get_lazy_db_connection().db.cursor()
+            yield cursor
+        finally:
+            # Change back up
+            if cursor:
+                cursor.close()
 
     def db_connection(self):
         config = JanisConfiguration.manager()
@@ -119,10 +129,10 @@ class ConfigManager:
 
         forbiddenids = set()
         if store_in_centraldb:
-            self.get_lazy_db_connection()
-            forbiddenids = set(
-                t[0] for t in self._cursor.execute("SELECT wid FROM tasks").fetchall()
-            )
+            with self.with_cursor() as cursor:
+                forbiddenids = set(
+                    t[0] for t in cursor.execute("SELECT wid FROM tasks").fetchall()
+                )
         if outdir:
             if os.path.exists(outdir):
                 # this should theoretically scoop through all the ones in the taskDB and
@@ -158,7 +168,6 @@ class ConfigManager:
             self._connection.commit()
             self._connection.close()
             self._taskDB = None
-            self._cursor = None
             self._connection = None
         return row
 

@@ -47,48 +47,44 @@ class TasksDbProvider(DbProviderBase):
             outputdir text
         )"""
 
-    def get_by_wid_or_path(self, widorpath) -> Optional[TaskRow]:
-        row = self.get_by_wid(widorpath)
-        if row:
-            return row
-
-        path = fully_qualify_filename(widorpath)
-
-        self.cursor.execute()
-
     def get_by_wid(self, wid) -> Optional[TaskRow]:
-        row = self.cursor.execute(
-            f"SELECT * FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
-        ).fetchone()
+        with self.with_cursor() as cursor:
+            row = cursor.execute(
+                f"SELECT * FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
+            ).fetchone()
         if row is None or len(row) == 0:
             return None
 
         return TaskRow.from_row(row)
 
     def get_all_tasks(self) -> [TaskRow]:
-        return [
-            TaskRow.from_row(r)
-            for r in self.cursor.execute(
+        with self.with_cursor() as cursor:
+            rows = cursor.execute(
                 f"SELECT * FROM {TasksDbProvider.table_name}"
             ).fetchall()
-        ]
+
+        return [TaskRow.from_row(r) for r in rows]
 
     def insert_task(self, task: TaskRow) -> None:
         insfields = TaskRow.insert_fields()
         str_insfields = ",".join(insfields)
         str_insplaceholder = ["?"] * len(insfields)
 
-        self.cursor.execute(
-            f"INSERT INTO {TasksDbProvider.table_name}({str_insfields}) VALUES ({', '.join(str_insplaceholder)})",
-            task.to_row(),
-        )
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                f"INSERT INTO {TasksDbProvider.table_name}({str_insfields}) VALUES ({', '.join(str_insplaceholder)})",
+                task.to_row(),
+            )
+
         self.commit()
 
     def remove_by_id(self, wid: str) -> None:
         Logger.info(f"Removing '{wid}' from database")
-        self.cursor.execute(
-            f"DELETE FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
-        )
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                f"DELETE FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
+            )
+
         self.commit()
 
     def remove_by_ids(self, wids: List[str]) -> None:
@@ -97,7 +93,9 @@ class TasksDbProvider(DbProviderBase):
 
         Logger.info("Removing ids: " + ", ".join(wids))
         seq = ", ".join(["?"] * len(wids))
-        self.cursor.execute(
-            f"DELETE FROM {TasksDbProvider.table_name} WHERE wid in ({seq})", wids
-        )
+        with self.with_cursor() as cursor:
+            cursor.execute(
+                f"DELETE FROM {TasksDbProvider.table_name} WHERE wid in ({seq})", wids
+            )
+
         self.commit()

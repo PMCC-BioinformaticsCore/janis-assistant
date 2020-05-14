@@ -17,28 +17,37 @@ class RunDbProvider(DbProviderBase):
         )
         """
 
-    def __init__(self, db, cursor):
-        super().__init__(db, cursor)
+    def __init__(self, db):
+        super().__init__(db)
 
     def get_latest(self):
-        self.cursor.execute("SELECT wid FROM runs ORDER BY timestamp DESC LIMIT 1")
-        return self.cursor.fetchone()[0]
+        with self.with_cursor() as cursor:
+            cursor.execute("SELECT wid FROM runs ORDER BY timestamp DESC LIMIT 1")
+            latest = cursor.fetchone()[0]
+
+        return latest
 
     def get(self, wid: str) -> Optional[datetime]:
-        self.cursor.execute("SELECT timestamp FROM runs WHERE wid = ?", (wid,))
-        row = self.cursor.fetchone()
+        with self.with_cursor() as cursor:
+            cursor.execute("SELECT timestamp FROM runs WHERE wid = ?", (wid,))
+            row = cursor.fetchone()
+
         if not row:
             return None
 
         return DateUtil.parse_iso(row[0])
 
     def get_all(self) -> Dict[str, datetime]:
-        self.cursor.execute("SELECT wid, timestamp FROM runs")
-        rows = self.cursor.fetchall()
+        with self.with_cursor() as cursor:
+            cursor.execute("SELECT wid, timestamp FROM runs")
+            rows = cursor.fetchall()
+
         return {row[0]: DateUtil.parse_iso(row[1]) for row in rows}
 
     def insert(self, wid: str):
-        self.cursor.execute(self._insert_statement, (wid, str(DateUtil.now())))
+        with self.with_cursor() as cursor:
+
+            cursor.execute(self._insert_statement, (wid, str(DateUtil.now())))
 
     _insert_statement = """\
         INSERT INTO runs

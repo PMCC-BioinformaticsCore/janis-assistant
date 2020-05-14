@@ -55,21 +55,16 @@ class WorkflowDbManager:
         self.readonly = readonly
 
         self.connection = self.db_connection()
-        self.cursor = self.connection.cursor()
 
         sqlpath = self.get_sql_path()
-        self.runs = RunDbProvider(db=self.connection, cursor=self.cursor)
+        self.runs = RunDbProvider(db=self.connection)
         self.workflowmetadata = WorkflowMetadataDbProvider(
             sqlpath, wid=wid, readonly=readonly
         )
-        self.progressDB = ProgressDbProvider(
-            db=self.connection, cursor=self.cursor, wid=wid
-        )
+        self.progressDB = ProgressDbProvider(db=self.connection, wid=wid)
 
-        self.outputsDB = OutputDbProvider(
-            db=self.connection, cursor=self.cursor, wid=wid
-        )
-        self.jobsDB = JobDbProvider(db=self.connection, cursor=self.cursor, wid=wid)
+        self.outputsDB = OutputDbProvider(db=self.connection, wid=wid)
+        self.jobsDB = JobDbProvider(db=self.connection, wid=wid)
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
     @staticmethod
@@ -188,5 +183,4 @@ class WorkflowDbManager:
 
     def close(self):
         self.connection.close()
-        self.cursor = None
         self.connection = None

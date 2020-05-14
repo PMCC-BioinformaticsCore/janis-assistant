@@ -182,6 +182,8 @@ class WorkflowManager:
         # tm.set_status(TaskStatus.PROCESSING)
         tm.database.workflowmetadata.status = TaskStatus.PROCESSING
 
+        tm.database.commit()
+
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)
         tool_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(

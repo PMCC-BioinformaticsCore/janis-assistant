@@ -695,6 +695,14 @@ String? docker
                 )
             self.hash_lookup = hash_lookup
 
+        @staticmethod
+        def default():
+            return (
+                CromwellConfiguration.Docker(
+                    hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
+                ),
+            )
+
         key_map = {"hash_lookup": "hash-lookup"}
 
     class CallCaching(Serializable):
@@ -730,7 +738,7 @@ String? docker
         database: Database = None,
         backend: Backend = None,
         engine: Engine = None,
-        docker: Docker = None,
+        docker: Docker = Docker.default(),
         cache: CallCaching = None,
         aws=None,
     ):

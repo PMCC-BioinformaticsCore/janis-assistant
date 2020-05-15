@@ -697,7 +697,8 @@ String? docker
 
         @classmethod
         def default(cls):
-            return cls(hash_lookup=cls.HashLookup(enabled=False))
+            return None
+            # return cls(hash_lookup=cls.HashLookup(enabled=False))
 
         key_map = {"hash_lookup": "hash-lookup"}
 

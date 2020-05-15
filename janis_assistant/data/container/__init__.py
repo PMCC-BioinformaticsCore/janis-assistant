@@ -47,9 +47,8 @@ def get_digest_from_container(container: str, skip_cache=False):
 
 
 def get_cache_path_from_container(container: str) -> str:
-    cache_path = os.path.join(
-        JanisConfiguration.manager().configdir, "container_digest_cache"
-    )
+    cache_path = JanisConfiguration.manager().digest_cache_location
+
     os.makedirs(cache_path, exist_ok=True)
     container_cache_path = os.path.join(
         cache_path, ContainerInfo.convert_to_filename(container)

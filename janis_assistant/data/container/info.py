@@ -1,5 +1,5 @@
+from re import compile
 from typing import Optional
-
 from janis_core import Logger
 
 from janis_assistant.data.container.parse_pattern import (
@@ -9,6 +9,8 @@ from janis_assistant.data.container.parse_pattern import (
 
 
 class ContainerInfo:
+    CONTAINER_INVALID_CHARS = compile("[^A-Za-z0-9._-]+")
+
     def __init__(self, host, repository, image, tag, has_hash):
         self.host = host
         self.repository = repository
@@ -117,6 +119,13 @@ class ContainerInfo:
             tag = tag or self.tag
             end = (":" + tag) if tag is not None else ""
         return "/".join(str(p) for p in parts if p is not None) + end
+
+    def to_filename(self):
+        return self.convert_to_filename(str(self))
+
+    @staticmethod
+    def convert_to_filename(container: str):
+        return ContainerInfo.CONTAINER_INVALID_CHARS.sub("_", str(container))
 
     def __repr__(self):
         return (

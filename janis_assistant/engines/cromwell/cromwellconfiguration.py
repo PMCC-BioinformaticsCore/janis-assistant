@@ -695,13 +695,9 @@ String? docker
                 )
             self.hash_lookup = hash_lookup
 
-        @staticmethod
-        def default():
-            return (
-                CromwellConfiguration.Docker(
-                    hash_lookup=CromwellConfiguration.Docker.HashLookup(enabled=False)
-                ),
-            )
+        @classmethod
+        def default(cls):
+            return cls(hash_lookup=cls.HashLookup(enabled=False))
 
         key_map = {"hash_lookup": "hash-lookup"}
 

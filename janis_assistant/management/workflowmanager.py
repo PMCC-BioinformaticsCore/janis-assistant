@@ -546,7 +546,7 @@ class WorkflowManager:
 
         additional_cromwell_params = []
         if not engine.config:
-            Logger.info("Skipping start mysql as Janis is not managing the config")
+            Logger.info("Skipping start database as Janis is not managing the config")
         else:
             dbconfig: JanisDatabaseConfigurationHelper = self.database.workflowmetadata.dbconfig
             dbtype = dbconfig.which_db_to_use()
@@ -568,9 +568,9 @@ class WorkflowManager:
                     "Skipping database config as '--no-database' option was provided."
                 )
 
-            engine.start_engine(additional_cromwell_options=additional_cromwell_params)
-            # Write the new engine details back into the database (for like PID, host and is_started)
-            self.database.workflowmetadata.engine = engine
+        engine.start_engine(additional_cromwell_options=additional_cromwell_params)
+        # Write the new engine details back into the database (for like PID, host and is_started)
+        self.database.workflowmetadata.engine = engine
 
     def start_mysql_and_prepare_cromwell_config(self):
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
@@ -618,7 +618,7 @@ class WorkflowManager:
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
 
-        Logger.debug(f"Saving workflow with id '{tool.id()}'")
+        Logger.debug(f"Saving workflow with id '{tool.id()}' to {translator.name}")
 
         outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
         translator.translate(

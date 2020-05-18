@@ -561,7 +561,8 @@ def add_reconnect_args(parser):
 
 
 def add_query_args(parser):
-    parser.add_argument("--status", help="workflow status", choices=TaskStatus.all())
+    statuses = [v.value for v in TaskStatus.all()]
+    parser.add_argument("--status", help="workflow status", choices=statuses)
     parser.add_argument("--name", help="workflow name")
 
     return parser
@@ -855,7 +856,10 @@ def do_environment(args):
 
 
 def do_query(args):
-    status = args.status
+    status = None
+    if args.status:
+        status = TaskStatus(args.status.lower())
+
     name = args.name
     tasks = ConfigManager.manager().query_tasks(status=status, name=name)
 

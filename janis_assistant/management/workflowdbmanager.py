@@ -82,7 +82,7 @@ class WorkflowDbManager:
                 Logger.critical("Error when opening DB connection to: " + sqlpath)
                 raise
 
-            wid = RunDbProvider(db=connection, cursor=connection.cursor()).get_latest()
+            wid = RunDbProvider(db=connection).get_latest()
             if not wid:
                 raise Exception("Couldn't get WID in task directory")
 
@@ -97,7 +97,7 @@ class WorkflowDbManager:
             connection = sqlite3.connect(
                 f"file:{WorkflowDbManager.get_sql_path_base(path)}?mode=ro", uri=True
             )
-            runDb = RunDbProvider(db=connection, cursor=connection.cursor())
+            runDb = RunDbProvider(db=connection)
             return runDb.get_latest()
 
         except:

@@ -232,7 +232,7 @@ class CromwellConfiguration(Serializable):
             )
 
         @classmethod
-        def filebased_db(cls, location, connection_timeout=120000, num_threads=1):
+        def filebased_db(cls, location, connection_timeout=300000, num_threads=1):
             return cls(
                 profile="slick.jdbc.HsqldbProfile$",
                 db=cls.Db(

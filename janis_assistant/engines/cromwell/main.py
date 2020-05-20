@@ -53,6 +53,7 @@ class Cromwell(Engine):
         super().__setstate__(state)
         self._logger = None
         self._process = None
+        self._timer_thread = None
 
     def __init__(
         self,
@@ -99,9 +100,6 @@ class Cromwell(Engine):
         self.connectionerrorcount = 0
         self.should_stop = False
 
-        self._timer_thread = threading.Event()
-        self.poll_metadata()
-
         if not self.connect_to_instance:
 
             # To avoid conflicts between version of Cromwell, we'll find an open
@@ -112,6 +110,13 @@ class Cromwell(Engine):
             self.find_or_generate_config(
                 identifier, config=config, config_path=config_path
             )
+
+    def add_callback(self, *args, **kwargs):
+        if self._timer_thread is None:
+            self._timer_thread = threading.Event()
+            self.poll_metadata()
+
+        super().add_callback(*args, **kwargs)
 
     @staticmethod
     def from_url(identifier, url):

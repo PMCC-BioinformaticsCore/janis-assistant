@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import os.path
 from typing import Type, Optional, List, Dict
 
 from janis_assistant.utils import fully_qualify_filename
@@ -33,7 +34,9 @@ class EnvironmentTemplate(ABC):
 
     @staticmethod
     def path_is_valid(path):
-        return path == fully_qualify_filename(path)
+        if path != os.path.abspath(path):
+            return False
+        return os.path.exists(path)
 
     @staticmethod
     def validate_paths(obj: Dict[str, str]):

@@ -39,7 +39,21 @@ class Singularity(Container):
     @staticmethod
     def test_available_by_getting_version() -> str:
         try:
-            return subprocess.check_output(["singularity", "version"]).decode()
+            version = subprocess.check_output(["singularity", "--version"]).decode()
+            import re
+
+            # require Singularity 3.x.x
+            match = re.search("(\d+\.\d+\.\d+)", version)
+
+            if not match:
+                raise Exception(f"Couldn't interpret singularity version {version}")
+            parsed_version = match.group(0)
+            if int(parsed_version[0]) < 3:
+                raise Exception(
+                    f"Unsupported singularity version {version}, expected 3.x.x"
+                )
+
+            return version
         except subprocess.CalledProcessError as e:
             raise Container.ContainerEnvNotFound("singularity", e)
 

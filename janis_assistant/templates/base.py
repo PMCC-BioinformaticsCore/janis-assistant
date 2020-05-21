@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Type, Optional, List
+from typing import Type, Optional, List, Dict
 
+from janis_assistant.utils import fully_qualify_filename
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
@@ -29,6 +30,16 @@ class EnvironmentTemplate(ABC):
 
         self.can_run_in_foreground = can_run_in_foreground
         self.run_in_background = run_in_background
+
+    @staticmethod
+    def path_is_valid(path):
+        return path == fully_qualify_filename(path)
+
+    @staticmethod
+    def validate_paths(obj: Dict[str, str]):
+        return set(
+            k for k, v in obj.items() if not EnvironmentTemplate.path_is_valid(v)
+        )
 
     @abstractmethod
     def engine_config(self, engine: EngineType, janis_configuration):
@@ -142,6 +153,14 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
         Logger.log(
             f"Setting Singularity: containerdir={container_dir}, loadinstructions={load_instructions}"
         )
+
+        invalid_paths = self.validate_paths({"Container Dir": container_dir})
+
+        if len(invalid_paths) > 0:
+            raise Exception(
+                f"Expected an absolute paths for {', '.join(invalid_paths)}"
+            )
+
         # little bit hacky
         Singularity.containerdir = container_dir
         Singularity.loadinstructions = load_instructions

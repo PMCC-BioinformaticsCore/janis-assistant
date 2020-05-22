@@ -34,9 +34,10 @@ class EnvironmentTemplate(ABC):
 
     @staticmethod
     def path_is_valid(path):
-        if path != os.path.abspath(path):
-            return False
-        return os.path.exists(path)
+        return True
+        # if path != os.path.abspath(path):
+        #     return False
+        # return os.path.exists(path)
 
     @staticmethod
     def validate_paths(obj: Dict[str, str]):

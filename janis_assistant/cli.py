@@ -177,6 +177,9 @@ def add_logger_args(parser):
 
 def add_watch_args(parser):
     parser.add_argument("wid", help="Workflow id")
+    parser.add_argument(
+        "--once", action="store_true", help="Print it the console and then return"
+    )
     return parser
 
 
@@ -662,7 +665,7 @@ def do_docs(args):
 def do_watch(args):
     wid = args.wid
     tm = ConfigManager.manager().from_wid(wid, readonly=True)
-    tm.watch()
+    tm.watch(once=args.once)
 
 
 def do_resume(args):

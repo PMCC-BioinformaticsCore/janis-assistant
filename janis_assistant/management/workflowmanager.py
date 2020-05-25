@@ -131,8 +131,8 @@ class WorkflowManager:
 
         return metadb if has else False
 
-    def watch(self):
-        self.show_status_screen()
+    def watch(self, once=False):
+        self.show_status_screen(once=once)
 
     @staticmethod
     def from_janis(
@@ -313,7 +313,7 @@ class WorkflowManager:
         wid = WorkflowDbManager.get_latest_workflow(path=path)
         return WorkflowManager.from_path_with_wid(path, wid, readonly=readonly)
 
-    def show_status_screen(self):
+    def show_status_screen(self, once=False):
         """
         This function just polls the database for metadata every so often,
         and simply displays it. It will keep doing that until the task
@@ -322,7 +322,7 @@ class WorkflowManager:
         It's presumed that there's a janis-monitor that's watching the engine
         """
 
-        if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState):
+        if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState) or once:
             meta = self.database.get_metadata()
             formatted = meta.format()
             print(formatted)

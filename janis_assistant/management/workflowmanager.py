@@ -131,8 +131,8 @@ class WorkflowManager:
 
         return metadb if has else False
 
-    def watch(self):
-        self.show_status_screen()
+    def watch(self, **kwargs):
+        self.show_status_screen(**kwargs)
 
     @staticmethod
     def from_janis(
@@ -313,13 +313,16 @@ class WorkflowManager:
         wid = WorkflowDbManager.get_latest_workflow(path=path)
         return WorkflowManager.from_path_with_wid(path, wid, readonly=readonly)
 
-    def show_status_screen(self):
+    def show_status_screen(self, **kwargs):
         """
         This function just polls the database for metadata every so often,
         and simply displays it. It will keep doing that until the task
         moves into a TERMINAL status.
 
-        It's presumed that there's a janis-monitor that's watching the engine
+        It's presumed that there's a janis-monitor that's watching the engine.
+
+        The kwargs argument is for passing through formatting/refresh options
+        through from the command-line.
         """
 
         if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState):
@@ -345,13 +348,13 @@ class WorkflowManager:
         if bl is not None:
             self.poll_stored_metadata_with_blessed(bl)
         else:
-            self.poll_stored_metadata_with_clear()
+            self.poll_stored_metadata_with_clear(**kwargs)
 
     def get_meta_call(self):
         meta = self.database.get_metadata()
         return meta, meta and meta.status in TaskStatus.final_states()
 
-    def poll_stored_metadata_with_clear(self, seconds=3):
+    def poll_stored_metadata_with_clear(self, seconds=3, **kwargs):
         is_finished = False
 
         # We won't clear the screen if we haven't printed (first loop) and it's finished
@@ -361,8 +364,11 @@ class WorkflowManager:
             if meta:
                 if has_printed or not is_finished:
                     call("clear")
-                print(meta.format())
+                print(meta.format(**kwargs))
                 has_printed = True
+
+            if seconds < 0:
+                is_finished = True
 
             if not is_finished:
                 time.sleep(seconds)

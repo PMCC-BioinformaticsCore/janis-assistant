@@ -67,7 +67,7 @@ class WorkflowJobModel:
     def from_row(row):
         return WorkflowJobModel(*row[1:])
 
-    def format(self, pre):
+    def format(self, pre, monochrome = False, brief = False, **kwargs):
 
         tb = "    "
         fin = self.finish if self.finish else DateUtil.now()
@@ -93,27 +93,29 @@ class WorkflowJobModel:
 
         col = ""
 
-        if status == TaskStatus.FAILED:
-            col = _bcolors.FAIL
-        elif status == TaskStatus.COMPLETED:
-            col = _bcolors.OKGREEN
-        # else:
-        # col = _bcolors.UNDERLINE
+        if not monochrome:
+            if status == TaskStatus.FAILED:
+                col = _bcolors.FAIL
+            elif status == TaskStatus.COMPLETED:
+                col = _bcolors.OKGREEN
+            # else:
+            # col = _bcolors.UNDERLINE
 
-        if self.jobs:
-            ppre = pre + tb
-            subs: List[WorkflowJobModel] = sorted(
-                self.jobs,
-                key=lambda j: j.start if j.start else DateUtil.now(),
-                reverse=False,
-            )
+        if status != TaskStatus.COMPLETED or brief == False:
+            if self.jobs:
+                ppre = pre + tb
+                subs: List[WorkflowJobModel] = sorted(
+                    self.jobs,
+                    key=lambda j: j.start if j.start else DateUtil.now(),
+                    reverse=False,
+                )
 
-            return (
-                col
-                + standard
-                + "".join(["\n" + j.format(ppre) for j in subs])
-                + _bcolors.ENDC
-            )
+                return (
+                    col
+                    + standard
+                    + "".join(["\n" + j.format(ppre, monochrome, brief, **kwargs) for j in subs])
+                    + _bcolors.ENDC
+                )
 
         fields: List[Tuple[str, str]] = []
 

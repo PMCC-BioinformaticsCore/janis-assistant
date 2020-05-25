@@ -178,8 +178,22 @@ def add_logger_args(parser):
 def add_watch_args(parser):
     parser.add_argument("wid", help="Workflow id")
     parser.add_argument(
-        "--once", action="store_true", help="Print it the console and then return"
-    )
+        "--once",
+        help="rather than polling, determine the status of jobs once only",
+        action="store_true")
+    parser.add_argument(
+        "--refresh",
+        help="time in seconds between refreshes",
+        type=int,
+        default=3)
+    parser.add_argument(
+        "--brief",
+        help="if all the sub-tasks of a task have completed, just show line for the task, not its sub-tasks as well",
+        action="store_true")
+    parser.add_argument(
+        "--monochrome",
+        help="produce non-colour text only",
+        action="store_true")
     return parser
 
 
@@ -664,8 +678,15 @@ def do_docs(args):
 
 def do_watch(args):
     wid = args.wid
+    refresh = args.refresh
+    if args.once:
+        # --once overrides --refresh
+        refresh = -1
+    brief = args.brief
+    monochrome = args.monochrome
+
     tm = ConfigManager.manager().from_wid(wid, readonly=True)
-    tm.watch(once=args.once)
+    tm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
 
 
 def do_resume(args):

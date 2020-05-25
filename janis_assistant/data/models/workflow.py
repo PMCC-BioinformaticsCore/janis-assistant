@@ -56,7 +56,7 @@ class WorkflowModel:
 
         self.author = author
 
-    def format(self):
+    def format(self, **kwargs):
         tb = "    "
         nl = "\n"
 
@@ -88,7 +88,7 @@ Finish:     {self.finish.isoformat() if self.finish else "N/A"}
 Updated:    {updated_text}
 
 Jobs: 
-{nl.join(j.format(tb) for j in sorted(self.jobs, key=lambda j: j.start or DateUtil.now()))}       
+{nl.join(j.format(tb, **kwargs) for j in sorted(self.jobs, key=lambda j: j.start or DateUtil.now()))}       
 
 {("Outputs:" + "".join(nl + tb + o.format() for o in self.outputs) if self.outputs else '')}
 {("Error: " + self.error) if self.error else ''}

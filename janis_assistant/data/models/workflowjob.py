@@ -92,6 +92,7 @@ class WorkflowJobModel:
         standard = pre + f"[{status.symbol()}] {name} ({second_formatter(time)})"
 
         col = ""
+        uncol = ""
 
         if not monochrome:
             if status == TaskStatus.FAILED:
@@ -100,6 +101,7 @@ class WorkflowJobModel:
                 col = _bcolors.OKGREEN
             # else:
             # col = _bcolors.UNDERLINE
+            uncol = _bcolors.ENDC
 
         if status != TaskStatus.COMPLETED or brief == False:
             if self.jobs:
@@ -114,7 +116,7 @@ class WorkflowJobModel:
                     col
                     + standard
                     + "".join(["\n" + j.format(ppre, monochrome, brief, **kwargs) for j in subs])
-                    + _bcolors.ENDC
+                    + uncol
                 )
 
         fields: List[Tuple[str, str]] = []
@@ -144,7 +146,7 @@ class WorkflowJobModel:
         ppre = "\n" + " " * len(pre) + 2 * tb
         retval = standard + "".join(f"{ppre}{f[0]}: {f[1]}" for f in fields if f[1])
 
-        return col + retval + _bcolors.ENDC
+        return col + retval + uncol
 
 
 class WorkflowJobEventModel:

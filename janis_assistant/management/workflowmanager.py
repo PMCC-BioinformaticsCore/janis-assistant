@@ -327,7 +327,7 @@ class WorkflowManager:
 
         if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState):
             meta = self.database.get_metadata()
-            formatted = meta.format()
+            formatted = meta.format(**kwargs)
             print(formatted)
             return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
 

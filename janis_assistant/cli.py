@@ -176,6 +176,7 @@ def add_logger_args(parser):
 
 
 def add_watch_args(parser):
+    parser.add_argument("wid", help="Workflow id")
     parser.add_argument(
         "--once",
         help="rather than polling, determine the status of jobs once only",
@@ -193,7 +194,6 @@ def add_watch_args(parser):
         "--monochrome",
         help="produce non-colour text only",
         action="store_true")
-    parser.add_argument("wid", help="Workflow id")
     return parser
 
 

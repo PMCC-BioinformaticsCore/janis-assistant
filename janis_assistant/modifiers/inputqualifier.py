@@ -49,11 +49,21 @@ class InputFileQualifierModifier(PipelineModifierBase):
 
                 # (Skip if not one of these conditions)
                 if not (isfiletype or isbasefiletype):
-                    nin[tag] = intype.coerce_value_if_possible(value)
+                    try:
+                        nin[tag] = intype.coerce_value_if_possible(value)
+                    except Exception as e:
+                        raise Exception(
+                            f"Couldn't coerce the input for '{tag}' ({value}) to type '{intype}': {e}"
+                        )
                     continue
 
                 # Qualify the fully qualify the filepath
-                nin[tag] = self.fully_qualify_filename_array_or_single(value)
+                try:
+                    nin[tag] = self.fully_qualify_filename_array_or_single(value)
+                except Exception as e:
+                    raise Exception(
+                        f"Couldn't qualify the filename for the input '{tag}' ({value}) to type '{intype}': {e}"
+                    )
 
             return nin
 

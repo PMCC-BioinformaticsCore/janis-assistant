@@ -67,7 +67,7 @@ class WorkflowJobModel:
     def from_row(row):
         return WorkflowJobModel(*row[1:])
 
-    def format(self, pre, monochrome = False, brief = False, **kwargs):
+    def format(self, pre, monochrome=False, brief=False, **kwargs):
 
         tb = "    "
         fin = self.finish if self.finish else DateUtil.now()
@@ -115,7 +115,12 @@ class WorkflowJobModel:
                 return (
                     col
                     + standard
-                    + "".join(["\n" + j.format(ppre, monochrome, brief, **kwargs) for j in subs])
+                    + "".join(
+                        [
+                            "\n" + j.format(ppre, monochrome, brief, **kwargs)
+                            for j in subs
+                        ]
+                    )
                     + uncol
                 )
 

@@ -311,9 +311,9 @@ def add_inputs_args(parser):
 
     input_manip_args.add_argument(
         "-r",
-        "--recipes",
+        "--recipe",
         help="If you have values available from these recipes, they will be ignored from the output",
-        nargs="+",
+        action="append",
     )
 
     input_manip_args.add_argument(
@@ -612,7 +612,7 @@ def check_logger_args(args):
 
 
 def add_init_args(args):
-    args.add_argument("-r", "--recipes", help="Recipes from template", nargs="+")
+    args.add_argument("-r", "--recipe", help="Recipes from template", action="append")
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
     args.add_argument(
         "-f", "--force", help="Overwrite the template if it exits", action="store_true"

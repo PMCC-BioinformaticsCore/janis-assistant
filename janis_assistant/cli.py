@@ -180,20 +180,19 @@ def add_watch_args(parser):
     parser.add_argument(
         "--once",
         help="rather than polling, determine the status of jobs once only",
-        action="store_true")
+        action="store_true",
+    )
     parser.add_argument(
-        "--refresh",
-        help="time in seconds between refreshes",
-        type=int,
-        default=3)
+        "--refresh", help="time in seconds between refreshes", type=int, default=3
+    )
     parser.add_argument(
         "--brief",
         help="if all the sub-tasks of a task have completed, just show line for the task, not its sub-tasks as well",
-        action="store_true")
+        action="store_true",
+    )
     parser.add_argument(
-        "--monochrome",
-        help="produce non-colour text only",
-        action="store_true")
+        "--monochrome", help="produce non-colour text only", action="store_true"
+    )
     return parser
 
 
@@ -912,7 +911,8 @@ def do_query(args):
 def do_rawquery(args):
     wid = args.wid
     wm = ConfigManager.manager().from_wid(wid, readonly=True)
-    result = wm.database.cursor.execute(args.query).fetchall()
+    with wm.database.with_cursor() as cursor:
+        result = cursor.execute(args.query).fetchall()
     return print(tabulate.tabulate(result))
 
 

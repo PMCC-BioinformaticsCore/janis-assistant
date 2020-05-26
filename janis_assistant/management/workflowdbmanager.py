@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 from os.path import join as ospathjoin
 
 from typing import List
@@ -66,6 +67,17 @@ class WorkflowDbManager:
         self.outputsDB = OutputDbProvider(db=self.connection, wid=wid)
         self.jobsDB = JobDbProvider(db=self.connection, wid=wid)
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
+
+    @contextmanager
+    def with_cursor(self):
+        cursor = None
+        try:
+            cursor = self.connection.cursor()
+            yield cursor
+        finally:
+            # Change back up
+            if cursor:
+                cursor.close()
 
     @staticmethod
     def get_workflow_metadatadb(execpath, wid, readonly=False):

@@ -10,6 +10,7 @@ from janis_core.translationdeps.supportedtranslations import SupportedTranslatio
 
 from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.templates.templates import get_template_names
+from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.management.configuration import JanisConfiguration
 
@@ -606,6 +607,7 @@ def add_init_args(args):
         "--output",
         help="Location to overwrite to, defaults to: ~/.janis/janis.conf",
     )
+    args.add_argument("--ensure_cromwell", action="store_true", help="download cromwell if it is not already present")
 
     args.add_argument("template", choices=get_template_names())
 
@@ -621,6 +623,8 @@ def do_init(args):
         output_location=args.output,
         force=args.force,
     )
+    if args.ensure_cromwell:
+        cromwell_loc = Cromwell.resolve_jar(None)
 
 
 def do_version(_):

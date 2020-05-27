@@ -414,7 +414,8 @@ class Cromwell(Engine):
         time = 6
         threading.Timer(time, self.poll_metadata).start()
 
-    def resolve_jar(self, cromwelljar):
+    @staticmethod
+    def resolve_jar(cromwelljar):
         from janis_assistant.management.configuration import JanisConfiguration
 
         man = JanisConfiguration.manager()
@@ -481,7 +482,7 @@ class Cromwell(Engine):
                     else:
                         print("\rCompleted download of cromwell", file=sys.stderr)
 
-            cromwellurl, cromwellfilename = self.get_latest_cromwell_url()
+            cromwellurl, cromwellfilename = Cromwell.get_latest_cromwell_url()
             Logger.info(
                 f"Couldn't find cromwell at any of the usual spots, downloading '{cromwellfilename}' now"
             )

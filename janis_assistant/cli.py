@@ -607,7 +607,7 @@ def add_init_args(args):
         "--output",
         help="Location to overwrite to, defaults to: ~/.janis/janis.conf",
     )
-    args.add_argument("--ensure_cromwell", action="store_true", help="download cromwell if it is not already present")
+    args.add_argument("--ensure-cromwell", action="store_true", help="download cromwell if it is not already present")
 
     args.add_argument("template", choices=get_template_names())
 
@@ -625,6 +625,7 @@ def do_init(args):
     )
     if args.ensure_cromwell:
         cromwell_loc = Cromwell.resolve_jar(None)
+        Logger.info("Located Cromwell at: " + str(cromwell_loc))
 
 
 def do_version(_):

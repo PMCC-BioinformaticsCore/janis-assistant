@@ -834,7 +834,7 @@ def do_spider(args):
 
 def do_inputs(args):
 
-    if args.config or args.recipes:
+    if args.config or args.recipe:
         JanisConfiguration.initial_configuration(args.config)
 
     quality_type = None
@@ -858,7 +858,7 @@ def do_inputs(args):
         additional_inputs=args.inputs,
         with_resources=args.resources,
         quality_type=quality_type,
-        recipes=args.recipes,
+        recipes=args.recipe,
         hints=hints,
     )
 

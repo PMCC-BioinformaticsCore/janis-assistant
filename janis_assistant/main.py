@@ -348,7 +348,10 @@ def init_template(
         Logger.info(f"Janis will skip writing config as file exists at: '{outpath}'")
     else:
         if does_exist:
-            Logger.info("Overwriting template at '{outpath}'")
+            Logger.info(f"Overwriting template at '{outpath}'")
+        else:
+            Logger.info(f"Saving Janis config to '{outpath}'")
+
         os.makedirs(os.path.dirname(outpath), exist_ok=True)
         val = get_config()
         with open(outpath, "w+") as configpath:

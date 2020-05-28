@@ -43,7 +43,7 @@ class EnvVariables(HashableEnum):
                 EnvVariables.base_dir.resolve(include_default=True), "execution/"
             )
         elif self == EnvVariables.config_path:
-            return os.path.join(os.getenv("HOME"), ".janis/janis.conf")
+            return os.path.join(EnvVariables.config_dir.resolve(True), "janis.conf")
         elif self == EnvVariables.recipe_paths:
             return []
         elif self == EnvVariables.recipe_directory:

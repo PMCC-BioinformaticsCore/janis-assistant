@@ -5,17 +5,17 @@ from .cromwell import Cromwell, CromwellConfiguration
 from .enginetypes import EngineType
 from .cwltool.main import CWLTool
 from .engine import Engine
-from janis_core import SupportedTranslations
+from janis_core import SupportedTranslation
 
 
 def get_ideal_specification_for_engine(eng: Engine):
     if isinstance(eng, Cromwell):
-        return SupportedTranslations.WDL
+        return SupportedTranslation.WDL
 
     elif isinstance(eng, Toil):
-        return SupportedTranslations.CWL
+        return SupportedTranslation.CWL
 
-    return SupportedTranslations.CWL
+    return SupportedTranslation.CWL
 
 
 def get_engine_type(engtype: Union[str, EngineType]):

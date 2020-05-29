@@ -6,7 +6,7 @@ import ruamel.yaml
 import tabulate
 from janis_core import InputQualityType
 
-from janis_core.translationdeps.supportedtranslations import SupportedTranslations
+from janis_core.translationdeps.supportedtranslations import SupportedTranslation
 
 from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.templates.templates import get_template_names
@@ -258,7 +258,7 @@ def add_translate_args(parser):
     parser.add_argument(
         "translation",
         help="language to translate to",
-        choices=SupportedTranslations.all(),
+        choices=SupportedTranslation.all(),
     )
     parser.add_argument(
         "--name",

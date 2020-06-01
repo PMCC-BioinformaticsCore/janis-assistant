@@ -418,7 +418,7 @@ String? docker
 """
                 slurm.config.submit = None
                 slurm.config.submit_docker = f"""\
-            {singularityloadinstructions}
+            {singularityloadinstructions or ''}
 
             docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
             image={singularitycontainerdir}/$docker_subbed.sif

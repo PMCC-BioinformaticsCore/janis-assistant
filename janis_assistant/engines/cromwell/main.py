@@ -425,22 +425,20 @@ class Cromwell(Engine):
                 f"likely an error, and you should raise an issue at {ISSUE_URL}"
             )
 
-        potentials = []
-
+        if cromwelljar and os.path.exists(cromwelljar):
+            return cromwelljar
+        if man.cromwell.jarpath and os.path.exists(man.cromwell.jarpath):
+            return man.cromwell.jarpath
         fromenv = EnvVariables.cromwelljar.resolve(False)
+        if fromenv and os.path.exists(fromenv):
+            return fromenv
 
-        if cromwelljar:
-            potentials.append(os.path.expanduser(cromwelljar))
-        if man.cromwell.jarpath:
-            potentials.append(os.path.expanduser(man.cromwell.jarpath))
-        if fromenv:
-            potentials.append(fromenv)
-        potentials.extend(
-            reversed(sorted(glob(os.path.join(man.configdir + "cromwell-*.jar"))))
+        potentials = reversed(
+            sorted(glob(os.path.join(man.configdir + "cromwell-*.jar")))
         )
 
         valid_paths = [p for p in potentials if os.path.exists(p)]
-        if len(potentials) > 0:
+        if len(valid_paths) > 0:
             if len(valid_paths) == 0:
                 raise Exception(
                     "Couldn't find cromwelljar at any of the required paths: "
@@ -527,7 +525,7 @@ class Cromwell(Engine):
             )
 
         if not outs:
-            return {}
+            return None
         parsed = [self.parse_output(k, v) for k, v in outs.items()]
         return {out[0]: out[1] for out in parsed}
 

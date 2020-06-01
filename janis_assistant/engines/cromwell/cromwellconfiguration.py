@@ -240,8 +240,9 @@ class CromwellConfiguration(Serializable):
                     url=f"""\
 jdbc:hsqldb:file:{location};
 shutdown=false;
-hsqldb.default_table_type=cached;hsqldb.tx=mvcc;
-hsqldb.result_max_memory_rows=10000;
+hsqldb.default_table_type=cached;
+hsqldb.tx=mvcc;
+hsqldb.result_max_memory_rows=2500;
 hsqldb.large_data=true;
 hsqldb.applog=1;
 hsqldb.lob_compressed=true;

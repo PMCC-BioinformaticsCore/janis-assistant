@@ -781,9 +781,22 @@ class WorkflowManager:
         if isinstance(engine, Cromwell):
             import json
 
-            meta = engine.raw_metadata(self.get_engine_wid()).meta
+            meta = engine.raw_metadata(self.get_engine_wid())
+            nattempts = 5
+            for at in range(nattempts):
+                if meta is None:
+                    Logger.warn(
+                        f"Engine '{engine.id()}' didn't return metadata for Janis to persist, will try {nattempts - at - 1} more times"
+                    )
+                    meta = engine.raw_metadata(self.get_engine_wid())
+                else:
+                    break
+            if meta is None:
+                Logger.critical("Cromwell didn't return metadata to persist, skipping")
+                return
+
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
-                json.dump(meta, fp)
+                json.dump(meta.meta, fp)
 
         elif isinstance(engine, CWLTool):
             import json
@@ -812,6 +825,22 @@ class WorkflowManager:
 
         wf_outputs = self.database.outputsDB.get_all()
         engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
+
+        nattempts = 5
+        for at in range(nattempts):
+            if engine_outputs is None:
+                Logger.warn(
+                    f"Engine '{self.get_engine().id()}' didn't return outputs for Janis to copy, will try {nattempts - at - 1} more times"
+                )
+                engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
+            else:
+                break
+
+        if engine_outputs is None or len(engine_outputs) == 0:
+            return Logger.critical(
+                f"Engine '{self.get_engine().id()}' didn't return outputs for Janis to copy, skipping"
+            )
+
         eoutkeys = engine_outputs.keys()
         fs = self.environment.filescheme
 

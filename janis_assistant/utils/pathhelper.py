@@ -126,7 +126,9 @@ def get_workflow_from_file(file, name, include_commandtools=False):
         spec = importlib.util.spec_from_file_location("module.name", file)
         foo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(foo)
-        ptypes = get_janis_from_module_spec(foo, include_commandtools)
+        ptypes = get_janis_from_module_spec(
+            foo, include_commandtools=include_commandtools, name=name
+        )
 
     except Exception as e:
         raise Exception(
@@ -145,7 +147,10 @@ def get_workflow_from_file(file, name, include_commandtools=False):
         return wftypes[0][1]
 
     if len(ptypes) == 0:
-        return None
+        raise Exception(
+            f"There were no valid tools in '{file}', try running with the `--name YourToolName` parameter "
+            f"to get more information (it might have abstract / unimplemented methods)."
+        )
     if len(ptypes) > 1:
         action = (
             "(please specify the workflow to use via the `--name` parameter, this name must be the name of "
@@ -162,7 +167,7 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     return ptypes[0][1]
 
 
-def get_janis_from_module_spec(spec, include_commandtools=False):
+def get_janis_from_module_spec(spec, include_commandtools=False, name: str = None):
     """
     Get all the Janis.Workflow's that are defined in the file (__module__ == 'module.name')
     :return: List of all the subclasses of a workflow
@@ -173,9 +178,15 @@ def get_janis_from_module_spec(spec, include_commandtools=False):
 
     potentials = []
     for k, ptype in spec.__dict__.items():
+        if name is not None:
+            if name.lower() == k.lower():
+                potentials.append((k, ptype()))
+            continue
+
         if isinstance(ptype, Workflow) or isinstance(ptype, CommandTool):
             potentials.append((k, ptype))
             continue
+
         if not callable(ptype):
             continue
         if isabstract(ptype):

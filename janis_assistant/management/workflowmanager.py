@@ -355,23 +355,26 @@ class WorkflowManager:
         return meta, meta and meta.status in TaskStatus.final_states()
 
     def poll_stored_metadata_with_clear(self, seconds=3, **kwargs):
-        is_finished = False
+        try:
+            is_finished = False
 
-        # We won't clear the screen if we haven't printed (first loop) and it's finished
-        has_printed = False
-        while not is_finished:
-            meta, is_finished = self.get_meta_call()
-            if meta:
-                if has_printed or not is_finished:
-                    call("clear")
-                print(meta.format(**kwargs))
-                has_printed = True
+            # We won't clear the screen if we haven't printed (first loop) and it's finished
+            has_printed = False
+            while not is_finished:
+                meta, is_finished = self.get_meta_call()
+                if meta:
+                    if has_printed or not is_finished:
+                        call("clear")
+                    print(meta.format(**kwargs))
+                    has_printed = True
 
-            if seconds < 0:
-                is_finished = True
+                if seconds < 0:
+                    is_finished = True
 
-            if not is_finished:
-                time.sleep(seconds)
+                if not is_finished:
+                    time.sleep(seconds)
+        except KeyboardInterrupt:
+            pass
 
     def poll_stored_metadata_with_blessed(self, blessed, seconds=1):
 

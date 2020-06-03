@@ -370,18 +370,18 @@ Int memory_mb = 3500
 String? docker
 String? queue
 """.strip(),
-                        submit="""
-    jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
+                        submit=f"""
+    jobname='{CromwellConfiguration.JOBNAME_TRANSFORM}'
     sbatch \\
         -J $jobname \\
-        -D ${cwd} \\
-        -o ${out} \\
-        -e ${err} \\
-        -t 0:${runtime_seconds} \\
-        ${"-p " + queue} \\
-        ${"-n " + cpu} \\
-        --mem=${memory_mb} \\
-        --wrap "/usr/bin/env ${job_shell} ${script}" """,
+        -D ${{cwd}} \\
+        -o ${{out}} \\
+        -e ${{err}} \\
+        -t 0:${{runtime_seconds}} \\
+        ${{"-p " + queue}} \\
+        ${{"-n " + cpu}} \\
+        --mem=${{memory_mb}} \\
+        --wrap "/usr/bin/env ${{job_shell}} ${{script}}" """,
                         kill="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*",

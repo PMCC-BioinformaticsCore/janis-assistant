@@ -154,6 +154,9 @@ class WorkflowManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        skip_digest_lookup=False,
+        skip_digest_cache=False,
+        **kwargs,
     ):
 
         jc = JanisConfiguration.manager()
@@ -198,6 +201,8 @@ class WorkflowManager:
             allow_empty_container=allow_empty_container,
             container_override=container_override,
             check_files=check_files,
+            skip_digest_lookup=skip_digest_lookup,
+            skip_digest_cache=skip_digest_cache,
         )
 
         outdir_workflow = tm.get_path_for_component(
@@ -610,6 +615,42 @@ class WorkflowManager:
             username="root", url=f"127.0.0.1:{port}"
         )
 
+    @staticmethod
+    def prepare_container_override(
+        tool: Tool, container_override: Optional[dict], skip_digest_cache=False
+    ):
+        from janis_assistant.data.container import get_digests_from_containers
+
+        containermap = tool.containers()
+        if container_override:
+            containermap.update(container_override)
+
+        reverse_lookup = {}
+        for versioned_toolid, container in containermap.items():
+            key = container.lower()
+            reverse_lookup[key] = reverse_lookup.get(key, []) + [versioned_toolid]
+
+        containers_to_lookup = list(reverse_lookup.keys())
+        Logger.info(
+            f"Looking up digests for {len(containers_to_lookup)} containers (this might take a few minutes...)"
+        )
+        digest_map = get_digests_from_containers(containers_to_lookup)
+        Logger.info(f"Found {len(digest_map)} digests.")
+        Logger.log("Found the following container-to-tool lookup table:")
+        Logger.log(CwlTranslator.stringify_translated_inputs(reverse_lookup))
+
+        retval = container_override or {}
+        for rawcontainer, container_digest in digest_map.items():
+            for c in reverse_lookup.get(rawcontainer, []):
+                retval[c] = container_digest
+
+        Logger.debug(
+            "Found container replacements: \n"
+            + CwlTranslator.stringify_translated_inputs(digest_map)
+        )
+
+        return retval
+
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
         tool: Tool,
@@ -623,6 +664,8 @@ class WorkflowManager:
         allow_empty_container=False,
         container_override: dict = None,
         check_files=True,
+        skip_digest_lookup=False,
+        skip_digest_cache=False,
     ) -> Tool:
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
             return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
@@ -630,6 +673,7 @@ class WorkflowManager:
         Logger.debug(f"Saving workflow with id '{tool.id()}' to {translator.name}")
 
         outdir_workflow = self.get_path_for_component(self.WorkflowManagerPath.workflow)
+
         translator.translate(
             tool,
             to_console=False,
@@ -662,6 +706,12 @@ class WorkflowManager:
             modifiers, tool, additional_inputs, hints=hints
         )
 
+        container_overrides = container_override
+        if not skip_digest_lookup:
+            container_overrides = self.prepare_container_override(
+                tool, container_override, skip_digest_cache=skip_digest_cache
+            )
+
         translator.translate(
             tool_to_evaluate,
             to_console=False,
@@ -675,7 +725,7 @@ class WorkflowManager:
             max_cores=max_cores,
             max_mem=max_memory,
             allow_empty_container=allow_empty_container,
-            container_override=container_override,
+            container_override=container_overrides,
         )
 
         self.evaluate_output_params(

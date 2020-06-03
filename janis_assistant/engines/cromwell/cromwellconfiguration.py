@@ -364,10 +364,12 @@ hsqldb.script_format=3
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes="""\
-Int runtime_minutes = 1440
+Int runtime_seconds = 86400
 Int? cpu = 1
 Int memory_mb = 3500
-String? docker""".strip(),
+String? docker
+String? queue
+""".strip(),
                         submit="""
     jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
     sbatch \\
@@ -375,7 +377,7 @@ String? docker""".strip(),
         -D ${cwd} \\
         -o ${out} \\
         -e ${err} \\
-        -t ${runtime_minutes} \\
+        -t 0:${runtime_seconds} \\
         ${"-p " + queue} \\
         ${"-n " + cpu} \\
         --mem=${memory_mb} \\
@@ -409,19 +411,23 @@ String? docker""".strip(),
                 partitions = (
                     ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
                 )
-                partition_string = ("-p " + partitions) if partitions else ""
+                if partitions:
+                    partition_string = f'${{if defined(queue) then ("-p" + queue) else "-p {partitions}"}}'
+                else:
+                    partition_string = '${"-p" + queue}'
+
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )
 
                 slurm.config.runtime_attributes = """\
-Int runtime_minutes = 1440
-String kvruntime_value = ""
+Int runtime_seconds
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker
+String? queue
 """
-                slurm.config.submit = None
+                # slurm.config.submit = None
                 slurm.config.submit_docker = f"""\
             {singularityloadinstructions or ''}
 
@@ -439,12 +445,12 @@ String? docker
                 --parsable \\
                 -J $jobname \\
                 --mem=${{memory_mb}} \\
-                --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
+                --cpus-per-task ${{select_first([cpu, 1])}} \\
                 {partition_string} \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
                 -e ${{cwd}}/execution/stderr \\
-                -t ${{runtime_minutes}} \\
+                -t '0:${{runtime_seconds}}' \\
                 {emailextra} \\
                 --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
                 {afternotokaycommand} \\

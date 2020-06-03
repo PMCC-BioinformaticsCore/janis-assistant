@@ -113,6 +113,8 @@ def translate(
     inputs: Union[str, dict] = None,
     allow_empty_container=False,
     container_override=None,
+    skip_digest_lookup=False,
+    skip_digest_cache=False,
     **kwargs,
 ):
 
@@ -126,6 +128,12 @@ def translate(
         inputsfile = get_file_from_searchname(inputs, ".")
         inputsdict = parse_dict(inputsfile)
 
+    container_overrides = container_override
+    if not skip_digest_lookup:
+        container_overrides = WorkflowManager.prepare_container_override(
+            toolref, container_override, skip_digest_cache=skip_digest_cache
+        )
+
     if isinstance(toolref, j.Workflow):
         wfstr, _, _ = toolref.translate(
             translation,
@@ -135,7 +143,7 @@ def translate(
             hints=hints,
             additional_inputs=inputsdict,
             allow_empty_container=allow_empty_container,
-            container_override=container_override,
+            container_override=container_overrides,
         )
     elif isinstance(toolref, (j.CommandTool, j.CodeTool)):
         wfstr = toolref.translate(
@@ -144,7 +152,7 @@ def translate(
             to_disk=bool(output_dir),
             export_path=output_dir or "./{language}",
             allow_empty_container=allow_empty_container,
-            container_override=container_override,
+            container_override=container_overrides,
         )
 
     else:
@@ -477,6 +485,7 @@ def fromjanis(
             allow_empty_container=allow_empty_container,
             container_override=container_override,
             check_files=check_files,
+            **kwargs,
         )
         Logger.log("Finished starting task task")
         return tm

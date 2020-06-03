@@ -39,6 +39,7 @@ class JanisConfiguration(NoAttributeErrors):
         Notifications = "notifications"
         RunInBackground = "run_in_background"
         CallCachingEnabled = "call_caching_enabled"
+        DigestCacheLocation = "digest_cache_location"
 
     _managed = None  # type: JanisConfiguration
 
@@ -404,6 +405,11 @@ class JanisConfiguration(NoAttributeErrors):
         self.run_in_background = self.get_value_for_key(
             d, JanisConfiguration.Keys.RunInBackground, default
         )
+        self.digest_cache_location = self.get_value_for_key(
+            d, JanisConfiguration.Keys.DigestCacheLocation, {}
+        )
+        if not self.digest_cache_location:
+            self.digest_cache_location = os.path.join(self.configdir, "digest_cache")
 
         sp = self.get_value_for_key(d, JanisConfiguration.Keys.SearchPaths, default)
         self.searchpaths = sp if isinstance(sp, list) else [sp]

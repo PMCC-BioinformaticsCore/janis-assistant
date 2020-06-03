@@ -364,7 +364,7 @@ hsqldb.script_format=3
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes="""\
-Int runtime_seconds = 86400
+Int duration = 86400
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker
@@ -377,7 +377,7 @@ String? queue
         -D ${{cwd}} \\
         -o ${{out}} \\
         -e ${{err}} \\
-        -t 0:${{runtime_seconds}} \\
+        -t 0:${{duration}} \\
         ${{"-p " + queue}} \\
         ${{"-n " + cpu}} \\
         --mem=${{memory_mb}} \\
@@ -421,7 +421,7 @@ String? queue
                 )
 
                 slurm.config.runtime_attributes = """\
-Int runtime_seconds
+Int duration
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker
@@ -450,7 +450,7 @@ String? queue
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
                 -e ${{cwd}}/execution/stderr \\
-                -t '0:${{runtime_seconds}}' \\
+                -t '0:${{duration}}' \\
                 {emailextra} \\
                 --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
                 {afternotokaycommand} \\

@@ -64,10 +64,15 @@ def get_file_from_searchname(name, cwd):
         Logger.log(
             f"Got value for env JANIS_SEARCHPATH '{search_path}', searching for file '{name}' here."
         )
-        with Path(search_path):
-            if os.path.exists(name) and os.path.isfile(resolved):
-                Logger.log(f"Found file in '{search_path}' called '{name}'")
-                return search_path + name
+        if os.path.exists(search_path):
+            with Path(search_path):
+                if os.path.exists(name) and os.path.isfile(resolved):
+                    Logger.log(f"Found file in '{search_path}' called '{name}'")
+                    return search_path + name
+        else:
+            Logger.warn(
+                f"Search path '{search_path}' (obtained from $JANIS_SEARCHPATH) does not exist "
+            )
     else:
         Logger.log("Couldn't find JANIS_SEARCHPATH in environment variables, skipping")
 

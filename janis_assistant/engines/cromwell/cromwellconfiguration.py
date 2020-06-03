@@ -700,6 +700,11 @@ String? docker
                 )
             self.hash_lookup = hash_lookup
 
+        @classmethod
+        def default(cls):
+            return None
+            # return cls(hash_lookup=cls.HashLookup(enabled=False))
+
         key_map = {"hash_lookup": "hash-lookup"}
 
     class CallCaching(Serializable):
@@ -735,7 +740,7 @@ String? docker
         database: Database = None,
         backend: Backend = None,
         engine: Engine = None,
-        docker: Docker = None,
+        docker: Docker = Docker.default(),
         cache: CallCaching = None,
         aws=None,
     ):

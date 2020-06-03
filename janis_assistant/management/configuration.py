@@ -538,6 +538,7 @@ class JanisDatabaseConfigurationHelper:
             username=config.username,
             password=config.password,
             database=config.dbname,
+            maxConnections=2,
         )
 
     def get_config_for_filebased_db(self, path):

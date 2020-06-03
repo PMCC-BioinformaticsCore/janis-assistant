@@ -194,6 +194,7 @@ class CromwellConfiguration(Serializable):
                 user=None,
                 password=None,
                 num_threads=None,
+                maxConnections=None,
             ):
                 self.driver = driver
                 self.url = url
@@ -201,6 +202,7 @@ class CromwellConfiguration(Serializable):
                 self.password = password
                 self.connectionTimeout = connection_timeout
                 self.num_threads = num_threads
+                self.maxConnections = maxConnections
 
         def __init__(self, profile=None, insert_batch_size=None, db: Db = None):
             self.db = db
@@ -219,6 +221,7 @@ class CromwellConfiguration(Serializable):
             connection_timeout=5000,
             database="cromwell",
             url="127.0.0.1",
+            maxConnections=None,
         ):
             return cls(
                 profile="slick.jdbc.MySQLProfile$",
@@ -228,6 +231,7 @@ class CromwellConfiguration(Serializable):
                     user=username,
                     password=password,
                     connection_timeout=connection_timeout,
+                    maxConnections=maxConnections,
                 ),
             )
 

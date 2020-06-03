@@ -97,7 +97,7 @@ def resolve_tool(
         v = None
         if ":" in tool:
             ps = tool.split(":")
-            workflow, v = ps[0], ps[1]
+            tool, v = ps[0], ps[1]
 
         wf = j.JanisShed.get_tool(tool, v)
 

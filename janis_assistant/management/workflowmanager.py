@@ -627,6 +627,8 @@ class WorkflowManager:
 
         reverse_lookup = {}
         for versioned_toolid, container in containermap.items():
+            if container is None:
+                continue
             key = container.lower()
             reverse_lookup[key] = reverse_lookup.get(key, []) + [versioned_toolid]
 

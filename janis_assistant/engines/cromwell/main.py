@@ -218,6 +218,7 @@ class Cromwell(Engine):
         self._process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             # preexec_fn creates a process group https://stackoverflow.com/a/4791612/
             preexec_fn=os.setsid,
         )
@@ -233,15 +234,16 @@ class Cromwell(Engine):
             self._process.stdout.readline, "b"
         ):  # replace '' with b'' for Python 3
 
+            line = None if not c else c.decode("utf-8").rstrip()
+
             rc = self._process.poll()
             if rc is not None:
+                critical_suffix = f"Last received message '{line}'. "
                 Logger.critical(
-                    f"Cromwell has exited with rc={rc}. The last lines of the logfile ({self.logfile}):"
+                    f"Cromwell has exited with rc={rc}. {critical_suffix}The last lines of the logfile ({self.logfile}):"
                 )
                 Logger.critical(tail(self._logfp, 10))
-                return
-
-            line = c.decode("utf-8").rstrip()
+                return False
 
             if not line:
                 continue

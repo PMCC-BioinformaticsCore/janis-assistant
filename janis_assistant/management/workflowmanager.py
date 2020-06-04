@@ -582,7 +582,11 @@ class WorkflowManager:
                     "Skipping database config as '--no-database' option was provided."
                 )
 
-        engine.start_engine(additional_cromwell_options=additional_cromwell_params)
+        engine_is_started = engine.start_engine(
+            additional_cromwell_options=additional_cromwell_params
+        )
+        if engine_is_started is False or engine_is_started is None:
+            raise Exception(f"The engine '{engine.id()}' was not be started, returning")
         # Write the new engine details back into the database (for like PID, host and is_started)
         self.database.workflowmetadata.engine = engine
 

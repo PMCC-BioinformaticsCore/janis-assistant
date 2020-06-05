@@ -78,6 +78,8 @@ class CromwellConfiguration(Serializable):
         '${sub(sub(cwd, ".*call-", ""), "/", "-")}-cpu-${cpu}-mem-${memory_mb}'
     )
 
+    CATCH_ERROR_COMMAND = '[ ! -f rc ] && (echo 1 >> ${cwd}/execution/rc) && (echo "A slurm error occurred" >> ${cwd}/execution/stderr)'
+
     class Webservice(Serializable):
         def __init__(
             self, port=None, interface=None, binding_timeout=None, instance_name=None
@@ -404,7 +406,7 @@ String? docker""".strip(),
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = " && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap 'echo 1 >> ${cwd}/execution/rc')"
+                    afternotokaycommand = f" && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 partitions = (
                     ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
@@ -543,7 +545,7 @@ String? docker
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = " && NTOKDEP=$(echo 'echo 1 >> ${cwd}/execution/rc' | qsub -m p -W depend=afternotok:$JOBID -l nodes=1:ppn=1,mem=1GB,walltime=00:01:00)"
+                    afternotokaycommand = f" && NTOKDEP=$(echo '{CromwellConfiguration.CATCH_ERROR_COMMAND}' | qsub -m p -W depend=afternotok:$JOBID -l nodes=1:ppn=1,mem=1GB,walltime=00:01:00)"
                 qparam = ""
                 if queues:
                     qparam = "-q " + (

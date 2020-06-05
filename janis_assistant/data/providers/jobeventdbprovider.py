@@ -1,7 +1,9 @@
-from typing import List
+from typing import List, Optional
+from sqlite3 import OperationalError
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 from janis_assistant.data.models.workflowjob import WorkflowJobEventModel
+from janis_core.utils.logger import Logger
 
 
 class JobEventDbProvider(DbProviderBase):
@@ -34,11 +36,26 @@ class JobEventDbProvider(DbProviderBase):
 
         return [WorkflowJobEventModel.from_row(r) for r in rows]
 
-    def get_all(self) -> List[WorkflowJobEventModel]:
-        with self.with_cursor() as cursor:
+    def get_all(self) -> Optional[List[WorkflowJobEventModel]]:
+        query = "SELECT * FROM jobevents WHERE wid = ?"
 
-            cursor.execute("SELECT * FROM jobevents WHERE wid = ?", (self.wid,))
-            rows = cursor.fetchall()
+        with self.with_cursor() as cursor:
+            try:
+                cursor.execute(query, (self.wid,))
+                rows = cursor.fetchall()
+            except OperationalError as e:
+                if "readonly database" in str(e):
+                    # mfranklin: idk, this sometimes happens. We're doing a select query, idk sqlite3 driver...
+                    Logger.debug(
+                        "Got readonly error when running query: '{query}', skipping for now"
+                    )
+                    return None
+                elif "locked" in str(e):
+                    Logger.debug(
+                        "We hit the database at the same time the janis process wrote to it, meh"
+                    )
+                    return None
+                raise e
 
         return [WorkflowJobEventModel.from_row(row) for row in rows]
 

@@ -331,7 +331,17 @@ class WorkflowManager:
         """
 
         if self.database.progressDB.has(ProgressKeys.workflowMovedToFinalState):
+
             meta = self.database.get_metadata()
+            for idx in range(1, 6):
+                if meta is not None:
+                    break
+                Logger.info(
+                    f"Couldn't get metadata from DB, sleeping for a second then will try again {5 - idx} times"
+                )
+                time.sleep(1)
+                meta = self.database.get_metadata()
+
             formatted = meta.format(**kwargs)
             print(formatted)
             return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
@@ -357,6 +367,9 @@ class WorkflowManager:
 
     def get_meta_call(self):
         meta = self.database.get_metadata()
+        if meta is None:
+            return None, False
+
         return meta, meta and meta.status in TaskStatus.final_states()
 
     def poll_stored_metadata_with_clear(self, seconds=3, **kwargs):
@@ -1172,8 +1185,17 @@ class WorkflowManager:
         self.database.workflowmetadata.status = status
         self.database.commit()
         # send an email here
+        meta = self.database.get_metadata()
+        for idx in range(1, 6):
+            if meta is not None:
+                break
+            Logger.info(
+                f"Metadata was none when getting from db, sleeping for a second then will try again {5-idx} times"
+            )
+            time.sleep(1)
+            meta = self.database.get_metadata()
 
-        NotificationManager.notify_status_change(status, self.database.get_metadata())
+        NotificationManager.notify_status_change(status, meta)
 
     def save_metadata(self, meta: WorkflowModel) -> Optional[bool]:
         if not meta:

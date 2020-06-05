@@ -1,8 +1,11 @@
-from typing import List, TypeVar, Iterable, Union, Callable, Dict
+from typing import List, TypeVar, Iterable, Union, Callable, Dict, Optional
+
+from janis_core import Logger
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 from janis_assistant.data.providers.jobeventdbprovider import JobEventDbProvider
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from sqlite3 import OperationalError
 
 T = TypeVar("T")
 
@@ -93,19 +96,33 @@ class JobDbProvider(DbProviderBase):
 
         return parsed
 
-    def get_all(self) -> List[WorkflowJobModel]:
+    def get_all(self) -> Optional[List[WorkflowJobModel]]:
+        query = "SELECT * FROM jobs WHERE wid = ?"
         with self.with_cursor() as cursor:
+            try:
+                cursor.execute(query, (self.wid,))
+                rows = cursor.fetchall()
+            except OperationalError as e:
+                if "readonly database" in str(e):
+                    # mfranklin: idk, this sometimes happens. We're doing a select query, idk sqlite3 driver...
+                    Logger.debug(
+                        "Got readonly error when running query: '{query}', skipping for now"
+                    )
+                    return None
+                elif "locked" in str(e):
+                    Logger.debug(
+                        "We hit the database at the same time the janis process wrote to it, meh"
+                    )
+                    return None
+                raise e
 
-            cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
-            rows = cursor.fetchall()
         return [WorkflowJobModel.from_row(row) for row in rows]
 
-    def get_all_mapped(self) -> List[WorkflowJobModel]:
-        with self.with_cursor() as cursor:
+    def get_all_mapped(self) -> Optional[List[WorkflowJobModel]]:
 
-            cursor.execute("SELECT * FROM jobs WHERE wid = ?", (self.wid,))
-            rows = cursor.fetchall()
-        alljobs = [WorkflowJobModel.from_row(row) for row in rows]
+        alljobs = self.get_all()
+        if alljobs is None:
+            return None
         events = self.eventsDB.get_all()
 
         groupedjobs = groupby([a for a in alljobs if a.parentjid], "parentjid")

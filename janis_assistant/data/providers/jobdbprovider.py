@@ -123,14 +123,15 @@ class JobDbProvider(DbProviderBase):
         alljobs = self.get_all()
         if alljobs is None:
             return None
-        events = self.eventsDB.get_all()
+        # mfranklin: 2020-06-05 - nothing actually is stored in events, so skip it atm
+        # events = self.eventsDB.get_all()
 
         groupedjobs = groupby([a for a in alljobs if a.parentjid], "parentjid")
-        groupedevents = groupby(events, lambda e: e.jid)
+        # groupedevents = groupby(events, lambda e: e.jid)
 
         for job in alljobs:
             job.jobs = groupedjobs.get(job.jid)
-            job.events = groupedevents.get(job.jid, [])
+            # job.events = groupedevents.get(job.jid, [])
 
         return [j for j in alljobs if j.parentjid is None]
 

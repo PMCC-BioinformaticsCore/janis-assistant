@@ -156,6 +156,12 @@ class WorkflowDbManager:
 
     def get_metadata(self):
         jobs = self.jobsDB.get_all_mapped()
+        if jobs is None:
+            Logger.log(
+                f"Jobs list for {self.workflowmetadata.wid} was None, skipping this time."
+            )
+            return None
+
         return WorkflowModel(
             wid=self.workflowmetadata.wid,
             engine_wid=self.workflowmetadata.engine_wid,

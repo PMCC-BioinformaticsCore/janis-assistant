@@ -71,7 +71,7 @@ class WorkflowOutputModel:
         :return:
         """
         return WorkflowOutputModel.ARRAY_SEPARATOR_1.join(
-            WorkflowOutputModel.ARRAY_SEPARATOR_NESTED.join(i)
+            WorkflowOutputModel.ARRAY_SEPARATOR_NESTED.join(str(j) for j in i)
             if isinstance(i, list)
             else str(i)
             for i in array

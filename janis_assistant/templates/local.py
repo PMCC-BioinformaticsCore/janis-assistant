@@ -19,6 +19,13 @@ class LocalTemplate(EnvironmentTemplate):
     def cromwell(self, janis_configuration):
         hashing_strategy = janis_configuration.cromwell.call_caching_method or "file"
 
+        localizationmethod = [
+            "hard-link",
+            "cached-copy",
+            "copy",
+            "soft-link",
+        ]
+
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(),
             # equiv to providers.Local.config.filesystems.local.caching.hashing-strategy = "path+modtime"
@@ -27,14 +34,12 @@ class LocalTemplate(EnvironmentTemplate):
                     "Local": CromwellConfiguration.Backend.Provider(
                         config=CromwellConfiguration.Backend.Provider.Config(
                             filesystems={
-                                "local": CromwellConfiguration.Backend.Provider.Config.Filesystem.Caching(
-                                    duplication_strategy=[
-                                        "hard-link",
-                                        "cached-copy",
-                                        "copy",
-                                        "soft-link",
-                                    ],
-                                    hashing_strategy=hashing_strategy,
+                                "local": CromwellConfiguration.Backend.Provider.Config.Filesystem(
+                                    caching=CromwellConfiguration.Backend.Provider.Config.Filesystem.Caching(
+                                        duplication_strategy=localizationmethod,
+                                        hashing_strategy=hashing_strategy,
+                                    ),
+                                    localization=localizationmethod,
                                 )
                             }
                         )

@@ -280,7 +280,17 @@ hsqldb.script_format=3
                             "check_sibling_md5": "check-sibling-md5",
                         }
 
-                    def __init__(self, enabled: bool = True, caching: Caching = None):
+                    def __init__(
+                        self,
+                        enabled: bool = True,
+                        caching: Caching = None,
+                        localization=None,
+                    ):
+                        self.localization = (
+                            localization
+                            if localization is not None
+                            else ["hard-link", "cached-copy"]
+                        )
                         self.enabled = enabled
                         self.caching = caching
 

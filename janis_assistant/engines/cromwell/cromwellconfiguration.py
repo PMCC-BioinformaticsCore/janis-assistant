@@ -307,7 +307,8 @@ hsqldb.script_format=3
                                         "soft-link",
                                     ],
                                     hashing_strategy=(cache_method or "file"),
-                                )
+                                ),
+                                localization=["hard-link", "cached-copy"],
                             )
                         }
 

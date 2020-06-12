@@ -88,24 +88,6 @@ class BatchPipelineModifier(PipelineModifierBase):
                 w.step(stepid_from_gb(gbvalue), tool(**innode_base, **extra_ins))
             )
 
-        def transform_token_in_output_namers(token, outputid):
-            if token is None:
-                return token
-            if isinstance(token, list):
-                return [transform_token_in_output_namers(t, outputid) for t in token]
-            if isinstance(token, InputSelector):
-                if token.input_to_select in fields:
-                    # need to transform it
-                    return InputSelector(f"{token.input_to_select}_{outputid}")
-                else:
-                    return token
-            elif isinstance(token, (str, int, float, bool)):
-                return token
-            else:
-                raise Exception(
-                    f"Unsure how to translate token of type {token.__class__.__name__} "
-                )
-
         for out in tool.tool_outputs():
             output_folders = []
             output_name = out.id()
@@ -121,10 +103,10 @@ class BatchPipelineModifier(PipelineModifierBase):
                 # or a literal value, otherwise this will probably break (this will probably break for expressions)
 
                 output_folders_transformed = transform_token_in_output_namers(
-                    output_folders, gbvalue
+                    fields, output_folders, gbvalue
                 )
                 output_name_transformed = transform_token_in_output_namers(
-                    output_name, gbvalue
+                    fields, output_name, gbvalue
                 )
 
                 w.output(
@@ -214,3 +196,22 @@ class BatchPipelineModifier(PipelineModifierBase):
             raise ValueError("There were errors in the inputs: " + str(invalid_fields))
 
         return True
+
+
+def transform_token_in_output_namers(fields, token, outputid):
+    if token is None:
+        return token
+    if isinstance(token, list):
+        return [transform_token_in_output_namers(fields, t, outputid) for t in token]
+    if isinstance(token, InputSelector):
+        if token.input_to_select in fields:
+            # need to transform it
+            return InputSelector(f"{token.input_to_select}_{outputid}")
+        else:
+            return token
+    elif isinstance(token, (str, int, float, bool)):
+        return token
+    else:
+        raise Exception(
+            f"Unsure how to translate token of type {token.__class__.__name__} "
+        )

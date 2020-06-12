@@ -6,7 +6,7 @@ from janis_assistant.utils.batchrun import BatchRunRequirements
 
 
 def cascade_inputs(
-    wf: Workflow,
+    wf: Optional[Workflow],
     inputs: Optional[Union[Dict, List[Union[str, Dict]]]],
     required_inputs: Optional[Dict],
     batchrun_options: Optional[BatchRunRequirements],
@@ -27,6 +27,11 @@ def cascade_inputs(
                 list_of_input_dicts.append(parse_dict(inputsfile))
 
     if required_inputs:
+        if wf is None:
+            raise Exception(
+                "cascade_inputs requires wf parameter if required_inputs is present"
+            )
+
         reqkeys = set(required_inputs.keys())
         inkeys = set(wf.all_input_keys())
         invalid_keys = reqkeys - inkeys

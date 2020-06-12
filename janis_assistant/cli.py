@@ -376,13 +376,14 @@ def add_inputs_args(parser):
     return parser
 
 
-def add_run_args(parser):
+def add_run_args(parser, add_workflow_argument=True):
     from janis_core import HINTS, HintEnum
 
-    parser.add_argument(
-        "workflow",
-        help="Run the workflow defined in this file or available within the toolbox",
-    )
+    if add_workflow_argument:
+        parser.add_argument(
+            "workflow",
+            help="Run the workflow defined in this file or available within the toolbox",
+        )
 
     parser.add_argument("-c", "--config", help="Path to config file")
 

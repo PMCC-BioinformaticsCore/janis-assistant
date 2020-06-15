@@ -120,7 +120,8 @@ class CromwellConfiguration(Serializable):
                         # Below are the default values set by Akka, uncomment to tune these
                         # 'parallelism-factor': 3.0
                         "parallelism-max": 3
-                    }
+                    },
+                    "http": {"server": {"request-timeout": "100s"}},
                 }
             )
 
@@ -248,7 +249,7 @@ jdbc:hsqldb:file:{location};
 shutdown=false;
 hsqldb.default_table_type=cached;
 hsqldb.tx=mvcc;
-hsqldb.result_max_memory_rows=2500;
+hsqldb.result_max_memory_rows=5000;
 hsqldb.large_data=true;
 hsqldb.applog=1;
 hsqldb.lob_compressed=true;

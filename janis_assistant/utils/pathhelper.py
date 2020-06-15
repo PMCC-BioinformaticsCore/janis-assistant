@@ -127,6 +127,8 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     try:
         import sys
 
+        basefilename = os.path.basename(file)
+
         sys.path.append(os.path.dirname(file))
         spec = importlib.util.spec_from_file_location("module.name", file)
         foo = importlib.util.module_from_spec(spec)
@@ -140,16 +142,43 @@ def get_workflow_from_file(file, name, include_commandtools=False):
             f"Unrecognised python file when getting workflow / command tool: {file} :: {e}"
         )
 
-    if name:
-        ptypes = [(k, v) for (k, v) in ptypes if k == name]
+    # Per https://github.com/PMCC-BioinformaticsCore/janis-core/issues/31, we'll use the following process:
+    # 	1. If a `name` is defined:
+    # 	    - Force parse every token with a case-insensitive match
+    # 	    - If a single item is returned from a case-sensitive match, then use that
+    # 	2. If multiple workflows are defined in the same file, use the last defined workflow
+    # 	   - This covers the existing _If a single workflow is defined, use that_ case
+    # 	3. If no tools were found, raise an Exception
+    # 	4. If multiple tools are defined in the file, use the last one:
+    # 	   - If a name was defined, `warn` the user that the case-insensitive match returned no results and use the last one
+    # 	   - Otherwise, just tell the user we'll use the last defined tool
+
+    ptypes_casesensitive = [(k, v) for (k, v) in ptypes if k == name]
+
+    if len(ptypes_casesensitive) == 1:
+        return ptypes_casesensitive[0][1]
 
     wftypes = [
         t
         for t in ptypes
         if (issubclass(t[1], Workflow) if isclass(t[1]) else isinstance(t[1], Workflow))
     ]
-    if len(wftypes) == 1:
-        return wftypes[0][1]
+    detected_tokens = ", ".join(f"'{x[0]}' ({x[1].__class__.__name__})" for x in ptypes)
+
+    if len(wftypes) > 0:
+        if len(wftypes) > 1:
+            if name:
+                Logger.warn(
+                    f"Providing the `--name` parameter performs a case-insensitive search for the tokens in "
+                    f"'{basefilename}, and a case-sensitive search returned no results. You had {len(wftypes)} "
+                    f"tokens that matched this search. Janis will use the last one, defined as "
+                    f"'{ptypes[-1][0]}' from: {detected_tokens}"
+                )
+            else:
+                Logger.info(
+                    f"Multiple workflows were found in '{basefilename}', using '{wftypes[-1][0]}'"
+                )
+        return wftypes[-1][1]
 
     if len(ptypes) == 0:
         raise Exception(
@@ -157,19 +186,21 @@ def get_workflow_from_file(file, name, include_commandtools=False):
             f"to get more information (it might have abstract / unimplemented methods)."
         )
     if len(ptypes) > 1:
-        action = (
-            "(please specify the workflow to use via the `--name` parameter, this name must be the name of "
-            "the variable or the class name and not the workflowId)"
-        )
+
         if name:
-            action = "(you might need to restructure your file to allow --name to uniquely identify your workflow"
+            Logger.warn(
+                f"Providing the `--name` parameter performs a case-insensitive search for the tokens in "
+                f"'{basefilename}, and a case-sensitive search returned no results. You had {len(ptypes)} "
+                f"tokens that matched this search. Janis will use the last one, defined as "
+                f"'{ptypes[-1][0]}' from: {detected_tokens}"
+            )
+        else:
+            Logger.info(
+                f"There were multiple tools (an no workflows) detected in {basefilename}, "
+                f"Janis will use '{ptypes[-1][0]}' (the last defined)"
+            )
 
-        raise Exception(
-            f"There was more than one workflow ({len(ptypes)}) detected in '{file}' {action}. Detected tokens: "
-            + ", ".join(f"'{x[0]}' ({x[1].__class__.__name__})" for x in ptypes)
-        )
-
-    return ptypes[0][1]
+    return ptypes[-1][1]
 
 
 def get_janis_from_module_spec(spec, include_commandtools=False, name: str = None):

@@ -146,9 +146,20 @@ class EnvironmentTemplate(ABC):
             <li>Execution directory: <code>{exdir}</code></li>
         </ul>
         
+        {progress_and_header}
+        
+        Kind regards,
+        - Janis
+        """
+
+        progress_and_header = ""
+        if status.is_in_final_state():
+            progress_and_header = f"""\
         <hr />
-        <h2>Progress</h2>
-        {progress}
+        <h3>Progress</h3>        
+        <pre>
+        {metadata.format(monochrome=True, brief=True)}
+        </pre>
         """
 
         return _status_change_template.format(
@@ -157,7 +168,7 @@ class EnvironmentTemplate(ABC):
             status=status,
             exdir=metadata.execution_dir,
             tdir=metadata.outdir,
-            progress=metadata.format(monochrome=True, brief=True),
+            progress_and_header=progress_and_header,
         )
 
 

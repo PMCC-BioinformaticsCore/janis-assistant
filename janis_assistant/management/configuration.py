@@ -382,7 +382,7 @@ class JanisConfiguration(NoAttributeErrors):
             default.get(JanisConfiguration.Keys.Cromwell),
         )
 
-        self.template = JanisConfiguration.JanisConfigurationTemplate(
+        self.template: JanisConfiguration.JanisConfigurationTemplate = JanisConfiguration.JanisConfigurationTemplate(
             d.get(JanisConfiguration.Keys.Template),
             default.get(JanisConfiguration.Keys.Template),
         )

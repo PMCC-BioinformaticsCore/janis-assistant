@@ -56,3 +56,10 @@ class TaskStatus(Enum):
             TaskStatus.SUSPENDED.value: "II",
         }
         return __str[self.value]
+
+    def to_hexcolor(self):
+        __str = {
+            TaskStatus.FAILED.value: "#a63030",
+        }
+
+        return __str.get(self.value)

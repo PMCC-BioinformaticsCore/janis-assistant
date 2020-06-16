@@ -11,13 +11,11 @@ class NotificationManager:
     @staticmethod
     def notify_status_change(status, metadata: WorkflowModel):
 
-        body = NotificationManager._status_change_template.format(
-            wid=metadata.wid,
-            wfname=metadata.name,
-            status=status,
-            exdir=metadata.execution_dir,
-            tdir=metadata.outdir,
+        body = JanisConfiguration.manager().template.template.prepare_status_update_email(
+            status=status, metadata=metadata
         )
+
+        print("SENDING: " + body)
 
         NotificationManager.send_email(
             subject=f"{metadata.wid} status to {status}", body=body

@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 import os.path
 from typing import Type, Optional, List, Dict
 
+from janis_assistant.data.models.workflow import WorkflowModel
+
+from janis_assistant.data.enums import TaskStatus
+
 from janis_assistant.utils import fully_qualify_filename
 from janis_core import Logger
 
@@ -128,6 +132,33 @@ class EnvironmentTemplate(ABC):
         :return: str: bash script to run
         """
         pass
+
+    def prepare_status_update_email(self, status: TaskStatus, metadata: WorkflowModel):
+
+        _status_change_template = """\
+        <h1>Status change: {status}</h1>
+
+        <p>
+            The workflow '{wfname}' ({wid}) moved to the '{status}' status.
+        </p>
+        <ul>
+            <li>Task directory: <code>{tdir}</code></li>
+            <li>Execution directory: <code>{exdir}</code></li>
+        </ul>
+        
+        <hr />
+        <h2>Progress</h2>
+        {progress}
+        """
+
+        return _status_change_template.format(
+            wid=metadata.wid,
+            wfname=metadata.name,
+            status=status,
+            exdir=metadata.execution_dir,
+            tdir=metadata.outdir,
+            progress=metadata.format(monochrome=True, brief=True),
+        )
 
 
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):

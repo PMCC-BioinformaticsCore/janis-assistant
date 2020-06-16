@@ -27,6 +27,9 @@ class TaskStatus(Enum):
             TaskStatus.SUSPENDED,
         ]
 
+    def is_in_final_state(self):
+        return self in self.final_states()
+
     def __str__(self):
         __str = {
             TaskStatus.PROCESSING.value: "Processing",

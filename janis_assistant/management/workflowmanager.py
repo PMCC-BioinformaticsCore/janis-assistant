@@ -36,6 +36,7 @@ from janis_core import (
 )
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
+from janis_core.operators.operator import Operator
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
@@ -68,6 +69,7 @@ from janis_assistant.utils import (
     recursively_join,
     find_free_port,
     fully_qualify_filename,
+    convert_value_or_list_to_string,
 )
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
@@ -802,24 +804,16 @@ class WorkflowManager:
         return self.database.outputsDB.insert_many(outputs)
 
     def evaluate_output_selector(self, selector, inputs: dict):
-        if selector is None:
-            return None
-
-        if isinstance(selector, str):
-            return selector
-
-        if isinstance(selector, list):
-            return [self.evaluate_output_selector(s, inputs) for s in selector]
-
-        if isinstance(selector, InputSelector):
-            if selector.input_to_select not in inputs:
-                Logger.warn(f"Couldn't find the input {selector.input_to_select}")
+        try:
+            if selector is None:
                 return None
-            return inputs[selector.input_to_select]
-
-        raise Exception(
-            f"Janis assistant cannot evaluate selecting the output from a {type(selector).__name__} type"
-        )
+            return convert_value_or_list_to_string(
+                Operator.evaluate_arg(selector, inputs)
+            )
+        except Exception as e:
+            raise Exception(
+                f"Janis assistant couldn't evaluate the output {str(selector)}: {repr(e)}"
+            )
 
     def submit_workflow_if_required(self):
         if self.database.progressDB.has(ProgressKeys.submitWorkflow):

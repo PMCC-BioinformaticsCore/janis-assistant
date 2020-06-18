@@ -214,3 +214,9 @@ def validate_inputs(tool: Tool, additional_inputs):
         return True
 
     raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
+
+
+def convert_value_or_list_to_string(value):
+    if isinstance(value, list):
+        return [convert_value_or_list_to_string(v) for v in value]
+    return str(value)

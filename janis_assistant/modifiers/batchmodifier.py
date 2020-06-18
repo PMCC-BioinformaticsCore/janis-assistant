@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 from janis_core import Tool, WorkflowBuilder, Workflow, Array, InputSelector
+from janis_core.operators.operator import Operator, Selector
 from janis_core.utils import find_duplicates, validators
 from janis_core.utils.validators import Validators
 
@@ -75,7 +76,7 @@ class BatchPipelineModifier(PipelineModifierBase):
 
         steps_created = []
 
-        stepid_from_gb = lambda gb: f"{gbvalue}_{tool.id()}"
+        stepid_from_gb = lambda gb: f"{gb}_{tool.id()}"
 
         for gbvalue in groupby_values:
 
@@ -95,18 +96,19 @@ class BatchPipelineModifier(PipelineModifierBase):
                 outnode = tool.output_nodes[out.id()]
                 output_folders = outnode.output_folder or []
 
-                if outnode.output_name:
+                if outnode.output_name is not None:
                     output_name = outnode.output_name
 
-            for gbvalue, raw_gbvalue in zip(groupby_values, raw_groupby_values):
-                # This is pretty hacky, we're relying on the output_folder and output_name to be InputSelectors
-                # or a literal value, otherwise this will probably break (this will probably break for expressions)
+            for idx, gbvalue, raw_gbvalue in zip(
+                range(len(groupby_values)), groupby_values, raw_groupby_values
+            ):
+                transformed_inputs = {**inputs, **{f: inputs[f][idx] for f in fields}}
 
-                output_folders_transformed = transform_token_in_output_namers(
-                    fields, output_folders, gbvalue
+                output_folders_transformed = Operator.evaluate_arg(
+                    output_folders, transformed_inputs
                 )
-                output_name_transformed = transform_token_in_output_namers(
-                    fields, output_name, gbvalue
+                output_name_transformed = Operator.evaluate_arg(
+                    output_name, transformed_inputs
                 )
 
                 w.output(
@@ -196,22 +198,3 @@ class BatchPipelineModifier(PipelineModifierBase):
             raise ValueError("There were errors in the inputs: " + str(invalid_fields))
 
         return True
-
-
-def transform_token_in_output_namers(fields, token, outputid):
-    if token is None:
-        return token
-    if isinstance(token, list):
-        return [transform_token_in_output_namers(fields, t, outputid) for t in token]
-    if isinstance(token, InputSelector):
-        if token.input_to_select in fields:
-            # need to transform it
-            return InputSelector(f"{token.input_to_select}_{outputid}")
-        else:
-            return token
-    elif isinstance(token, (str, int, float, bool)):
-        return token
-    else:
-        raise Exception(
-            f"Unsure how to translate token of type {token.__class__.__name__} "
-        )

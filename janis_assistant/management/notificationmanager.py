@@ -15,8 +15,6 @@ class NotificationManager:
             status=status, metadata=metadata
         )
 
-        print("SENDING: " + body)
-
         NotificationManager.send_email(
             subject=f"{metadata.wid} status to {status}", body=body
         )

@@ -7,6 +7,7 @@ from typing import List
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.providers.inputsdbprovider import InputDbProvider
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider
 from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
 from janis_assistant.data.providers.progressdbprovider import ProgressDbProvider
@@ -63,9 +64,10 @@ class WorkflowDbManager:
             sqlpath, wid=wid, readonly=readonly
         )
         self.progressDB = ProgressDbProvider(db=self.connection, wid=wid)
-
         self.outputsDB = OutputDbProvider(db=self.connection, wid=wid)
         self.jobsDB = JobDbProvider(db=self.connection, wid=wid)
+        self.inputsDB = InputDbProvider(db=self.connection, wid=wid)
+
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
     @contextmanager
@@ -162,6 +164,8 @@ class WorkflowDbManager:
             )
             return None
 
+        inputs = self.inputsDB.get_all()
+
         return WorkflowModel(
             wid=self.workflowmetadata.wid,
             engine_wid=self.workflowmetadata.engine_wid,
@@ -184,6 +188,7 @@ class WorkflowDbManager:
                 if self.workflowmetadata.status == TaskStatus.COMPLETED
                 else None
             ),
+            inputs=inputs,
         )
 
     def flatten_jobs(self, jobs: List[WorkflowJobModel]):

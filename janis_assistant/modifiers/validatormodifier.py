@@ -16,7 +16,10 @@ class ValidatorPipelineModifier(PipelineModifierBase):
         from janis_bioinformatics.data_types import FastaWithDict, Vcf, Bed
         from janis_bioinformatics.tools.illumina import HapPyValidator_0_3_9
 
-        failed_outputs, untyped_outputs = ensure_outputs_are_in_workflow_and_are_compatible(
+        (
+            failed_outputs,
+            untyped_outputs,
+        ) = ensure_outputs_are_in_workflow_and_are_compatible(
             tool, self.validation.fields, Vcf()
         )
 
@@ -70,7 +73,7 @@ class ValidatorPipelineModifier(PipelineModifierBase):
                 ),
             )
 
-            # Connect all the outputs of the validator to an output
+            # Connect all the inputs of the validator to an output
             for vo in valstp.tool.outputs():
                 w.output(
                     f"validated_{o}_{vo.id()}",

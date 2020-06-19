@@ -749,28 +749,29 @@ class WorkflowManager:
             container_override=container_overrides,
         )
 
-        self.evaluate_output_params(
-            wf=tool_to_evaluate, additional_inputs=additional_inputs
+        mapped_inps = CwlTranslator().build_inputs_file(
+            tool_to_evaluate, recursive=False, additional_inputs=additional_inputs
         )
+
+        self.database.inputsDB.insert_inputs_from_dict(mapped_inps)
+
+        self.evaluate_output_params(wf=tool_to_evaluate, inputs=mapped_inps)
 
         self.database.progressDB.set(ProgressKeys.saveWorkflow)
         return tool_to_evaluate
 
-    def evaluate_output_params(self, wf: Tool, additional_inputs: dict):
+    def evaluate_output_params(self, wf: Tool, inputs: dict):
 
-        mapped_inps = CwlTranslator().build_inputs_file(
-            wf, recursive=False, additional_inputs=additional_inputs
-        )
         output_names: Dict[str, any] = {}
         output_folders: Dict[str, any] = {}
 
         if isinstance(wf, Workflow):
             for o in wf.output_nodes.values():
                 output_names[o.id()] = self.evaluate_output_selector(
-                    o.output_name, mapped_inps
+                    o.output_name, inputs
                 )
                 output_folders[o.id()] = self.evaluate_output_selector(
-                    o.output_folder, mapped_inps
+                    o.output_folder, inputs
                 )
 
         outputs: List[WorkflowOutputModel] = []

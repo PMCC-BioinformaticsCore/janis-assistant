@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Union, List
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
+from janis_assistant.data.models.inputs import WorkflowInputModel
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflowjob import WorkflowJobModel
 from janis_assistant.utils import second_formatter
@@ -30,6 +31,7 @@ class WorkflowModel:
         last_updated: datetime = None,
         tags: List[str] = None,
         outputs: List[WorkflowOutputModel] = None,
+        inputs: List[WorkflowInputModel] = None,
     ):
         self.wid = wid
         self.engine_wid = engine_wid
@@ -53,6 +55,7 @@ class WorkflowModel:
 
         self.jobs: List[WorkflowJobModel] = jobs or []
         self.outputs: List[WorkflowOutputModel] = outputs
+        self.inputs = inputs or []
 
         self.author = author
 

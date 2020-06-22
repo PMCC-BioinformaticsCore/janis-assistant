@@ -286,10 +286,11 @@ class JanisConfiguration(NoAttributeErrors):
                     fpath = os.path.join(d, f)
                     parsed = self.parseable_yaml_filename_if_valid(fpath)
                     if not parsed:
-                        Logger.critical(
+                        Logger.warn(
                             f"Skipping file within recipe directory '{fpath}' as it contained "
                             f"an unrecognised extension: '{os.path.splitext(fpath)[1]}"
                         )
+                        continue
 
                     key, value = parsed
                     if key not in self._files_by_key:

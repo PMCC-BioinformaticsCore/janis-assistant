@@ -136,7 +136,7 @@ def translate(
         if not inputsdict:
             raise Exception("Dynamic workflows cannot be translated without the inputs")
 
-        toolref.constructor(inputsdict)
+        toolref.constructor(inputsdict, hints)
         inputsdict = toolref.modify_inputs(inputsdict)
 
     container_overrides = container_override
@@ -443,7 +443,7 @@ def fromjanis(
     )
 
     if isinstance(wf, DynamicWorkflow):
-        wf.constructor(inputsdict)
+        wf.constructor(inputsdict, hints)
         inputsdict = wf.modify_inputs(inputsdict)
 
     row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)

@@ -13,7 +13,7 @@ from textwrap import dedent
 import janis_core as j
 from typing import Optional, Dict, Union, Type, List
 
-from janis_core import InputQualityType, Tool
+from janis_core import InputQualityType, Tool, DynamicWorkflow
 
 from janis_assistant.data.providers.janisdbprovider import TaskRow
 from janis_assistant.templates import TemplateInput, EnvironmentTemplate
@@ -115,6 +115,7 @@ def translate(
     container_override=None,
     skip_digest_lookup=False,
     skip_digest_cache=False,
+    recipes: List[str] = None,
     **kwargs,
 ):
 
@@ -123,10 +124,20 @@ def translate(
     if not toolref:
         raise Exception(f"Couldn't find tool: '{tool}'")
 
-    inputsdict = None
-    if inputs:
-        inputsfile = get_file_from_searchname(inputs, ".")
-        inputsdict = parse_dict(inputsfile)
+    inputsdict = {}
+    if recipes:
+        jc = JanisConfiguration.manager()
+        valuesfromrecipe = jc.recipes.get_recipe_for_keys(recipes)
+        inputsdict.update(valuesfromrecipe)
+
+    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
+
+    if isinstance(toolref, DynamicWorkflow):
+        if not inputsdict:
+            raise Exception("Dynamic workflows cannot be translated without the inputs")
+
+        toolref.constructor(inputsdict)
+        inputsdict = toolref.modify_inputs(inputsdict)
 
     container_overrides = container_override
     if not skip_digest_lookup:
@@ -134,7 +145,7 @@ def translate(
             toolref, container_override, skip_digest_cache=skip_digest_cache
         )
 
-    if isinstance(toolref, j.Workflow):
+    if isinstance(toolref, j.WorkflowBase):
         wfstr, _, _ = toolref.translate(
             translation,
             to_console=False,
@@ -430,6 +441,10 @@ def fromjanis(
             batchrun_options=batchrun_reqs,
         )
     )
+
+    if isinstance(wf, DynamicWorkflow):
+        wf.constructor(inputsdict)
+        inputsdict = wf.modify_inputs(inputsdict)
 
     row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
     print(row.wid, file=sys.stdout)

@@ -1,4 +1,4 @@
-from janis_core import Workflow, DataType, Array
+from janis_core import Tool, DataType, Array, DynamicWorkflow
 from typing import Union, Dict, List, Optional
 
 from janis_assistant.utils import get_file_from_searchname, parse_dict
@@ -6,10 +6,10 @@ from janis_assistant.utils.batchrun import BatchRunRequirements
 
 
 def cascade_inputs(
-    wf: Optional[Workflow],
+    wf: Optional[Tool],
     inputs: Optional[Union[Dict, List[Union[str, Dict]]]],
     required_inputs: Optional[Dict],
-    batchrun_options: Optional[BatchRunRequirements],
+    batchrun_options: Optional[BatchRunRequirements] = None,
 ):
 
     list_of_input_dicts: List[Dict] = []
@@ -31,16 +31,18 @@ def cascade_inputs(
             raise Exception(
                 "cascade_inputs requires wf parameter if required_inputs is present"
             )
+        if isinstance(wf, DynamicWorkflow):
+            pass
+        else:
+            reqkeys = set(required_inputs.keys())
+            inkeys = set(wf.all_input_keys())
+            invalid_keys = reqkeys - inkeys
+            if len(invalid_keys) > 0:
+                raise Exception(
+                    f"There were unrecognised inputs provided to the tool \"{wf.id()}\", keys: {', '.join(invalid_keys)}"
+                )
 
-        reqkeys = set(required_inputs.keys())
-        inkeys = set(wf.all_input_keys())
-        invalid_keys = reqkeys - inkeys
-        if len(invalid_keys) > 0:
-            raise Exception(
-                f"There were unrecognised inputs provided to the tool \"{wf.id()}\", keys: {', '.join(invalid_keys)}"
-            )
-
-        list_of_input_dicts.append(parse_known_inputs(wf, required_inputs))
+            list_of_input_dicts.append(parse_known_inputs(wf, required_inputs))
 
     ins = None
     if batchrun_options:
@@ -70,7 +72,7 @@ def cascade_regular_inputs(inputs: List[Dict]):
 
 
 def cascade_batchrun_inputs(
-    workflow: Workflow, inputs: List[Dict], options: BatchRunRequirements
+    workflow: Tool, inputs: List[Dict], options: BatchRunRequirements
 ):
     fields_to_group = set(options.fields)
     fields_to_group.add(options.groupby)

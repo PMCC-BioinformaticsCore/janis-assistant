@@ -4,9 +4,9 @@ import json
 
 import ruamel.yaml
 import tabulate
-from janis_core import InputQualityType
 
-from janis_core.translationdeps.supportedtranslations import SupportedTranslation
+from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation
+from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.templates.templates import get_template_names
@@ -29,7 +29,6 @@ from janis_assistant.main import (
 )
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.utils import parse_additional_arguments
-from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
@@ -261,9 +260,11 @@ def add_translate_args(parser):
         help="language to translate to",
         choices=SupportedTranslation.all(),
     )
+    parser.add_argument("-c", "--config", help="Path to config file")
     parser.add_argument(
         "--name",
-        help="Optional name of workflow if there are multiple workflows in the tool",
+        help="If you have multiple workflows in your file, you may want to "
+        "help Janis out to select the right workflow to run",
     )
     parser.add_argument(
         "-o",
@@ -275,6 +276,39 @@ def add_translate_args(parser):
         help="Force re-download of workflow if remote",
         action="store_true",
     )
+
+    parser.add_argument(
+        "--resources",
+        action="store_true",
+        help="Add resource overrides into inputs file (eg: runtime_cpu / runtime_memory)",
+    )
+
+    parser.add_argument(
+        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
+    )
+
+    inputargs = parser.add_argument_group("Inputs")
+
+    inputargs.add_argument(
+        "-i",
+        "--inputs",
+        help="YAML or JSON inputs file to provide values for the workflow (can specify multiple times)",
+        action="append",
+    )
+    inputargs.add_argument(
+        "-r",
+        "--recipe",
+        help="Use a provided recipe from a provided template",
+        action="append",
+    )
+
+    hint_args = parser.add_argument_group("hints")
+    for HintType in HINTS:
+        if issubclass(HintType, HintEnum):
+            hint_args.add_argument(
+                "--hint-" + HintType.key(), choices=HintType.symbols()
+            )
+
     container_args = parser.add_argument_group("container related args")
 
     container_args.add_argument(
@@ -377,7 +411,6 @@ def add_inputs_args(parser):
 
 
 def add_run_args(parser, add_workflow_argument=True):
-    from janis_core import HINTS, HintEnum
 
     if add_workflow_argument:
         parser.add_argument(
@@ -979,8 +1012,20 @@ def parse_container_override_format(container_override):
 
 
 def do_translate(args):
+    jc = JanisConfiguration.initial_configuration(args.config)
 
     container_override = parse_container_override_format(args.container_override)
+
+    hints = {
+        k[5:]: v
+        for k, v in vars(args).items()
+        if k.startswith("hint_") and v is not None
+    }
+
+    inputs = args.inputs or []
+    # the args.extra_inputs parameter are inputs that we MUST match
+    # we'll need to parse them manually and then pass them to fromjanis as requiring a match
+    # required_inputs = parse_additional_arguments(args.extra_inputs)
 
     translate(
         tool=args.workflow,
@@ -992,6 +1037,9 @@ def do_translate(args):
         container_override=container_override,
         skip_digest_lookup=args.skip_digest_lookup,
         skip_digest_cache=args.skip_digest_cache,
+        inputs=inputs,
+        recipes=args.recipe,
+        hints=hints,
     )
 
 

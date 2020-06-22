@@ -33,6 +33,7 @@ from janis_core import (
     LogLevel,
     Directory,
     Tool,
+    WorkflowBase,
 )
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
@@ -765,7 +766,7 @@ class WorkflowManager:
         output_names: Dict[str, any] = {}
         output_folders: Dict[str, any] = {}
 
-        if isinstance(wf, Workflow):
+        if isinstance(wf, WorkflowBase):
             for o in wf.output_nodes.values():
                 output_names[o.id()] = self.evaluate_output_selector(
                     o.output_name, inputs

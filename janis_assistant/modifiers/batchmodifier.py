@@ -1,6 +1,13 @@
 from typing import Dict, List
 
-from janis_core import Tool, WorkflowBuilder, Workflow, Array, InputSelector
+from janis_core import (
+    Tool,
+    WorkflowBuilder,
+    Workflow,
+    Array,
+    InputSelector,
+    WorkflowBase,
+)
 from janis_core.operators.operator import Operator, Selector
 from janis_core.utils import find_duplicates, validators
 from janis_core.utils.validators import Validators
@@ -92,7 +99,7 @@ class BatchPipelineModifier(PipelineModifierBase):
         for out in tool.tool_outputs():
             output_folders = []
             output_name = out.id()
-            if isinstance(tool, Workflow):
+            if isinstance(tool, WorkflowBase):
                 outnode = tool.output_nodes[out.id()]
                 output_folders = outnode.output_folder or []
 

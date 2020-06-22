@@ -3,7 +3,7 @@ import socket
 import os.path
 from typing import Set, List, Union
 
-from janis_core import Tool, Workflow
+from janis_core import Tool, Workflow, WorkflowBase
 from janis_core.utils.logger import Logger
 from .pathhelper import (
     get_janis_workflow_from_searchname,
@@ -192,7 +192,7 @@ def validate_inputs(tool: Tool, additional_inputs):
     errors = {}
 
     input_values_from_workflow = {}
-    if isinstance(tool, Workflow):
+    if isinstance(tool, WorkflowBase):
         input_values_from_workflow = {
             inpkey: inp.value for inpkey, inp in tool.input_nodes.items() if inp.value
         }

@@ -920,8 +920,8 @@ class WorkflowManager:
             originalfile, newfilepath = self.copy_output(
                 fs=fs,
                 outputid=out.tag,
-                prefix=out.prefix,
-                tag=out.tags,
+                prefix=out.output_name,
+                tag=out.output_folder,
                 secondaries=out.secondaries,
                 extension=out.extension,
                 engine_output=eout,

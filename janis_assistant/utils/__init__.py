@@ -220,3 +220,9 @@ def convert_value_or_list_to_string(value):
     if isinstance(value, list):
         return [convert_value_or_list_to_string(v) for v in value]
     return str(value)
+
+
+def stringify_value_or_array(value):
+    if isinstance(value, list):
+        return [stringify_value_or_array(s) for s in value]
+    return str(value)

@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
@@ -54,17 +55,17 @@ class OutputDbProvider(DbProviderBase):
 
     def insert_many(self, outputs: List[WorkflowOutputModel]):
         with self.with_cursor() as cursor:
+            insertvalues = [self._insert_model_obj(self.wid, o) for o in outputs]
             cursor.executemany(
-                self._insert_statement,
-                [self._insert_model_obj(self.wid, o) for o in outputs],
+                self._insert_statement, insertvalues,
             )
         self.commit()
 
     @staticmethod
     def _insert_model_obj(wid, model: WorkflowOutputModel):
-        prefix = WorkflowOutputModel.from_array(model.prefix)
-        tags = WorkflowOutputModel.from_array(model.tags)
-        secs = WorkflowOutputModel.from_array(model.secondaries)
+        prefix = json.dumps(model.output_name)
+        tags = json.dumps(model.output_folder)
+        secs = json.dumps(model.secondaries)
 
         return (
             wid,

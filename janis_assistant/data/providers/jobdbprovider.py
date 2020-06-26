@@ -4,7 +4,7 @@ from janis_core import Logger
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 from janis_assistant.data.providers.jobeventdbprovider import JobEventDbProvider
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from sqlite3 import OperationalError
 
 T = TypeVar("T")
@@ -59,7 +59,7 @@ class JobDbProvider(DbProviderBase):
         self.wid = wid
         self.eventsDB = JobEventDbProvider(self.db, self.wid)
 
-    def get(self, jid: str) -> WorkflowJobModel:
+    def get(self, jid: str) -> RunJobModel:
         with self.with_cursor() as cursor:
 
             cursor.execute(
@@ -69,14 +69,14 @@ class JobDbProvider(DbProviderBase):
             if not row:
                 raise KeyError("Couldn't find output with id = " + jid)
 
-        return WorkflowJobModel.from_row(row)
+        return RunJobModel.from_row(row)
 
-    def get_with_children(self, jid: str) -> WorkflowJobModel:
+    def get_with_children(self, jid: str) -> RunJobModel:
         parent = self.get(jid)
 
         return parent
 
-    def get_all_children(self, jids: List[str]) -> List[WorkflowJobModel]:
+    def get_all_children(self, jids: List[str]) -> List[RunJobModel]:
         with self.with_cursor() as cursor:
 
             cursor.execute(
@@ -85,7 +85,7 @@ class JobDbProvider(DbProviderBase):
             rows = cursor.fetchall()
         if not rows:
             return []
-        parsed = [WorkflowJobModel.from_row(r) for r in rows]
+        parsed = [RunJobModel.from_row(r) for r in rows]
 
         newjids = {p.jid for p in parsed}
         if len(newjids) > 0:
@@ -96,7 +96,7 @@ class JobDbProvider(DbProviderBase):
 
         return parsed
 
-    def get_all(self) -> Optional[List[WorkflowJobModel]]:
+    def get_all(self) -> Optional[List[RunJobModel]]:
         query = "SELECT * FROM jobs WHERE wid = ?"
         with self.with_cursor() as cursor:
             try:
@@ -116,9 +116,9 @@ class JobDbProvider(DbProviderBase):
                     return None
                 raise e
 
-        return [WorkflowJobModel.from_row(row) for row in rows]
+        return [RunJobModel.from_row(row) for row in rows]
 
-    def get_all_mapped(self) -> Optional[List[WorkflowJobModel]]:
+    def get_all_mapped(self) -> Optional[List[RunJobModel]]:
 
         alljobs = self.get_all()
         if alljobs is None:
@@ -135,12 +135,12 @@ class JobDbProvider(DbProviderBase):
 
         return [j for j in alljobs if j.parentjid is None]
 
-    def insert(self, model: WorkflowJobModel):
+    def insert(self, model: RunJobModel):
         with self.with_cursor() as cursor:
 
             return cursor.execute(self._insert_statement, self._insert_model_obj(model))
 
-    def update(self, model: WorkflowJobModel):
+    def update(self, model: RunJobModel):
         with self.with_cursor() as cursor:
 
             return cursor.execute(*self._update_model_obj(model))
@@ -153,7 +153,7 @@ class JobDbProvider(DbProviderBase):
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
-    def _insert_model_obj(self, model: WorkflowJobModel):
+    def _insert_model_obj(self, model: RunJobModel):
         return (
             self.wid,
             model.jid,
@@ -172,7 +172,7 @@ class JobDbProvider(DbProviderBase):
             model.stderr,
         )
 
-    def _update_model_obj(self, model: WorkflowJobModel):
+    def _update_model_obj(self, model: RunJobModel):
         obj = {
             "parentjid": model.parentjid,
             "name": model.name,
@@ -196,7 +196,7 @@ class JobDbProvider(DbProviderBase):
             [v[1] for v in kvs] + [self.wid, model.jid],
         )
 
-    def update_or_insert_many(self, jobs: List[WorkflowJobModel]):
+    def update_or_insert_many(self, jobs: List[RunJobModel]):
         with self.with_cursor() as cursor:
 
             allidsr = cursor.execute(

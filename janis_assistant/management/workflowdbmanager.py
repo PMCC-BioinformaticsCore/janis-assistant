@@ -6,7 +6,7 @@ from typing import List
 
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.workflow import WorkflowModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.data.providers.inputsdbprovider import InputDbProvider
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider
 from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
@@ -191,7 +191,7 @@ class WorkflowDbManager:
             inputs=inputs,
         )
 
-    def flatten_jobs(self, jobs: List[WorkflowJobModel]):
+    def flatten_jobs(self, jobs: List[RunJobModel]):
         flattened = jobs
         for j in jobs:
             if j.jobs:

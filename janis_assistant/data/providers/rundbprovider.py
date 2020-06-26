@@ -1,24 +1,28 @@
 from datetime import datetime
 from typing import List, Optional, Dict
 
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.utils.dateutil import DateUtil
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 
 
 class RunDbProvider(DbProviderBase):
-    CURRENT_SCHEMA_VERSION = 1
+    CURRENT_SCHEMA_VERSION = 2
+    DEFAULT_BATCH = "<default>"
 
     def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS runs (
-            wid STRING PRIMARY KEY,
-            timestamp STRING
+            wid STRING NOT NULL,
+            batch STRING NOT NULL,
+            timestamp STRING,
+            PRIMARY KEY (wid, batch)
         )
         """
 
     def __init__(self, db):
-        super().__init__(db)
+        super().__init__(base_type=RunModel, db=db, tablename="runs")
 
     def get_latest(self):
         with self.with_cursor() as cursor:

@@ -750,7 +750,7 @@ class WorkflowManager:
             container_override=container_overrides,
         )
 
-        mapped_inps = CwlTranslator().build_inputs_file(
+        mapped_inps = TranslatorBase.build_inputs_file(
             tool_to_evaluate, recursive=False, additional_inputs=additional_inputs
         )
 

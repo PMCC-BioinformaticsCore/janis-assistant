@@ -3,7 +3,7 @@ from typing import Union, List
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.workflow import WorkflowModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import Logger
 
@@ -183,7 +183,7 @@ class CromwellMetadata:
             start = start or min(s.start for s in subjobs)
             finish = finish
 
-        return WorkflowJobModel(
+        return RunJobModel(
             jid=jid,
             parentjid=parentid,
             container=call.get(
@@ -206,7 +206,7 @@ class CromwellMetadata:
         )
 
     @classmethod
-    def parse_standard_calls(cls, parentid, name, calls) -> List[WorkflowJobModel]:
+    def parse_standard_calls(cls, parentid, name, calls) -> List[RunJobModel]:
         return [cls.parse_standard_call(parentid, name, c) for c in calls]
 
         # jid_temp = parentid + "_" + name
@@ -243,7 +243,7 @@ class CromwellMetadata:
         #     for c in processed_calls:
         #         c.supertime = st
         #
-        #     j = WorkflowJobModel(
+        #     j = RunJobModel(
         #         jid=jid,
         #         name=name,
         #         parentjid=parentid,
@@ -285,7 +285,7 @@ class CromwellMetadata:
         #     for k in sw.get("calls"):
         #         sjs.extend(cls.parse_standard_calls(jid, k, sw["calls"][k], st))
         #
-        # j = WorkflowJobModel(
+        # j = RunJobModel(
         #     jid=jid,
         #     parentjid=parentid,
         #     container=call.get(

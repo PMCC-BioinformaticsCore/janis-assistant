@@ -2,16 +2,18 @@ from datetime import datetime
 from typing import Optional, Union, List, Tuple
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
+from janis_assistant.data.models.base import DatabaseObject
 from janis_assistant.utils import second_formatter
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import _bcolors
 
 
-class WorkflowJobModel:
+class RunJobModel(DatabaseObject):
     def __init__(
         self,
-        jid: str,
-        parentjid: Optional[str],
+        id_: str,
+        submission_id: str,
+        run_id: str,
         name: str,
         batchid: Optional[str],
         shard: Optional[int],
@@ -26,8 +28,10 @@ class WorkflowJobModel:
         stderr: Optional[str],
         jobs: Optional[list] = None,
     ):
-        self.jid = jid
-        self.parentjid = parentjid
+        self.id_ = id_
+        self.submission_id = submission_id
+        self.run_id = run_id
+
         self.status = status if isinstance(status, TaskStatus) else TaskStatus(status)
 
         self.name = name
@@ -65,7 +69,7 @@ class WorkflowJobModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row[1:])
+        return RunJobModel(*row[1:])
 
     def format(self, pre, monochrome=False, brief=False, **kwargs):
 
@@ -106,7 +110,7 @@ class WorkflowJobModel:
         if status != TaskStatus.COMPLETED or brief == False:
             if self.jobs:
                 ppre = pre + tb
-                subs: List[WorkflowJobModel] = sorted(
+                subs: List[RunJobModel] = sorted(
                     self.jobs,
                     key=lambda j: j.start if j.start else DateUtil.now(),
                     reverse=False,
@@ -164,4 +168,4 @@ class WorkflowJobEventModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row)
+        return RunJobModel(*row)

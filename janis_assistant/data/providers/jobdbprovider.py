@@ -1,11 +1,11 @@
+from sqlite3 import OperationalError
 from typing import List, TypeVar, Iterable, Union, Callable, Dict, Optional
 
 from janis_core import Logger
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
-from janis_assistant.data.providers.jobeventdbprovider import JobEventDbProvider
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.models.workflowjob import RunJobModel
-from sqlite3 import OperationalError
 
 T = TypeVar("T")
 
@@ -54,22 +54,24 @@ class JobDbProvider(DbProviderBase):
         )
         """
 
-    def __init__(self, db, wid):
-        super().__init__(db)
-        self.wid = wid
-        self.eventsDB = JobEventDbProvider(self.db, self.wid)
+    def __init__(self, db, submission_id):
+        super().__init__(
+            base_type=RunJobModel,
+            db=db,
+            tablename="jobs",
+            scopes={"submission_id": submission_id},
+        )
+        self.submission_id = submission_id
+        # self.eventsDB = JobEventDbProvider(self.db, self.wid)
 
-    def get(self, jid: str) -> RunJobModel:
-        with self.with_cursor() as cursor:
+    def get_single(
+        self, id_: str, run_id: str = RunModel.DEFAULT_ID
+    ) -> Optional[RunJobModel]:
+        inp = self.get(where=("id = ? and run_id = ?", [id_, run_id]))
+        if not inp:
+            return None
 
-            cursor.execute(
-                "SELECT * FROM jobs WHERE wid = ? AND jid = ?", (self.wid, jid)
-            )
-            row = cursor.fetchone()
-            if not row:
-                raise KeyError("Couldn't find output with id = " + jid)
-
-        return RunJobModel.from_row(row)
+        return inp[0]
 
     def get_with_children(self, jid: str) -> RunJobModel:
         parent = self.get(jid)

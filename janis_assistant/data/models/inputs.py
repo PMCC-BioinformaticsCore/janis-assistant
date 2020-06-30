@@ -14,7 +14,7 @@ class WorkflowInputModel(DatabaseObject):
             ("submission_id", "submission_id"),
             ("run_id", "run_id"),
             ("value", "value"),
-            ("size", "size"),
+            ("size", "size"),  # bytes
         ]
 
     @classmethod
@@ -32,6 +32,14 @@ class WorkflowInputModel(DatabaseObject):
     def __init__(
         self, id_: str, submission_id: str, run_id: str, value, size: int = None,
     ):
+        """
+
+        :param id_: The input TAG
+        :param submission_id: The submissionID of the run
+        :param run_id: The runID of the input
+        :param value: The jsonified value
+        :param size: The size of the file in BYTES (nullable)
+        """
         self.id_ = id_
         self.submission_id = submission_id
         self.run_id = run_id

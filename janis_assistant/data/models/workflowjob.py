@@ -9,11 +9,68 @@ from janis_core.utils.logger import _bcolors
 
 
 class RunJobModel(DatabaseObject):
+    @classmethod
+    def keymap(cls) -> List[Tuple[str, str]]:
+        return [
+            ("id_", "id"),
+            ("submission_id", "submission_id"),
+            ("run_id", "run_id"),
+            ("parent", "parent"),
+            ("name", "name"),
+            ("batchid", "batchid"),
+            ("shard", "shard"),
+            ("attempt", "attempt"),
+            ("container", "container"),
+            ("status", "status"),
+            ("start", "start"),
+            ("finish", "finish"),
+            ("backend", "backend"),
+            ("cached", "cached"),
+            ("stdout", "stdout"),
+            ("stderr", "stderr"),
+            ("script", "script"),
+            ("memory", "memory"),
+            ("cpu", "cpu"),
+            ("analysis", "analysis"),
+        ]
+
+    @classmethod
+    def table_schema(cls):
+        return """
+id              STRING NOT NULL,
+submission_id   STRING NOT NULL,
+run_id          STRING NOT NULL,
+parent          NULLABLE STRING,
+
+name            STRING,
+batchid         STRING,
+shard           NULLABLE INT,
+attempt         NULLABLE INT,
+container       STRING,
+status          STRING,
+start           STRING,
+finish          NULLABLE STRING,
+backend         STRING,
+cached          BOOLEAN,
+stdout          STRING,
+stderr          STRING,
+script          STRING,
+
+memory          STRING,
+cpu             STRING,
+analysis        STRING,
+
+PRIMARY KEY (id, submission_id, run_id),
+FOREIGN KEY (wid, parentjid) REFERENCES jobs(wid, parentjid)
+        
+        """
+
     def __init__(
         self,
         id_: str,
         submission_id: str,
         run_id: str,
+        parent: Optional[str],
         name: str,
         batchid: Optional[str],
         shard: Optional[int],
@@ -26,11 +83,16 @@ class RunJobModel(DatabaseObject):
         cached: bool,
         stdout: Optional[str],
         stderr: Optional[str],
+        script: Optional[str],
+        memory: Optional[str],
+        cpu: Optional[str],
+        analysis: Optional[str],
         jobs: Optional[list] = None,
     ):
         self.id_ = id_
         self.submission_id = submission_id
         self.run_id = run_id
+        self.parent = parent
 
         self.status = status if isinstance(status, TaskStatus) else TaskStatus(status)
 
@@ -63,6 +125,11 @@ class RunJobModel(DatabaseObject):
             self.start = DateUtil.parse_iso(start)
         if finish and isinstance(finish, str):
             self.finish = DateUtil.parse_iso(finish)
+
+        self.script = script
+        self.memory = memory
+        self.cpu = cpu
+        self.analysis = analysis
 
         self.jobs = jobs or None
         self.events = None

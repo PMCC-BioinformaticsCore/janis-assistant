@@ -13,7 +13,7 @@ from janis_assistant.utils.dateutil import DateUtil
 class WorkflowModel:
     def __init__(
         self,
-        wid: str = None,
+        id_: str = None,
         engine_wid: str = None,
         name: str = None,
         start: Union[str, datetime] = None,
@@ -33,7 +33,7 @@ class WorkflowModel:
         outputs: List[WorkflowOutputModel] = None,
         inputs: List[WorkflowInputModel] = None,
     ):
-        self.wid = wid
+        self.id_ = id
         self.engine_wid = engine_wid
 
         self.name = name

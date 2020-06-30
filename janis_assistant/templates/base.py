@@ -5,6 +5,7 @@ from typing import Type, Optional, List, Dict
 from janis_assistant.data.models.workflow import WorkflowModel
 
 from janis_assistant.data.enums import TaskStatus
+from janis_assistant.data.models.workflowjob import RunJobModel
 
 from janis_assistant.utils import fully_qualify_filename
 from janis_core import Logger
@@ -52,6 +53,15 @@ class EnvironmentTemplate(ABC):
     @abstractmethod
     def engine_config(self, engine: EngineType, janis_configuration):
         pass
+
+    def get_job_analysis_from(self, job: RunJobModel) -> Optional[str]:
+        """
+        Something like calling SLURM 'seff' on a job
+        :param job: RunJobModel
+        :type job: RunJobModel
+        :return: An optional string with the report
+        """
+        return None
 
     def submit_detatched_resume(
         self,

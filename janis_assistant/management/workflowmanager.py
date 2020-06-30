@@ -779,7 +779,7 @@ class WorkflowManager:
 
         for o in wf.tool_outputs():
             # We'll
-            ext = None
+            ext = o.extension
             innertype = o.outtype
             iscopyable = isinstance(o.outtype, (File, Directory)) or (
                 isinstance(o.outtype, Array)
@@ -787,7 +787,7 @@ class WorkflowManager:
             )
             while isinstance(innertype, Array):
                 innertype = innertype.subtype()
-            if isinstance(o.outtype, File):
+            if ext is None and isinstance(o.outtype, File):
                 ext = o.outtype.extension
             outputs.append(
                 WorkflowOutputModel(

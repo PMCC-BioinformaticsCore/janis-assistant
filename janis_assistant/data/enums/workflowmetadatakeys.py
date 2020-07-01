@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class WorkflowMetadataDbKeys(Enum):
-    wid = "wid"
+    submission_id = "submission_id"
     engine_wid = "engine_wid"
     name = "name"
     start = "start"

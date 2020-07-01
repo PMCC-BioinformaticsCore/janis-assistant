@@ -91,10 +91,14 @@ class WorkflowManager:
         mysql = "configuration/mysql"
 
     def __init__(
-        self, outdir: str, wid: str, environment: Environment = None, readonly=False
+        self,
+        outdir: str,
+        submission_id: str,
+        environment: Environment = None,
+        readonly=False,
     ):
         # do stuff here
-        self.wid = wid
+        self.submission_id = submission_id
 
         self._failed_engine_attempts = None
 
@@ -104,7 +108,7 @@ class WorkflowManager:
         self.create_dir_structure(self.path)
 
         self.database = WorkflowDbManager(
-            wid, self.get_task_path_safe(), readonly=readonly
+            submission_id, self.get_task_path_safe(), readonly=readonly
         )
         self.environment = environment
         self.dbcontainer: MySql = None
@@ -113,18 +117,18 @@ class WorkflowManager:
         self._prev_status = None
         self._engine: Optional[Engine] = None
 
-        if not self.wid:
-            self.wid = self.get_engine_wid()
+        if not self._engine_wid:
+            self._engine_wid = self.get_engine_wid()
 
     @staticmethod
     def has(
         outdir: str,
-        wid: str,
+        submission_id: str,
         status: Optional[TaskStatus],
         name: Optional[str] = None,
         environment: Optional[str] = None,
     ):
-        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir, wid)
+        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir, submission_id)
 
         has = True
         if has and status:
@@ -139,7 +143,7 @@ class WorkflowManager:
 
     @staticmethod
     def from_janis(
-        wid: str,
+        submission_id: str,
         outdir: str,
         tool: Tool,
         environment: Environment,
@@ -166,13 +170,15 @@ class WorkflowManager:
 
         # output directory has been created
 
-        environment.identifier += "_" + wid
+        environment.identifier += "_" + submission_id
 
-        tm = WorkflowManager(wid=wid, outdir=outdir, environment=environment)
+        tm = WorkflowManager(
+            submission_id=submission_id, outdir=outdir, environment=environment
+        )
 
-        tm.database.runs.insert(wid)
+        tm.database.runs.insert(submission_id)
 
-        tm.database.workflowmetadata.wid = wid
+        tm.database.workflowmetadata.submission_id = submission_id
         tm.database.workflowmetadata.engine = environment.engine
         tm.database.workflowmetadata.filescheme = environment.filescheme
         tm.database.workflowmetadata.environment = environment.id()
@@ -312,7 +318,9 @@ class WorkflowManager:
 
         db.close()
 
-        tm = WorkflowManager(outdir=path, wid=wid, environment=env, readonly=readonly)
+        tm = WorkflowManager(
+            outdir=path, submission_id=wid, environment=env, readonly=readonly
+        )
         return tm
 
     @staticmethod
@@ -347,7 +355,9 @@ class WorkflowManager:
 
             formatted = meta.format(**kwargs)
             print(formatted)
-            return Logger.debug(f"Workflow '{self.wid}' has already finished, skipping")
+            return Logger.debug(
+                f"Workflow '{self.submission_id}' has already finished, skipping"
+            )
 
         bl = None
 
@@ -450,7 +460,7 @@ class WorkflowManager:
         if self.dbcontainer:
             self.dbcontainer.stop()
 
-        Logger.info(f"Finished managing task '{self.wid}'.")
+        Logger.info(f"Finished managing task '{self.submission_id}'.")
 
     def resume(self):
         """
@@ -518,7 +528,7 @@ class WorkflowManager:
 
             err = traceback.format_exc()
             Logger.critical(
-                f"A fatal error occurred while monitoring workflow = '{self.wid}', exiting: {e}: {err}"
+                f"A fatal error occurred while monitoring workflow = '{self.submission_id}', exiting: {e}: {err}"
             )
 
             try:
@@ -619,7 +629,7 @@ class WorkflowManager:
             containerdir = conf.template.template.singularity_container_dir
 
         self.dbcontainer = MySql(
-            wid=self.wid,
+            wid=self.submission_id,
             container=JanisConfiguration.manager().container,
             datadirectory=self.get_path_for_component(
                 self.WorkflowManagerPath.database
@@ -690,7 +700,9 @@ class WorkflowManager:
         skip_digest_cache=False,
     ) -> Tool:
         if self.database.progressDB.has(ProgressKeys.saveWorkflow):
-            return Logger.info(f"Saved workflow from task '{self.wid}', skipping.")
+            return Logger.info(
+                f"Saved workflow from task '{self.submission_id}', skipping."
+            )
 
         Logger.debug(f"Saving workflow with id '{tool.id()}' to {translator.name}")
 
@@ -819,7 +831,9 @@ class WorkflowManager:
 
     def submit_workflow_if_required(self):
         if self.database.progressDB.has(ProgressKeys.submitWorkflow):
-            return Logger.log(f"Workflow '{self.wid}' has submitted, skipping")
+            return Logger.log(
+                f"Workflow '{self.submission_id}' has submitted, skipping"
+            )
 
         fn_wf = self.database.workflowmetadata.submission_workflow
         fn_inp = self.database.workflowmetadata.submission_inputs
@@ -827,18 +841,22 @@ class WorkflowManager:
 
         engine = self.get_engine()
 
-        Logger.debug(f"Submitting task '{self.wid}' to '{engine.id()}'")
-        self._engine_wid = engine.start_from_paths(self.wid, fn_wf, fn_inp, fn_deps)
+        Logger.debug(f"Submitting task '{self.submission_id}' to '{engine.id()}'")
+        self._engine_wid = engine.start_from_paths(
+            self.submission_id, fn_wf, fn_inp, fn_deps
+        )
         self.database.workflowmetadata.engine_wid = self._engine_wid
 
         Logger.info(
-            f"Submitted workflow ({self.wid}), got engine id = '{self.get_engine_wid()}'"
+            f"Submitted workflow ({self.submission_id}), got engine id = '{self.get_engine_wid()}'"
         )
         self.database.progressDB.set(ProgressKeys.submitWorkflow)
 
     def save_metadata_if_required(self):
         if self.database.progressDB.has(ProgressKeys.savedMetadata):
-            return Logger.debug(f"Workflow '{self.wid}' has saved metadata, skipping")
+            return Logger.debug(
+                f"Workflow '{self.submission_id}' has saved metadata, skipping"
+            )
 
         engine = self.get_engine()
 
@@ -866,7 +884,7 @@ class WorkflowManager:
         elif isinstance(engine, CWLTool):
             import json
 
-            meta = engine.metadata(self.wid)
+            meta = engine.metadata(self.submission_id)
             self.set_status(meta.status)
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.outputs, fp)
@@ -880,7 +898,9 @@ class WorkflowManager:
 
     def copy_outputs_if_required(self):
         if self.database.progressDB.has(ProgressKeys.copiedOutputs):
-            return Logger.debug(f"Workflow '{self.wid}' has copied outputs, skipping")
+            return Logger.debug(
+                f"Workflow '{self.submission_id}' has copied outputs, skipping"
+            )
 
         if self.database.workflowmetadata.status != TaskStatus.COMPLETED:
             return Logger.warn(
@@ -1105,7 +1125,7 @@ class WorkflowManager:
         # log all the metadata we have:
         results = self.database.workflowmetadata.kvdb.items()
         header = ("Key", "Value")
-        res = tabulate.tabulate([header, ("wid", self.wid), *results])
+        res = tabulate.tabulate([header, ("wid", self.submission_id), *results])
         print(res)
         return res
 

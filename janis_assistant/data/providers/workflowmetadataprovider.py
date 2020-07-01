@@ -21,12 +21,12 @@ class WorkflowMetadataDbProvider(KvDB):
 
         return t
 
-    def __init__(self, dblocation, wid, readonly=False):
-        super().__init__(dblocation, "workflow-" + wid, readonly=readonly)
+    def __init__(self, dblocation, submission_id, readonly=False):
+        super().__init__(dblocation, "workflow-" + submission_id, readonly=readonly)
         self.kvdb.autocommit = False
-        if WorkflowMetadataDbKeys.wid.value not in self.kvdb:
+        if WorkflowMetadataDbKeys.submission_id.value not in self.kvdb:
             # Initialise to give prompts to IDE
-            self.wid = None
+            self.submission_id = None
             self.engine_wid = None
 
             self.name = None
@@ -44,8 +44,8 @@ class WorkflowMetadataDbProvider(KvDB):
             self.containerversion = None
             self.containertype = None
 
-            self.engine: Engine = None
-            self.filescheme: FileScheme = None
+            self.engine: Optional[Engine] = None
+            self.filescheme: Optional[FileScheme] = None
             self.labels = None
             self.error = None
 

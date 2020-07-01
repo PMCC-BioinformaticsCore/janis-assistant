@@ -482,7 +482,7 @@ def fromjanis(
         ) and not (run_in_foreground is True)
 
         tm = cm.start_task(
-            wid=row.wid,
+            submission_id=row.wid,
             tool=wf,
             environment=environment,
             validation_requirements=validation_reqs,

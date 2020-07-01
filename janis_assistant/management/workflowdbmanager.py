@@ -11,7 +11,7 @@ from janis_assistant.data.providers.inputsdbprovider import InputDbProvider
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider
 from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
 from janis_assistant.data.providers.progressdbprovider import ProgressDbProvider
-from janis_assistant.data.providers.rundbprovider import RunDbProvider
+from janis_assistant.data.providers.submissiondbprovider import SubmissionDbProvider
 from janis_assistant.data.providers.versionsdbprovider import VersionsDbProvider
 from janis_assistant.data.providers.workflowmetadataprovider import (
     WorkflowMetadataDbProvider,
@@ -52,21 +52,25 @@ class WorkflowDbManager:
     Every object here should have a class equivalent that the rest of the program interacts with.
     """
 
-    def __init__(self, wid: str, path: str, readonly=False):
+    def __init__(self, submission_id: str, path: str, readonly=False):
         self.exec_path = path
         self.readonly = readonly
 
         self.connection = self.db_connection()
 
         sqlpath = self.get_sql_path()
-        self.runs = RunDbProvider(db=self.connection)
+        self.runs = SubmissionDbProvider(db=self.connection)
         self.workflowmetadata = WorkflowMetadataDbProvider(
-            sqlpath, wid=wid, readonly=readonly
+            sqlpath, submission_id=submission_id, readonly=readonly
         )
-        self.progressDB = ProgressDbProvider(db=self.connection, wid=wid)
-        self.outputsDB = OutputDbProvider(db=self.connection, wid=wid)
-        self.jobsDB = JobDbProvider(db=self.connection, wid=wid)
-        self.inputsDB = InputDbProvider(db=self.connection, wid=wid)
+        self.progressDB = ProgressDbProvider(
+            db=self.connection, submission_id=submission_id
+        )
+        self.outputsDB = OutputDbProvider(
+            db=self.connection, submission_id=submission_id
+        )
+        self.jobsDB = JobDbProvider(db=self.connection, submission_id=submission_id)
+        self.inputsDB = InputDbProvider(db=self.connection, submission_id=submission_id)
 
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
@@ -96,7 +100,7 @@ class WorkflowDbManager:
                 Logger.critical("Error when opening DB connection to: " + sqlpath)
                 raise
 
-            wid = RunDbProvider(db=connection).get_latest()
+            wid = SubmissionDbProvider(db=connection).get_latest()
             if not wid:
                 raise Exception("Couldn't get WID in task directory")
 
@@ -111,7 +115,7 @@ class WorkflowDbManager:
             connection = sqlite3.connect(
                 f"file:{WorkflowDbManager.get_sql_path_base(path)}?mode=ro", uri=True
             )
-            runDb = RunDbProvider(db=connection)
+            runDb = SubmissionDbProvider(db=connection)
             return runDb.get_latest()
 
         except:

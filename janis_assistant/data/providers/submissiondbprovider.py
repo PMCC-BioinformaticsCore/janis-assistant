@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set
 
 from janis_assistant.data.models.run import RunModel, SubmissionModel
 from janis_assistant.utils.dateutil import DateUtil
@@ -14,6 +14,16 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
         super().__init__(
             base_type=SubmissionModel, db=db, tablename="submissions", scopes={}
         )
+
+    def get_existing_ids(self) -> Set[str]:
+        query = f"SELECT id FROM {self.tablename} ORDER BY timestamp"
+        with self.with_cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+        if not rows:
+            return set()
+
+        return set(r[0] for r in rows)
 
     def get_latest(self) -> str:
         with self.with_cursor() as cursor:

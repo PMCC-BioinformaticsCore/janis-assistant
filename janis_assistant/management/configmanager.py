@@ -88,7 +88,7 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path_with_wid(task.outputdir, task.wid)
+        tm = WorkflowManager.from_path_with_wid(task.outputdir, task.submission_id)
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -98,8 +98,8 @@ class ConfigManager:
         else:
             Logger.info("Skipping output dir deletion, can't find: " + task.outputdir)
 
-        self.get_lazy_db_connection().remove_by_id(task.wid)
-        Logger.info("Deleted task: " + task.wid)
+        self.get_lazy_db_connection().remove_by_id(task.submission_id)
+        Logger.info("Deleted task: " + task.submission_id)
 
     def create_task_base(self, wf: Workflow, outdir=None, store_in_centraldb=True):
         config = JanisConfiguration.manager()
@@ -135,26 +135,26 @@ class ConfigManager:
             if os.path.exists(default_outdir):
                 forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
 
-        wid = generate_new_id(forbiddenids)
+        submission_id = generate_new_id(forbiddenids)
 
         task_path = outdir
         if not task_path:
             od = default_outdir
             dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-            task_path = os.path.join(od, f"{dt}_{wid}/")
+            task_path = os.path.join(od, f"{dt}_{submission_id}/")
 
         task_path = fully_qualify_filename(task_path)
 
-        Logger.info(f"Starting task with id = '{wid}'")
+        Logger.info(f"Starting task with id = '{submission_id}'")
 
-        row = TaskRow(wid, task_path)
+        row = TaskRow(submission_id, task_path)
         WorkflowManager.create_dir_structure(task_path)
 
         if store_in_centraldb:
             self.get_lazy_db_connection().insert_task(row)
         else:
             Logger.info(
-                f"Not storing task '{wid}' in database. To watch, use: 'janis watch {task_path}'"
+                f"Not storing task '{submission_id}' in database. To watch, use: 'janis watch {task_path}'"
             )
 
         if self._connection:
@@ -166,7 +166,7 @@ class ConfigManager:
 
     def start_task(
         self,
-        wid: str,
+        submission_id: str,
         tool: Tool,
         task_path: str,
         environment: Environment,
@@ -188,7 +188,7 @@ class ConfigManager:
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
-            wid,
+            submission_id,
             tool=tool,
             outdir=task_path,
             environment=environment,
@@ -238,7 +238,7 @@ class ConfigManager:
                 continue
             try:
                 metadb = WorkflowManager.has(
-                    row.outputdir, wid=row.wid, name=name, status=status
+                    row.outputdir, submission_id=row.wid, name=name, status=status
                 )
                 if metadb:
                     model = metadb.to_model()

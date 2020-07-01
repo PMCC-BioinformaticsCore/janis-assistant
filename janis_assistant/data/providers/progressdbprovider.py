@@ -35,22 +35,24 @@ class ProgressDbProvider(DbProviderBase):
     def table_schema(self):
         return """\
         CREATE TABLE IF NOT EXISTS progress (
-            wid STRING NOT NULL,
+            submission_id STRING NOT NULL,
             key STRING NOT NULL,
             timestamp STRING NOT NULL,
             PRIMARY KEY (wid, key)
         )
         """
 
-    def __init__(self, db, wid):
-        super().__init__(db)
-        self.wid = wid
+    def __init__(self, db, submission_id):
+        super().__init__(
+            None, db, tablename="progress", scopes={"submission_id": submission_id}
+        )
+        self.submission_id = submission_id
 
     def has(self, key: ProgressKeys):
         with self.with_cursor() as cursor:
             cursor.execute(
                 "SELECT 1 FROM progress WHERE wid = ? AND key = ?",
-                (self.wid, key.value),
+                (self.submission_id, key.value),
             )
             rows = cursor.fetchone()
             return bool(rows)
@@ -58,7 +60,8 @@ class ProgressDbProvider(DbProviderBase):
     def get_all(self) -> Dict[str, datetime]:
         with self.with_cursor() as cursor:
             cursor.execute(
-                "SELECT key, timestamp FROM progress WHERE wid = ?", (self.wid,)
+                "SELECT key, timestamp FROM progress WHERE wid = ?",
+                (self.submission_id,),
             )
             rows = cursor.fetchall()
             return {row[0]: DateUtil.parse_iso(row[1]) for row in rows}
@@ -69,7 +72,8 @@ class ProgressDbProvider(DbProviderBase):
 
         with self.with_cursor() as cursor:
             cursor.execute(
-                self._insert_statement, (self.wid, key.value, str(DateUtil.now()))
+                self._insert_statement,
+                (self.submission_id, key.value, str(DateUtil.now())),
             )
 
     _insert_statement = """\

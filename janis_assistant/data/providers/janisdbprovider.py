@@ -8,8 +8,8 @@ from janis_assistant.utils import Logger, fully_qualify_filename
 
 
 class TaskRow:
-    def __init__(self, wid, outputdir):
-        self.wid = wid
+    def __init__(self, submission_id, outputdir):
+        self.submission_id = submission_id
         self.outputdir = outputdir
 
     def to_row(self):
@@ -17,7 +17,7 @@ class TaskRow:
         This should match the order of
             - 'from_row'
         """
-        return self.wid, self.outputdir
+        return self.submission_id, self.outputdir
 
     @staticmethod
     def from_row(row: Tuple[str, str]):

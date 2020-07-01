@@ -2,7 +2,7 @@ import json
 import datetime
 from os.path import commonprefix
 
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 
 from janis_core.utils.logger import Logger
 
@@ -60,7 +60,7 @@ class WorkflowOutputModel(DatabaseObject):
         is_copyable: str,
         original_path: str,
         new_path: str,
-        timestamp: str,
+        timestamp: Union[str, datetime.datetime],
     ):
         self.id_ = id_
         self.submission_id = submission_id

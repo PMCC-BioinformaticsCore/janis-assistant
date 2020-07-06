@@ -2,6 +2,7 @@ import json
 from typing import Union, List
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.utils.dateutil import DateUtil
@@ -102,7 +103,7 @@ class CromwellMetadata:
 
         return dcalls
 
-    def standard(self) -> WorkflowModel:
+    def standard(self) -> RunModel:
         jobs = []
 
         s = DateUtil.parse_iso(self.meta.get("start"))
@@ -117,11 +118,13 @@ class CromwellMetadata:
             stepname = ".".join(stepname.split(".")[1:])
             jobs.extend(self.parse_standard_calls(None, stepname, call))
 
-        model = WorkflowModel(
-            engine_wid=jid,
-            name=self.meta.get("workflowName"),
-            start=s,
-            finish=f,
+        model = RunModel(
+            submission_id=None,
+            id_=None,
+            engine_id=jid,
+            # name=self.meta.get("workflowName"),
+            # start=s,
+            # finish=f,
             execution_dir=self.meta.get("workflowRoot"),
             status=cromwell_status_to_status(self.meta.get("status")),
             error=self.get_caused_by_text(),
@@ -184,8 +187,10 @@ class CromwellMetadata:
             finish = finish
 
         return RunJobModel(
-            jid=jid,
-            parentjid=parentid,
+            id_=jid,
+            submission_id=None,
+            run_id=None,
+            parent=parentid,
             container=call.get(
                 "dockerImageUsed", call.get("runtimeAttributes", {}).get("docker")
             ),
@@ -203,6 +208,10 @@ class CromwellMetadata:
             else False,
             shard=shard,
             attempt=attempt,
+            analysis=None,
+            memory=None,
+            cpu=None,
+            script=None,
         )
 
     @classmethod

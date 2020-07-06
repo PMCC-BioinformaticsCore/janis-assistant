@@ -24,6 +24,7 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
+from janis_assistant.utils.getuser import lookup_username
 from janis_core import (
     InputSelector,
     Logger,
@@ -42,6 +43,7 @@ from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
 from janis_assistant.data.models.outputs import WorkflowOutputModel
+from janis_assistant.data.models.run import SubmissionModel, RunModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines import (
     get_ideal_specification_for_engine,
@@ -176,7 +178,20 @@ class WorkflowManager:
             submission_id=submission_id, outdir=outdir, environment=environment
         )
 
-        tm.database.runs.insert(submission_id)
+        tm.database.submissions.insert_or_update_many(
+            [
+                SubmissionModel(
+                    id_=submission_id,
+                    outdir=outdir,
+                    author=lookup_username(),
+                    labels=[],
+                    tags=[],
+                    timestamp=DateUtil.now(),
+                    engine_type=environment.engine.id(),
+                    engine_url=None,
+                )
+            ]
+        )
 
         tm.database.workflowmetadata.submission_id = submission_id
         tm.database.workflowmetadata.engine = environment.engine
@@ -199,6 +214,7 @@ class WorkflowManager:
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)
         tool_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
+            run_id=RunModel.DEFAULT_ID,
             tool=tool,
             translator=spec_translator,
             validation=validation_requirements,
@@ -260,7 +276,7 @@ class WorkflowManager:
         # this happens for all workflows no matter what type
         self.set_status(TaskStatus.QUEUED)
 
-        wid = metadb.wid
+        wid = metadb.submission_id
 
         # resubmit the engine
         if not run_in_background:
@@ -492,10 +508,15 @@ class WorkflowManager:
             self.submit_workflow_if_required()
 
             self.database.commit()
-            self.get_engine().add_callback(
-                self.get_engine_wid(),
-                lambda meta: self.main_queue.put(lambda: self.save_metadata(meta)),
-            )
+
+            def callb(meta: RunModel):
+                meta.submission_id = self.submission_id
+                meta.id_ = RunModel.DEFAULT_ID
+                meta.apply_ids_to_children()
+
+                self.main_queue.put(lambda: self.save_metadata(meta)),
+
+            self.get_engine().add_callback(self.get_engine_wid(), callback=callb)
 
             # add extra check for engine on resume
             meta = self._engine.metadata(self.get_engine_wid())
@@ -685,6 +706,7 @@ class WorkflowManager:
 
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
+        run_id: str,
         tool: Tool,
         translator: TranslatorBase,
         validation: Optional[ValidationRequirements],
@@ -768,12 +790,14 @@ class WorkflowManager:
 
         self.database.inputsDB.insert_inputs_from_dict(mapped_inps)
 
-        self.evaluate_output_params(wf=tool_to_evaluate, inputs=mapped_inps)
+        self.evaluate_output_params(
+            wf=tool_to_evaluate, inputs=mapped_inps, run_id=run_id
+        )
 
         self.database.progressDB.set(ProgressKeys.saveWorkflow)
         return tool_to_evaluate
 
-    def evaluate_output_params(self, wf: Tool, inputs: dict):
+    def evaluate_output_params(self, wf: Tool, inputs: dict, run_id):
 
         output_names: Dict[str, any] = {}
         output_folders: Dict[str, any] = {}
@@ -791,7 +815,7 @@ class WorkflowManager:
 
         for o in wf.tool_outputs():
             # We'll
-            ext = o.extension
+            ext = o.extension if hasattr(o, "extension") else None
             innertype = o.outtype
             iscopyable = isinstance(o.outtype, (File, Directory)) or (
                 isinstance(o.outtype, Array)
@@ -803,8 +827,10 @@ class WorkflowManager:
                 ext = o.outtype.extension
             outputs.append(
                 WorkflowOutputModel(
-                    tag=o.id(),
-                    iscopyable=iscopyable,
+                    id_=o.id(),
+                    submission_id=self.database.outputsDB.submission_id,
+                    run_id=run_id,
+                    is_copyable=iscopyable,
                     original_path=None,
                     new_path=None,
                     timestamp=None,
@@ -1213,7 +1239,7 @@ class WorkflowManager:
 
         NotificationManager.notify_status_change(status, meta)
 
-    def save_metadata(self, meta: WorkflowModel) -> Optional[bool]:
+    def save_metadata(self, meta: RunModel) -> Optional[bool]:
         if not meta:
             return None
 

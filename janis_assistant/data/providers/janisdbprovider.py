@@ -2,50 +2,36 @@ from typing import Tuple, Optional, List
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 
-
 # different to archivable
+from janis_assistant.data.models.base import DatabaseObject
 from janis_assistant.utils import Logger, fully_qualify_filename
 
 
-class TaskRow:
+class TaskRow(DatabaseObject):
+    @classmethod
+    def keymap(cls) -> List[Tuple[str, str]]:
+        return [
+            ("submission_id", "id"),
+            ("outputdir", "outputdir"),
+        ]
+
+    @classmethod
+    def table_schema(cls):
+        return """
+        id varchar(6), 
+        outputdir text
+        """
+
     def __init__(self, submission_id, outputdir):
         self.submission_id = submission_id
         self.outputdir = outputdir
 
-    def to_row(self):
-        """
-        This should match the order of
-            - 'from_row'
-        """
-        return self.submission_id, self.outputdir
-
-    @staticmethod
-    def from_row(row: Tuple[str, str]):
-        """
-        This should match the order of
-            - 'to_row'
-        """
-        return TaskRow(row[0], row[1])
-
-    @staticmethod
-    def insert_fields() -> [str]:
-        """
-        These names should match the CREATE TABLE statement, and match the order of
-            - 'to_row'
-            - 'from_row'
-        """
-        return "wid", "outputdir"
-
 
 class TasksDbProvider(DbProviderBase):
-
     table_name = "tasks"
 
-    def table_schema(self):
-        return f"""CREATE TABLE IF NOT EXISTS {TasksDbProvider.table_name}(
-            wid varchar(6) PRIMARY KEY, 
-            outputdir text
-        )"""
+    def __init__(self, connection):
+        super().__init__(TaskRow, connection, TasksDbProvider.table_name, {})
 
     def get_by_wid(self, wid) -> Optional[TaskRow]:
         with self.with_cursor() as cursor:
@@ -57,45 +43,32 @@ class TasksDbProvider(DbProviderBase):
 
         return TaskRow.from_row(row)
 
-    def get_all_tasks(self) -> [TaskRow]:
-        with self.with_cursor() as cursor:
-            rows = cursor.execute(
-                f"SELECT * FROM {TasksDbProvider.table_name}"
-            ).fetchall()
+    def get_by_id(self, id_) -> Optional[TaskRow]:
+        rows = self.get(where=("id = ?", [id_]))
+        if len(rows) != 1:
+            return None
+        return rows[0]
 
-        return [TaskRow.from_row(r) for r in rows]
+    def get_all_tasks(self) -> [TaskRow]:
+        return self.get()
 
     def insert_task(self, task: TaskRow) -> None:
-        insfields = TaskRow.insert_fields()
-        str_insfields = ",".join(insfields)
-        str_insplaceholder = ["?"] * len(insfields)
+        return self.insert_or_update_many([task])
 
+    def remove_by_id(self, id_: str) -> None:
+        Logger.info(f"Removing '{id_}' from database")
         with self.with_cursor() as cursor:
-            cursor.execute(
-                f"INSERT INTO {TasksDbProvider.table_name}({str_insfields}) VALUES ({', '.join(str_insplaceholder)})",
-                task.to_row(),
-            )
+            cursor.execute(f"DELETE FROM {self.table_name} WHERE id = ?", (id_,))
 
         self.commit()
 
-    def remove_by_id(self, wid: str) -> None:
-        Logger.info(f"Removing '{wid}' from database")
+    def remove_by_ids(self, ids: List[str]) -> None:
+        if not isinstance(ids, list):
+            ids = [ids]
+
+        Logger.info("Removing ids: " + ", ".join(ids))
+        seq = ", ".join(["?"] * len(ids))
         with self.with_cursor() as cursor:
-            cursor.execute(
-                f"DELETE FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
-            )
-
-        self.commit()
-
-    def remove_by_ids(self, wids: List[str]) -> None:
-        if not isinstance(wids, list):
-            wids = [wids]
-
-        Logger.info("Removing ids: " + ", ".join(wids))
-        seq = ", ".join(["?"] * len(wids))
-        with self.with_cursor() as cursor:
-            cursor.execute(
-                f"DELETE FROM {TasksDbProvider.table_name} WHERE wid in ({seq})", wids
-            )
+            cursor.execute(f"DELETE FROM {self.table_name} WHERE id in ({seq})", ids)
 
         self.commit()

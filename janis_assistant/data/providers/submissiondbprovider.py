@@ -15,6 +15,12 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
             base_type=SubmissionModel, db=db, tablename="submissions", scopes={}
         )
 
+    def get_by_id(self, submission_id) -> Optional[SubmissionModel]:
+        s = self.get(where=("id = ?", [submission_id]))
+        if len(s) != 1:
+            return None
+        return s[0]
+
     def get_existing_ids(self) -> Set[str]:
         query = f"SELECT id FROM {self.tablename} ORDER BY timestamp"
         with self.with_cursor() as cursor:
@@ -42,3 +48,6 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
 
     def get_all(self) -> List[SubmissionModel]:
         return self.get()
+
+    def insert(self, submission_id):
+        return self.insert_or_update_many([SubmissionModel(id_=submission_id)])

@@ -38,7 +38,7 @@ class ProgressDbProvider(DbProviderBase):
             submission_id STRING NOT NULL,
             key STRING NOT NULL,
             timestamp STRING NOT NULL,
-            PRIMARY KEY (wid, key)
+            PRIMARY KEY (submission_id, key)
         )
         """
 
@@ -51,7 +51,7 @@ class ProgressDbProvider(DbProviderBase):
     def has(self, key: ProgressKeys):
         with self.with_cursor() as cursor:
             cursor.execute(
-                "SELECT 1 FROM progress WHERE wid = ? AND key = ?",
+                "SELECT 1 FROM progress WHERE submission_id = ? AND key = ?",
                 (self.submission_id, key.value),
             )
             rows = cursor.fetchone()
@@ -60,7 +60,7 @@ class ProgressDbProvider(DbProviderBase):
     def get_all(self) -> Dict[str, datetime]:
         with self.with_cursor() as cursor:
             cursor.execute(
-                "SELECT key, timestamp FROM progress WHERE wid = ?",
+                "SELECT key, timestamp FROM progress WHERE submission_id = ?",
                 (self.submission_id,),
             )
             rows = cursor.fetchall()
@@ -78,7 +78,7 @@ class ProgressDbProvider(DbProviderBase):
 
     _insert_statement = """\
         INSERT INTO progress
-            (wid, key, timestamp)
+            (submission_id, key, timestamp)
         VALUES
             (?, ?, ?)
         """

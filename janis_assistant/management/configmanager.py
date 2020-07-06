@@ -124,7 +124,7 @@ class ConfigManager:
         if store_in_centraldb:
             with self.with_cursor() as cursor:
                 forbiddenids = set(
-                    t[0] for t in cursor.execute("SELECT wid FROM tasks").fetchall()
+                    t[0] for t in cursor.execute("SELECT id FROM tasks").fetchall()
                 )
         if outdir:
             if os.path.exists(outdir):
@@ -234,19 +234,22 @@ class ConfigManager:
 
         for row in rows:
             if not os.path.exists(row.outputdir):
-                failed.append(row.wid)
+                failed.append(row.submission_id)
                 continue
             try:
                 metadb = WorkflowManager.has(
-                    row.outputdir, submission_id=row.wid, name=name, status=status
+                    row.outputdir,
+                    submission_id=row.submission_id,
+                    name=name,
+                    status=status,
                 )
                 if metadb:
                     model = metadb.to_model()
                     model.outdir = row.outputdir
-                    relevant[row.wid] = model
+                    relevant[row.submission_id] = model
             except Exception as e:
-                Logger.critical(f"Couldn't check workflow '{row.wid}': {e}")
-                failed.append(row.wid)
+                Logger.critical(f"Couldn't check workflow '{row.submission_id}': {e}")
+                failed.append(row.submission_id)
 
         if failed:
             failedstr = ", ".join(failed)
@@ -266,14 +269,14 @@ class ConfigManager:
 
         for row in rows:
             if not os.path.exists(row.outputdir):
-                failed.append((row.wid, row.outputdir))
+                failed.append((row.submission_id, row.outputdir))
                 continue
             try:
                 _ = WorkflowManager.from_path_with_wid(
-                    row.outputdir, row.wid, readonly=True
+                    row.outputdir, row.submission_id, readonly=True
                 )
             except Exception as e:
-                failed.append((row.wid, row.outputdir))
+                failed.append((row.submission_id, row.outputdir))
 
         if failed:
             Logger.warn(f"Removing the following tasks:\n" + tabulate(failed))

@@ -3,20 +3,21 @@ import subprocess
 
 from janis_core import Logger
 
+from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.management.configuration import JanisConfiguration
 
 
 class NotificationManager:
     @staticmethod
-    def notify_status_change(status, metadata: WorkflowModel):
+    def notify_status_change(status, metadata: SubmissionModel):
 
         body = JanisConfiguration.manager().template.template.prepare_status_update_email(
             status=status, metadata=metadata
         )
 
         NotificationManager.send_email(
-            subject=f"{metadata.wid} status to {status}", body=body
+            subject=f"{metadata.id_} status to {status}", body=body
         )
         return body
 

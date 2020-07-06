@@ -1,5 +1,5 @@
 import json
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from janis_core.utils.logger import Logger
 
@@ -8,11 +8,11 @@ from janis_assistant.data.models.base import DatabaseObject
 
 class WorkflowInputModel(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
         return [
-            ("id_", "id"),
-            ("submission_id", "submission_id"),
-            ("run_id", "run_id"),
+            ("id_", "id", True),
+            ("submission_id", "submission_id", True),
+            ("run_id", "run_id", True),
             ("value", "value"),
             ("size", "size"),  # bytes
         ]
@@ -24,9 +24,7 @@ class WorkflowInputModel(DatabaseObject):
         submission_id   STRING NOT NULL,
         run_id          STRING NOT NULL,
         value           STRING,
-        size            INTEGER,
-        
-        PRIMARY KEY(id, submission_id, run_id)
+        size            INTEGER
         """
 
     def __init__(

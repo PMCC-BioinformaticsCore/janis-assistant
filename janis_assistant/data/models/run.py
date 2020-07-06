@@ -12,10 +12,10 @@ from janis_assistant.data.models.workflowjob import RunJobModel
 
 class RunStatusUpdate(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
         return [
-            ("submission_id", "submission_id"),
-            ("run_id", "run_id"),
+            ("submission_id", "submission_id", True),
+            ("run_id", "run_id", True),
             ("status", "status"),
             ("date", "date"),
         ]
@@ -26,9 +26,7 @@ class RunStatusUpdate(DatabaseObject):
         status          STRING NOT NULL,
         submission_id   STRING NOT NULL,
         run_id          STRING NOT NULL,
-        date            STRING NOT NULL,
-        
-        PRIMARY KEY(submission_id, run_id, status)
+        date            STRING NOT NULL
         """
 
     def __init__(
@@ -46,10 +44,10 @@ class RunModel(DatabaseObject):
     DEFAULT_ID = "<default>"
 
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
         return [
-            ("id_", "id"),
-            ("submission_id", "submission_id"),
+            ("id_", "id", True),
+            ("submission_id", "submission_id", True),
             ("engine_id", "engine_id"),
             ("status", "status"),
             ("error", "error"),
@@ -70,10 +68,7 @@ class RunModel(DatabaseObject):
         labels          STRING,
         tags            STRING,
         last_updated    STRING,
-
-        PRIMARY KEY (id, submission_id),
         FOREIGN KEY (submission_id) REFERENCES sumissions(id)
-
         """
 
     # Runs are scoped to a "Submission"
@@ -108,6 +103,16 @@ class RunModel(DatabaseObject):
         self.events = events
         self.last_updated = last_updated
 
+    def apply_ids_to_children(self):
+        arrays = [self.jobs, self.inputs, self.outputs, self.events]
+
+        for ar in arrays:
+            if not ar:
+                continue
+            for el in ar:
+                el.run_id = self.id_
+                self.submission_id = self.submission_id
+
 
 class SubmissionModel(DatabaseObject):
     def __init__(
@@ -141,9 +146,10 @@ class SubmissionModel(DatabaseObject):
         self.runs = runs or []
         self.engine_url = engine_url
 
+    @classmethod
     def keymap(cls) -> List[Tuple[str, str]]:
         return [
-            ("id_", "id"),
+            ("id_", "id", True),
             ("outdir", "outdir"),
             ("author", "author"),
             ("labels", "labels"),
@@ -155,11 +161,11 @@ class SubmissionModel(DatabaseObject):
     @classmethod
     def table_schema(cls):
         return """
-        id          STRING PRIMARY KEY,
+        id          STRING NOT NULL,
         outdir      STRING NOT NULL,
         author      STRING NOT NULL,
         tags        STRING,
         labels      STRING,
         timestamp   STRING,
-        engine      STRING,
+        engine      STRING
         """

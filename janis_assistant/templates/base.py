@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import os.path
 from typing import Type, Optional, List, Dict
 
+from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.data.models.workflow import WorkflowModel
 
 from janis_assistant.data.enums import TaskStatus
@@ -143,7 +144,9 @@ class EnvironmentTemplate(ABC):
         """
         pass
 
-    def prepare_status_update_email(self, status: TaskStatus, metadata: WorkflowModel):
+    def prepare_status_update_email(
+        self, status: TaskStatus, metadata: SubmissionModel
+    ):
 
         _status_change_template = """\
         <h1>Status change: {status}</h1>
@@ -173,10 +176,10 @@ class EnvironmentTemplate(ABC):
         """
 
         return _status_change_template.format(
-            wid=metadata.wid,
-            wfname=metadata.name,
+            wid=metadata.id_,
+            wfname=metadata.id_,
             status=status,
-            exdir=metadata.execution_dir,
+            exdir="<execution-dir>",
             tdir=metadata.outdir,
             progress_and_header=progress_and_header,
         )

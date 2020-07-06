@@ -10,11 +10,11 @@ from janis_core.utils.logger import _bcolors
 
 class RunJobModel(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
         return [
-            ("id_", "id"),
-            ("submission_id", "submission_id"),
-            ("run_id", "run_id"),
+            ("id_", "id", True),
+            ("submission_id", "submission_id", True),
+            ("run_id", "run_id", True),
             ("parent", "parent"),
             ("name", "name"),
             ("batchid", "batchid"),
@@ -59,11 +59,7 @@ script          STRING,
 memory          STRING,
 cpu             STRING,
 analysis        STRING,
-
-PRIMARY KEY (id, submission_id, run_id),
-FOREIGN KEY (wid, parentjid) REFERENCES jobs(wid, parentjid)
-        
-        """
+    """
 
     def __init__(
         self,

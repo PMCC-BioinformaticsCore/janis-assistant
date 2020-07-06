@@ -54,7 +54,7 @@ class DbProviderBase(Generic[T]):
     ) -> Optional[List[T]]:
         jkeys = ", ".join(keys) if isinstance(keys, list) else keys
         if jkeys == "*":
-            keys = [k for _, k in self.base.table_schema()]
+            keys = [t[1] for t in self.base.keymap()]
 
         values = []
         whereclauses = []
@@ -87,6 +87,7 @@ class DbProviderBase(Generic[T]):
                         "We hit the database at the same time the janis process wrote to it, meh"
                     )
                     return None
+                raise
 
         parsedrows = [self.base.deserialize(keys, r) for r in rows]
         return parsedrows
@@ -94,10 +95,23 @@ class DbProviderBase(Generic[T]):
     def commit(self):
         return self.db.commit()
 
+    def get_primary_keys(self):
+        pkeys = [t[1] for t in self.base.keymap() if len(t) == 3 and t[2] is True]
+        if len(pkeys) == 0:
+            pkeys = ["id"]
+        return pkeys
+
     def table_schema(self):
+
+        tschema = self.base.table_schema()
+        if tschema.strip()[-1] != ",":
+            tschema += ","
+        pkeys = self.get_primary_keys()
+
         return f"""\
         CREATE TABLE IF NOT EXISTS {self.tablename} (
-        {self.base.table_schema()}
+            {tschema}
+            PRIMARY KEY({', '.join(pkeys)})
         )
         """
 
@@ -105,23 +119,39 @@ class DbProviderBase(Generic[T]):
         queries: Dict[str, List[List[any]]] = {}
         update_separator = ",\n"
         tab = "\t"
+
+        pkeys = set(self.get_primary_keys())
+
         for el in els:
             keys, values = el.prepare_insert()
+
+            keys_np, values_np = [], []
+            for k, v in zip(keys, values):
+                if k in pkeys:
+                    continue
+
+                keys_np.append(k)
+                values_np.append(v)
+
             prepared_statement = f"""
 INSERT INTO {self.tablename}
     ({', '.join(keys)})
 VALUES
-    ({', '.join(f':{k}' for k in keys)})
-ON DUPLICATE KEY UPDATE 
-{update_separator.join(f'{tab}{k} = :{k}' for k in keys)};
+    ({', '.join(f'?' for _ in keys)})
+ON CONFLICT({', '.join(pkeys)}) DO UPDATE SET
+{update_separator.join(f'{tab}{k} = ?' for k in keys_np)};
 """
+            vtuple = [*values, *values_np]
             if prepared_statement in queries:
-                queries[prepared_statement].append(values)
+                queries[prepared_statement].append(vtuple)
             else:
-                queries[prepared_statement] = [values]
+                queries[prepared_statement] = [vtuple]
 
         with self.with_cursor() as cursor:
             for query, vvalues in queries.items():
-                cursor.executemany(query, vvalues)
+                try:
+                    cursor.executemany(query, vvalues)
+                except OperationalError as e:
+                    Logger.log_ex(e)
 
         return True

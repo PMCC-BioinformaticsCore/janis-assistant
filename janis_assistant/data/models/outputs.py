@@ -13,11 +13,11 @@ from janis_assistant.utils.dateutil import DateUtil
 
 class WorkflowOutputModel(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
         return [
-            ("id_", "id"),
-            ("submission_id", "submission_id"),
-            ("run_id", "run_id"),
+            ("id_", "id", True),
+            ("submission_id", "submission_id", True),
+            ("run_id", "run_id", True),
             ("output_name", "output_name"),
             ("output_folder", "output_folder"),
             ("secondaries", "secondaries"),
@@ -43,9 +43,7 @@ class WorkflowOutputModel(DatabaseObject):
         is_copyable     BIT,
         original_path   STRING,
         new_path        STRING,
-        timestamp       NULLABLE STRING,
-        
-        PRIMARY KEY (id, submission_id, run_id)
+        timestamp       NULLABLE STRING
         """
 
     def __init__(
@@ -53,14 +51,14 @@ class WorkflowOutputModel(DatabaseObject):
         id_: str,
         submission_id: str,
         run_id: str,
-        output_name: str,
-        output_folder: str,
-        secondaries: str,
-        extension: str,
-        is_copyable: str,
-        original_path: str,
-        new_path: str,
-        timestamp: Union[str, datetime.datetime],
+        output_name: Optional[str],
+        output_folder: Optional[str],
+        secondaries: Optional[List[str]],
+        extension: Optional[str],
+        is_copyable: bool,
+        original_path: Optional[str],
+        new_path: Optional[str],
+        timestamp: Optional[Union[str, datetime.datetime]],
     ):
         self.id_ = id_
         self.submission_id = submission_id

@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from janis_core import Logger
 
@@ -14,7 +14,7 @@ class DatabaseObject(ABC):
 
     @classmethod
     @abstractmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
         pass
 
     @classmethod
@@ -25,7 +25,8 @@ class DatabaseObject(ABC):
     def prepare_insert(self):
         keys = []
         values = []
-        for objkey, dbkey in self.keymap():
+        for t in self.keymap():
+            objkey, dbkey = t[:2]
             val = getattr(self, objkey)
             if val is None:
                 continue
@@ -42,19 +43,21 @@ class DatabaseObject(ABC):
                 f"\n\tKeys: {str(keys)}\n\tRow: {str(row)}"
             )
 
-        rkeymap = {dbkey: objkey for objkey, dbkey in cls.keymap()}
+        rkeymap = {t[1]: t[0] for t in cls.keymap()}
 
         initdict = {
             rkeymap[keys[idx]]: cls.deserialize_inner(row[idx])
             for idx in range(len(keys))
         }
 
-        return cls.__init__(**initdict, **rkeymap)
+        return cls(**initdict)
 
     @staticmethod
     def serialize(val):
         if val is None:
             return None
+        elif isinstance(val, (str, float, bool, int)):
+            return val
         elif isinstance(val, datetime):
             return str(val)
         elif isinstance(val, Enum):

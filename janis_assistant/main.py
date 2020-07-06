@@ -63,7 +63,7 @@ def resolve_tool(
 
     if not only_toolbox:
         fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
-        if fileschemewherelocated:
+        if fileschemewherelocated != LocalFileScheme and fileschemewherelocated:
             Logger.info(
                 f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
             )
@@ -447,13 +447,13 @@ def fromjanis(
         inputsdict = wf.modify_inputs(inputsdict, hints)
 
     row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
-    print(row.wid, file=sys.stdout)
+    print(row.submission_id, file=sys.stdout)
 
     engine = engine or jc.engine
 
     eng = get_engine_from_eng(
         engine,
-        wid=row.wid,
+        wid=row.submission_id,
         execdir=WorkflowManager.get_path_for_component_and_dir(
             row.outputdir, WorkflowManager.WorkflowManagerPath.execution
         ),
@@ -482,7 +482,7 @@ def fromjanis(
         ) and not (run_in_foreground is True)
 
         tm = cm.start_task(
-            submission_id=row.wid,
+            submission_id=row.submission_id,
             tool=wf,
             environment=environment,
             validation_requirements=validation_reqs,
@@ -576,7 +576,7 @@ def abort_wids(wids: List[str]):
         try:
             row = ConfigManager.manager().get_lazy_db_connection().get_by_wid(wid)
             if row:
-                WorkflowManager.mark_aborted(row.outputdir, row.wid)
+                WorkflowManager.mark_aborted(row.outputdir, row.submission_id)
             else:
                 WorkflowManager.mark_aborted(wid, None)
         except Exception as e:

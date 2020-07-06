@@ -2,13 +2,16 @@ import sqlite3
 from contextlib import contextmanager
 from os.path import join as ospathjoin
 
-from typing import List
+from typing import List, Optional
+
+from janis_assistant.data.providers.rundbprovider import RunDbProvider
 
 from janis_assistant.data.enums import TaskStatus
+from janis_assistant.data.models.run import SubmissionModel, RunModel
 from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.data.providers.inputsdbprovider import InputDbProvider
-from janis_assistant.data.providers.jobdbprovider import JobDbProvider
+from janis_assistant.data.providers.jobdbprovider import JobDbProvider, groupby
 from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
 from janis_assistant.data.providers.progressdbprovider import ProgressDbProvider
 from janis_assistant.data.providers.submissiondbprovider import SubmissionDbProvider
@@ -56,10 +59,13 @@ class WorkflowDbManager:
         self.exec_path = path
         self.readonly = readonly
 
+        self.submission_id = submission_id
+
         self.connection = self.db_connection()
 
         sqlpath = self.get_sql_path()
-        self.runs = SubmissionDbProvider(db=self.connection)
+        self.submissions = SubmissionDbProvider(db=self.connection)
+        self.runs = RunDbProvider(db=self.connection, submission_id=submission_id)
         self.workflowmetadata = WorkflowMetadataDbProvider(
             sqlpath, submission_id=submission_id, readonly=readonly
         )
@@ -142,13 +148,13 @@ class WorkflowDbManager:
             Logger.critical("Error when opening DB connection to: " + path)
             raise
 
-    def save_metadata(self, metadata: WorkflowModel):
+    def save_metadata(self, metadata: RunModel):
 
         # mfranklin: DO NOT UPDATE THE STATUS HERE!
 
         # Let's just say the actual workflow metadata has to updated separately
         alljobs = self.flatten_jobs(metadata.jobs or [])
-        self.jobsDB.update_or_insert_many(alljobs)
+        self.jobsDB.insert_or_update_many(alljobs)
 
         self.workflowmetadata.last_updated = DateUtil.now()
         if metadata.error:
@@ -160,7 +166,12 @@ class WorkflowDbManager:
             self.workflowmetadata.finish = metadata.finish
         return
 
-    def get_metadata(self):
+    def get_metadata(self) -> Optional[SubmissionModel]:
+        submission = self.submissions.get_by_id(self.submission_id)
+        if submission is None:
+            Logger.debug("Something happened when getting 'submission' for metadata")
+            return
+
         jobs = self.jobsDB.get_all_mapped()
         if jobs is None:
             Logger.log(
@@ -168,32 +179,49 @@ class WorkflowDbManager:
             )
             return None
 
-        inputs = self.inputsDB.get_all()
+        inputs = self.inputsDB.get() or []
+        outputs = self.outputsDB.get() or []
 
-        return WorkflowModel(
-            wid=self.workflowmetadata.wid,
-            engine_wid=self.workflowmetadata.engine_wid,
-            name=self.workflowmetadata.name,
-            start=self.workflowmetadata.start,
-            finish=self.workflowmetadata.finish,
-            outdir=self.exec_path,
-            execution_dir=self.workflowmetadata.execution_dir,
-            status=self.workflowmetadata.status,
-            engine=self.workflowmetadata.engine.description(),
-            engine_url=self.workflowmetadata.engine_url,
-            # filesystem=self.workflowmetadata.filesystem.id(),
-            labels=self.workflowmetadata.labels,
-            error=self.workflowmetadata.error,
-            author=self.workflowmetadata.author,
-            jobs=jobs,
-            last_updated=self.workflowmetadata.last_updated,
-            outputs=(
-                self.outputsDB.get_all()
-                if self.workflowmetadata.status == TaskStatus.COMPLETED
-                else None
-            ),
-            inputs=inputs,
-        )
+        job_by_sid = groupby(jobs, "run_id")
+        inputs_by_sid = groupby(inputs, "run_id")
+        outputs_by_sid = groupby(outputs, "run_id")
+
+        runs = self.runs.get()
+
+        submission.runs = runs
+
+        for r in submission.runs:
+            r.jobs = job_by_sid.get(r.id_)
+            r.inputs = inputs_by_sid.get(r.id_)
+            r.outputs = outputs_by_sid.get(r.id_)
+            r.events = None
+
+        return submission
+
+        # return WorkflowModel(
+        #     wid=self.workflowmetadata.submission_id,
+        #     engine_wid=self.workflowmetadata.engine_wid,
+        #     name=self.workflowmetadata.name,
+        #     start=self.workflowmetadata.start,
+        #     finish=self.workflowmetadata.finish,
+        #     outdir=self.exec_path,
+        #     execution_dir=self.workflowmetadata.execution_dir,
+        #     status=self.workflowmetadata.status,
+        #     engine=self.workflowmetadata.engine.description(),
+        #     engine_url=self.workflowmetadata.engine_url,
+        #     # filesystem=self.workflowmetadata.filesystem.id(),
+        #     labels=self.workflowmetadata.labels,
+        #     error=self.workflowmetadata.error,
+        #     author=self.workflowmetadata.author,
+        #     jobs=jobs,
+        #     last_updated=self.workflowmetadata.last_updated,
+        #     outputs=(
+        #         self.outputsDB.get_all()
+        #         if self.workflowmetadata.status == TaskStatus.COMPLETED
+        #         else None
+        #     ),
+        #     inputs=inputs,
+        # )
 
     def flatten_jobs(self, jobs: List[RunJobModel]):
         flattened = jobs

@@ -31,9 +31,6 @@ class InputDbProvider(DbProviderBase[WorkflowInputModel]):
         )
         self.submission_id = submission_id
 
-    def get_all(self) -> List[WorkflowInputModel]:
-        return self.get() or []
-
     def get_single(
         self, id_: str, run_id: str = RunModel.DEFAULT_ID
     ) -> Optional[WorkflowInputModel]:

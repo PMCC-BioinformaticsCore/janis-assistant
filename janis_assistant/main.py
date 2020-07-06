@@ -62,7 +62,7 @@ def resolve_tool(
         )
 
     if not only_toolbox:
-        fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
+        fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())()
         if fileschemewherelocated:
             Logger.info(
                 f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"

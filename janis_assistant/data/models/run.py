@@ -1,9 +1,11 @@
 from typing import List, Tuple, Union, Optional
 from datetime import datetime
 
+from janis_assistant.utils import second_formatter
+
 from janis_assistant.utils.dateutil import DateUtil
 
-from janis_assistant.data.models.base import DatabaseObject
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.inputs import WorkflowInputModel
 from janis_assistant.data.models.outputs import WorkflowOutputModel
@@ -12,12 +14,12 @@ from janis_assistant.data.models.workflowjob import RunJobModel
 
 class RunStatusUpdate(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            ("submission_id", "submission_id", True),
-            ("run_id", "run_id", True),
-            ("status", "status"),
-            ("date", "date"),
+            DatabaseObjectField("submission_id", is_primary=True),
+            DatabaseObjectField("run_id", is_primary=True),
+            DatabaseObjectField("status", is_primary=True),
+            DatabaseObjectField("date"),
         ]
 
     @classmethod
@@ -44,16 +46,17 @@ class RunModel(DatabaseObject):
     DEFAULT_ID = "<default>"
 
     @classmethod
-    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            ("id_", "id", True),
-            ("submission_id", "submission_id", True),
-            ("engine_id", "engine_id"),
-            ("status", "status"),
-            ("error", "error"),
-            ("labels", "labels"),
-            ("tags", "tags"),
-            ("last_updated", "last_updated"),
+            DatabaseObjectField("id_", "id", is_primary=True),
+            DatabaseObjectField("submission_id", is_primary=True),
+            DatabaseObjectField("engine_id"),
+            DatabaseObjectField("execution_dir"),
+            DatabaseObjectField("status"),
+            DatabaseObjectField("error"),
+            DatabaseObjectField("labels", encode=True),
+            DatabaseObjectField("tags", encode=True),
+            DatabaseObjectField("last_updated"),
         ]
 
     @classmethod
@@ -100,8 +103,32 @@ class RunModel(DatabaseObject):
         self.jobs = jobs
         self.inputs = inputs
         self.outputs = outputs
-        self.events = events
+
+        if isinstance(last_updated, str):
+            last_updated = DateUtil.parse_iso(last_updated)
+
         self.last_updated = last_updated
+
+        # to be calculated
+        self.start = None
+        self.finish = None
+
+        # call setters
+        self.events = None
+        self.set_events(events)
+
+    def set_events(self, events):
+        self.events = events or []
+
+        if len(self.events) == 0:
+            return
+
+        self.status = sorted(self.events, key=lambda e: e.date)[-1].status
+
+        self.start = min(e.date for e in self.events)
+        final_status = [e.date for e in self.events if e.status.is_in_final_state()]
+        if len(final_status) > 0:
+            self.finish = final_status[0]
 
     def apply_ids_to_children(self):
         arrays = [self.jobs, self.inputs, self.outputs, self.events]
@@ -110,8 +137,17 @@ class RunModel(DatabaseObject):
             if not ar:
                 continue
             for el in ar:
-                el.run_id = self.id_
-                self.submission_id = self.submission_id
+                el.set_ids(submission_id=self.submission_id, run_id=self.id_)
+
+    def format(self, tb, **kwargs):
+        if not self.jobs:
+            return ""
+        nl = "\n"
+
+        return nl.join(
+            tb + j.format(tb, **kwargs)
+            for j in sorted(self.jobs, key=lambda j: j.start or DateUtil.now())
+        )
 
 
 class SubmissionModel(DatabaseObject):
@@ -147,15 +183,15 @@ class SubmissionModel(DatabaseObject):
         self.engine_url = engine_url
 
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            ("id_", "id", True),
-            ("outdir", "outdir"),
-            ("author", "author"),
-            ("labels", "labels"),
-            ("tags", "tags"),
-            ("timestamp", "timestamp"),
-            ("engine_type", "engine"),
+            DatabaseObjectField("id_", "id", is_primary=True),
+            DatabaseObjectField("outdir"),
+            DatabaseObjectField("author"),
+            DatabaseObjectField("labels", encode=True),
+            DatabaseObjectField("tags", encode=True),
+            DatabaseObjectField("timestamp"),
+            DatabaseObjectField("engine_type", "engine"),
         ]
 
     @classmethod
@@ -169,3 +205,64 @@ class SubmissionModel(DatabaseObject):
         timestamp   STRING,
         engine      STRING
         """
+
+    def format(self, **kwargs):
+        tb = "    "
+        nl = "\n"
+
+        start, finish = None, DateUtil.now()
+        last_updated = None
+        if self.runs:
+            start_times = [s.start for s in self.runs if s.start]
+            finish_times = [s.finish for s in self.runs if s.finish]
+            last_updated_times = [s.last_updated for s in self.runs if s.last_updated]
+
+            if start_times:
+                start = min(start_times)
+            if finish_times and len(finish_times) == len(self.runs):
+                finish = max(finish_times)
+            if last_updated_times:
+                last_updated = max(last_updated_times)
+
+        fin = finish or DateUtil.now()
+
+        duration = round((fin - start).total_seconds()) if start else 0
+
+        updated_text = "Unknown"
+        if last_updated:
+            secs_ago = int((DateUtil.now() - last_updated).total_seconds())
+            if secs_ago > 2:
+                updated_text = second_formatter(secs_ago) + " ago"
+            else:
+                updated_text = "Just now"
+            updated_text += f" ({last_updated.replace(microsecond=0).isoformat()})"
+
+        engine_ids, statuses, errors = "", "", ""
+
+        if self.runs:
+            engine_ids = ", ".join(r.engine_id for r in self.runs if r.engine_id)
+            statuses = ", ".join(str(r.status.value) for r in self.runs if r.status)
+            errors = ", ".join(r.error for r in self.runs if r.error)
+
+        return f"""\
+SID:        {self.id_}
+EngId:      {engine_ids}
+Engine:     {self.engine_type}
+
+Task Dir:   {self.outdir}
+
+Status:     {statuses}
+Duration:   {second_formatter(duration)}
+Start:      {start.isoformat() if start else 'N/A'}
+Finish:     {finish.isoformat() if finish else "N/A"}
+Updated:    {updated_text}
+
+Jobs: 
+{nl.join(j.format(tb, **kwargs) for j in sorted(self.runs, key=lambda j: j.start or DateUtil.now()))}       
+
+
+{("Error: " + errors) if errors else ''}
+    """.strip()
+
+
+# {("Outputs:" + "".join(nl + tb + o.format() for o in self.outputs) if self.outputs else '')}

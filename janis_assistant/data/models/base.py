@@ -7,6 +7,14 @@ from typing import List, Tuple, Union
 from janis_core import Logger
 
 
+class DatabaseObjectField:
+    def __init__(self, name, dbalias=None, is_primary=False, encode=False):
+        self.name = name
+        self.dbalias = dbalias or name
+        self.is_primary = is_primary
+        self.encode = encode
+
+
 class DatabaseObject(ABC):
     def __repr__(self):
         fields = ", ".join(str(getattr(self, k)) for k, _ in self.keymap())
@@ -14,7 +22,7 @@ class DatabaseObject(ABC):
 
     @classmethod
     @abstractmethod
-    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         pass
 
     @classmethod
@@ -25,8 +33,9 @@ class DatabaseObject(ABC):
     def prepare_insert(self):
         keys = []
         values = []
+
         for t in self.keymap():
-            objkey, dbkey = t[:2]
+            objkey, dbkey = t.name, t.dbalias
             val = getattr(self, objkey)
             if val is None:
                 continue
@@ -43,11 +52,15 @@ class DatabaseObject(ABC):
                 f"\n\tKeys: {str(keys)}\n\tRow: {str(row)}"
             )
 
-        rkeymap = {t[1]: t[0] for t in cls.keymap()}
+        km = cls.keymap()
+        rkeymap = {t.dbalias: t.name for t in cls.keymap()}
+        dbalias_to_decode = {t.dbalias for t in km if t.encode}
 
         initdict = {
-            rkeymap[keys[idx]]: cls.deserialize_inner(row[idx])
-            for idx in range(len(keys))
+            rkeymap[dbalias]: cls.deserialize_inner(value)
+            if dbalias in dbalias_to_decode
+            else value
+            for dbalias, value in zip(keys, row)
         }
 
         return cls(**initdict)
@@ -71,8 +84,8 @@ class DatabaseObject(ABC):
 
     @staticmethod
     def deserialize_inner(val):
-        if isinstance(val, int):
-            return val
+        if val is None:
+            return None
         try:
             return json.loads(val)
         except Exception as ex:

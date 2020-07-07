@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from typing import Optional
+
 from janis_assistant.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 from janis_assistant.management.filescheme import FileScheme
@@ -8,13 +10,13 @@ from janis_assistant.engines import Engine
 from janis_assistant.utils.getuser import lookup_username
 
 
-class WorkflowMetadataDbProvider(KvDB):
+class SubmissionMetadataDbProvider(KvDB):
 
     attributes_to_persist = {a.value for a in WorkflowMetadataDbKeys}
 
     @staticmethod
     def new(dblocation: str, wid: str):
-        t = WorkflowMetadataDbProvider(dblocation, wid)
+        t = SubmissionMetadataDbProvider(dblocation, wid)
 
         t.wid = wid
         t.start = datetime.now()
@@ -27,18 +29,13 @@ class WorkflowMetadataDbProvider(KvDB):
         if WorkflowMetadataDbKeys.submission_id.value not in self.kvdb:
             # Initialise to give prompts to IDE
             self.submission_id = None
-            self.engine_wid = None
-
             self.name = None
 
             self.status = None
-            self.start = None
-            self.finish = None
             self.last_updated = None
             self.please_abort = False
             self.please_pause = False
 
-            self.execution_dir = None
             self.keepexecutiondir = None
 
             self.containerversion = None
@@ -46,13 +43,9 @@ class WorkflowMetadataDbProvider(KvDB):
 
             self.engine: Optional[Engine] = None
             self.filescheme: Optional[FileScheme] = None
-            self.labels = None
-            self.error = None
 
             self.configuration = None
             self.dbconfig = None
-
-            self.author = lookup_username()
 
         self.kvdb.autocommit = True
         self.kvdb.commit()

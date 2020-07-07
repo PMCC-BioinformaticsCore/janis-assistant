@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, Union, List, Tuple
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
-from janis_assistant.data.models.base import DatabaseObject
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.utils import second_formatter
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import _bcolors
@@ -10,28 +10,28 @@ from janis_core.utils.logger import _bcolors
 
 class RunJobModel(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            ("id_", "id", True),
-            ("submission_id", "submission_id", True),
-            ("run_id", "run_id", True),
-            ("parent", "parent"),
-            ("name", "name"),
-            ("batchid", "batchid"),
-            ("shard", "shard"),
-            ("attempt", "attempt"),
-            ("container", "container"),
-            ("status", "status"),
-            ("start", "start"),
-            ("finish", "finish"),
-            ("backend", "backend"),
-            ("cached", "cached"),
-            ("stdout", "stdout"),
-            ("stderr", "stderr"),
-            ("script", "script"),
-            ("memory", "memory"),
-            ("cpu", "cpu"),
-            ("analysis", "analysis"),
+            DatabaseObjectField("id_", "id", is_primary=True),
+            DatabaseObjectField("submission_id", is_primary=True),
+            DatabaseObjectField("run_id", is_primary=True),
+            DatabaseObjectField("parent"),
+            DatabaseObjectField("name"),
+            DatabaseObjectField("batchid"),
+            DatabaseObjectField("shard"),
+            DatabaseObjectField("attempt"),
+            DatabaseObjectField("container"),
+            DatabaseObjectField("status"),
+            DatabaseObjectField("start"),
+            DatabaseObjectField("finish"),
+            DatabaseObjectField("backend"),
+            DatabaseObjectField("cached"),
+            DatabaseObjectField("stdout"),
+            DatabaseObjectField("stderr"),
+            DatabaseObjectField("script"),
+            DatabaseObjectField("memory"),
+            DatabaseObjectField("cpu"),
+            DatabaseObjectField("analysis"),
         ]
 
     @classmethod
@@ -127,8 +127,16 @@ analysis        STRING,
         self.cpu = cpu
         self.analysis = analysis
 
-        self.jobs = jobs or None
+        self.jobs: Optional[List[RunJobModel]] = jobs or None
         self.events = None
+
+    def set_ids(self, submission_id, run_id):
+        self.submission_id = submission_id
+        self.run_id = run_id
+
+        if self.jobs:
+            for j in self.jobs:
+                j.set_ids(submission_id=submission_id, run_id=run_id)
 
     @staticmethod
     def from_row(row):

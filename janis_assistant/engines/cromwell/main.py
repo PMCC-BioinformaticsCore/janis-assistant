@@ -10,7 +10,7 @@ from datetime import datetime
 from urllib import request, parse
 
 from glob import glob
-from typing import Optional, List
+from typing import Optional, List, Tuple, Union
 
 from janis_core import LogLevel
 from janis_core.utils import first_value
@@ -532,7 +532,9 @@ class Cromwell(Engine):
         return {out[0]: out[1] for out in parsed}
 
     @staticmethod
-    def parse_output(key, value):
+    def parse_output(
+        key, value
+    ) -> Tuple[str, Union[WorkflowOutputModel, List[WorkflowOutputModel]]]:
         newkey = "".join(key.split(".")[1:])
 
         fileloc = value
@@ -547,7 +549,7 @@ class Cromwell(Engine):
         return (
             newkey,
             WorkflowOutputModel(
-                tag=newkey,
+                id_=newkey,
                 original_path=fileloc,
                 timestamp=DateUtil.now(),
                 new_path=None,
@@ -556,7 +558,9 @@ class Cromwell(Engine):
                 secondaries=None,
                 extension=None,
                 value=fileloc,
-                iscopyable=True,
+                is_copyable=True,
+                submission_id=None,
+                run_id=None,
             ),
         )
 

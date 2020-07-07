@@ -3,16 +3,16 @@ from typing import Tuple, Optional, List
 from janis_assistant.data.dbproviderbase import DbProviderBase
 
 # different to archivable
-from janis_assistant.data.models.base import DatabaseObject
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.utils import Logger, fully_qualify_filename
 
 
 class TaskRow(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Tuple[str, str]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            ("submission_id", "id"),
-            ("outputdir", "outputdir"),
+            DatabaseObjectField("submission_id", "id"),
+            DatabaseObjectField("outputdir"),
         ]
 
     @classmethod

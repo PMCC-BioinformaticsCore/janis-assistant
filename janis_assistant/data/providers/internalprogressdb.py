@@ -8,7 +8,7 @@ from janis_assistant.data.dbproviderbase import DbProviderBase
 from janis_assistant.data.enums import ProgressKeys
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 
-# class ProgressDbProvider(KvDB):
+# class InternalProgressDb(KvDB):
 #     attributes_to_persist = [k.value for k in ProgressKeys]
 #
 #     def __init__(self, dblocation):
@@ -29,7 +29,7 @@ from janis_assistant.data.keyvaluedbproviderbase import KvDB
 #             self.cleanedUp = False
 
 
-class ProgressDbProvider(DbProviderBase):
+class InternalProgressDb(DbProviderBase):
     CURRENT_SCHEMA_VERSION = 1
 
     def table_schema(self):

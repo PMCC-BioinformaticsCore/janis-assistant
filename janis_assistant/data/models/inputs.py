@@ -3,18 +3,18 @@ from typing import List, Tuple, Union
 
 from janis_core.utils.logger import Logger
 
-from janis_assistant.data.models.base import DatabaseObject
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 
 
 class WorkflowInputModel(DatabaseObject):
     @classmethod
-    def keymap(cls) -> List[Union[Tuple[str, str, bool], Tuple[str, str]]]:
+    def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            ("id_", "id", True),
-            ("submission_id", "submission_id", True),
-            ("run_id", "run_id", True),
-            ("value", "value"),
-            ("size", "size"),  # bytes
+            DatabaseObjectField("id_", dbalias="id", is_primary=True),
+            DatabaseObjectField("submission_id", is_primary=True),
+            DatabaseObjectField("run_id", is_primary=True),
+            DatabaseObjectField("value"),
+            DatabaseObjectField("size"),  # bytes
         ]
 
     @classmethod

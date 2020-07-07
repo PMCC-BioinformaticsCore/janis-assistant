@@ -54,7 +54,8 @@ class DbProviderBase(Generic[T]):
     ) -> Optional[List[T]]:
         jkeys = ", ".join(keys) if isinstance(keys, list) else keys
         if jkeys == "*":
-            keys = [t[1] for t in self.base.keymap()]
+            keys = [t.dbalias for t in self.base.keymap()]
+            jkeys = ", ".join(keys) if isinstance(keys, list) else keys
 
         values = []
         whereclauses = []
@@ -96,7 +97,7 @@ class DbProviderBase(Generic[T]):
         return self.db.commit()
 
     def get_primary_keys(self):
-        pkeys = [t[1] for t in self.base.keymap() if len(t) == 3 and t[2] is True]
+        pkeys = [t.dbalias for t in self.base.keymap() if t.is_primary]
         if len(pkeys) == 0:
             pkeys = ["id"]
         return pkeys

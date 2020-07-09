@@ -94,7 +94,7 @@ class WorkflowManager:
 
     def __init__(
         self,
-        outdir: str,
+        execution_dir: str,
         submission_id: str,
         environment: Environment = None,
         readonly=False,
@@ -106,8 +106,8 @@ class WorkflowManager:
 
         # hydrate from here if required
         self._engine_wid = None
-        self.path = fully_qualify_filename(outdir)
-        self.create_dir_structure(self.path)
+        self.execution_dir = fully_qualify_filename(execution_dir)
+        self.create_dir_structure(self.execution_dir)
 
         self.database = WorkflowDbManager(
             submission_id, self.get_task_path_safe(), readonly=readonly
@@ -146,7 +146,8 @@ class WorkflowManager:
     @staticmethod
     def from_janis(
         submission_id: str,
-        outdir: str,
+        output_dir: str,
+        execution_dir: str,
         tool: Tool,
         environment: Environment,
         hints: Dict[str, str],
@@ -175,14 +176,17 @@ class WorkflowManager:
         environment.identifier += "_" + submission_id
 
         tm = WorkflowManager(
-            submission_id=submission_id, outdir=outdir, environment=environment
+            submission_id=submission_id,
+            execution_dir=execution_dir,
+            environment=environment,
         )
 
         tm.database.submissions.insert_or_update_many(
             [
                 SubmissionModel(
                     id_=submission_id,
-                    outdir=outdir,
+                    output_dir=output_dir,
+                    execution_dir=execution_dir,
                     author=lookup_username(),
                     labels=[],
                     tags=[],
@@ -297,53 +301,65 @@ class WorkflowManager:
             self.show_status_screen()
 
     @staticmethod
-    def from_path_with_wid(path, wid, readonly=False):
+    def from_path_with_submission_id(path, submission_id, readonly=False):
         """
-        :param wid: Workflow ID
+        :param submission_id: Workflow ID
         :param path: Path to workflow
         :return: TaskManager after resuming (might include a wait)
         """
-        # get everything and pass to constructor
-        # database path
+        # mfranklin 2020-07-09:
+        # we need to check in two places:
+        #   1. The directory they specified
+        #   2. In a subdirectory called "janis"
 
-        path = WorkflowManager.get_task_path_for(path)
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Couldn't find path '{path}'")
+        paths = [path, os.path.join(path, "janis")]
 
-        db = WorkflowDbManager.get_workflow_metadatadb(path, wid, readonly=readonly)
+        for path in paths:
+            path = WorkflowManager.get_task_path_for(path)
+            if not os.path.exists(path):
+                continue
 
-        if not wid:
-            wid = db.wid  # .get_meta_info(InfoKeys.taskId)
-
-        if not wid:
-            raise Exception(f"Couldn't find workflow with id '{wid}'")
-
-        envid = db.environment  # .get_meta_info(InfoKeys.environment)
-        eng = db.engine
-        fs = db.filescheme
-        env = Environment(envid, eng, fs)
-
-        try:
-            JanisConfiguration._managed = db.configuration
-        except Exception as e:
-            Logger.critical(
-                "The JanisConfiguration could not be loaded from the DB, this might be due to an older version, we'll load your current config instead. Error: "
-                + str(e)
+            db = WorkflowDbManager.get_workflow_metadatadb(
+                path, submission_id, readonly=readonly
             )
-            JanisConfiguration.initial_configuration(None)
 
-        db.close()
+            if not submission_id:
+                submission_id = db.wid  # .get_meta_info(InfoKeys.taskId)
 
-        tm = WorkflowManager(
-            outdir=path, submission_id=wid, environment=env, readonly=readonly
-        )
-        return tm
+            if not submission_id:
+                raise Exception(f"Couldn't find workflow with id '{submission_id}'")
+
+            envid = db.environment  # .get_meta_info(InfoKeys.environment)
+            eng = db.engine
+            fs = db.filescheme
+            env = Environment(envid, eng, fs)
+
+            try:
+                JanisConfiguration._managed = db.configuration
+            except Exception as e:
+                Logger.critical(
+                    "The JanisConfiguration could not be loaded from the DB, this might be due to an older version, we'll load your current config instead. Error: "
+                    + str(e)
+                )
+                JanisConfiguration.initial_configuration(None)
+
+            db.close()
+
+            tm = WorkflowManager(
+                execution_dir=path,
+                submission_id=submission_id,
+                environment=env,
+                readonly=readonly,
+            )
+            return tm
 
     @staticmethod
     def from_path_get_latest(path, readonly=False):
         path = WorkflowManager.get_task_path_for(path)
         wid = WorkflowDbManager.get_latest_workflow(path=path)
-        return WorkflowManager.from_path_with_wid(path, wid, readonly=readonly)
+        return WorkflowManager.from_path_with_submission_id(
+            path, wid, readonly=readonly
+        )
 
     def show_status_screen(self, **kwargs):
         """
@@ -937,6 +953,11 @@ class WorkflowManager:
         wf_outputs: List[WorkflowOutputModel] = self.database.outputsDB.get()
         engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
 
+        submission = self.database.submissions.get_by_id(self.submission_id)
+        if not submission:
+            # uh oh...
+            raise Exception()
+
         nattempts = 5
         for at in range(nattempts):
             if engine_outputs is None:
@@ -965,6 +986,7 @@ class WorkflowManager:
                 continue
             originalfile, newfilepath = self.copy_output(
                 fs=fs,
+                output_dir=submission.output_dir,
                 outputid=out.id_,
                 prefix=out.output_name,
                 tag=out.output_folder,
@@ -994,6 +1016,7 @@ class WorkflowManager:
     def copy_output(
         self,
         fs: FileScheme,
+        output_dir: str,
         outputid,
         prefix,
         tag,
@@ -1055,6 +1078,7 @@ class WorkflowManager:
                 outs.append(
                     self.copy_output(
                         fs,
+                        output_dir=output_dir,
                         outputid=outputid,
                         tag=new_tag,
                         prefix=new_prefix,
@@ -1092,7 +1116,7 @@ class WorkflowManager:
         if final_tags is None:
             final_tags = []
 
-        outdir = os.path.join(self.path, "/".join(final_tags))
+        outdir = os.path.join(output_dir, "/".join(final_tags))
 
         fs.mkdirs(outdir)
 
@@ -1165,7 +1189,7 @@ class WorkflowManager:
         return self._engine_wid
 
     def get_task_path(self):
-        return WorkflowManager.get_task_path_for(self.path)
+        return WorkflowManager.get_task_path_for(self.execution_dir)
 
     @staticmethod
     def get_task_path_for(outdir: str):
@@ -1181,7 +1205,7 @@ class WorkflowManager:
 
     @staticmethod
     def get_path_for_component_and_dir(path, component: WorkflowManagerPath):
-        val = os.path.join(path, "janis", component.value)
+        val = os.path.join(path, component.value)
         if not os.path.exists(val):
             os.makedirs(val, exist_ok=True)
         return val

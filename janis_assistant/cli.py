@@ -430,8 +430,15 @@ def add_run_args(parser, add_workflow_argument=True):
     parser.add_argument(
         "-o",
         "--output-dir",
-        help="This directory to copy outputs to. By default intermediate results are "
-        "within a janis/execution subfolder (unless overriden by a template)",
+        help="This directory to copy outputs to. By default, the execution occurs "
+        "in this directory (under <output>/janis) unless overriden with the '--exeution-dir' argument",
+    )
+
+    parser.add_argument(
+        "-e",
+        "--execution-dir",
+        help="The directory which Janis meta and execution data is placed. If no execution directory is specified, it "
+        "uses the path '<outputdir>/janis/'. Note that some templates may override the intermediate computation directory. ",
     )
 
     parser.add_argument("-F", "--foreground", action="store_true", default=False)
@@ -866,6 +873,7 @@ def do_run(args):
         filescheme=args.filescheme,
         hints=hints,
         output_dir=args.output_dir,
+        execution_dir=args.execution_dir,
         inputs=inputs,
         required_inputs=required_inputs,
         filescheme_ssh_binding=args.filescheme_ssh_binding,

@@ -1,4 +1,7 @@
-from typing import Tuple, Optional, List
+from datetime import datetime
+from typing import Tuple, Optional, List, Union
+
+from janis_assistant.utils.dateutil import DateUtil
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 
@@ -11,20 +14,37 @@ class TaskRow(DatabaseObject):
     @classmethod
     def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            DatabaseObjectField("submission_id", "id"),
-            DatabaseObjectField("outputdir"),
+            DatabaseObjectField("submission_id", "id", True),
+            DatabaseObjectField("output_dir"),
+            DatabaseObjectField("execution_dir"),
+            DatabaseObjectField("timestamp"),
         ]
 
     @classmethod
     def table_schema(cls):
         return """
-        id varchar(6), 
-        outputdir text
+        id              varchar(6), 
+        outputdir       text,
+        execution_dir   text,
+        timestamp       text,
         """
 
-    def __init__(self, submission_id, outputdir):
+    def __init__(
+        self,
+        submission_id,
+        output_dir: str,
+        execution_dir: str,
+        timestamp: Optional[Union[str, datetime]] = None,
+    ):
         self.submission_id = submission_id
-        self.outputdir = outputdir
+        self.output_dir = output_dir
+        self.execution_dir = execution_dir
+
+        if not timestamp:
+            timestamp = DateUtil.now()
+        elif isinstance(timestamp, str):
+            timestamp = DateUtil.parse_iso(timestamp)
+        self.timestamp = timestamp
 
 
 class TasksDbProvider(DbProviderBase):
@@ -32,16 +52,6 @@ class TasksDbProvider(DbProviderBase):
 
     def __init__(self, connection):
         super().__init__(TaskRow, connection, TasksDbProvider.table_name, {})
-
-    def get_by_wid(self, wid) -> Optional[TaskRow]:
-        with self.with_cursor() as cursor:
-            row = cursor.execute(
-                f"SELECT * FROM {TasksDbProvider.table_name} WHERE wid = ?", (wid,)
-            ).fetchone()
-        if row is None or len(row) == 0:
-            return None
-
-        return TaskRow.from_row(row)
 
     def get_by_id(self, id_) -> Optional[TaskRow]:
         rows = self.get(where=("id = ?", [id_]))

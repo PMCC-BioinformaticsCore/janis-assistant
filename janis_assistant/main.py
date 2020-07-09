@@ -389,6 +389,7 @@ def fromjanis(
     batchrun_reqs=None,
     hints: Optional[Dict[str, str]] = None,
     output_dir: Optional[str] = None,
+    execution_dir: Optional[str] = None,
     dryrun: bool = False,
     inputs: Union[str, dict] = None,
     required_inputs: dict = None,
@@ -446,7 +447,12 @@ def fromjanis(
         wf.constructor(inputsdict, hints)
         inputsdict = wf.modify_inputs(inputsdict, hints)
 
-    row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
+    row = cm.create_task_base(
+        wf,
+        outdir=output_dir,
+        execution_dir=execution_dir,
+        store_in_centraldb=not no_store,
+    )
     print(row.submission_id, file=sys.stdout)
 
     engine = engine or jc.engine
@@ -455,14 +461,14 @@ def fromjanis(
         engine,
         wid=row.submission_id,
         execdir=WorkflowManager.get_path_for_component_and_dir(
-            row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.execution
         ),
         confdir=WorkflowManager.get_path_for_component_and_dir(
-            row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.configuration
         ),
         logfile=os.path.join(
             WorkflowManager.get_path_for_component_and_dir(
-                row.outputdir, WorkflowManager.WorkflowManagerPath.logs
+                row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
             ),
             "engine.log",
         ),
@@ -487,7 +493,8 @@ def fromjanis(
             environment=environment,
             validation_requirements=validation_reqs,
             batchrun_requirements=batchrun_reqs,
-            task_path=row.outputdir,
+            output_dir=row.output_dir,
+            execution_dir=row.execution_dir,
             hints=hints,
             inputs_dict=inputsdict,
             dryrun=dryrun,

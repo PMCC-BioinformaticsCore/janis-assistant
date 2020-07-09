@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Set
 
+from janis_core import Logger
+
 from janis_assistant.data.models.run import RunModel, SubmissionModel
 from janis_assistant.utils.dateutil import DateUtil
 
@@ -18,6 +20,9 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
     def get_by_id(self, submission_id) -> Optional[SubmissionModel]:
         s = self.get(where=("id = ?", [submission_id]))
         if len(s) != 1:
+            Logger.warn(
+                f"Couldn't get submission with id={submission_id}, query returned {len(s)} results."
+            )
             return None
         return s[0]
 

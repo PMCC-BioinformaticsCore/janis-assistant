@@ -88,7 +88,9 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path_with_wid(task.outputdir, task.submission_id)
+        tm = WorkflowManager.from_path_with_submission_id(
+            task.outputdir, task.submission_id
+        )
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -101,7 +103,9 @@ class ConfigManager:
         self.get_lazy_db_connection().remove_by_id(task.submission_id)
         Logger.info("Deleted task: " + task.submission_id)
 
-    def create_task_base(self, wf: Workflow, outdir=None, store_in_centraldb=True):
+    def create_task_base(
+        self, wf: Workflow, outdir=None, execution_dir=None, store_in_centraldb=True
+    ):
         config = JanisConfiguration.manager()
 
         """
@@ -137,24 +141,30 @@ class ConfigManager:
 
         submission_id = generate_new_id(forbiddenids)
 
-        task_path = outdir
-        if not task_path:
+        output_dir = outdir
+        if not output_dir:
             od = default_outdir
             dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-            task_path = os.path.join(od, f"{dt}_{submission_id}/")
+            output_dir = os.path.join(od, f"{dt}_{submission_id}/")
 
-        task_path = fully_qualify_filename(task_path)
+        output_dir = fully_qualify_filename(output_dir)
 
-        Logger.info(f"Starting task with id = '{submission_id}'")
+        if not execution_dir:
+            execution_dir = os.path.join(output_dir, "janis")
+        execution_dir = fully_qualify_filename(execution_dir)
 
-        row = TaskRow(submission_id, task_path)
-        WorkflowManager.create_dir_structure(task_path)
+        Logger.info(
+            f"Starting task with id = '{submission_id}' | output dir: {output_dir} | execution dir: {execution_dir}"
+        )
+
+        row = TaskRow(submission_id, execution_dir=execution_dir, output_dir=output_dir)
+        WorkflowManager.create_dir_structure(execution_dir)
 
         if store_in_centraldb:
             self.get_lazy_db_connection().insert_task(row)
         else:
             Logger.info(
-                f"Not storing task '{submission_id}' in database. To watch, use: 'janis watch {task_path}'"
+                f"Not storing task '{submission_id}' in database. To watch, use: 'janis watch {output_dir}'"
             )
 
         if self._connection:
@@ -168,7 +178,8 @@ class ConfigManager:
         self,
         submission_id: str,
         tool: Tool,
-        task_path: str,
+        output_dir: str,
+        execution_dir: str,
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
@@ -190,7 +201,8 @@ class ConfigManager:
         return WorkflowManager.from_janis(
             submission_id,
             tool=tool,
-            outdir=task_path,
+            output_dir=output_dir,
+            execution_dir=execution_dir,
             environment=environment,
             hints=hints,
             inputs_dict=inputs_dict,
@@ -223,7 +235,9 @@ class ConfigManager:
                 )
 
             raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path_with_wid(path[0], wid=wid, readonly=readonly)
+        return WorkflowManager.from_path_with_submission_id(
+            path[0], submission_id=wid, readonly=readonly
+        )
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 
@@ -272,7 +286,7 @@ class ConfigManager:
                 failed.append((row.submission_id, row.outputdir))
                 continue
             try:
-                _ = WorkflowManager.from_path_with_wid(
+                _ = WorkflowManager.from_path_with_submission_id(
                     row.outputdir, row.submission_id, readonly=True
                 )
             except Exception as e:

@@ -154,7 +154,8 @@ class SubmissionModel(DatabaseObject):
     def __init__(
         self,
         id_: str,
-        outdir: str,
+        output_dir: str,
+        execution_dir: str,
         author: str,
         labels: List[str],
         tags: List[str],
@@ -170,7 +171,8 @@ class SubmissionModel(DatabaseObject):
         #       - Last updated
     ):
         self.id_ = id_
-        self.outdir = outdir
+        self.output_dir = output_dir
+        self.execution_dir = execution_dir
         self.author = author
         self.tags = tags
         self.labels = labels
@@ -186,7 +188,8 @@ class SubmissionModel(DatabaseObject):
     def keymap(cls) -> List[DatabaseObjectField]:
         return [
             DatabaseObjectField("id_", "id", is_primary=True),
-            DatabaseObjectField("outdir"),
+            DatabaseObjectField("output_dir"),
+            DatabaseObjectField("execution_dir", dbalias="exec_dir"),
             DatabaseObjectField("author"),
             DatabaseObjectField("labels", encode=True),
             DatabaseObjectField("tags", encode=True),
@@ -198,7 +201,8 @@ class SubmissionModel(DatabaseObject):
     def table_schema(cls):
         return """
         id          STRING NOT NULL,
-        outdir      STRING NOT NULL,
+        output_dir  STRING NOT NULL,
+        exec_dir    STRING NOT NULL,
         author      STRING NOT NULL,
         tags        STRING,
         labels      STRING,
@@ -249,7 +253,7 @@ SID:        {self.id_}
 EngId:      {engine_ids}
 Engine:     {self.engine_type}
 
-Task Dir:   {self.outdir}
+Task Dir:   {self.output_dir}
 
 Status:     {statuses}
 Duration:   {second_formatter(duration)}

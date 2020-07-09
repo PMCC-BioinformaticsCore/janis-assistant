@@ -180,7 +180,7 @@ class EnvironmentTemplate(ABC):
             wfname=metadata.id_,
             status=status,
             exdir="<execution-dir>",
-            tdir=metadata.outdir,
+            tdir=metadata.output_dir,
             progress_and_header=progress_and_header,
         )
 

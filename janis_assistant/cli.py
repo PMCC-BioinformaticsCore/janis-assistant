@@ -764,7 +764,7 @@ def do_watch(args):
     brief = args.brief
     monochrome = args.monochrome
 
-    tm = ConfigManager.manager().from_wid(wid, readonly=True)
+    tm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
     tm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
 
 
@@ -784,11 +784,13 @@ def do_metadata(args):
         for t in tasks:
             try:
                 print("--- TASKID = " + t.wid + " ---")
-                ConfigManager.manager().from_wid(t.wid, readonly=True).log_dbtaskinfo()
+                ConfigManager.manager().from_submission_id_or_path(
+                    t.wid, readonly=True
+                ).log_dbtaskinfo()
             except Exception as e:
                 print("\tAn error occurred: " + str(e))
     else:
-        tm = ConfigManager.manager().from_wid(wid)
+        tm = ConfigManager.manager().from_submission_id_or_path(wid)
         tm.log_dbtaskinfo()
     Logger.unmute()
 
@@ -993,7 +995,7 @@ def do_query(args):
 
 def do_rawquery(args):
     wid = args.wid
-    wm = ConfigManager.manager().from_wid(wid, readonly=True)
+    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
     with wm.database.with_cursor() as cursor:
         result = cursor.execute(args.query).fetchall()
     return print(tabulate.tabulate(result))

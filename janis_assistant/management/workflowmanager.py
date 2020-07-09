@@ -301,7 +301,7 @@ class WorkflowManager:
             self.show_status_screen()
 
     @staticmethod
-    def from_path_with_submission_id(path, submission_id, readonly=False):
+    def from_path_with_submission_id(path: str, submission_id: str, readonly=False):
         """
         :param submission_id: Workflow ID
         :param path: Path to workflow
@@ -312,53 +312,69 @@ class WorkflowManager:
         #   1. The directory they specified
         #   2. In a subdirectory called "janis"
 
-        paths = [path, os.path.join(path, "janis")]
+        if not os.path.exists(path):
+            raise Exception("Execution path '{path}' did not exist")
 
-        for path in paths:
-            path = WorkflowManager.get_task_path_for(path)
-            if not os.path.exists(path):
-                continue
-
-            db = WorkflowDbManager.get_workflow_metadatadb(
-                path, submission_id, readonly=readonly
+        if not os.path.exists(
+            WorkflowManager.get_path_for_component_and_dir(
+                path, WorkflowManager.WorkflowManagerPath.database
+            )
+        ):
+            raise Exception(
+                f"Couldn't find a 'task.db' in the execution directory '{path}', did you specify the output directory instead?"
             )
 
-            if not submission_id:
-                submission_id = db.wid  # .get_meta_info(InfoKeys.taskId)
+        db = WorkflowDbManager.get_workflow_metadatadb(
+            path, submission_id, readonly=readonly
+        )
 
-            if not submission_id:
-                raise Exception(f"Couldn't find workflow with id '{submission_id}'")
+        if not submission_id:
+            submission_id = db.wid  # .get_meta_info(InfoKeys.taskId)
 
-            envid = db.environment  # .get_meta_info(InfoKeys.environment)
-            eng = db.engine
-            fs = db.filescheme
-            env = Environment(envid, eng, fs)
+        if not submission_id:
+            raise Exception(f"Couldn't find workflow with id '{submission_id}'")
 
-            try:
-                JanisConfiguration._managed = db.configuration
-            except Exception as e:
-                Logger.critical(
-                    "The JanisConfiguration could not be loaded from the DB, this might be due to an older version, we'll load your current config instead. Error: "
-                    + str(e)
-                )
-                JanisConfiguration.initial_configuration(None)
+        envid = db.environment  # .get_meta_info(InfoKeys.environment)
+        eng = db.engine
+        fs = db.filescheme
+        env = Environment(envid, eng, fs)
 
-            db.close()
-
-            tm = WorkflowManager(
-                execution_dir=path,
-                submission_id=submission_id,
-                environment=env,
-                readonly=readonly,
+        try:
+            JanisConfiguration._managed = db.configuration
+        except Exception as e:
+            Logger.critical(
+                "The JanisConfiguration could not be loaded from the DB, this might be due to an older version, we'll load your current config instead. Error: "
+                + str(e)
             )
-            return tm
+            JanisConfiguration.initial_configuration(None)
+
+        db.close()
+
+        tm = WorkflowManager(
+            execution_dir=path,
+            submission_id=submission_id,
+            environment=env,
+            readonly=readonly,
+        )
+        return tm
 
     @staticmethod
     def from_path_get_latest(path, readonly=False):
-        path = WorkflowManager.get_task_path_for(path)
-        wid = WorkflowDbManager.get_latest_workflow(path=path)
-        return WorkflowManager.from_path_with_submission_id(
-            path, wid, readonly=readonly
+
+        paths = [path, os.path.join(path, "janis")]
+        for pth in paths:
+
+            if not os.path.exists(WorkflowDbManager.get_sql_path_base(pth)):
+                continue
+
+            submission_id = WorkflowDbManager.get_latest_workflow(path=pth)
+            return WorkflowManager.from_path_with_submission_id(
+                pth, submission_id, readonly=readonly
+            )
+
+        raise Exception(
+            f"Couldn't find the task database (task.db) in the path '{paths[0]}'"
+            f" (this might be different to the output directory)"
         )
 
     def show_status_screen(self, **kwargs):
@@ -415,7 +431,10 @@ class WorkflowManager:
         if meta is None:
             return None, False
 
-        return meta, meta and meta.status in TaskStatus.final_states()
+        return (
+            meta,
+            meta and all(m.status in TaskStatus.final_states() for m in meta.runs),
+        )
 
     def poll_stored_metadata_with_clear(self, seconds=3, **kwargs):
         try:
@@ -1189,11 +1208,7 @@ class WorkflowManager:
         return self._engine_wid
 
     def get_task_path(self):
-        return WorkflowManager.get_task_path_for(self.execution_dir)
-
-    @staticmethod
-    def get_task_path_for(outdir: str):
-        return outdir
+        return self.execution_dir
 
     def get_task_path_safe(self):
         path = self.get_task_path()
@@ -1212,13 +1227,12 @@ class WorkflowManager:
 
     @staticmethod
     def create_dir_structure(path):
-        outputdir = WorkflowManager.get_task_path_for(path)
         WorkflowManager._create_dir_if_needed(path)
 
         # workflow folder
         for comp in WorkflowManager.WorkflowManagerPath:
             WorkflowManager._create_dir_if_needed(
-                WorkflowManager.get_path_for_component_and_dir(outputdir, comp)
+                WorkflowManager.get_path_for_component_and_dir(path, comp)
             )
 
     def copy_logs_if_required(self):

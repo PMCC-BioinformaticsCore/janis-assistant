@@ -221,22 +221,28 @@ class ConfigManager:
             **kwargs,
         )
 
-    def from_wid(self, wid, readonly=False):
-        self.readonly = readonly
-        with self.with_cursor() as cursor:
-            path = cursor.execute(
-                "SELECT outputdir FROM tasks where wid=?", (wid,)
-            ).fetchone()
-        if not path:
-            expanded_path = fully_qualify_filename(wid)
-            if os.path.exists(expanded_path):
-                return WorkflowManager.from_path_get_latest(
-                    expanded_path, readonly=readonly
-                )
+    def from_submission_id_or_path(self, submission_id, readonly=False):
 
-            raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path_with_submission_id(
-            path[0], submission_id=wid, readonly=readonly
+        self.readonly = readonly
+
+        # Get from central database (may run into lock errors though)
+        potential_submission = self.get_lazy_db_connection().get_by_id(submission_id)
+        if potential_submission:
+
+            return WorkflowManager.from_path_with_submission_id(
+                potential_submission.execution_dir,
+                submission_id=submission_id,
+                readonly=readonly,
+            )
+
+        expanded_path = fully_qualify_filename(submission_id)
+        if os.path.exists(expanded_path):
+            return WorkflowManager.from_path_get_latest(
+                expanded_path, readonly=readonly
+            )
+
+        raise Exception(
+            f"Couldn't find task with id='{submission_id}', and no directory was found "
         )
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:

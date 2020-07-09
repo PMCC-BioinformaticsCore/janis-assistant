@@ -128,8 +128,8 @@ class WorkflowDbManager:
             connection = sqlite3.connect(
                 f"file:{WorkflowDbManager.get_sql_path_base(path)}?mode=ro", uri=True
             )
-            runDb = SubmissionDbProvider(db=connection)
-            return runDb.get_latest()
+            submissiondb = SubmissionDbProvider(db=connection)
+            return submissiondb.get_latest()
 
         except:
             Logger.critical("Error when opening DB connection to: " + path)

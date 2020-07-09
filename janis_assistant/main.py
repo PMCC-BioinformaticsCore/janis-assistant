@@ -558,7 +558,7 @@ def get_filescheme_from_fs(fs, **kwargs):
 
 
 def resume(wid, foreground: bool = False):
-    wm = ConfigManager.manager().from_wid(wid, readonly=False)
+    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=False)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
 
@@ -572,7 +572,7 @@ def resume(wid, foreground: bool = False):
 
 
 def pause(wid):
-    wm = ConfigManager.manager().from_wid(wid)
+    wm = ConfigManager.manager().from_submission_id_or_path(wid)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
     wm.mark_paused()

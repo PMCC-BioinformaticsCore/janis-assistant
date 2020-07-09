@@ -24,7 +24,7 @@ class TaskRow(DatabaseObject):
     def table_schema(cls):
         return """
         id              varchar(6), 
-        outputdir       text,
+        output_dir      text,
         execution_dir   text,
         timestamp       text,
         """

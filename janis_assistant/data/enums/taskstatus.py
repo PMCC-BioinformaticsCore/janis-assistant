@@ -3,6 +3,7 @@ from enum import Enum
 
 class TaskStatus(Enum):
     PROCESSING = "processing"
+    PREPARED = "prepared"
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -42,6 +43,7 @@ class TaskStatus(Enum):
             TaskStatus.ON_HOLD.value: "On hold",
             TaskStatus.ABORTING.value: "Aborting",
             TaskStatus.SUSPENDED.value: "Suspended",
+            TaskStatus.PREPARED.value: "Prepared",
         }
         return __str[self.value]
 
@@ -57,6 +59,7 @@ class TaskStatus(Enum):
             TaskStatus.ON_HOLD.value: "?",
             TaskStatus.ABORTING.value: "~x",
             TaskStatus.SUSPENDED.value: "II",
+            TaskStatus.PREPARED.value: ":",
         }
         return __str[self.value]
 

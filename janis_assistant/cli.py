@@ -430,8 +430,15 @@ def add_run_args(parser, add_workflow_argument=True):
     parser.add_argument(
         "-o",
         "--output-dir",
-        help="This directory to copy outputs to. By default intermediate results are "
-        "within a janis/execution subfolder (unless overriden by a template)",
+        help="This directory to copy outputs to. By default, the execution occurs "
+        "in this directory (under <output>/janis) unless overriden with the '--exeution-dir' argument",
+    )
+
+    parser.add_argument(
+        "-e",
+        "--execution-dir",
+        help="The directory which Janis meta and execution data is placed. If no execution directory is specified, it "
+        "uses the path '<outputdir>/janis/'. Note that some templates may override the intermediate computation directory. ",
     )
 
     parser.add_argument("-F", "--foreground", action="store_true", default=False)
@@ -757,7 +764,7 @@ def do_watch(args):
     brief = args.brief
     monochrome = args.monochrome
 
-    tm = ConfigManager.manager().from_wid(wid, readonly=True)
+    tm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
     tm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
 
 
@@ -777,11 +784,13 @@ def do_metadata(args):
         for t in tasks:
             try:
                 print("--- TASKID = " + t.wid + " ---")
-                ConfigManager.manager().from_wid(t.wid, readonly=True).log_dbtaskinfo()
+                ConfigManager.manager().from_submission_id_or_path(
+                    t.wid, readonly=True
+                ).log_dbtaskinfo()
             except Exception as e:
                 print("\tAn error occurred: " + str(e))
     else:
-        tm = ConfigManager.manager().from_wid(wid)
+        tm = ConfigManager.manager().from_submission_id_or_path(wid)
         tm.log_dbtaskinfo()
     Logger.unmute()
 
@@ -866,6 +875,7 @@ def do_run(args):
         filescheme=args.filescheme,
         hints=hints,
         output_dir=args.output_dir,
+        execution_dir=args.execution_dir,
         inputs=inputs,
         required_inputs=required_inputs,
         filescheme_ssh_binding=args.filescheme_ssh_binding,
@@ -985,7 +995,7 @@ def do_query(args):
 
 def do_rawquery(args):
     wid = args.wid
-    wm = ConfigManager.manager().from_wid(wid, readonly=True)
+    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
     with wm.database.with_cursor() as cursor:
         result = cursor.execute(args.query).fetchall()
     return print(tabulate.tabulate(result))

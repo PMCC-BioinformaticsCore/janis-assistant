@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 import os.path
 from typing import Type, Optional, List, Dict
 
+from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.data.models.workflow import WorkflowModel
 
 from janis_assistant.data.enums import TaskStatus
+from janis_assistant.data.models.workflowjob import RunJobModel
 
 from janis_assistant.utils import fully_qualify_filename
 from janis_core import Logger
@@ -52,6 +54,15 @@ class EnvironmentTemplate(ABC):
     @abstractmethod
     def engine_config(self, engine: EngineType, janis_configuration):
         pass
+
+    def get_job_analysis_from(self, job: RunJobModel) -> Optional[str]:
+        """
+        Something like calling SLURM 'seff' on a job
+        :param job: RunJobModel
+        :type job: RunJobModel
+        :return: An optional string with the report
+        """
+        return None
 
     def submit_detatched_resume(
         self,
@@ -133,7 +144,9 @@ class EnvironmentTemplate(ABC):
         """
         pass
 
-    def prepare_status_update_email(self, status: TaskStatus, metadata: WorkflowModel):
+    def prepare_status_update_email(
+        self, status: TaskStatus, metadata: SubmissionModel
+    ):
 
         _status_change_template = """\
         <h1>Status change: {status}</h1>
@@ -163,11 +176,11 @@ class EnvironmentTemplate(ABC):
         """
 
         return _status_change_template.format(
-            wid=metadata.wid,
-            wfname=metadata.name,
+            wid=metadata.id_,
+            wfname=metadata.id_,
             status=status,
-            exdir=metadata.execution_dir,
-            tdir=metadata.outdir,
+            exdir="<execution-dir>",
+            tdir=metadata.output_dir,
             progress_and_header=progress_and_header,
         )
 

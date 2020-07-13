@@ -2,16 +2,71 @@ from datetime import datetime
 from typing import Optional, Union, List, Tuple
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.utils import second_formatter
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import _bcolors
 
 
-class WorkflowJobModel:
+class RunJobModel(DatabaseObject):
+    @classmethod
+    def keymap(cls) -> List[DatabaseObjectField]:
+        return [
+            DatabaseObjectField("id_", "id", is_primary=True),
+            DatabaseObjectField("submission_id", is_primary=True),
+            DatabaseObjectField("run_id", is_primary=True),
+            DatabaseObjectField("parent"),
+            DatabaseObjectField("name"),
+            DatabaseObjectField("batchid"),
+            DatabaseObjectField("shard"),
+            DatabaseObjectField("attempt"),
+            DatabaseObjectField("container"),
+            DatabaseObjectField("status"),
+            DatabaseObjectField("start"),
+            DatabaseObjectField("finish"),
+            DatabaseObjectField("backend"),
+            DatabaseObjectField("cached"),
+            DatabaseObjectField("stdout"),
+            DatabaseObjectField("stderr"),
+            DatabaseObjectField("script"),
+            DatabaseObjectField("memory"),
+            DatabaseObjectField("cpu"),
+            DatabaseObjectField("analysis"),
+        ]
+
+    @classmethod
+    def table_schema(cls):
+        return """
+id              STRING NOT NULL,
+submission_id   STRING NOT NULL,
+run_id          STRING NOT NULL,
+parent          NULLABLE STRING,
+
+name            STRING,
+batchid         STRING,
+shard           NULLABLE INT,
+attempt         NULLABLE INT,
+container       STRING,
+status          STRING,
+start           STRING,
+finish          NULLABLE STRING,
+backend         STRING,
+cached          BOOLEAN,
+stdout          STRING,
+stderr          STRING,
+script          STRING,
+
+memory          STRING,
+cpu             STRING,
+analysis        STRING,
+    """
+
     def __init__(
         self,
-        jid: str,
-        parentjid: Optional[str],
+        id_: str,
+        submission_id: str,
+        run_id: str,
+        parent: Optional[str],
         name: str,
         batchid: Optional[str],
         shard: Optional[int],
@@ -24,10 +79,17 @@ class WorkflowJobModel:
         cached: bool,
         stdout: Optional[str],
         stderr: Optional[str],
+        script: Optional[str],
+        memory: Optional[str],
+        cpu: Optional[str],
+        analysis: Optional[str],
         jobs: Optional[list] = None,
     ):
-        self.jid = jid
-        self.parentjid = parentjid
+        self.id_ = id_
+        self.submission_id = submission_id
+        self.run_id = run_id
+        self.parent = parent
+
         self.status = status if isinstance(status, TaskStatus) else TaskStatus(status)
 
         self.name = name
@@ -60,12 +122,25 @@ class WorkflowJobModel:
         if finish and isinstance(finish, str):
             self.finish = DateUtil.parse_iso(finish)
 
-        self.jobs = jobs or None
+        self.script = script
+        self.memory = memory
+        self.cpu = cpu
+        self.analysis = analysis
+
+        self.jobs: Optional[List[RunJobModel]] = jobs or None
         self.events = None
+
+    def set_ids(self, submission_id, run_id):
+        self.submission_id = submission_id
+        self.run_id = run_id
+
+        if self.jobs:
+            for j in self.jobs:
+                j.set_ids(submission_id=submission_id, run_id=run_id)
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row[1:])
+        return RunJobModel(*row[1:])
 
     def format(self, pre, monochrome=False, brief=False, **kwargs):
 
@@ -106,7 +181,7 @@ class WorkflowJobModel:
         if status != TaskStatus.COMPLETED or brief == False:
             if self.jobs:
                 ppre = pre + tb
-                subs: List[WorkflowJobModel] = sorted(
+                subs: List[RunJobModel] = sorted(
                     self.jobs,
                     key=lambda j: j.start if j.start else DateUtil.now(),
                     reverse=False,
@@ -164,4 +239,4 @@ class WorkflowJobEventModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row)
+        return RunJobModel(*row)

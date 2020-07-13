@@ -88,7 +88,9 @@ class ConfigManager:
             if task is None:
                 raise Exception("Couldn't find workflow with ID = " + wid)
 
-        tm = WorkflowManager.from_path_with_wid(task.outputdir, task.wid)
+        tm = WorkflowManager.from_path_with_submission_id(
+            task.outputdir, task.submission_id
+        )
         tm.remove_exec_dir()
         tm.database.close()
 
@@ -98,10 +100,12 @@ class ConfigManager:
         else:
             Logger.info("Skipping output dir deletion, can't find: " + task.outputdir)
 
-        self.get_lazy_db_connection().remove_by_id(task.wid)
-        Logger.info("Deleted task: " + task.wid)
+        self.get_lazy_db_connection().remove_by_id(task.submission_id)
+        Logger.info("Deleted task: " + task.submission_id)
 
-    def create_task_base(self, wf: Workflow, outdir=None, store_in_centraldb=True):
+    def create_task_base(
+        self, wf: Workflow, outdir=None, execution_dir=None, store_in_centraldb=True
+    ):
         config = JanisConfiguration.manager()
 
         """
@@ -124,7 +128,7 @@ class ConfigManager:
         if store_in_centraldb:
             with self.with_cursor() as cursor:
                 forbiddenids = set(
-                    t[0] for t in cursor.execute("SELECT wid FROM tasks").fetchall()
+                    t[0] for t in cursor.execute("SELECT id FROM tasks").fetchall()
                 )
         if outdir:
             if os.path.exists(outdir):
@@ -135,26 +139,32 @@ class ConfigManager:
             if os.path.exists(default_outdir):
                 forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
 
-        wid = generate_new_id(forbiddenids)
+        submission_id = generate_new_id(forbiddenids)
 
-        task_path = outdir
-        if not task_path:
+        output_dir = outdir
+        if not output_dir:
             od = default_outdir
             dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-            task_path = os.path.join(od, f"{dt}_{wid}/")
+            output_dir = os.path.join(od, f"{dt}_{submission_id}/")
 
-        task_path = fully_qualify_filename(task_path)
+        output_dir = fully_qualify_filename(output_dir)
 
-        Logger.info(f"Starting task with id = '{wid}'")
+        if not execution_dir:
+            execution_dir = os.path.join(output_dir, "janis")
+        execution_dir = fully_qualify_filename(execution_dir)
 
-        row = TaskRow(wid, task_path)
-        WorkflowManager.create_dir_structure(task_path)
+        Logger.info(
+            f"Starting task with id = '{submission_id}' | output dir: {output_dir} | execution dir: {execution_dir}"
+        )
+
+        row = TaskRow(submission_id, execution_dir=execution_dir, output_dir=output_dir)
+        WorkflowManager.create_dir_structure(execution_dir)
 
         if store_in_centraldb:
             self.get_lazy_db_connection().insert_task(row)
         else:
             Logger.info(
-                f"Not storing task '{wid}' in database. To watch, use: 'janis watch {task_path}'"
+                f"Not storing task '{submission_id}' in database. To watch, use: 'janis watch {output_dir}'"
             )
 
         if self._connection:
@@ -166,9 +176,10 @@ class ConfigManager:
 
     def start_task(
         self,
-        wid: str,
+        submission_id: str,
         tool: Tool,
-        task_path: str,
+        output_dir: str,
+        execution_dir: str,
         environment: Environment,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
@@ -188,9 +199,10 @@ class ConfigManager:
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
-            wid,
+            submission_id,
             tool=tool,
-            outdir=task_path,
+            output_dir=output_dir,
+            execution_dir=execution_dir,
             environment=environment,
             hints=hints,
             inputs_dict=inputs_dict,
@@ -209,21 +221,29 @@ class ConfigManager:
             **kwargs,
         )
 
-    def from_wid(self, wid, readonly=False):
-        self.readonly = readonly
-        with self.with_cursor() as cursor:
-            path = cursor.execute(
-                "SELECT outputdir FROM tasks where wid=?", (wid,)
-            ).fetchone()
-        if not path:
-            expanded_path = fully_qualify_filename(wid)
-            if os.path.exists(expanded_path):
-                return WorkflowManager.from_path_get_latest(
-                    expanded_path, readonly=readonly
-                )
+    def from_submission_id_or_path(self, submission_id, readonly=False):
 
-            raise Exception(f"Couldn't find task with id='{wid}'")
-        return WorkflowManager.from_path_with_wid(path[0], wid=wid, readonly=readonly)
+        self.readonly = readonly
+
+        # Get from central database (may run into lock errors though)
+        potential_submission = self.get_lazy_db_connection().get_by_id(submission_id)
+        if potential_submission:
+
+            return WorkflowManager.from_path_with_submission_id(
+                potential_submission.execution_dir,
+                submission_id=submission_id,
+                readonly=readonly,
+            )
+
+        expanded_path = fully_qualify_filename(submission_id)
+        if os.path.exists(expanded_path):
+            return WorkflowManager.from_path_get_latest(
+                expanded_path, readonly=readonly
+            )
+
+        raise Exception(
+            f"Couldn't find task with id='{submission_id}', and no directory was found "
+        )
 
     def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
 
@@ -234,19 +254,22 @@ class ConfigManager:
 
         for row in rows:
             if not os.path.exists(row.outputdir):
-                failed.append(row.wid)
+                failed.append(row.submission_id)
                 continue
             try:
                 metadb = WorkflowManager.has(
-                    row.outputdir, wid=row.wid, name=name, status=status
+                    row.outputdir,
+                    submission_id=row.submission_id,
+                    name=name,
+                    status=status,
                 )
                 if metadb:
                     model = metadb.to_model()
                     model.outdir = row.outputdir
-                    relevant[row.wid] = model
+                    relevant[row.submission_id] = model
             except Exception as e:
-                Logger.critical(f"Couldn't check workflow '{row.wid}': {e}")
-                failed.append(row.wid)
+                Logger.critical(f"Couldn't check workflow '{row.submission_id}': {e}")
+                failed.append(row.submission_id)
 
         if failed:
             failedstr = ", ".join(failed)
@@ -266,14 +289,14 @@ class ConfigManager:
 
         for row in rows:
             if not os.path.exists(row.outputdir):
-                failed.append((row.wid, row.outputdir))
+                failed.append((row.submission_id, row.outputdir))
                 continue
             try:
-                _ = WorkflowManager.from_path_with_wid(
-                    row.outputdir, row.wid, readonly=True
+                _ = WorkflowManager.from_path_with_submission_id(
+                    row.outputdir, row.submission_id, readonly=True
                 )
             except Exception as e:
-                failed.append((row.wid, row.outputdir))
+                failed.append((row.submission_id, row.outputdir))
 
         if failed:
             Logger.warn(f"Removing the following tasks:\n" + tabulate(failed))

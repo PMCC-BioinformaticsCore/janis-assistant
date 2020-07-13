@@ -223,6 +223,9 @@ def convert_value_or_list_to_string(value):
 
 
 def stringify_value_or_array(value):
+    if value is None:
+        return None
+
     if isinstance(value, list):
         return [stringify_value_or_array(s) for s in value]
     return str(value)

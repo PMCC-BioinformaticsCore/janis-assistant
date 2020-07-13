@@ -2,8 +2,9 @@ import json
 from typing import Union, List
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.models.workflow import WorkflowModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import Logger
 
@@ -102,7 +103,7 @@ class CromwellMetadata:
 
         return dcalls
 
-    def standard(self) -> WorkflowModel:
+    def standard(self) -> RunModel:
         jobs = []
 
         s = DateUtil.parse_iso(self.meta.get("start"))
@@ -117,11 +118,13 @@ class CromwellMetadata:
             stepname = ".".join(stepname.split(".")[1:])
             jobs.extend(self.parse_standard_calls(None, stepname, call))
 
-        model = WorkflowModel(
-            engine_wid=jid,
-            name=self.meta.get("workflowName"),
-            start=s,
-            finish=f,
+        model = RunModel(
+            submission_id=None,
+            id_=None,
+            engine_id=jid,
+            # name=self.meta.get("workflowName"),
+            # start=s,
+            # finish=f,
             execution_dir=self.meta.get("workflowRoot"),
             status=cromwell_status_to_status(self.meta.get("status")),
             error=self.get_caused_by_text(),
@@ -183,9 +186,11 @@ class CromwellMetadata:
             start = start or min(s.start for s in subjobs)
             finish = finish
 
-        return WorkflowJobModel(
-            jid=jid,
-            parentjid=parentid,
+        return RunJobModel(
+            id_=jid,
+            submission_id=None,
+            run_id=None,
+            parent=parentid,
             container=call.get(
                 "dockerImageUsed", call.get("runtimeAttributes", {}).get("docker")
             ),
@@ -203,10 +208,14 @@ class CromwellMetadata:
             else False,
             shard=shard,
             attempt=attempt,
+            analysis=None,
+            memory=None,
+            cpu=None,
+            script=None,
         )
 
     @classmethod
-    def parse_standard_calls(cls, parentid, name, calls) -> List[WorkflowJobModel]:
+    def parse_standard_calls(cls, parentid, name, calls) -> List[RunJobModel]:
         return [cls.parse_standard_call(parentid, name, c) for c in calls]
 
         # jid_temp = parentid + "_" + name
@@ -243,7 +252,7 @@ class CromwellMetadata:
         #     for c in processed_calls:
         #         c.supertime = st
         #
-        #     j = WorkflowJobModel(
+        #     j = RunJobModel(
         #         jid=jid,
         #         name=name,
         #         parentjid=parentid,
@@ -285,7 +294,7 @@ class CromwellMetadata:
         #     for k in sw.get("calls"):
         #         sjs.extend(cls.parse_standard_calls(jid, k, sw["calls"][k], st))
         #
-        # j = WorkflowJobModel(
+        # j = RunJobModel(
         #     jid=jid,
         #     parentjid=parentid,
         #     container=call.get(

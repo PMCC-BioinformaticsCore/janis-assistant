@@ -8,7 +8,7 @@ from janis_core import LogLevel
 from janis_core.utils.logger import Logger
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.workflow import WorkflowModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
 from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
@@ -171,7 +171,7 @@ class CWLToolLogger(ProcessLogger):
         start = DateUtil.now() if status == TaskStatus.RUNNING else None
         finish = DateUtil.now() if status == TaskStatus.COMPLETED else None
 
-        job = WorkflowJobModel(
+        job = RunJobModel(
             jid=jid,
             parentjid=parentid,
             name=stepname,
@@ -413,7 +413,7 @@ class CWLTool(Engine):
         self.taskmeta["outputs"] = logger.outputs
 
         if status != TaskStatus.COMPLETED:
-            js: Dict[str, WorkflowJobModel] = self.taskmeta.get("jobs")
+            js: Dict[str, RunJobModel] = self.taskmeta.get("jobs")
             for j in js.values():
                 if j.status != TaskStatus.COMPLETED:
                     j.status = status
@@ -424,7 +424,7 @@ class CWLTool(Engine):
         for callback in self.progress_callbacks.get(logger.wid, []):
             callback(self.metadata(logger.wid))
 
-    def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
+    def task_did_update(self, logger: CWLToolLogger, job: RunJobModel):
         Logger.info(f"Updated task {job.jid} with status={job.status}")
         self.taskmeta["jobs"][job.jid] = job
 

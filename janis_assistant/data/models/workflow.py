@@ -5,7 +5,7 @@ from typing import Union, List
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.inputs import WorkflowInputModel
 from janis_assistant.data.models.outputs import WorkflowOutputModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.utils import second_formatter
 from janis_assistant.utils.dateutil import DateUtil
 
@@ -13,7 +13,7 @@ from janis_assistant.utils.dateutil import DateUtil
 class WorkflowModel:
     def __init__(
         self,
-        wid: str = None,
+        id_: str = None,
         engine_wid: str = None,
         name: str = None,
         start: Union[str, datetime] = None,
@@ -27,13 +27,13 @@ class WorkflowModel:
         labels: List[str] = None,
         error: str = None,
         author: str = None,
-        jobs: List[WorkflowJobModel] = None,
+        jobs: List[RunJobModel] = None,
         last_updated: datetime = None,
         tags: List[str] = None,
         outputs: List[WorkflowOutputModel] = None,
         inputs: List[WorkflowInputModel] = None,
     ):
-        self.wid = wid
+        self.id_ = id
         self.engine_wid = engine_wid
 
         self.name = name
@@ -53,7 +53,7 @@ class WorkflowModel:
 
         self.error = error
 
-        self.jobs: List[WorkflowJobModel] = jobs or []
+        self.jobs: List[RunJobModel] = jobs or []
         self.outputs: List[WorkflowOutputModel] = outputs
         self.inputs = inputs or []
 

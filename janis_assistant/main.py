@@ -63,7 +63,7 @@ def resolve_tool(
 
     if not only_toolbox:
         fileschemewherelocated = FileScheme.get_type_by_prefix(tool.lower())
-        if fileschemewherelocated:
+        if fileschemewherelocated != LocalFileScheme and fileschemewherelocated:
             Logger.info(
                 f"Detected remote workflow to localise from '{fileschemewherelocated.__name__}'"
             )
@@ -389,6 +389,7 @@ def fromjanis(
     batchrun_reqs=None,
     hints: Optional[Dict[str, str]] = None,
     output_dir: Optional[str] = None,
+    execution_dir: Optional[str] = None,
     dryrun: bool = False,
     inputs: Union[str, dict] = None,
     required_inputs: dict = None,
@@ -446,23 +447,28 @@ def fromjanis(
         wf.constructor(inputsdict, hints)
         inputsdict = wf.modify_inputs(inputsdict, hints)
 
-    row = cm.create_task_base(wf, outdir=output_dir, store_in_centraldb=not no_store)
-    print(row.wid, file=sys.stdout)
+    row = cm.create_task_base(
+        wf,
+        outdir=output_dir,
+        execution_dir=execution_dir,
+        store_in_centraldb=not no_store,
+    )
+    print(row.submission_id, file=sys.stdout)
 
     engine = engine or jc.engine
 
     eng = get_engine_from_eng(
         engine,
-        wid=row.wid,
+        wid=row.submission_id,
         execdir=WorkflowManager.get_path_for_component_and_dir(
-            row.outputdir, WorkflowManager.WorkflowManagerPath.execution
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.execution
         ),
         confdir=WorkflowManager.get_path_for_component_and_dir(
-            row.outputdir, WorkflowManager.WorkflowManagerPath.configuration
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.configuration
         ),
         logfile=os.path.join(
             WorkflowManager.get_path_for_component_and_dir(
-                row.outputdir, WorkflowManager.WorkflowManagerPath.logs
+                row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
             ),
             "engine.log",
         ),
@@ -482,12 +488,13 @@ def fromjanis(
         ) and not (run_in_foreground is True)
 
         tm = cm.start_task(
-            wid=row.wid,
+            submission_id=row.submission_id,
             tool=wf,
             environment=environment,
             validation_requirements=validation_reqs,
             batchrun_requirements=batchrun_reqs,
-            task_path=row.outputdir,
+            output_dir=row.output_dir,
+            execution_dir=row.execution_dir,
             hints=hints,
             inputs_dict=inputsdict,
             dryrun=dryrun,
@@ -551,7 +558,7 @@ def get_filescheme_from_fs(fs, **kwargs):
 
 
 def resume(wid, foreground: bool = False):
-    wm = ConfigManager.manager().from_wid(wid, readonly=False)
+    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=False)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
 
@@ -565,7 +572,7 @@ def resume(wid, foreground: bool = False):
 
 
 def pause(wid):
-    wm = ConfigManager.manager().from_wid(wid)
+    wm = ConfigManager.manager().from_submission_id_or_path(wid)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
     wm.mark_paused()
@@ -576,7 +583,7 @@ def abort_wids(wids: List[str]):
         try:
             row = ConfigManager.manager().get_lazy_db_connection().get_by_wid(wid)
             if row:
-                WorkflowManager.mark_aborted(row.outputdir, row.wid)
+                WorkflowManager.mark_aborted(row.outputdir, row.submission_id)
             else:
                 WorkflowManager.mark_aborted(wid, None)
         except Exception as e:

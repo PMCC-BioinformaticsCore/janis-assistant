@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import List
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
@@ -6,101 +7,40 @@ from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.utils.dateutil import DateUtil
 
 
-class OutputDbProvider(DbProviderBase):
+class OutputDbProvider(DbProviderBase[WorkflowOutputModel]):
     CURRENT_SCHEMA_VERSION = 1
 
-    def table_schema(self):
-        return """\
-        CREATE TABLE IF NOT EXISTS outputs (
-            wid STRING,
-            tag STRING,
-            iscopyable BIT,
-            original_path STRING,
-            new_path STRING,
-            timestamp NULLABLE STRING,
-            output_name STRING,
-            output_folder STRING,
-            secondaries STRING,
-            extension STRING,
-            PRIMARY KEY (wid, tag)
+    def __init__(self, db, submission_id):
+        super().__init__(
+            base_type=WorkflowOutputModel,
+            db=db,
+            tablename="outputs",
+            scopes={"submission_id": submission_id},
         )
-        """
-
-    def __init__(self, db, wid):
-        super().__init__(db)
-        self.wid = wid
-
-    def get(self, tag: str) -> WorkflowOutputModel:
-        with self.with_cursor() as cursor:
-            cursor.execute(
-                "SELECT * FROM outputs WHERE wid = ?, tag = ?", (self.wid, tag)
-            )
-            row = cursor.fetchone()
-        if not row:
-            raise KeyError("Couldn't find output with tag: " + tag)
-        return WorkflowOutputModel.from_row(row)
-
-    def get_all(self) -> List[WorkflowOutputModel]:
-        with self.with_cursor() as cursor:
-            cursor.execute("SELECT * FROM outputs WHERE wid = ?", (self.wid,))
-            rows = cursor.fetchall()
-        return [WorkflowOutputModel.from_row(row) for row in rows]
-
-    _insert_statement = """\
-        INSERT INTO outputs
-            (wid, tag, iscopyable, original_path, new_path, timestamp, output_name, output_folder, secondaries, extension)
-        VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
+        self.submission_id = submission_id
 
     def insert_many(self, outputs: List[WorkflowOutputModel]):
-        with self.with_cursor() as cursor:
-            insertvalues = [self._insert_model_obj(self.wid, o) for o in outputs]
-            cursor.executemany(
-                self._insert_statement, insertvalues,
-            )
-        self.commit()
+        return self.insert_or_update_many(outputs)
 
-    @staticmethod
-    def _insert_model_obj(wid, model: WorkflowOutputModel):
-        prefix = json.dumps(model.output_name)
-        tags = json.dumps(model.output_folder)
-        secs = json.dumps(model.secondaries)
-
-        return (
-            wid,
-            model.tag,
-            model.iscopyable,
-            model.originalpath,
-            model.newpath,
-            model.timestamp,
-            prefix,
-            tags,
-            secs,
-            model.extension,
+    def update_paths(
+        self, run_id: str, tag: str, original_path: str, new_path: str, value: any
+    ):
+        model = WorkflowOutputModel(
+            id_=tag,
+            submission_id=self.submission_id,
+            run_id=run_id,
+            original_path=original_path,
+            new_path=new_path,
+            timestamp=datetime.now(),
+            value=value,
+            # empty fields
+            extension=None,
+            is_copyable=None,
+            output_folder=None,
+            output_name=None,
+            secondaries=None,
         )
-
-    def insert(self, model: WorkflowOutputModel):
-        with self.with_cursor() as cursor:
-
-            cursor.execute(
-                self._insert_statement, self._insert_model_obj(self.wid, model)
-            )
-        self.commit()
-
-    def update_paths(self, tag: str, original_path: str, new_path: str):
-        with self.with_cursor() as cursor:
-            cursor.execute(
-                """\
-            UPDATE outputs SET
-                original_path=?,
-                new_path=?,
-                timestamp=?
-            WHERE wid = ? AND tag = ?
-            """,
-                (original_path, new_path, DateUtil.now(), self.wid, tag),
-            )
-        self.commit()
+        self.insert_or_update_many([model])
 
     def upgrade_schema(self, from_version: int):
         # if from_version < 2:

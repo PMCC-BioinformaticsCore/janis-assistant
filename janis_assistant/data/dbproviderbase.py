@@ -188,7 +188,7 @@ class DbProviderBase(Generic[T]):
         with self.with_cursor() as cursor:
             for query, vvalues in queries.items():
                 try:
-                    Logger.debug(f"Running query: {query}")
+                    Logger.log(f"Running query: {query}")
                     cursor.executemany(query, vvalues)
                 except OperationalError as e:
                     Logger.log_ex(e)

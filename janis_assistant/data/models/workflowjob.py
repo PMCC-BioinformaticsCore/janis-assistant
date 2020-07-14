@@ -18,8 +18,8 @@ class RunJobModel(DatabaseObject):
             DatabaseObjectField("parent"),
             DatabaseObjectField("name"),
             DatabaseObjectField("batchid"),
-            DatabaseObjectField("shard"),
-            DatabaseObjectField("attempt"),
+            DatabaseObjectField("shard", is_primary=True),
+            DatabaseObjectField("attempt", is_primary=True),
             DatabaseObjectField("container"),
             DatabaseObjectField("status"),
             DatabaseObjectField("start"),
@@ -41,11 +41,11 @@ id              STRING NOT NULL,
 submission_id   STRING NOT NULL,
 run_id          STRING NOT NULL,
 parent          NULLABLE STRING,
+shard           NULLABLE INT,
+attempt         NULLABLE INT,
 
 name            STRING,
 batchid         STRING,
-shard           NULLABLE INT,
-attempt         NULLABLE INT,
 container       STRING,
 status          STRING,
 start           STRING,
@@ -100,12 +100,17 @@ analysis        STRING,
                 shard = int(shard)
             if shard >= 0:
                 self.shard = shard
+        if self.shard is None:
+            self.shard = -1
+
         self.attempt = None
         if attempt is not None:
             if isinstance(attempt, str) and attempt.isdigit():
                 attempt = int(attempt)
             if attempt > 1:
                 self.attempt = attempt
+        if self.attempt is None:
+            self.attempt = -1
 
         self.container = container
 

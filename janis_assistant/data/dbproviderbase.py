@@ -142,6 +142,7 @@ VALUES
 ON CONFLICT({', '.join(pkeys)}) DO UPDATE SET
 {update_separator.join(f'{tab}{k} = ?' for k in keys_np)};
 """
+
             vtuple = [*values, *values_np]
             if prepared_statement in queries:
                 queries[prepared_statement].append(vtuple)
@@ -151,6 +152,7 @@ ON CONFLICT({', '.join(pkeys)}) DO UPDATE SET
         with self.with_cursor() as cursor:
             for query, vvalues in queries.items():
                 try:
+                    Logger.debug(f"Running query: {query}")
                     cursor.executemany(query, vvalues)
                 except OperationalError as e:
                     Logger.log_ex(e)

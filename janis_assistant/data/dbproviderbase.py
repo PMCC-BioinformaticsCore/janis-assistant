@@ -122,28 +122,64 @@ class DbProviderBase(Generic[T]):
         tab = "\t"
 
         pkeys = set(self.get_primary_keys())
+        pkeys_ordered = list(pkeys)
+        existing_keys = set()  # (*pkeys_ordered)
+
+        # get all primary keys
+        prows = f"SELECT {', '.join(pkeys_ordered)} FROM {self.tablename}"
+
+        with self.with_cursor() as cursor:
+            rows = cursor.execute(prows).fetchall()
+            for row in rows:
+                existing_keys.add(row)
+
+        dbalias_map = {t.dbalias: t.name for t in self.base.keymap()}
 
         for el in els:
+
             keys, values = el.prepare_insert()
+            el_pkeys = [getattr(el, dbalias_map[_k]) for _k in pkeys_ordered]
+            missing_pkeys = [
+                _k for _k in pkeys_ordered if getattr(el, dbalias_map[_k]) is None
+            ]
+            if missing_pkeys:
+                raise Exception(
+                    f"An internal error occurred when updating the {self.tablename} database, "
+                    f"the object {repr(el)} was missing the primary keys {', '.join(missing_pkeys)}"
+                )
+            obj_exists = tuple(el_pkeys) in existing_keys
 
-            keys_np, values_np = [], []
-            for k, v in zip(keys, values):
-                if k in pkeys:
-                    continue
+            pkey_updater = " AND ".join(f"{k_} = ?" for k_ in pkeys_ordered)
 
-                keys_np.append(k)
-                values_np.append(v)
+            if obj_exists:
+                # it exists, we'll update
+                keys_np, values_np = [], []
+                for k, v in zip(keys, values):
+                    if k in pkeys:
+                        continue
 
-            prepared_statement = f"""
-INSERT INTO {self.tablename}
-    ({', '.join(keys)})
-VALUES
-    ({', '.join(f'?' for _ in keys)})
-ON CONFLICT({', '.join(pkeys)}) DO UPDATE SET
-{update_separator.join(f'{tab}{k} = ?' for k in keys_np)};
-"""
+                    keys_np.append(k)
+                    values_np.append(v)
 
-            vtuple = [*values, *values_np]
+                prepared_statement = f"""
+                UPDATE {self.tablename}
+                    SET {', '.join(f'{k} = ?' for k in keys_np)}
+                WHERE
+                    {pkey_updater}
+                """
+                vtuple = (
+                    *values_np,
+                    *[getattr(el, dbalias_map[pkey]) for pkey in pkeys_ordered],
+                )
+            else:
+                prepared_statement = f"""
+                INSERT INTO {self.tablename}
+                    ({', '.join(keys)})
+                VALUES
+                    ({', '.join(f'?' for _ in keys)});
+                """
+                vtuple = values
+
             if prepared_statement in queries:
                 queries[prepared_statement].append(vtuple)
             else:

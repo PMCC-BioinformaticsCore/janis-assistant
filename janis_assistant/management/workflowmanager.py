@@ -1030,7 +1030,7 @@ class WorkflowManager:
             )
 
         self.database.progressDB.set(ProgressKeys.copiedOutputs)
-        Logger.info(f"View the task outputs: file://{self.get_task_path()}")
+        Logger.info(f"View the task outputs: file://{submission.output_dir}")
 
     def copy_output(
         self,

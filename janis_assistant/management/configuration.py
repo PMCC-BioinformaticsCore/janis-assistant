@@ -2,6 +2,7 @@ import os.path
 from enum import Enum
 from typing import Optional, List, Union
 import ruamel.yaml
+from janis_assistant.utils import fully_qualify_filename
 
 from janis_assistant.engines.enginetypes import EngineType
 from janis_core.utils.logger import Logger
@@ -133,8 +134,8 @@ class JanisConfiguration(NoAttributeErrors):
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
 
-            self.jarpath = JanisConfiguration.get_value_for_key(
-                d, self.Keys.JarPath, default
+            self.jarpath = fully_qualify_filename(
+                JanisConfiguration.get_value_for_key(d, self.Keys.JarPath, default)
             )
             self.configpath = JanisConfiguration.get_value_for_key(
                 d, self.Keys.ConfigPath, default
@@ -209,6 +210,13 @@ class JanisConfiguration(NoAttributeErrors):
             dirs = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Directories, default
             )
+
+            if dirs:
+                if isinstance(dirs, list):
+                    dirs = [fully_qualify_filename(d) for d in dirs]
+                else:
+                    dirs = fully_qualify_filename(dirs)
+
             self.recipe_directories = dirs
 
             self._files_by_key = None
@@ -362,16 +370,16 @@ class JanisConfiguration(NoAttributeErrors):
         extra = "" if d is None else " from loaded config"
         Logger.debug("Instantiating JanisConfiguration" + extra)
 
-        self.configdir = self.get_value_for_key(
-            d, JanisConfiguration.Keys.ConfigDir, default
+        self.configdir = fully_qualify_filename(
+            self.get_value_for_key(d, JanisConfiguration.Keys.ConfigDir, default)
         )
-        self.dbpath = os.path.join(self.configdir, "janis.db")
-        self.outputdir = self.get_value_for_key(
-            d, JanisConfiguration.Keys.OutputDir, default
+        self.dbpath = fully_qualify_filename(os.path.join(self.configdir, "janis.db"))
+        self.outputdir = fully_qualify_filename(
+            self.get_value_for_key(d, JanisConfiguration.Keys.OutputDir, default)
         )
 
-        self.executiondir = self.get_value_for_key(
-            d, JanisConfiguration.Keys.ExecutionDir, default
+        self.executiondir = fully_qualify_filename(
+            self.get_value_for_key(d, JanisConfiguration.Keys.ExecutionDir, default)
         )
         self.call_caching_enabled = JanisConfiguration.get_value_for_key(
             d, self.Keys.CallCachingEnabled, default
@@ -406,8 +414,8 @@ class JanisConfiguration(NoAttributeErrors):
         self.run_in_background = self.get_value_for_key(
             d, JanisConfiguration.Keys.RunInBackground, default
         )
-        self.digest_cache_location = self.get_value_for_key(
-            d, JanisConfiguration.Keys.DigestCacheLocation, {}
+        self.digest_cache_location = fully_qualify_filename(
+            self.get_value_for_key(d, JanisConfiguration.Keys.DigestCacheLocation, {})
         )
         if not self.digest_cache_location:
             self.digest_cache_location = os.path.join(self.configdir, "digest_cache")
@@ -416,7 +424,7 @@ class JanisConfiguration(NoAttributeErrors):
         self.searchpaths = sp if isinstance(sp, list) else [sp]
         env_sp = EnvVariables.search_path.resolve(False)
         if env_sp and env_sp not in self.searchpaths:
-            self.searchpaths.append(env_sp)
+            self.searchpaths.append(fully_qualify_filename(env_sp))
 
         # Get's set by the template for now, but eventually we should be able to look it up
         self.container = None

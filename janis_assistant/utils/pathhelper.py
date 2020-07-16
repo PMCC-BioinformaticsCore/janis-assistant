@@ -3,7 +3,7 @@ import tempfile
 from inspect import isclass, isabstract
 from typing import List, Tuple
 
-from janis_core import Workflow, CommandTool, Logger, CodeTool
+from janis_core import WorkflowBase, Workflow, CommandTool, Logger, CodeTool
 from path import Path
 
 
@@ -161,7 +161,11 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     wftypes = [
         t
         for t in ptypes
-        if (issubclass(t[1], Workflow) if isclass(t[1]) else isinstance(t[1], Workflow))
+        if (
+            issubclass(t[1], WorkflowBase)
+            if isclass(t[1])
+            else isinstance(t[1], WorkflowBase)
+        )
     ]
     detected_tokens = ", ".join(f"'{x[0]}' ({x[1].__class__.__name__})" for x in ptypes)
 
@@ -219,7 +223,7 @@ def get_janis_from_module_spec(spec, include_commandtools=False, name: str = Non
                 potentials.append((k, ptype()))
             continue
 
-        if isinstance(ptype, Workflow) or isinstance(ptype, CommandTool):
+        if isinstance(ptype, WorkflowBase) or isinstance(ptype, CommandTool):
             potentials.append((k, ptype))
             continue
 
@@ -231,9 +235,9 @@ def get_janis_from_module_spec(spec, include_commandtools=False, name: str = Non
             continue
         if ptype.__module__ != "module.name":
             continue
-        if ptype == Workflow:
+        if ptype == WorkflowBase or ptype == Workflow:
             continue
-        if issubclass(ptype, Workflow):
+        if issubclass(ptype, WorkflowBase):
             potentials.append((k, ptype()))
         if include_commandtools and issubclass(ptype, (CommandTool, CodeTool)):
             potentials.append((k, ptype()))

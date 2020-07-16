@@ -1,96 +1,87 @@
+import json
 import datetime
 from os.path import commonprefix
 
-from typing import Optional, List
+from typing import Optional, List, Tuple, Union
 
+from janis_core.utils.logger import Logger
 
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
+from janis_assistant.utils import stringify_value_or_array
 from janis_assistant.utils.dateutil import DateUtil
 
 
-class WorkflowOutputModel:
+class WorkflowOutputModel(DatabaseObject):
+    @classmethod
+    def keymap(cls) -> List[DatabaseObjectField]:
+        return [
+            DatabaseObjectField("id_", dbalias="id", is_primary=True),
+            DatabaseObjectField("submission_id", is_primary=True),
+            DatabaseObjectField("run_id", is_primary=True),
+            DatabaseObjectField("output_name", encode=True),
+            DatabaseObjectField("output_folder", encode=True),
+            DatabaseObjectField("secondaries", encode=True),
+            DatabaseObjectField("extension"),
+            DatabaseObjectField("is_copyable"),
+            DatabaseObjectField("original_path", encode=True),
+            DatabaseObjectField("new_path", encode=True),
+            DatabaseObjectField("timestamp"),
+            DatabaseObjectField("value", encode=True),
+        ]
 
-    ARRAY_SEPARATOR_1 = "::"
-    ARRAY_SEPARATOR_NESTED = "||"
+    @classmethod
+    def table_schema(cls):
+        return """
+        id              STRING NOT NULL,      
+        submission_id   STRING NOT NULL,
+        run_id          STRING NOT NULL,
+        
+        output_name     STRING,
+        output_folder   STRING,
+        secondaries     STRING,
+        extension       STRING,
+        
+        is_copyable     BIT,
+        original_path   STRING,
+        new_path        STRING,
+        timestamp       NULLABLE STRING,
+        value           NULLABLE STRING,
+        """
 
     def __init__(
         self,
-        tag: str,
-        iscopyable: bool,
-        original_path: Optional[str],
-        new_path: Optional[str],
-        timestamp: Optional[str],
+        id_: str,
+        submission_id: str,
+        run_id: str,
         output_name: Optional[str],
         output_folder: Optional[str],
-        secondaries,
-        extension,
-        value: str = None,
+        secondaries: Optional[List[str]],
+        extension: Optional[str],
+        is_copyable: bool,
+        original_path: Optional[str],
+        new_path: Optional[str],
+        timestamp: Optional[Union[str, datetime.datetime]],
+        value: Optional[any] = None,
     ):
-        self.tag = tag
-        self.iscopyable = iscopyable
-        self.originalpath = original_path
-        self.newpath = new_path
+        self.id_ = id_
+        self.submission_id = submission_id
+        self.run_id = run_id
+        self.output_name = stringify_value_or_array(output_name)
+        self.output_folder = stringify_value_or_array(output_folder)
+        self.secondaries = secondaries
+        self.extension = extension
+        self.is_copyable = is_copyable
+        self.original_path = original_path
+        self.new_path = new_path
 
-        self.prefix: Optional[List[str]] = None
-        if output_name:
-            if isinstance(output_name, str):
-                self.prefix = self.to_array(output_name)
-            else:
-                self.prefix = [t for t in output_name if t is not None]
-
-        self.tags = None
-        if output_folder:
-            if isinstance(output_folder, str):
-                self.tags = self.to_array(output_folder)
-            else:
-                self.tags = [t for t in output_folder if t is not None]
-
-        self.secondaries = None
-        if secondaries:
-            if isinstance(secondaries, str):
-                self.secondaries = self.to_array(secondaries)
-            else:
-                self.secondaries = secondaries
+        self.value = value
 
         if not isinstance(timestamp, datetime.datetime):
             timestamp = DateUtil.parse_iso(timestamp)
         self.timestamp = timestamp
-        self.extension = extension
-        self.value = value
-
-    @staticmethod
-    def from_row(row):
-        return WorkflowOutputModel(*row[1:])
-
-    @staticmethod
-    def from_array(array):
-        if not array:
-            return None
-        """
-        At most, two levels. One separated by one separator, then the second by the other
-        :param array: iterable
-        :return:
-        """
-        return WorkflowOutputModel.ARRAY_SEPARATOR_1.join(
-            WorkflowOutputModel.ARRAY_SEPARATOR_NESTED.join(str(j) for j in i)
-            if isinstance(i, list)
-            else str(i)
-            for i in array
-        )
-
-    @staticmethod
-    def to_array(value: str):
-        if not value:
-            return []
-        s = value.split(WorkflowOutputModel.ARRAY_SEPARATOR_1)
-        return [
-            ss.split(WorkflowOutputModel.ARRAY_SEPARATOR_NESTED)
-            if WorkflowOutputModel.ARRAY_SEPARATOR_NESTED in ss
-            else ss
-            for ss in s
-        ]
 
     def format(self):
-        return f"- {self.tag}: {self._format_value(self.newpath)}"
+        return f"- {self.id_}: {self._format_value(self.new_path)}"
 
     @staticmethod
     def _format_value(value, isroot=True):

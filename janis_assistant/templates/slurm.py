@@ -15,12 +15,13 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         "max_ram",
         "can_run_in_foreground",
         "run_in_background",
+        "intermediate_execution_dir",
     ]
 
     def __init__(
         self,
         container_dir: str,
-        execution_dir: str = None,
+        intermediate_execution_dir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
         send_job_emails=False,
@@ -33,7 +34,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         run_in_background=False,
     ):
         """
-        :param execution_dir: A location where the execution should take place
+        :param intermediate_execution_dir: A location where the execution should take place
         :param container_dir: Location where to save and execute containers from
         :param queues: A single or list of queues that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
@@ -55,7 +56,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             can_run_in_foreground=can_run_in_foreground,
             run_in_background=run_in_background,
         )
-        self.execution_dir = execution_dir
+        self.intermediate_execution_dir = intermediate_execution_dir
         self.queues = queues or []
         self.send_job_emails = send_job_emails
         self.catch_slurm_errors = catch_slurm_errors
@@ -89,8 +90,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         beconfig: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
             config.backend.default
         ].config
-        if self.execution_dir:
-            beconfig.root = self.execution_dir
+        if self.intermediate_execution_dir:
+            beconfig.root = self.intermediate_execution_dir
 
         if janis_configuration.call_caching_enabled:
             config.call_caching = CromwellConfiguration.CallCaching(enabled=True)

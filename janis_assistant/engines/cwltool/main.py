@@ -7,8 +7,8 @@ from typing import Dict, Any
 from janis_core import LogLevel
 from janis_core.utils.logger import Logger
 from janis_assistant.data.models.outputs import WorkflowOutputModel
-from janis_assistant.data.models.workflow import WorkflowModel
-from janis_assistant.data.models.workflowjob import WorkflowJobModel
+from janis_assistant.data.models.run import RunModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
 from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
@@ -171,9 +171,11 @@ class CWLToolLogger(ProcessLogger):
         start = DateUtil.now() if status == TaskStatus.RUNNING else None
         finish = DateUtil.now() if status == TaskStatus.COMPLETED else None
 
-        job = WorkflowJobModel(
-            jid=jid,
-            parentjid=parentid,
+        job = RunJobModel(
+            submission_id=None,
+            run_id=self.wid,
+            id_=jid,
+            parent=parentid,
             name=stepname,
             status=status,
             attempt=None,
@@ -186,6 +188,10 @@ class CWLToolLogger(ProcessLogger):
             container=None,
             stderr=self.logfp.name,
             stdout=None,
+            analysis=None,
+            script=None,
+            cpu=None,
+            memory=None,
         )
 
         self.metadata_callback(self, job)
@@ -261,15 +267,15 @@ class CWLTool(Engine):
 
         retval: Dict[str, WorkflowOutputModel] = {}
         for k, o in outs.items():
-            retval.update(self.process_potential_out(k, o))
+            retval.update(self.process_potential_out(identifier, k, o))
 
         return retval
 
     @staticmethod
-    def process_potential_out(key, out):
+    def process_potential_out(run_id, key, out):
 
         if isinstance(out, list):
-            outs = [CWLTool.process_potential_out(key, o) for o in out]
+            outs = [CWLTool.process_potential_out(run_id, key, o) for o in out]
             ups = {}
             for o in outs:
                 for k, v in o.items():
@@ -282,9 +288,11 @@ class CWLTool(Engine):
 
         if isinstance(out, str):
             updates[key] = WorkflowOutputModel(
-                tag=key,
+                submission_id=None,
+                run_id=run_id,
+                id_=key,
                 original_path=None,
-                iscopyable=False,
+                is_copyable=False,
                 timestamp=DateUtil.now(),
                 value=out,
                 new_path=None,
@@ -296,8 +304,10 @@ class CWLTool(Engine):
 
         elif "path" in out:
             updates[key] = WorkflowOutputModel(
-                tag=key,
-                iscopyable=True,
+                submission_id=None,
+                run_id=run_id,
+                id_=key,
+                is_copyable=True,
                 original_path=out["path"],
                 timestamp=DateUtil.now(),
                 new_path=None,
@@ -311,9 +321,11 @@ class CWLTool(Engine):
                 ext = path.rpartition(".")[-1]
                 newk = f"{key}_{ext}"
                 updates[newk] = WorkflowOutputModel(
-                    tag=newk,
+                    submission_id=None,
+                    run_id=run_id,
+                    id_=newk,
                     original_path=path,
-                    iscopyable=True,
+                    is_copyable=True,
                     timestamp=DateUtil.now(),
                     new_path=None,
                     output_folder=None,
@@ -337,7 +349,7 @@ class CWLTool(Engine):
         self.taskmeta["status"] = TaskStatus.ABORTED
         return TaskStatus.ABORTED
 
-    def metadata(self, identifier) -> WorkflowModel:
+    def metadata(self, identifier) -> RunModel:
         """
         So CWLTool doesn't really have a metadata thing. See the 'terminate_task' description, but this
         implementation should instead create a thread to watch for process, and write metadata back to sqlite.
@@ -346,12 +358,15 @@ class CWLTool(Engine):
         :param identifier:
         :return:
         """
-        return WorkflowModel(
-            identifier,
-            name=identifier,
+        return RunModel(
+            id_=identifier,
+            engine_id=identifier,
+            execution_dir=None,
+            submission_id=None,
+            # name=identifier,
             status=self.taskmeta.get("status"),
-            start=self.taskmeta.get("start"),
-            finish=self.taskmeta.get("finish"),
+            # start=self.taskmeta.get("start"),
+            # finish=self.taskmeta.get("finish"),
             # outputs=meta.get("outputs") or [],
             jobs=list(self.taskmeta.get("jobs", {}).values()),
             error=self.taskmeta.get("error"),
@@ -413,7 +428,7 @@ class CWLTool(Engine):
         self.taskmeta["outputs"] = logger.outputs
 
         if status != TaskStatus.COMPLETED:
-            js: Dict[str, WorkflowJobModel] = self.taskmeta.get("jobs")
+            js: Dict[str, RunJobModel] = self.taskmeta.get("jobs")
             for j in js.values():
                 if j.status != TaskStatus.COMPLETED:
                     j.status = status
@@ -424,9 +439,9 @@ class CWLTool(Engine):
         for callback in self.progress_callbacks.get(logger.wid, []):
             callback(self.metadata(logger.wid))
 
-    def task_did_update(self, logger: CWLToolLogger, job: WorkflowJobModel):
-        Logger.info(f"Updated task {job.jid} with status={job.status}")
-        self.taskmeta["jobs"][job.jid] = job
+    def task_did_update(self, logger: CWLToolLogger, job: RunJobModel):
+        Logger.info(f"Updated task {job.id_} with status={job.status}")
+        self.taskmeta["jobs"][job.id_] = job
 
         for callback in self.progress_callbacks.get(logger.wid, []):
             callback(self.metadata(logger.wid))

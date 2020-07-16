@@ -129,7 +129,6 @@ class DbProviderBase(Generic[T]):
             {pkey_schema}
         )
         """
-        print(schema)
         return schema
 
     def insert_or_update_many(self, els: List[T]):

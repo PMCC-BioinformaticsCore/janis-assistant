@@ -126,10 +126,25 @@ class ConfigManager:
 
         forbiddenids = set()
         if store_in_centraldb:
-            with self.with_cursor() as cursor:
-                forbiddenids = set(
-                    t[0] for t in cursor.execute("SELECT id FROM tasks").fetchall()
-                )
+            try:
+                with self.with_cursor() as cursor:
+                    forbiddenids = set(
+                        t[0] for t in cursor.execute("SELECT id FROM tasks").fetchall()
+                    )
+            except sqlite3.OperationalError as e:
+                if "no such column: id" in repr(e):
+                    from shutil import move
+
+                    config = JanisConfiguration.manager()
+                    dt = datetime.utcnow()
+                    np = f"{config.dbpath}.original-{dt.strftime('%Y%m%d')}"
+                    Logger.warn(f"Moving old janis-db to '{np}'")
+                    move(config.dbpath, np)
+                    self._taskDB = None
+                    return self.create_task_base(
+                        wf, outdir=outdir, store_in_centraldb=store_in_centraldb
+                    )
+                raise
         if outdir:
             if os.path.exists(outdir):
                 # this should theoretically scoop through all the ones in the taskDB and

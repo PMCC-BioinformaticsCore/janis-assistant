@@ -98,8 +98,8 @@ class DbProviderBase(Generic[T]):
 
     def get_primary_keys(self):
         pkeys = [t.dbalias for t in self.base.keymap() if t.is_primary]
-        if len(pkeys) == 0:
-            pkeys = ["id"]
+        # if len(pkeys) == 0:
+        # pkeys = ["id"]
         return pkeys
 
     def get_id_keys(self):
@@ -110,21 +110,27 @@ class DbProviderBase(Generic[T]):
 
     def table_schema(self):
 
-        tschema = self.base.table_schema()
+        tschema = self.base.table_schema().strip()
 
         pkey_schema = ""
         pkeys = self.get_primary_keys()
+        has_trailing_comma = tschema[-1] == ","
         if pkeys:
-            if tschema.strip()[-1] != ",":
-                pkey_schema += ",\n\t"
-            pkey_schema += f"PRIMARY KEY({', '.join(pkeys)})"
+            if not has_trailing_comma:
+                tschema += ","
+            pkey_schema = f"PRIMARY KEY({', '.join(pkeys)})"
+        else:
+            if has_trailing_comma:
+                tschema = tschema[:-1]
 
-        return f"""\
+        schema = f"""\
         CREATE TABLE IF NOT EXISTS {self.tablename} (
             {tschema}
             {pkey_schema}
         )
         """
+        print(schema)
+        return schema
 
     def insert_or_update_many(self, els: List[T]):
         queries: Dict[str, List[List[any]]] = {}

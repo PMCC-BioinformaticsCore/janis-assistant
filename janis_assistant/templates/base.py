@@ -206,14 +206,16 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
             run_in_background=run_in_background,
         )
         self.singularity_load_instructions = load_instructions
-        self.singularity_container_dir = container_dir
+        self.singularity_container_dir = fully_qualify_filename(container_dir)
         self.singularity_build_instructions = build_instructions
 
         Logger.log(
             f"Setting Singularity: containerdir={container_dir}, loadinstructions={load_instructions}"
         )
 
-        invalid_paths = self.validate_paths({"Container Dir": container_dir})
+        invalid_paths = self.validate_paths(
+            {"Container Dir": self.singularity_container_dir}
+        )
 
         if len(invalid_paths) > 0:
             raise Exception(

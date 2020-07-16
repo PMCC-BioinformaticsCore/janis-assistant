@@ -54,6 +54,10 @@ def fully_qualify_filename(fn):
     :param fn:
     :return:
     """
+    if fn is None:
+        return None
+    if isinstance(fn, list):
+        return [fully_qualify_filename(f) for f in fn]
     if uri_prefix.match(fn):
         return fn
     return os.path.abspath(os.path.expanduser(os.path.expandvars(fn)))

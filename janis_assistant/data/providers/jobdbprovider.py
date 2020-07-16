@@ -69,7 +69,23 @@ class JobDbProvider(DbProviderBase):
         where = None
         if run_id:
             where = ("run_id = ?", (run_id,))
-        return self.get(where=where)
+        els: List[RunJobModel] = self.get(where=where)
+        if not els:
+            return els
+
+        # I know there are duplicates, I don't know why yet so we'll mask it for now
+
+        seen = set()
+        rets = []
+        for e in els:
+            k = (e.submission_id, e.run_id, e.id_)
+            if k in seen:
+                continue
+            seen.add(k)
+            rets.append(e)
+
+        return rets
+
         # query = "SELECT * FROM jobs WHERE wid = ?"
         # with self.with_cursor() as cursor:
         #     try:

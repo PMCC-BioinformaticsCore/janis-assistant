@@ -8,11 +8,17 @@ from janis_core import Logger
 
 
 class DatabaseObjectField:
-    def __init__(self, name, dbalias=None, is_primary=False, encode=False):
+    def __init__(
+        self, name, dbalias=None, is_primary=False, encode=False, is_id_key=False
+    ):
+        """
+        :param is_id_key: Sometimes it can't be an primary key, but it's worth trying to match on it.
+        """
         self.name = name
         self.dbalias = dbalias or name
         self.is_primary = is_primary
         self.encode = encode
+        self.is_id_key = is_id_key
 
 
 class DatabaseObject(ABC):

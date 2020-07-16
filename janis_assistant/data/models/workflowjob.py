@@ -12,14 +12,14 @@ class RunJobModel(DatabaseObject):
     @classmethod
     def keymap(cls) -> List[DatabaseObjectField]:
         return [
-            DatabaseObjectField("id_", "id", is_primary=True),
-            DatabaseObjectField("submission_id", is_primary=True),
-            DatabaseObjectField("run_id", is_primary=True),
+            DatabaseObjectField("id_", "id", is_id_key=True),
+            DatabaseObjectField("submission_id", is_id_key=True),
+            DatabaseObjectField("run_id", is_id_key=True),
             DatabaseObjectField("parent"),
             DatabaseObjectField("name"),
             DatabaseObjectField("batchid"),
-            DatabaseObjectField("shard", is_primary=True),
-            DatabaseObjectField("attempt", is_primary=True),
+            DatabaseObjectField("shard", is_id_key=True),
+            DatabaseObjectField("attempt", is_id_key=True),
             DatabaseObjectField("container"),
             DatabaseObjectField("status"),
             DatabaseObjectField("start"),
@@ -100,8 +100,6 @@ analysis        STRING,
                 shard = int(shard)
             if shard >= 0:
                 self.shard = shard
-        if self.shard is None:
-            self.shard = -1
 
         self.attempt = None
         if attempt is not None:
@@ -109,8 +107,6 @@ analysis        STRING,
                 attempt = int(attempt)
             if attempt > 1:
                 self.attempt = attempt
-        if self.attempt is None:
-            self.attempt = -1
 
         self.container = container
 
@@ -183,7 +179,7 @@ analysis        STRING,
             # col = _bcolors.UNDERLINE
             uncol = _bcolors.ENDC
 
-        if status != TaskStatus.COMPLETED or brief == False:
+        if status != TaskStatus.COMPLETED or brief is False:
             if self.jobs:
                 ppre = pre + tb
                 subs: List[RunJobModel] = sorted(

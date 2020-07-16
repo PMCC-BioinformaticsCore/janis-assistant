@@ -145,7 +145,7 @@ class RunModel(DatabaseObject):
         nl = "\n"
 
         return nl.join(
-            tb + j.format(tb, **kwargs)
+            j.format(tb, **kwargs)
             for j in sorted(self.jobs, key=lambda j: j.start or DateUtil.now())
         )
 

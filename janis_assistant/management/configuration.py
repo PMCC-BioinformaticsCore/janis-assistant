@@ -465,6 +465,7 @@ class JanisConfiguration(NoAttributeErrors):
                 # Resolved at runtime using "ConfigDir + cromwell-*.jar" else None, and then it's downloaded
                 JanisConfiguration.JanisConfigurationCromwell.Keys.JarPath: None,
                 JanisConfiguration.JanisConfigurationCromwell.Keys.Timeout: 10,
+                JanisConfiguration.JanisConfigurationCromwell.Keys.CallCachingMethod: "fingerprint",
             },
             JanisConfiguration.Keys.Environment: {},
             JanisConfiguration.Keys.Template: {

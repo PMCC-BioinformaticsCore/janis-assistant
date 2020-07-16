@@ -526,14 +526,14 @@ String? queue
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes=f"""
-    Int runtime_minutes = 1439
+    Int duration = 86400
     Int? cpu = 1
     Int memory_mb = 3500
      """,
                         submit=f"""
     chmod +x ${{script}}
     echo "${{job_shell}} ${{script}}" | qsub -V -d ${{cwd}} -N ${{job_name}} -o ${{out}} -e ${{err}} {qparam} -l nodes=1:ppn=${{cpu}}" \
-        -l walltime=${{walltime}} -l mem=${{memory_mb}}
+        -l walltime=${{duration}} -l mem=${{memory_mb}}
             """,
                         job_id_regex="^(\\d+).*",
                         kill="qdel ${job_id}",
@@ -582,7 +582,7 @@ String? queue
 
                 torq.config.submit = None
                 torq.config.runtime_attributes = """\
-    Int runtime_minutes = 1440
+    Int duration = 86400
     Int? cpu = 1
     Int memory_mb = 3500
     String? docker"""
@@ -591,7 +591,7 @@ String? queue
     docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
     image={singularitycontainerdir}/$docker_subbed.sif
     jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-    walltime='23:00:00' # $(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
+    walltime='00:00:~{{duration}}' # $(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
 
     if [ ! -f $image ]; then
         {singularityloadinstructions}

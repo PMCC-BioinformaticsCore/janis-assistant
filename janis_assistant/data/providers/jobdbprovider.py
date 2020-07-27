@@ -12,7 +12,7 @@ T = TypeVar("T")
 
 def groupby(
     iterable: Iterable[T], selector: Union[str, Callable[[T], str]]
-) -> Dict[str, T]:
+) -> Dict[str, Iterable[T]]:
     q = {}
     if isinstance(selector, str):
         k = selector

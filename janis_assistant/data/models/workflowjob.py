@@ -68,21 +68,22 @@ analysis        STRING,
         run_id: str,
         parent: Optional[str],
         name: str,
-        batchid: Optional[str],
-        shard: Optional[int],
-        attempt: Optional[int],
-        container: Optional[str],
-        status: TaskStatus,
-        start: Union[str, datetime],
-        finish: Optional[Union[str, datetime]],
-        backend: Optional[str],
-        cached: bool,
-        stdout: Optional[str],
-        stderr: Optional[str],
-        script: Optional[str],
-        memory: Optional[str],
-        cpu: Optional[str],
-        analysis: Optional[str],
+        batchid: Optional[str] = None,
+        shard: Optional[int] = None,
+        attempt: Optional[int] = None,
+        container: Optional[str] = None,
+        status: TaskStatus = None,
+        start: Union[str, datetime] = None,
+        finish: Optional[Union[str, datetime]] = None,
+        backend: Optional[str] = None,
+        cached: bool = None,
+        stdout: Optional[str] = None,
+        stderr: Optional[str] = None,
+        script: Optional[str] = None,
+        memory: Optional[str] = None,
+        cpu: Optional[str] = None,
+        analysis: Optional[str] = None,
+        # Optional
         jobs: Optional[list] = None,
     ):
         self.id_ = id_
@@ -160,10 +161,13 @@ analysis        STRING,
         )
 
         name = self.name
+        opts = []
         if self.shard is not None and self.shard >= 0:
-            name += f"_shard-{self.shard}"
+            opts.append(f"shard-{self.shard}")
         if self.attempt and self.attempt > 1:
-            name += f"_attempt-{self.attempt}"
+            opts.append(f"attempt-{self.attempt}")
+        if len(opts) > 0:
+            name += f" ({', '.join(opts)})"
 
         standard = pre + f"[{status.symbol()}] {name} ({second_formatter(time)})"
 
@@ -184,7 +188,10 @@ analysis        STRING,
                 ppre = pre + tb
                 subs: List[RunJobModel] = sorted(
                     self.jobs,
-                    key=lambda j: j.start if j.start else DateUtil.now(),
+                    key=lambda j: (
+                        j.shard or 0,
+                        j.start if j.start else DateUtil.now(),
+                    ),
                     reverse=False,
                 )
 

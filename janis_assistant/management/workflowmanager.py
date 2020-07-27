@@ -24,6 +24,7 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any
 
+from janis_assistant.data.models.joblabel import JobLabelModel
 from janis_assistant.utils.getuser import lookup_username
 from janis_core import (
     InputSelector,
@@ -823,6 +824,7 @@ class WorkflowManager:
             tool_to_evaluate, recursive=False, additional_inputs=additional_inputs
         )
 
+        self.evaluate_job_labels(tool_to_evaluate, inputs=mapped_inps, run_id=run_id)
         self.database.inputsDB.insert_inputs_from_dict(mapped_inps)
 
         self.evaluate_output_params(
@@ -831,6 +833,23 @@ class WorkflowManager:
 
         self.database.progressDB.set(ProgressKeys.saveWorkflow)
         return tool_to_evaluate
+
+    def evaluate_job_labels(self, tool: Tool, inputs: dict, run_id):
+        if not isinstance(tool, WorkflowBase):
+            return
+        wf: WorkflowBase = tool
+        labels = []
+        for stp in wf.step_nodes.values():
+            if stp.scatter is not None and stp.scatter.labels is not None:
+                resolved_label = self.evaluate_output_selector(
+                    stp.scatter.labels, inputs
+                )
+                labels.append(
+                    JobLabelModel(self.submission_id, run_id, stp.id(), resolved_label)
+                )
+
+        if len(labels) > 0:
+            self.database.joblabelsDB.insert_or_update_many(labels)
 
     def evaluate_output_params(self, wf: Tool, inputs: dict, run_id):
 

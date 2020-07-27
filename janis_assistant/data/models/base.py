@@ -23,7 +23,7 @@ class DatabaseObjectField:
 
 class DatabaseObject(ABC):
     def __repr__(self):
-        fields = ", ".join(str(getattr(self, k)) for k, _ in self.keymap())
+        fields = ", ".join(str(getattr(self, k.name)) for k in self.keymap())
         return f"{self.__class__.__name__}({fields})"
 
     @classmethod

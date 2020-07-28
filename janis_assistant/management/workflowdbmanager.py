@@ -221,7 +221,7 @@ class WorkflowDbManager:
                     labels = labels_by_jid[j.id_].labels
                     for child in j.jobs:
                         shard = child.shard
-                        if shard is not None or 0 <= shard < len(labels):
+                        if shard is not None and 0 <= shard < len(labels):
                             child.name = labels[shard]
 
         return submission

@@ -836,6 +836,7 @@ class WorkflowManager:
 
         output_names: Dict[str, any] = {}
         output_folders: Dict[str, any] = {}
+        output_extensions: Dict[str, str] = {}
 
         if isinstance(wf, WorkflowBase):
             for o in wf.output_nodes.values():
@@ -845,16 +846,23 @@ class WorkflowManager:
                 output_folders[o.id()] = self.evaluate_output_selector(
                     o.output_folder, inputs
                 )
+                output_extensions[o.id()] = o.extension
 
         outputs: List[WorkflowOutputModel] = []
 
         for o in wf.tool_outputs():
             # We'll
-            ext = o.extension if hasattr(o, "extension") else None
+            ext = (
+                o.extension
+                if hasattr(o, "extension")
+                else output_extensions.get(o.id())
+            )
             innertype = o.outtype
-            iscopyable = isinstance(o.outtype, (File, Directory)) or (
+            iscopyable = isinstance(o.outtype.received_type(), (File, Directory)) or (
                 isinstance(o.outtype, Array)
-                and isinstance(o.outtype.fundamental_type(), (File, Directory))
+                and isinstance(
+                    o.outtype.fundamental_type().received_type(), (File, Directory)
+                )
             )
             while isinstance(innertype, Array):
                 innertype = innertype.subtype()

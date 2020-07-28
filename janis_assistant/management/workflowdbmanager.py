@@ -216,7 +216,7 @@ class WorkflowDbManager:
             if r.jobs is not None and r.id_ in joblabels_by_sid:
                 labels_by_jid = {j.job_id: j for j in joblabels_by_sid.get(r.id_)}
                 for j in r.jobs:
-                    if j.id_ not in labels_by_jid:
+                    if j.id_ not in labels_by_jid or not j.jobs:
                         continue
                     labels = labels_by_jid[j.id_].labels
                     for child in j.jobs:

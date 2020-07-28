@@ -63,8 +63,7 @@ class RunModel(DatabaseObject):
     @classmethod
     def table_schema(cls):
         return """
-        id                         DatabaseObjectField("last_updated"),
- STRING NOT NULL,
+        id              STRING NOT NULL,
         submission_id   STRING NOT NULL,
         engine_id       STRING,
         execution_dir   STRING,
@@ -166,7 +165,6 @@ class SubmissionModel(DatabaseObject):
         tags: List[str],
         timestamp: Union[str, datetime],
         engine_type: str,
-        name: str,
         # metadata not populated directly by DB, but might be used for formatting
         engine_url: Optional[str] = None,
         runs: List[RunModel] = None,
@@ -186,7 +184,6 @@ class SubmissionModel(DatabaseObject):
             timestamp = DateUtil.parse_iso(timestamp)
         self.timestamp = timestamp
         self.engine_type = engine_type
-        self.name = name
         # other things
         self.runs = runs or []
         self.engine_url = engine_url
@@ -267,7 +264,7 @@ Engine:     {self.engine_type}
 
 Task Dir:   {self.output_dir}
 
-Name:       {self.name or 'N/A'} 
+Name:       {self.get_names() or 'N/A'} 
 Status:     {statuses}
 Duration:   {second_formatter(duration)}
 Start:      {start.isoformat() if start else 'N/A'}

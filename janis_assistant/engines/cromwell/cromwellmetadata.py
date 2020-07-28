@@ -122,7 +122,7 @@ class CromwellMetadata:
             submission_id=None,
             id_=None,
             engine_id=jid,
-            # name=self.meta.get("workflowName"),
+            name=self.meta.get("workflowName"),
             # start=s,
             # finish=f,
             execution_dir=self.meta.get("workflowRoot"),

@@ -363,7 +363,7 @@ class CWLTool(Engine):
             engine_id=identifier,
             execution_dir=None,
             submission_id=None,
-            # name=identifier,
+            name=identifier,
             status=self.taskmeta.get("status"),
             # start=self.taskmeta.get("start"),
             # finish=self.taskmeta.get("finish"),

@@ -57,6 +57,7 @@ class RunModel(DatabaseObject):
             DatabaseObjectField("labels", encode=True),
             DatabaseObjectField("tags", encode=True),
             DatabaseObjectField("last_updated"),
+            DatabaseObjectField("name"),
         ]
 
     @classmethod
@@ -71,6 +72,7 @@ class RunModel(DatabaseObject):
         labels          STRING,
         tags            STRING,
         last_updated    STRING,
+        name            STRING,
         FOREIGN KEY (submission_id) REFERENCES sumissions(id)
         """
 
@@ -82,6 +84,7 @@ class RunModel(DatabaseObject):
         engine_id: str,
         status: TaskStatus,
         execution_dir: str,
+        name: str,
         error: str = None,
         labels: List[str] = None,
         tags: List[str] = None,
@@ -96,6 +99,7 @@ class RunModel(DatabaseObject):
         self.submission_id = submission_id
         self.execution_dir = execution_dir
         self.engine_id = engine_id
+        self.name = name
         self.status = status
         self.error = error
         self.labels = labels
@@ -184,6 +188,11 @@ class SubmissionModel(DatabaseObject):
         self.runs = runs or []
         self.engine_url = engine_url
 
+    def get_names(self):
+        if not self.runs:
+            return "N/A"
+        return ", ".join(set(r.name for r in self.runs))
+
     @classmethod
     def keymap(cls) -> List[DatabaseObjectField]:
         return [
@@ -207,7 +216,7 @@ class SubmissionModel(DatabaseObject):
         tags        STRING,
         labels      STRING,
         timestamp   STRING,
-        engine      STRING
+        engine      STRING,
         """
 
     def format(self, **kwargs):
@@ -255,6 +264,7 @@ Engine:     {self.engine_type}
 
 Task Dir:   {self.output_dir}
 
+Name:       {self.get_names() or 'N/A'} 
 Status:     {statuses}
 Duration:   {second_formatter(duration)}
 Start:      {start.isoformat() if start else 'N/A'}

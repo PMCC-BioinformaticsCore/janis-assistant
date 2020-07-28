@@ -17,6 +17,7 @@ from janis_assistant.data.providers.inputsdbprovider import InputDbProvider
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider, groupby
 from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
 from janis_assistant.data.providers.internalprogressdb import InternalProgressDb
+from janis_assistant.data.providers.joblabeldbprovider import JobLabelDbProvider
 from janis_assistant.data.providers.submissiondbprovider import SubmissionDbProvider
 from janis_assistant.data.providers.versionsdbprovider import VersionsDbProvider
 from janis_assistant.data.providers.workflowmetadataprovider import (
@@ -84,6 +85,9 @@ class WorkflowDbManager:
         )
         self.jobsDB = JobDbProvider(db=self.connection, submission_id=submission_id)
         self.inputsDB = InputDbProvider(db=self.connection, submission_id=submission_id)
+        self.joblabelsDB = JobLabelDbProvider(
+            db=self.connection, submission_id=submission_id
+        )
 
         self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
@@ -192,21 +196,33 @@ class WorkflowDbManager:
         inputs = self.inputsDB.get() or []
         outputs = self.outputsDB.get() or []
         events = self.runevents.get() or []
+        joblabels = self.joblabelsDB.get() or []
 
         events_by_sid = groupby(events, "run_id")
         job_by_sid = groupby(jobs, "run_id")
         inputs_by_sid = groupby(inputs, "run_id")
         outputs_by_sid = groupby(outputs, "run_id")
-
+        joblabels_by_sid = groupby(joblabels, "run_id")
         runs = self.runs.get()
 
         submission.runs = runs
 
         for r in submission.runs:
+
             r.jobs = job_by_sid.get(r.id_)
             r.inputs = inputs_by_sid.get(r.id_)
             r.outputs = outputs_by_sid.get(r.id_)
             r.set_events(events_by_sid.get(r.id_))
+            if r.jobs is not None and r.id_ in joblabels_by_sid:
+                labels_by_jid = {j.job_id: j for j in joblabels_by_sid.get(r.id_)}
+                for j in r.jobs:
+                    if j.id_ not in labels_by_jid or not j.jobs:
+                        continue
+                    labels = labels_by_jid[j.id_].labels
+                    for child in j.jobs:
+                        shard = child.shard
+                        if shard is not None and 0 <= shard < len(labels):
+                            child.name = labels[shard]
 
         return submission
 

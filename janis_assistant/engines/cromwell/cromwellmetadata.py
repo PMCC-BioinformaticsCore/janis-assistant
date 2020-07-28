@@ -1,5 +1,5 @@
 import json
-from typing import Union, List
+from typing import Union, List, Dict
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.run import RunModel
@@ -122,7 +122,7 @@ class CromwellMetadata:
             submission_id=None,
             id_=None,
             engine_id=jid,
-            # name=self.meta.get("workflowName"),
+            name=self.meta.get("workflowName"),
             # start=s,
             # finish=f,
             execution_dir=self.meta.get("workflowRoot"),
@@ -159,13 +159,24 @@ class CromwellMetadata:
 
     @classmethod
     def parse_standard_call(cls, parentid, stepname, call):
+        parent = parentid
         jid = f"{parentid}_{stepname}" if parentid else stepname
         shard = call.get("shardIndex")
         attempt = call.get("attempt")
 
-        if shard is not None and shard >= 0:
+        is_shard = shard is not None and shard >= 0
+        is_second_attempt = attempt is not None and attempt > 1
+
+        # We'll rebase the parent job if there are any shards (so they all sit under one heading)
+        # OR if it's a second attempt, we'll group it under the first attempt.
+
+        if is_shard:
+            parent = jid
+            # We rely on the calling function to create a job with the parentId we're setting.
             jid += f"_shard-{shard}"
-        if attempt and attempt > 1:
+        if is_second_attempt:
+            # There will already be a parent with this id_ (as this is the second attempt)
+            parent = jid
             jid += f"_attempt-{attempt}"
 
         subjobs = []
@@ -190,7 +201,7 @@ class CromwellMetadata:
             id_=jid,
             submission_id=None,
             run_id=None,
-            parent=parentid,
+            parent=parent,
             container=call.get(
                 "dockerImageUsed", call.get("runtimeAttributes", {}).get("docker")
             ),
@@ -216,7 +227,36 @@ class CromwellMetadata:
 
     @classmethod
     def parse_standard_calls(cls, parentid, name, calls) -> List[RunJobModel]:
-        return [cls.parse_standard_call(parentid, name, c) for c in calls]
+
+        jobs = []
+        parents: Dict[str, RunJobModel] = {}
+        for c in calls:
+            job = cls.parse_standard_call(parentid, name, c)
+
+            if job.shard is None:
+                jobs.append(job)
+            else:
+                if job.parent in parents:
+                    parents[job.parent].jobs.append(job)
+                else:
+                    parents[job.parent] = RunJobModel(
+                        submission_id=job.submission_id,
+                        run_id=job.run_id,
+                        id_=job.parent,
+                        parent=parentid,
+                        jobs=[job],
+                        name=job.name,
+                        status=TaskStatus.PROCESSING,
+                    )
+
+        for parent in parents.values():
+            parent.start = min(j.start for j in parent.jobs)
+            finishes = [j.finish for j in parent.jobs]
+            if all(f is not None for f in finishes):
+                parent.finish = max(finishes)
+            parent.status = TaskStatus.collapse_states([j.status for j in parent.jobs])
+
+        return [*parents.values(), *jobs]
 
         # jid_temp = parentid + "_" + name
         #

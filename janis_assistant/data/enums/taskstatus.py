@@ -69,3 +69,23 @@ class TaskStatus(Enum):
         }
 
         return __str.get(self.value)
+
+    @classmethod
+    def collapse_states(cls, states: list):
+
+        if len(states) == 0:
+            return cls.PROCESSING
+
+        running = {cls.RUNNING, cls.PREPARED, cls.QUEUED, cls.PROCESSING}
+        if any(s in running for s in states):
+            return cls.RUNNING
+        if any(s == cls.ABORTING for s in states):
+            return cls.ABORTING
+        if any(s == cls.ABORTED for s in states):
+            return cls.ABORTED
+        if any(s == cls.FAILED for s in states):
+            return cls.FAILED
+        if all(s == cls.COMPLETED for s in states):
+            return cls.COMPLETED
+
+        return states[0]

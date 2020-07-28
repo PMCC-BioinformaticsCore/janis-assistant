@@ -19,6 +19,8 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
 
     def get_by_id(self, submission_id) -> Optional[SubmissionModel]:
         s = self.get(where=("id = ?", [submission_id]))
+        if s is None:
+            return None
         if len(s) != 1:
             Logger.warn(
                 f"Couldn't get submission with id={submission_id}, query returned {len(s)} results."

@@ -1,20 +1,17 @@
+import sys
 from abc import ABC, abstractmethod
-import os.path
 from typing import Type, Optional, List, Dict
 
-from janis_assistant.data.models.run import SubmissionModel
-from janis_assistant.data.models.run import RunModel
-
-from janis_assistant.data.enums import TaskStatus
-from janis_assistant.data.models.workflowjob import RunJobModel
-
-from janis_assistant.utils import fully_qualify_filename
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
 from janis_assistant.containers.docker import Docker
 from janis_assistant.containers.singularity import Singularity
+from janis_assistant.data.enums import TaskStatus
+from janis_assistant.data.models.run import SubmissionModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.engines.enginetypes import EngineType
+from janis_assistant.utils import fully_qualify_filename
 
 
 class EnvironmentTemplate(ABC):
@@ -72,6 +69,7 @@ class EnvironmentTemplate(ABC):
         logsdir: str,
         config,
         capture_output: bool = False,
+            log_output_to_stdout: bool=False,
     ):
         import subprocess
 
@@ -84,8 +82,11 @@ class EnvironmentTemplate(ABC):
             if capture_output:
                 out = subprocess.check_output(
                     command, close_fds=True, stderr=subprocess.STDOUT
-                )
-                Logger.info(out.decode().strip())
+                ).decode().strip()
+                Logger.info(out)
+                if log_output_to_stdout:
+                    print(out, file=sys.stdout)
+
             else:
                 subprocess.Popen(
                     command,

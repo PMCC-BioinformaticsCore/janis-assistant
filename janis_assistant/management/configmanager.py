@@ -2,12 +2,12 @@ import os
 import sqlite3
 from datetime import datetime
 from shutil import rmtree
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, List
 from contextlib import contextmanager
 
 from janis_core import Workflow, Logger, Tool
 
-from janis_assistant.data.models.workflow import WorkflowModel
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.providers.janisdbprovider import TasksDbProvider, TaskRow
 from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import JanisConfiguration
@@ -236,6 +236,28 @@ class ConfigManager:
             **kwargs,
         )
 
+    def get_row_for_submission_id_or_path(self, submission_id) -> TaskRow:
+
+        potential_submission = self.get_lazy_db_connection().get_by_id(submission_id)
+        if potential_submission:
+            return potential_submission
+
+        expanded_path = fully_qualify_filename(submission_id)
+        if os.path.exists(expanded_path):
+            (execpath, sid) = WorkflowManager.from_path_get_latest_submission_id(
+                expanded_path
+            )
+            return TaskRow(
+                execution_dir=expanded_path,
+                submission_id=sid,
+                output_dir=None,
+                timestamp=None,
+            )
+
+        raise Exception(
+            f"Couldn't find task with id='{submission_id}', and no directory was found."
+        )
+
     def from_submission_id_or_path(self, submission_id, readonly=False):
 
         self.readonly = readonly
@@ -252,7 +274,7 @@ class ConfigManager:
 
         expanded_path = fully_qualify_filename(submission_id)
         if os.path.exists(expanded_path):
-            return WorkflowManager.from_path_get_latest(
+            return WorkflowManager.from_path_get_latest_manager(
                 expanded_path, readonly=readonly
             )
 
@@ -260,27 +282,27 @@ class ConfigManager:
             f"Couldn't find task with id='{submission_id}', and no directory was found "
         )
 
-    def query_tasks(self, status, name) -> Dict[str, WorkflowModel]:
+    def query_tasks(self, status, name) -> Dict[str, RunModel]:
 
-        rows: [TaskRow] = self.get_lazy_db_connection().get_all_tasks()
+        rows: List[TaskRow] = self.get_lazy_db_connection().get_all_tasks()
 
         failed = []
         relevant = {}
 
         for row in rows:
-            if not os.path.exists(row.outputdir):
+            if not os.path.exists(row.execution_dir):
                 failed.append(row.submission_id)
                 continue
             try:
                 metadb = WorkflowManager.has(
-                    row.outputdir,
+                    row.execution_dir,
                     submission_id=row.submission_id,
                     name=name,
                     status=status,
                 )
                 if metadb:
                     model = metadb.to_model()
-                    model.outdir = row.outputdir
+                    model.outdir = row.output_dir
                     relevant[row.submission_id] = model
             except Exception as e:
                 Logger.critical(f"Couldn't check workflow '{row.submission_id}': {e}")

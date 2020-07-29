@@ -578,16 +578,13 @@ def pause(wid):
     wm.mark_paused()
 
 
-def abort_wids(wids: List[str]):
-    for wid in wids:
+def abort_wids(sids: List[str]):
+    for sid in sids:
         try:
-            row = ConfigManager.manager().get_lazy_db_connection().get_by_wid(wid)
-            if row:
-                WorkflowManager.mark_aborted(row.outputdir, row.submission_id)
-            else:
-                WorkflowManager.mark_aborted(wid, None)
+            row = ConfigManager.manager().get_row_for_submission_id_or_path(sid)
+            WorkflowManager.mark_aborted(row.execution_dir, row.output_dir)
         except Exception as e:
-            Logger.critical(f"Couldn't abort '{wid}': " + str(e))
+            Logger.critical(f"Couldn't abort '{sid}': " + str(e))
             raise e
 
 

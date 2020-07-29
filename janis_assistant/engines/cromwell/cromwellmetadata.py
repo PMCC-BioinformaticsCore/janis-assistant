@@ -3,7 +3,6 @@ from typing import Union, List, Dict
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.run import RunModel
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import Logger

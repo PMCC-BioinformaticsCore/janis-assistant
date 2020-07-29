@@ -37,7 +37,6 @@ class JobDbProvider(DbProviderBase):
             scopes={"submission_id": submission_id},
         )
         self.submission_id = submission_id
-        # self.eventsDB = JobEventDbProvider(self.db, self.wid)
 
     def get_single(
         self, id_: str, run_id: str = RunModel.DEFAULT_ID
@@ -85,27 +84,6 @@ class JobDbProvider(DbProviderBase):
             rets.append(e)
 
         return rets
-
-        # query = "SELECT * FROM jobs WHERE wid = ?"
-        # with self.with_cursor() as cursor:
-        #     try:
-        #         cursor.execute(query, (self.wid,))
-        #         rows = cursor.fetchall()
-        #     except OperationalError as e:
-        #         if "readonly database" in str(e):
-        #             # mfranklin: idk, this sometimes happens. We're doing a select query, idk sqlite3 driver...
-        #             Logger.debug(
-        #                 "Got readonly error when running query: '{query}', skipping for now"
-        #             )
-        #             return None
-        #         elif "locked" in str(e):
-        #             Logger.debug(
-        #                 "We hit the database at the same time the janis process wrote to it, meh"
-        #             )
-        #             return None
-        #         raise e
-        #
-        # return [RunJobModel.from_row(row) for row in rows]
 
     def get_all_mapped(self) -> Optional[List[RunJobModel]]:
 

@@ -22,7 +22,7 @@ import queue
 import time
 from enum import Enum
 from subprocess import call
-from typing import Optional, List, Dict, Union, Any
+from typing import Optional, List, Dict, Union, Any, Tuple
 
 from janis_assistant.data.models.joblabel import JobLabelModel
 from janis_assistant.utils.getuser import lookup_username
@@ -45,7 +45,6 @@ from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.run import SubmissionModel, RunModel
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines import (
     get_ideal_specification_for_engine,
     Cromwell,
@@ -330,7 +329,7 @@ class WorkflowManager:
         )
 
         if not submission_id:
-            submission_id = db.wid  # .get_meta_info(InfoKeys.taskId)
+            submission_id = db.submission_id  # .get_meta_info(InfoKeys.taskId)
 
         if not submission_id:
             raise Exception(f"Couldn't find workflow with id '{submission_id}'")
@@ -360,22 +359,31 @@ class WorkflowManager:
         return tm
 
     @staticmethod
-    def from_path_get_latest(path, readonly=False):
-
+    def from_path_get_latest_submission_id(path) -> Tuple[str, str]:
+        """
+        :return: (execution_path, sid)
+        """
         paths = [path, os.path.join(path, "janis")]
         for pth in paths:
 
             if not os.path.exists(WorkflowDbManager.get_sql_path_base(pth)):
                 continue
 
-            submission_id = WorkflowDbManager.get_latest_workflow(path=pth)
-            return WorkflowManager.from_path_with_submission_id(
-                pth, submission_id, readonly=readonly
-            )
+            return pth, WorkflowDbManager.get_latest_submission_id(path=pth)
 
         raise Exception(
             f"Couldn't find the task database (task.db) in the path '{paths[0]}'"
             f" (this might be different to the output directory)"
+        )
+
+    @staticmethod
+    def from_path_get_latest_manager(path, readonly=False):
+
+        (execpath, submission_id) = WorkflowManager.from_path_get_latest_submission_id(
+            path
+        )
+        return WorkflowManager.from_path_with_submission_id(
+            execpath, submission_id, readonly=readonly
         )
 
     def show_status_screen(self, **kwargs):
@@ -1320,15 +1328,15 @@ class WorkflowManager:
         return meta.status in TaskStatus.final_states()
 
     @staticmethod
-    def mark_aborted(outputdir, wid: Optional[str]) -> bool:
+    def mark_aborted(execution_dir, wid: Optional[str]) -> bool:
         try:
             if not wid:
-                db = WorkflowManager.from_path_get_latest(
-                    outputdir, readonly=False
+                db = WorkflowManager.from_path_get_latest_manager(
+                    execution_dir, readonly=False
                 ).database.submission_metadata
             else:
                 db = WorkflowDbManager.get_workflow_metadatadb(
-                    outputdir, wid, readonly=False
+                    execution_dir, wid, readonly=False
                 )
             db.please_abort = True
             db.kvdb.commit()

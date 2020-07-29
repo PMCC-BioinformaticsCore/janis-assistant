@@ -2,10 +2,11 @@ from datetime import datetime
 
 from typing import Optional
 
+from janis_assistant.data.models.run import SubmissionModel, RunModel
+
 from janis_assistant.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 from janis_assistant.management.filescheme import FileScheme
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines import Engine
 from janis_assistant.utils.getuser import lookup_username
 
@@ -15,10 +16,10 @@ class SubmissionMetadataDbProvider(KvDB):
     attributes_to_persist = {a.value for a in WorkflowMetadataDbKeys}
 
     @staticmethod
-    def new(dblocation: str, wid: str):
-        t = SubmissionMetadataDbProvider(dblocation, wid)
+    def new(dblocation: str, submission_id: str):
+        t = SubmissionMetadataDbProvider(dblocation, submission_id)
 
-        t.wid = wid
+        t.submission_id = submission_id
         t.start = datetime.now()
 
         return t
@@ -51,17 +52,18 @@ class SubmissionMetadataDbProvider(KvDB):
         self.kvdb.commit()
 
     def to_model(self):
-        return WorkflowModel(
-            wid=self.wid,
-            engine_wid=self.engine_wid,
+        return RunModel(
+            id_=RunModel.DEFAULT_ID,
+            submission_id=self.submission_id,
+            engine_id=self.engine_wid,
             name=self.name,
             status=self.status,
-            start=self.start,
-            finish=self.finish,
+            # start=self.start,
+            # finish=self.finish,
             execution_dir=self.execution_dir,
-            engine=self.engine.id() if self.engine else None,
-            filesystem=self.filescheme.id() if self.filescheme else None,
+            # en=self.engine.id() if self.engine else None,
+            # filesystem=self.filescheme.id() if self.filescheme else None,
             labels=self.labels,
             error=self.error,
-            author=self.author,
+            # author=self.author,
         )

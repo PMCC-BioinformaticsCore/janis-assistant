@@ -12,13 +12,13 @@ from urllib import request, parse
 from glob import glob
 from typing import Optional, List, Tuple, Union
 
+from janis_assistant.data.models.run import RunModel
 from janis_core import LogLevel
 from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
 
 from janis_assistant.__meta__ import ISSUE_URL
 from janis_assistant.data.models.outputs import WorkflowOutputModel
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
@@ -147,8 +147,14 @@ class Cromwell(Engine):
         for eid, callbacks in self.progress_callbacks.items():
             for cb in callbacks:
                 cb(
-                    WorkflowModel(
-                        engine_wid=eid, status=TaskStatus.SUSPENDED, error=message
+                    RunModel(
+                        id_=RunModel.DEFAULT_ID,
+                        submission_id=None,
+                        engine_id=eid,
+                        status=TaskStatus.SUSPENDED,
+                        error=message,
+                        execution_dir=None,
+                        name=None,
                     )
                 )
 
@@ -679,9 +685,17 @@ class Cromwell(Engine):
                 Logger.warn("Error connecting to cromwell instance: " + str(e))
             return None
 
-    def metadata(self, identifier, expand_subworkflows=True) -> Optional[WorkflowModel]:
+    def metadata(self, identifier, expand_subworkflows=True) -> Optional[RunModel]:
         if self.error_message:
-            return WorkflowModel(error=self.error_message, status=TaskStatus.FAILED)
+            return RunModel(
+                id_=RunModel.DEFAULT_ID,
+                submission_id=None,
+                error=self.error_message,
+                status=TaskStatus.FAILED,
+                engine_id=identifier,
+                execution_dir=None,
+                name=None,
+            )
 
         raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
         return raw.standard() if raw else raw

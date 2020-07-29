@@ -11,7 +11,6 @@ from janis_assistant.data.providers.rundbprovider import (
 
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.run import SubmissionModel, RunModel
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.data.providers.inputsdbprovider import InputDbProvider
 from janis_assistant.data.providers.jobdbprovider import JobDbProvider, groupby
@@ -127,7 +126,7 @@ class WorkflowDbManager:
         return retval
 
     @staticmethod
-    def get_latest_workflow(path) -> str:
+    def get_latest_submission_id(path) -> str:
         try:
             connection = sqlite3.connect(
                 f"file:{WorkflowDbManager.get_sql_path_base(path)}?mode=ro", uri=True
@@ -189,7 +188,7 @@ class WorkflowDbManager:
         jobs = self.jobsDB.get_all_mapped()
         if jobs is None:
             Logger.log(
-                f"Jobs list for {self.submission_metadata.wid} was None, skipping this time."
+                f"Jobs list for {self.submission_metadata.submission_id} was None, skipping this time."
             )
             return None
 

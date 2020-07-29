@@ -3,7 +3,7 @@ import os.path
 from typing import Type, Optional, List, Dict
 
 from janis_assistant.data.models.run import SubmissionModel
-from janis_assistant.data.models.workflow import WorkflowModel
+from janis_assistant.data.models.run import RunModel
 
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.workflowjob import RunJobModel

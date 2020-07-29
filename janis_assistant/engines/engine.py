@@ -1,12 +1,11 @@
-import threading
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List, Callable
+from abc import ABC, abstractmethod
+from typing import Dict, Any, List, Callable
 
+from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.run import RunModel
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.management import Archivable
-from janis_assistant.data.enums import TaskStatus
 
 
 class Engine(Archivable, ABC):

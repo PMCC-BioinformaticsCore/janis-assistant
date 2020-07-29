@@ -4,7 +4,6 @@ import subprocess
 from janis_core import Logger
 
 from janis_assistant.data.models.run import SubmissionModel
-from janis_assistant.data.models.workflow import WorkflowModel
 from janis_assistant.management.configuration import JanisConfiguration
 
 

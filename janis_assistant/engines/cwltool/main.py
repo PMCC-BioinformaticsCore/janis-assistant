@@ -20,8 +20,8 @@ class CWLToolLogger(ProcessLogger):
 
     statusupdateregex = re.compile("INFO \[(.*)\] (.+)$")
 
-    def __init__(self, wid: str, process, logfp, metadata_callback, exit_function=None):
-        self.wid = wid
+    def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None):
+        self.sid = sid
 
         self.error = None
         self.metadata_callback = metadata_callback
@@ -173,7 +173,7 @@ class CWLToolLogger(ProcessLogger):
 
         job = RunJobModel(
             submission_id=None,
-            run_id=self.wid,
+            run_id=self.sid,
             id_=jid,
             parent=parentid,
             name=stepname,
@@ -436,12 +436,12 @@ class CWLTool(Engine):
         if logger.error:
             self.taskmeta["error"] = logger.error
 
-        for callback in self.progress_callbacks.get(logger.wid, []):
-            callback(self.metadata(logger.wid))
+        for callback in self.progress_callbacks.get(logger.sid, []):
+            callback(self.metadata(logger.sid))
 
     def task_did_update(self, logger: CWLToolLogger, job: RunJobModel):
         Logger.info(f"Updated task {job.id_} with status={job.status}")
         self.taskmeta["jobs"][job.id_] = job
 
-        for callback in self.progress_callbacks.get(logger.wid, []):
-            callback(self.metadata(logger.wid))
+        for callback in self.progress_callbacks.get(logger.sid, []):
+            callback(self.metadata(logger.sid))

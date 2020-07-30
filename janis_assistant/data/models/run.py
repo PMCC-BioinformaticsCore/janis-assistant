@@ -254,7 +254,7 @@ class SubmissionModel(DatabaseObject):
 
         if self.runs:
             engine_ids = ", ".join(r.engine_id for r in self.runs if r.engine_id)
-            statuses = ", ".join(str(r.status.value) for r in self.runs if r.status)
+            statuses = ", ".join(str(r.status) for r in self.runs if r.status)
             errors = ", ".join(r.error for r in self.runs if r.error)
 
         return f"""\

@@ -144,7 +144,9 @@ analysis        STRING,
     def from_row(row):
         return RunJobModel(*row[1:])
 
-    def format(self, pre, monochrome=False, brief=False, **kwargs):
+    def format(
+        self, pre, monochrome=False, brief=False, njobs_in_parent=None, **kwargs
+    ):
 
         tb = "    "
         fin = self.finish if self.finish else DateUtil.now()
@@ -183,7 +185,7 @@ analysis        STRING,
             # col = _bcolors.UNDERLINE
             uncol = _bcolors.ENDC
 
-        if status != TaskStatus.COMPLETED or brief is False:
+        if status != TaskStatus.COMPLETED or brief is False or njobs_in_parent == 1:
             if self.jobs:
                 ppre = pre + tb
                 subs: List[RunJobModel] = sorted(

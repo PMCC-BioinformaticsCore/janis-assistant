@@ -149,7 +149,7 @@ class RunModel(DatabaseObject):
         nl = "\n"
 
         return nl.join(
-            j.format(tb, **kwargs)
+            j.format(tb, njobs_in_parent=len(self.jobs), **kwargs)
             for j in sorted(self.jobs, key=lambda j: j.start or DateUtil.now())
         )
 

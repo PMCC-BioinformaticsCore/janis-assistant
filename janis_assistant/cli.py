@@ -584,21 +584,21 @@ def add_run_args(parser, add_workflow_argument=True):
 
     # filescheme
 
-    fs_args = parser.add_argument_group("filescheme arguments")
-    fs_args.add_argument(
-        "-f",
-        "--filescheme",
-        choices=["local", "ssh"],
-        default="local",
-        help="Choose the filescheme required to retrieve the output files where your engine is located. "
-        "By selecting SSH, Janis will SCP the files using the --filescheme-ssh-binding SSH shortcut.",
-    )
-
-    fs_args.add_argument(
-        "--filescheme-ssh-binding",
-        help="Only valid if you've selected the ssh filescheme. "
-        "(eg: scp cluster:/path/to/output local/output/dir)",
-    )
+    # fs_args = parser.add_argument_group("filescheme arguments")
+    # fs_args.add_argument(
+    #     "-f",
+    #     "--filescheme",
+    #     choices=["local", "ssh"],
+    #     default="local",
+    #     help="Choose the filescheme required to retrieve the output files where your engine is located. "
+    #     "By selecting SSH, Janis will SCP the files using the --filescheme-ssh-binding SSH shortcut.",
+    # )
+    #
+    # fs_args.add_argument(
+    #     "--filescheme-ssh-binding",
+    #     help="Only valid if you've selected the ssh filescheme. "
+    #     "(eg: scp cluster:/path/to/output local/output/dir)",
+    # )
 
     validation_args = parser.add_argument_group("validation arguments")
 

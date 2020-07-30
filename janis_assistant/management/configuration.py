@@ -130,6 +130,7 @@ class JanisConfiguration(NoAttributeErrors):
             MySqlDbName = "mysql_dbname"
             UseManagedMySqlInstance = "should_manage_mysql"
             UseDatabase = "use_database"
+            AdditionalParameters = "additional_params"  # string or list of strings
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -171,6 +172,10 @@ class JanisConfiguration(NoAttributeErrors):
 
             self.use_database = JanisConfiguration.get_value_for_key(
                 d, self.Keys.UseDatabase, default
+            )
+
+            self.additional_params = JanisConfiguration.get_value_for_key(
+                d, self.Keys.AdditionalParameters, default
             )
 
         def get_database_config_helper(self):

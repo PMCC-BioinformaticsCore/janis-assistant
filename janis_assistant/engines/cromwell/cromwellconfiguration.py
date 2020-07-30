@@ -2,6 +2,7 @@ import json
 from enum import Enum
 from typing import Tuple, Any, Dict, Union, List
 
+from janis_assistant.utils import stringify_value_or_array
 from janis_core.utils.logger import Logger
 
 
@@ -12,7 +13,7 @@ class Serializable:
     def output(self):
         d = self.to_dict()
         tl = [(k + ": " + json.dumps(d[k], indent=2)) for k in d]
-        return 'include required(classpath("application"))\n\n' + "\n".join(tl)
+        return "\n".join(tl)
 
     @staticmethod
     def serialize(key, value) -> Tuple[str, Any]:
@@ -79,6 +80,17 @@ class CromwellConfiguration(Serializable):
     )
 
     CATCH_ERROR_COMMAND = '[ ! -f rc ] && (echo 1 >> ${cwd}/execution/rc) && (echo "A slurm error occurred" >> ${cwd}/execution/stderr)'
+
+    def output(self):
+        s = super().output()
+
+        els = [
+            'include required(classpath("application"))',
+            s,
+            "\n".join(self.additional_params) if self.additional_params else None,
+        ]
+
+        return "\n\n".join(ln for ln in els if ln)
 
     class Webservice(Serializable):
         def __init__(
@@ -763,6 +775,7 @@ String? queue
         docker: Docker = Docker.default(),
         cache: CallCaching = None,
         aws=None,
+        additional_params=None,
     ):
         if webservice is not None and isinstance(
             webservice, CromwellConfiguration.Webservice
@@ -800,5 +813,18 @@ String? queue
         if aws is not None and not isinstance(aws, CromwellConfiguration.AWS):
             raise Exception("aws not of type CromwellConfiguration.AWS")
         self.aws: CromwellConfiguration.AWS = aws
+
+        if additional_params is None:
+            from janis_assistant.management.configuration import JanisConfiguration
+
+            additional_params = JanisConfiguration.manager().cromwell.additional_params
+
+        if additional_params is not None:
+            additional_params = stringify_value_or_array(
+                additional_params
+                if isinstance(additional_params, list)
+                else [str(additional_params)]
+            )
+        self.additional_params = additional_params
 
     key_map = {"call_caching": "call-caching"}

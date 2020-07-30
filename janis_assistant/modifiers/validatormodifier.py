@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Dict, List, Tuple
 
-from janis_core import Tool, Logger, WorkflowBuilder, Workflow
+from janis_core import Tool, Logger, WorkflowBuilder, Workflow, WorkflowBase
 
 from janis_assistant.validation import ValidationRequirements
 from janis_assistant.modifiers.base import PipelineModifierBase
@@ -46,7 +46,7 @@ class ValidatorPipelineModifier(PipelineModifierBase):
         inpdict = {i.id(): w.input(i.id(), i.intype) for i in tool.tool_inputs()}
         toolstp = w.step(tool.id(), tool(**inpdict))
 
-        if isinstance(tool, Workflow):
+        if isinstance(tool, WorkflowBase):
             wf: Workflow = tool
             for o in wf.output_nodes.values():
                 w.output(

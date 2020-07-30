@@ -3,7 +3,7 @@ import socket
 import os.path
 from typing import Set, List, Union
 
-from janis_core import Tool, Workflow
+from janis_core import Tool, Workflow, WorkflowBase
 from janis_core.utils.logger import Logger
 from .pathhelper import (
     get_janis_workflow_from_searchname,
@@ -54,6 +54,10 @@ def fully_qualify_filename(fn):
     :param fn:
     :return:
     """
+    if fn is None:
+        return None
+    if isinstance(fn, list):
+        return [fully_qualify_filename(f) for f in fn]
     if uri_prefix.match(fn):
         return fn
     return os.path.abspath(os.path.expanduser(os.path.expandvars(fn)))
@@ -192,7 +196,7 @@ def validate_inputs(tool: Tool, additional_inputs):
     errors = {}
 
     input_values_from_workflow = {}
-    if isinstance(tool, Workflow):
+    if isinstance(tool, WorkflowBase):
         input_values_from_workflow = {
             inpkey: inp.value for inpkey, inp in tool.input_nodes.items() if inp.value
         }
@@ -214,3 +218,18 @@ def validate_inputs(tool: Tool, additional_inputs):
         return True
 
     raise ValueError(f"There were errors in {len(errors)} inputs: " + str(errors))
+
+
+def convert_value_or_list_to_string(value):
+    if isinstance(value, list):
+        return [convert_value_or_list_to_string(v) for v in value]
+    return str(value)
+
+
+def stringify_value_or_array(value):
+    if value is None:
+        return None
+
+    if isinstance(value, list):
+        return [stringify_value_or_array(s) for s in value]
+    return str(value)

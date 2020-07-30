@@ -2,7 +2,8 @@ import os
 import subprocess
 from typing import Dict, Any, Optional
 
-from janis_assistant.data.models.workflow import WorkflowModel
+from janis_assistant.data.models.run import RunModel
+
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.engines.engine import Engine
@@ -74,7 +75,7 @@ class Toil(Engine):
     def terminate_task(self, identifier) -> TaskStatus:
         pass
 
-    def metadata(self, identifier) -> WorkflowModel:
+    def metadata(self, identifier) -> RunModel:
         raise NotImplementedError(
             "metadata needs to be implemented in Toil, may require rework of tool"
         )

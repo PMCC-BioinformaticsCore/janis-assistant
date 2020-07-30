@@ -132,7 +132,8 @@ class CromwellConfiguration(Serializable):
                         # Below are the default values set by Akka, uncomment to tune these
                         # 'parallelism-factor': 3.0
                         "parallelism-max": 3
-                    }
+                    },
+                    "http": {"server": {"request-timeout": "100s"}},
                 }
             )
 
@@ -260,7 +261,7 @@ jdbc:hsqldb:file:{location};
 shutdown=false;
 hsqldb.default_table_type=cached;
 hsqldb.tx=mvcc;
-hsqldb.result_max_memory_rows=2500;
+hsqldb.result_max_memory_rows=5000;
 hsqldb.large_data=true;
 hsqldb.applog=1;
 hsqldb.lob_compressed=true;
@@ -389,22 +390,24 @@ hsqldb.script_format=3
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes="""\
-Int runtime_minutes = 1440
+Int duration = 86400
 Int? cpu = 1
 Int memory_mb = 3500
-String? docker""".strip(),
-                        submit="""
-    jobname='${{sub(sub(cwd, ".*call-", ""), "/", "-")}}-cpu-${{cpu}}-mem-${{memory_mb}}'
+String? docker
+String? queue
+""".strip(),
+                        submit=f"""
+    jobname='{CromwellConfiguration.JOBNAME_TRANSFORM}'
     sbatch \\
         -J $jobname \\
-        -D ${cwd} \\
-        -o ${out} \\
-        -e ${err} \\
-        -t ${runtime_minutes} \\
-        ${"-p " + queue} \\
-        ${"-n " + cpu} \\
-        --mem=${memory_mb} \\
-        --wrap "/usr/bin/env ${job_shell} ${script}" """,
+        -D ${{cwd}} \\
+        -o ${{out}} \\
+        -e ${{err}} \\
+        -t 0:${{duration}} \\
+        ${{"-p " + queue}} \\
+        ${{"-n " + cpu}} \\
+        --mem=${{memory_mb}} \\
+        --wrap "/usr/bin/env ${{job_shell}} ${{script}}" """,
                         kill="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*",
@@ -434,19 +437,23 @@ String? docker""".strip(),
                 partitions = (
                     ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
                 )
-                partition_string = ("-p " + partitions) if partitions else ""
+                if partitions:
+                    partition_string = f'${{if defined(queue) then ("-p" + queue) else "-p {partitions}"}}'
+                else:
+                    partition_string = '${"-p" + queue}'
+
                 emailextra = (
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )
 
                 slurm.config.runtime_attributes = """\
-Int runtime_minutes = 1440
-String kvruntime_value = ""
+Int duration
 Int? cpu = 1
 Int memory_mb = 3500
 String? docker
+String? queue
 """
-                slurm.config.submit = None
+                # slurm.config.submit = None
                 slurm.config.submit_docker = f"""\
             {singularityloadinstructions or ''}
 
@@ -464,12 +471,12 @@ String? docker
                 --parsable \\
                 -J $jobname \\
                 --mem=${{memory_mb}} \\
-                --cpus-per-task ${{if defined(cpu) then cpu else 1}} \\
+                --cpus-per-task ${{select_first([cpu, 1])}} \\
                 {partition_string} \\
                 -D ${{cwd}} \\
                 -o ${{cwd}}/execution/stdout \\
                 -e ${{cwd}}/execution/stderr \\
-                -t ${{runtime_minutes}} \\
+                -t '0:${{duration}}' \\
                 {emailextra} \\
                 --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
                 {afternotokaycommand} \\
@@ -531,14 +538,14 @@ String? docker
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
                         runtime_attributes=f"""
-    Int runtime_minutes = 1439
+    Int duration = 86400
     Int? cpu = 1
     Int memory_mb = 3500
      """,
                         submit=f"""
     chmod +x ${{script}}
     echo "${{job_shell}} ${{script}}" | qsub -V -d ${{cwd}} -N ${{job_name}} -o ${{out}} -e ${{err}} {qparam} -l nodes=1:ppn=${{cpu}}" \
-        -l walltime=${{walltime}} -l mem=${{memory_mb}}
+        -l walltime=${{duration}} -l mem=${{memory_mb}}
             """,
                         job_id_regex="^(\\d+).*",
                         kill="qdel ${job_id}",
@@ -587,7 +594,7 @@ String? docker
 
                 torq.config.submit = None
                 torq.config.runtime_attributes = """\
-    Int runtime_minutes = 1440
+    Int duration = 86400
     Int? cpu = 1
     Int memory_mb = 3500
     String? docker"""
@@ -596,7 +603,7 @@ String? docker
     docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
     image={singularitycontainerdir}/$docker_subbed.sif
     jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-    walltime='23:00:00' # $(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
+    walltime='00:00:~{{duration}}' # $(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
 
     if [ ! -f $image ]; then
         {singularityloadinstructions}

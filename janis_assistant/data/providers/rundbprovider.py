@@ -1,62 +1,48 @@
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set
 
+from janis_assistant.data.enums import TaskStatus
+
+from janis_assistant.data.models.run import RunModel, SubmissionModel, RunStatusUpdate
 from janis_assistant.utils.dateutil import DateUtil
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 
 
-class RunDbProvider(DbProviderBase):
-    CURRENT_SCHEMA_VERSION = 1
-
-    def table_schema(self):
-        return """\
-        CREATE TABLE IF NOT EXISTS runs (
-            wid STRING PRIMARY KEY,
-            timestamp STRING
+class RunDbProvider(DbProviderBase[RunModel]):
+    def __init__(self, db, submission_id: str):
+        super().__init__(
+            base_type=RunModel,
+            db=db,
+            tablename="runs",
+            scopes={"submission_id": submission_id},
         )
-        """
 
-    def __init__(self, db):
-        super().__init__(db)
+    def insert_or_update_many(self, els: List[RunModel]):
+        for el in els:
+            el.last_updated = DateUtil.now()
+        return super().insert_or_update_many(els)
 
-    def get_latest(self):
-        with self.with_cursor() as cursor:
-            cursor.execute("SELECT wid FROM runs ORDER BY timestamp DESC LIMIT 1")
-            latest = cursor.fetchone()[0]
 
-        return latest
+class RunStatusDbProvider(DbProviderBase[RunStatusUpdate]):
+    def __init__(self, db, submission_id: str):
+        super().__init__(
+            base_type=RunStatusUpdate,
+            db=db,
+            tablename="runstatus",
+            scopes={"submission_id": submission_id},
+        )
 
-    def get(self, wid: str) -> Optional[datetime]:
-        with self.with_cursor() as cursor:
-            cursor.execute("SELECT timestamp FROM runs WHERE wid = ?", (wid,))
-            row = cursor.fetchone()
+        self.submission_id = submission_id
 
-        if not row:
-            return None
-
-        return DateUtil.parse_iso(row[0])
-
-    def get_all(self) -> Dict[str, datetime]:
-        with self.with_cursor() as cursor:
-            cursor.execute("SELECT wid, timestamp FROM runs")
-            rows = cursor.fetchall()
-
-        return {row[0]: DateUtil.parse_iso(row[1]) for row in rows}
-
-    def insert(self, wid: str):
-        with self.with_cursor() as cursor:
-
-            cursor.execute(self._insert_statement, (wid, str(DateUtil.now())))
-
-    _insert_statement = """\
-        INSERT INTO runs
-            (wid, timestamp)
-        VALUES
-            (?, ?)
-        """
-
-    def upgrade_schema(self, from_version: int):
-        # if from_version < 2:
-        #     self.migrate_to_2()
-        return
+    def update(self, run_id: str, status: TaskStatus):
+        return self.insert_or_update_many(
+            [
+                RunStatusUpdate(
+                    submission_id=self.submission_id,
+                    run_id=run_id,
+                    status=status,
+                    date=DateUtil.now(),
+                )
+            ]
+        )

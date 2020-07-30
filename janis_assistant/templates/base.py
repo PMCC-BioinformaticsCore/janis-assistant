@@ -1,14 +1,17 @@
+import sys
 from abc import ABC, abstractmethod
-import os.path
 from typing import Type, Optional, List, Dict
 
-from janis_assistant.utils import fully_qualify_filename
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
 from janis_assistant.containers.docker import Docker
 from janis_assistant.containers.singularity import Singularity
+from janis_assistant.data.enums import TaskStatus
+from janis_assistant.data.models.run import SubmissionModel
+from janis_assistant.data.models.workflowjob import RunJobModel
 from janis_assistant.engines.enginetypes import EngineType
+from janis_assistant.utils import fully_qualify_filename
 
 
 class EnvironmentTemplate(ABC):
@@ -49,6 +52,15 @@ class EnvironmentTemplate(ABC):
     def engine_config(self, engine: EngineType, janis_configuration):
         pass
 
+    def get_job_analysis_from(self, job: RunJobModel) -> Optional[str]:
+        """
+        Something like calling SLURM 'seff' on a job
+        :param job: RunJobModel
+        :type job: RunJobModel
+        :return: An optional string with the report
+        """
+        return None
+
     def submit_detatched_resume(
         self,
         wid: str,
@@ -57,6 +69,7 @@ class EnvironmentTemplate(ABC):
         logsdir: str,
         config,
         capture_output: bool = False,
+            log_output_to_stdout: bool=False,
     ):
         import subprocess
 
@@ -69,8 +82,11 @@ class EnvironmentTemplate(ABC):
             if capture_output:
                 out = subprocess.check_output(
                     command, close_fds=True, stderr=subprocess.STDOUT
-                )
-                Logger.info(out.decode().strip())
+                ).decode().strip()
+                Logger.info(out)
+                if log_output_to_stdout:
+                    print(out, file=sys.stdout)
+
             else:
                 subprocess.Popen(
                     command,
@@ -129,6 +145,46 @@ class EnvironmentTemplate(ABC):
         """
         pass
 
+    def prepare_status_update_email(
+        self, status: TaskStatus, metadata: SubmissionModel
+    ):
+
+        _status_change_template = """\
+        <h1>Status change: {status}</h1>
+
+        <p>
+            The workflow '{wfname}' ({wid}) moved to the '{status}' status.
+        </p>
+        <ul>
+            <li>Task directory: <code>{tdir}</code></li>
+            <li>Execution directory: <code>{exdir}</code></li>
+        </ul>
+        
+        {progress_and_header}
+        
+        Kind regards,
+        - Janis
+        """
+
+        progress_and_header = ""
+        if status.is_in_final_state():
+            progress_and_header = f"""\
+        <hr />
+        <h3>Progress</h3>        
+        <pre>
+        {metadata.format(monochrome=True, brief=True)}
+        </pre>
+        """
+
+        return _status_change_template.format(
+            wid=metadata.id_,
+            wfname=metadata.id_,
+            status=status,
+            exdir="<execution-dir>",
+            tdir=metadata.output_dir,
+            progress_and_header=progress_and_header,
+        )
+
 
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(
@@ -151,14 +207,16 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
             run_in_background=run_in_background,
         )
         self.singularity_load_instructions = load_instructions
-        self.singularity_container_dir = container_dir
+        self.singularity_container_dir = fully_qualify_filename(container_dir)
         self.singularity_build_instructions = build_instructions
 
         Logger.log(
             f"Setting Singularity: containerdir={container_dir}, loadinstructions={load_instructions}"
         )
 
-        invalid_paths = self.validate_paths({"Container Dir": container_dir})
+        invalid_paths = self.validate_paths(
+            {"Container Dir": self.singularity_container_dir}
+        )
 
         if len(invalid_paths) > 0:
             raise Exception(

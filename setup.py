@@ -26,7 +26,7 @@ setup(
         "janis.extension": ["assistant=janis_assistant"],
     },
     install_requires=[
-        "janis-pipelines.core>=0.9.17",
+        "janis-pipelines.core>=0.9.19",
         "janis-pipelines.templates>=0.9.0",
         "requests",
         "path",

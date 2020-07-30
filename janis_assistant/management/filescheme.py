@@ -65,6 +65,10 @@ class FileScheme(Archivable, abc.ABC):
     def mkdirs(self, directory):
         pass
 
+    @abc.abstractmethod
+    def get_file_size(self, path) -> Optional[int]:
+        pass
+
     @staticmethod
     @abc.abstractmethod
     def is_valid_prefix(prefix: str):
@@ -73,7 +77,7 @@ class FileScheme(Archivable, abc.ABC):
     @staticmethod
     def get_type_by_prefix(prefix: str):
         prefix = prefix.lower()
-        types = [HTTPFileScheme, GCSFileScheme, S3FileScheme]
+        types = [HTTPFileScheme, GCSFileScheme, S3FileScheme, LocalFileScheme]
 
         for T in types:
             if T.is_valid_prefix(prefix):
@@ -136,6 +140,16 @@ class LocalFileScheme(FileScheme):
     def mkdirs(self, directory):
         return os.makedirs(directory, exist_ok=True)
 
+    def get_file_size(self, path) -> Optional[int]:
+        try:
+            stat = os.stat(path)
+            if not stat:
+                return None
+            return stat.st_size
+        except Exception as e:
+            Logger.warn(f"Couldn't get file size of path '{path}': {repr(e)}")
+            return None
+
     @staticmethod
     def link_copy_or_fail(source, dest, force=False):
         """
@@ -193,6 +207,9 @@ class HTTPFileScheme(FileScheme):
     def is_valid_prefix(prefix: str):
         return prefix.startswith("http://") or prefix.startswith("https://")
 
+    def get_file_size(self, path) -> Optional[int]:
+        return None
+
     def cp_from(
         self,
         source,
@@ -239,6 +256,9 @@ class SSHFileScheme(FileScheme):
     @staticmethod
     def is_valid_prefix(prefix: str):
         return True
+
+    def get_file_size(self, path) -> Optional[int]:
+        return None
 
     def makedir(self, location):
         args = ["ssh", self.connectionstring, "mkdir -p " + location]
@@ -310,6 +330,9 @@ class GCSFileScheme(FileScheme):
     def is_valid_prefix(prefix: str):
         return prefix.lower().startswith("gs://")
 
+    def get_file_size(self, path) -> Optional[int]:
+        return None
+
     def cp_from(
         self,
         source,
@@ -341,6 +364,9 @@ class S3FileScheme(FileScheme):
     @staticmethod
     def is_valid_prefix(prefix: str):
         return prefix.lower().startswith("s3://")
+
+    def get_file_size(self, path) -> Optional[int]:
+        return None
 
     def mkdirs(self, directory):
         pass

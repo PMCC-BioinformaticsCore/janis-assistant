@@ -2,32 +2,95 @@ from datetime import datetime
 from typing import Optional, Union, List, Tuple
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
+from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.utils import second_formatter
 from janis_assistant.utils.dateutil import DateUtil
 from janis_core.utils.logger import _bcolors
 
 
-class WorkflowJobModel:
+class RunJobModel(DatabaseObject):
+    @classmethod
+    def keymap(cls) -> List[DatabaseObjectField]:
+        return [
+            DatabaseObjectField("id_", "id", is_id_key=True),
+            DatabaseObjectField("submission_id", is_id_key=True),
+            DatabaseObjectField("run_id", is_id_key=True),
+            DatabaseObjectField("parent"),
+            DatabaseObjectField("name"),
+            DatabaseObjectField("batchid"),
+            DatabaseObjectField("shard"),
+            DatabaseObjectField("attempt"),
+            DatabaseObjectField("container"),
+            DatabaseObjectField("status"),
+            DatabaseObjectField("start"),
+            DatabaseObjectField("finish"),
+            DatabaseObjectField("backend"),
+            DatabaseObjectField("cached"),
+            DatabaseObjectField("stdout"),
+            DatabaseObjectField("stderr"),
+            DatabaseObjectField("script"),
+            DatabaseObjectField("memory"),
+            DatabaseObjectField("cpu"),
+            DatabaseObjectField("analysis"),
+        ]
+
+    @classmethod
+    def table_schema(cls):
+        return """
+id              STRING NOT NULL,
+submission_id   STRING NOT NULL,
+run_id          STRING NOT NULL,
+parent          NULLABLE STRING,
+shard           NULLABLE INT,
+attempt         NULLABLE INT,
+
+name            STRING,
+batchid         STRING,
+container       STRING,
+status          STRING,
+start           STRING,
+finish          NULLABLE STRING,
+backend         STRING,
+cached          BOOLEAN,
+stdout          STRING,
+stderr          STRING,
+script          STRING,
+
+memory          STRING,
+cpu             STRING,
+analysis        STRING,
+    """
+
     def __init__(
         self,
-        jid: str,
-        parentjid: Optional[str],
+        id_: str,
+        submission_id: str,
+        run_id: str,
+        parent: Optional[str],
         name: str,
-        batchid: Optional[str],
-        shard: Optional[int],
-        attempt: Optional[int],
-        container: Optional[str],
-        status: TaskStatus,
-        start: Union[str, datetime],
-        finish: Optional[Union[str, datetime]],
-        backend: Optional[str],
-        cached: bool,
-        stdout: Optional[str],
-        stderr: Optional[str],
+        batchid: Optional[str] = None,
+        shard: Optional[int] = None,
+        attempt: Optional[int] = None,
+        container: Optional[str] = None,
+        status: TaskStatus = None,
+        start: Union[str, datetime] = None,
+        finish: Optional[Union[str, datetime]] = None,
+        backend: Optional[str] = None,
+        cached: bool = None,
+        stdout: Optional[str] = None,
+        stderr: Optional[str] = None,
+        script: Optional[str] = None,
+        memory: Optional[str] = None,
+        cpu: Optional[str] = None,
+        analysis: Optional[str] = None,
+        # Optional
         jobs: Optional[list] = None,
     ):
-        self.jid = jid
-        self.parentjid = parentjid
+        self.id_ = id_
+        self.submission_id = submission_id
+        self.run_id = run_id
+        self.parent = parent
+
         self.status = status if isinstance(status, TaskStatus) else TaskStatus(status)
 
         self.name = name
@@ -38,6 +101,7 @@ class WorkflowJobModel:
                 shard = int(shard)
             if shard >= 0:
                 self.shard = shard
+
         self.attempt = None
         if attempt is not None:
             if isinstance(attempt, str) and attempt.isdigit():
@@ -60,12 +124,25 @@ class WorkflowJobModel:
         if finish and isinstance(finish, str):
             self.finish = DateUtil.parse_iso(finish)
 
-        self.jobs = jobs or None
+        self.script = script
+        self.memory = memory
+        self.cpu = cpu
+        self.analysis = analysis
+
+        self.jobs: Optional[List[RunJobModel]] = jobs or None
         self.events = None
+
+    def set_ids(self, submission_id, run_id):
+        self.submission_id = submission_id
+        self.run_id = run_id
+
+        if self.jobs:
+            for j in self.jobs:
+                j.set_ids(submission_id=submission_id, run_id=run_id)
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row[1:])
+        return RunJobModel(*row[1:])
 
     def format(self, pre, monochrome=False, brief=False, **kwargs):
 
@@ -84,10 +161,13 @@ class WorkflowJobModel:
         )
 
         name = self.name
+        opts = []
         if self.shard is not None and self.shard >= 0:
-            name += f"_shard-{self.shard}"
+            opts.append(f"shard-{self.shard}")
         if self.attempt and self.attempt > 1:
-            name += f"_attempt-{self.attempt}"
+            opts.append(f"attempt-{self.attempt}")
+        if len(opts) > 0:
+            name += f" ({', '.join(opts)})"
 
         standard = pre + f"[{status.symbol()}] {name} ({second_formatter(time)})"
 
@@ -103,12 +183,15 @@ class WorkflowJobModel:
             # col = _bcolors.UNDERLINE
             uncol = _bcolors.ENDC
 
-        if status != TaskStatus.COMPLETED or brief == False:
+        if status != TaskStatus.COMPLETED or brief is False:
             if self.jobs:
                 ppre = pre + tb
-                subs: List[WorkflowJobModel] = sorted(
+                subs: List[RunJobModel] = sorted(
                     self.jobs,
-                    key=lambda j: j.start if j.start else DateUtil.now(),
+                    key=lambda j: (
+                        j.shard or 0,
+                        j.start if j.start else DateUtil.now(),
+                    ),
                     reverse=False,
                 )
 
@@ -164,4 +247,4 @@ class WorkflowJobEventModel:
 
     @staticmethod
     def from_row(row):
-        return WorkflowJobModel(*row)
+        return RunJobModel(*row)

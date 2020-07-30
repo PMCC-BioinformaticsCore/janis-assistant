@@ -145,7 +145,13 @@ analysis        STRING,
         return RunJobModel(*row[1:])
 
     def format(
-        self, pre, monochrome=False, brief=False, njobs_in_parent=None, **kwargs
+        self,
+        pre,
+        monochrome=False,
+        brief=False,
+        layer=0,
+        njobs_in_parent=None,
+        **kwargs,
     ):
 
         tb = "    "
@@ -185,7 +191,11 @@ analysis        STRING,
             # col = _bcolors.UNDERLINE
             uncol = _bcolors.ENDC
 
-        if status != TaskStatus.COMPLETED or brief is False or njobs_in_parent == 1:
+        if (
+            status != TaskStatus.COMPLETED
+            or brief is False
+            or (layer == 0 and njobs_in_parent == 1)
+        ):
             if self.jobs:
                 ppre = pre + tb
                 subs: List[RunJobModel] = sorted(
@@ -202,7 +212,10 @@ analysis        STRING,
                     + standard
                     + "".join(
                         [
-                            "\n" + j.format(ppre, monochrome, brief, **kwargs)
+                            "\n"
+                            + j.format(
+                                ppre, monochrome, brief, layer=layer + 1, **kwargs
+                            )
                             for j in subs
                         ]
                     )

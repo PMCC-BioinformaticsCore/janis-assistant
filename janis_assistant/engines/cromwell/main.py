@@ -136,7 +136,7 @@ class Cromwell(Engine):
             return True
 
         except Exception as e:
-            Logger.warn("Couldn't connect to Cromwell ({self.host}): " + str(e))
+            Logger.warn(f"Couldn't connect to Cromwell ({self.host}): {repr(e)}")
             return False
 
     def something_has_happened_to_cromwell(self, rc):
@@ -195,7 +195,7 @@ class Cromwell(Engine):
         Logger.log("Finding cromwell jar")
         cromwell_loc = self.resolve_jar(self.cromwelljar)
 
-        Logger.info(f"Starting cromwell ({os.path.basename(cromwell_loc)})...")
+        Logger.info(f"Starting cromwell ({cromwell_loc})...")
         cmd = ["java", "-DLOG_MODE=standard"]
 
         if jc.cromwell and jc.cromwell.memory:
@@ -234,7 +234,11 @@ class Cromwell(Engine):
         )
 
         self._logfp = open(self.logfile, "a+")
-        Logger.info("Will log to file" if bool(self._logfp) else "Will NOT log to file")
+        Logger.info(
+            f"Will log Cromwell output to the file: {self.logfile}"
+            if bool(self._logfp)
+            else "Janis is NOT logging Cromwell output to a file"
+        )
 
         for c in iter(
             self._process.stdout.readline, "b"
@@ -413,8 +417,25 @@ class Cromwell(Engine):
             return
 
         for engine_id_to_poll in self.progress_callbacks:
-            meta = self.metadata(engine_id_to_poll)
-            if meta:
+            try:
+                meta = self.metadata(engine_id_to_poll)
+                if meta:
+                    for callback in self.progress_callbacks[engine_id_to_poll]:
+                        callback(meta)
+
+            except Exception as e:
+                Logger.critical(
+                    f"Received a critical error ({repr(e)}) when getting metadata for "
+                    f"Cromwell task {engine_id_to_poll}, hence terminating task with status=SUSPENDED"
+                )
+                meta = RunModel(
+                    id_=None,
+                    submission_id=None,
+                    status=TaskStatus.SUSPENDED,
+                    engine_id=engine_id_to_poll,
+                    name=None,
+                    execution_dir=None,
+                )
                 for callback in self.progress_callbacks[engine_id_to_poll]:
                     callback(meta)
 
@@ -679,7 +700,7 @@ class Cromwell(Engine):
                     "last_updated_threshold"
                 )  # idk, pick a number
                 return None
-            if self.connectionerrorcount > 50:
+            if self.connectionerrorcount > 5:
                 raise e
             else:
                 Logger.warn("Error connecting to cromwell instance: " + str(e))

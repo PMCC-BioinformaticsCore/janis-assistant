@@ -191,7 +191,7 @@ class SubmissionModel(DatabaseObject):
     def get_names(self):
         if not self.runs:
             return "N/A"
-        return ", ".join(set(r.name for r in self.runs))
+        return ", ".join(set(r.name for r in self.runs if r.name))
 
     @classmethod
     def keymap(cls) -> List[DatabaseObjectField]:

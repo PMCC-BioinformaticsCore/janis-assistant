@@ -91,7 +91,7 @@ class ConfigManager:
         tm = WorkflowManager.from_path_with_submission_id(
             task.outputdir, task.submission_id
         )
-        tm.remove_exec_dir()
+        tm.remove_exec_dir_if_required()
         tm.database.close()
 
         if not keep_output and os.path.exists(task.outputdir):

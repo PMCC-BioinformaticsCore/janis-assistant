@@ -69,7 +69,7 @@ class EnvironmentTemplate(ABC):
         logsdir: str,
         config,
         capture_output: bool = False,
-            log_output_to_stdout: bool=False,
+        log_output_to_stdout: bool=False,
     ):
         import subprocess
 

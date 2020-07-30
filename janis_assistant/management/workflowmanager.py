@@ -18,6 +18,7 @@ Run / monitor separation:
 
 """
 import os
+import sys
 import queue
 import time
 from enum import Enum
@@ -505,22 +506,36 @@ class WorkflowManager:
                 Logger.info("Exiting")
 
     def process_completed_task(self):
-        Logger.info(
-            f"Task has finished with status: {self.database.submission_metadata.status}"
-        )
-
-        self.save_metadata_if_required()
+        status: TaskStatus = self.database.submission_metadata.status
+        Logger.info(f"Task has finished with status: {status}")
+        try:
+            self.save_metadata_if_required()
+        except Exception as e:
+            if status == TaskStatus.COMPLETED:
+                Logger.critical(f"Couldn't persist metadata on exit as {repr(e)}")
+            else:
+                Logger.debug(
+                    f"Couldn't persist workflow metadata on exit (this isn't surprising as the workflow was {status})"
+                )
         self.copy_logs_if_required()
         self.copy_outputs_if_required()
 
         if self.database.submission_metadata.status == TaskStatus.COMPLETED:
-            self.remove_exec_dir()
+            self.remove_exec_dir_if_required()
 
         self.get_engine().stop_engine()
         if self.dbcontainer:
             self.dbcontainer.stop()
 
-        Logger.info(f"Finished managing task '{self.submission_id}'.")
+        rc = status.get_exit_code()
+        if rc != 0:
+            # Fail the Janis job with the return code, probably 3
+            Logger.critical(
+                f"Exiting with rc={rc} janis task '{self.submission_id}' as the workflow was {status}"
+            )
+            sys.exit(rc)
+        else:
+            Logger.info(f"Finished managing task '{self.submission_id}'.")
 
     def resume(self):
         """
@@ -530,6 +545,7 @@ class WorkflowManager:
         """
 
         # get a logfile and start doing stuff
+        rc = 0
         try:
             logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
 
@@ -587,6 +603,7 @@ class WorkflowManager:
                     continue
 
             self.process_completed_task()
+            return self
 
         except Exception as e:
             import traceback
@@ -597,7 +614,8 @@ class WorkflowManager:
             )
 
             try:
-                self.database.submission_metadata.status = TaskStatus.FAILED
+                rc = TaskStatus.FAILED.get_exit_code()
+                self.set_status(TaskStatus.FAILED)
                 self.database.submission_metadata.error = traceback.format_exc()
                 self.database.commit()
 
@@ -616,7 +634,10 @@ class WorkflowManager:
 
         Logger.close_file()
 
-        return self
+        if rc != 0:
+            Logger.critical(
+                f"Exiting with rc={rc} janis task '{self.submission_id}' as an issue occurred when running the workflow"
+            )
 
     def mark_paused(self):
         try:
@@ -728,9 +749,6 @@ class WorkflowManager:
             reverse_lookup[key] = reverse_lookup.get(key, []) + [versioned_toolid]
 
         containers_to_lookup = list(reverse_lookup.keys())
-        Logger.info(
-            f"Looking up digests for {len(containers_to_lookup)} containers (this might take a few minutes...)"
-        )
         digest_map = get_digests_from_containers(containers_to_lookup)
         Logger.info(f"Found {len(digest_map)} digests.")
         Logger.log("Found the following container-to-tool lookup table:")
@@ -1000,17 +1018,19 @@ class WorkflowManager:
 
         if self.database.submission_metadata.status != TaskStatus.COMPLETED:
             return Logger.warn(
-                f"Skipping copying outputs as workflow "
-                f"status was not completed ({self.database.submission_metadata.status})"
+                f"Skipping copying outputs as the workflow {self.database.submission_metadata.status}"
             )
 
         wf_outputs: List[WorkflowOutputModel] = self.database.outputsDB.get()
         engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
 
-        submission = self.database.submissions.get_by_id(self.submission_id)
+        submission = self.database.submissions.get_by_id(
+            self.submission_id, allow_operational_errors=False
+        )
         if not submission:
-            # uh oh...
-            raise Exception()
+            raise Exception(
+                "An unrecoverable error occurred when copying outputs, unable to get submission from task.db"
+            )
 
         nattempts = 5
         for at in range(nattempts):
@@ -1212,7 +1232,7 @@ class WorkflowManager:
 
         return [original_filepath, newoutputfilepath]
 
-    def remove_exec_dir(self):
+    def remove_exec_dir_if_required(self):
         status = self.database.submission_metadata.status
 
         keep_intermediate = self.database.submission_metadata.keepexecutiondir
@@ -1367,6 +1387,7 @@ class WorkflowManager:
 
     def stop_computation(self):
         try:
+            self.set_status(TaskStatus.SUSPENDED)
             # reset pause flag
             self.database.commit()
 

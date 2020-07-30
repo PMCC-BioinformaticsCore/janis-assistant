@@ -5,6 +5,7 @@ import subprocess
 from typing import Dict, Any
 
 from janis_core import LogLevel
+from janis_core.types.data_types import is_python_primitive
 from janis_core.utils.logger import Logger
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.run import RunModel
@@ -286,7 +287,7 @@ class CWLTool(Engine):
 
         updates = {}
 
-        if isinstance(out, str):
+        if is_python_primitive(out):
             updates[key] = WorkflowOutputModel(
                 submission_id=None,
                 run_id=run_id,

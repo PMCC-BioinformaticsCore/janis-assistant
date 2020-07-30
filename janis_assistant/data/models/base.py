@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Optional
 
 from janis_core import Logger
 
@@ -73,20 +73,31 @@ class DatabaseObject(ABC):
 
     @staticmethod
     def serialize(val):
-        if val is None:
-            return None
-        elif isinstance(val, (str, float, bool, int)):
-            return val
-        elif isinstance(val, datetime):
-            return str(val)
-        elif isinstance(val, Enum):
-            return val.value
-        elif isinstance(val, list):
-            return json.dumps([DatabaseObject.serialize(el) for el in val])
-        elif isinstance(val, dict):
-            return json.dumps({k: DatabaseObject.serialize(v) for k, v in val.items()})
+        should_serialize, value = DatabaseObject._serialize_inner(val)
 
-        return json.dumps(val)
+        if should_serialize:
+            return json.dumps(value)
+        return value
+
+    @staticmethod
+    def _serialize_inner(val) -> Tuple[bool, Optional[any]]:
+        if val is None:
+            return False, None
+        elif isinstance(val, (str, float, bool, int)):
+            return False, val
+        elif isinstance(val, datetime):
+            return False, str(val)
+        elif isinstance(val, Enum):
+            return False, val.value
+        elif isinstance(val, list):
+            return True, [DatabaseObject._serialize_inner(el)[1] for el in val]
+        elif isinstance(val, dict):
+            return (
+                True,
+                {k: DatabaseObject._serialize_inner(v)[1] for k, v in val.items()},
+            )
+
+        return False, json.dumps(val)
 
     @staticmethod
     def deserialize_inner(val):

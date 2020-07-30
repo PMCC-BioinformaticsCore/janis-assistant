@@ -50,7 +50,10 @@ class DbProviderBase(Generic[T]):
                 cursor.close()
 
     def get(
-        self, keys: Union[str, List[str]] = "*", where: Tuple[str, List[any]] = None
+        self,
+        keys: Union[str, List[str]] = "*",
+        where: Tuple[str, List[any]] = None,
+        allow_operational_errors=True,
     ) -> Optional[List[T]]:
         jkeys = ", ".join(keys) if isinstance(keys, list) else keys
         if jkeys == "*":
@@ -77,15 +80,17 @@ class DbProviderBase(Generic[T]):
             try:
                 rows = cursor.execute(query, values).fetchall()
             except OperationalError as e:
+                if not allow_operational_errors:
+                    raise e
                 if "readonly database" in str(e):
                     # mfranklin: idk, this sometimes happens. We're doing a select query, idk sqlite3 driver...
                     Logger.debug(
-                        "Got readonly error when running query: '{query}', skipping for now"
+                        f"Got readonly error when running query: '{query}', skipping for now"
                     )
                     return None
                 elif "locked" in str(e):
                     Logger.debug(
-                        "We hit the database at the same time the janis process wrote to it, meh"
+                        f"We hit the janis database.{self.tablename} at the same time the janis process wrote to it, we'll skip for now "
                     )
                     return None
                 raise

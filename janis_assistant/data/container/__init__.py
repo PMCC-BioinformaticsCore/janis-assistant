@@ -63,7 +63,7 @@ def try_lookup_in_cache(container: str) -> Optional[str]:
     try:
         with open(container_cache_path, "r") as f:
             cached_container = f.read().strip()
-            Logger.info(f"Found cached digest of {container} at {container_cache_path}")
+            Logger.log(f"Found cached digest of {container} at {container_cache_path}")
             return cached_container
 
     except Exception as e:

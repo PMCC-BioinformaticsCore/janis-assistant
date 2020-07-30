@@ -70,6 +70,18 @@ class TaskStatus(Enum):
 
         return __str.get(self.value)
 
+    def get_exit_code(self):
+        if (
+            self == TaskStatus.FAILED
+            or self == TaskStatus.ABORTED
+            or self == TaskStatus.ABORTING
+            or self == TaskStatus.SUSPENDED
+        ):
+            return 3
+
+        # Queued, Completed, Dry run, On Hold, Prepared
+        return 0
+
     @classmethod
     def collapse_states(cls, states: list):
 

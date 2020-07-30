@@ -17,8 +17,8 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
             base_type=SubmissionModel, db=db, tablename="submissions", scopes={}
         )
 
-    def get_by_id(self, submission_id) -> Optional[SubmissionModel]:
-        s = self.get(where=("id = ?", [submission_id]))
+    def get_by_id(self, submission_id, allow_operational_errors=True) -> Optional[SubmissionModel]:
+        s = self.get(where=("id = ?", [submission_id]), allow_operational_errors=allow_operational_errors)
         if s is None:
             return None
         if len(s) != 1:

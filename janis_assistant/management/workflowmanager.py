@@ -909,8 +909,9 @@ class WorkflowManager:
 
             iscopyable = isinstance(innertype, (File, Directory))
 
-            if ext is None and isinstance(o.outtype, File):
-                ext = innertype.extension
+            if isinstance(innertype, File):
+                if ext is None:
+                    ext = innertype.extension
                 secs = innertype.secondary_files()
 
             outputs.append(

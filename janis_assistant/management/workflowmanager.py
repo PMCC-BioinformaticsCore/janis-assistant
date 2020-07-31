@@ -902,17 +902,17 @@ class WorkflowManager:
                 if hasattr(o, "extension")
                 else output_extensions.get(o.id())
             )
+            secs = None
             innertype = o.outtype
-            iscopyable = isinstance(o.outtype.received_type(), (File, Directory)) or (
-                isinstance(o.outtype, Array)
-                and isinstance(
-                    o.outtype.fundamental_type().received_type(), (File, Directory)
-                )
-            )
             while isinstance(innertype, Array):
-                innertype = innertype.subtype()
+                innertype = innertype.fundamental_type().received_type()
+
+            iscopyable = isinstance(innertype, (File, Directory))
+
             if ext is None and isinstance(o.outtype, File):
-                ext = o.outtype.extension
+                ext = innertype.extension
+                secs = innertype.secondary_files()
+
             outputs.append(
                 WorkflowOutputModel(
                     id_=o.id(),
@@ -924,7 +924,7 @@ class WorkflowManager:
                     timestamp=None,
                     output_name=output_names.get(o.id()),
                     output_folder=output_folders.get(o.id()),
-                    secondaries=o.outtype.secondary_files(),
+                    secondaries=secs,
                     extension=ext,
                 )
             )

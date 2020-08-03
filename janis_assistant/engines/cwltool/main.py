@@ -244,6 +244,7 @@ class CWLTool(Engine):
 
         # we're going to abort!
         if self.process_id:
+            Logger.info("Received stop_engine request for CWLTool")
             try:
                 import signal
 
@@ -441,7 +442,7 @@ class CWLTool(Engine):
             callback(self.metadata(logger.sid))
 
     def task_did_update(self, logger: CWLToolLogger, job: RunJobModel):
-        Logger.info(f"Updated task {job.id_} with status={job.status}")
+        Logger.debug(f"Updated task {job.id_} with status={job.status}")
         self.taskmeta["jobs"][job.id_] = job
 
         for callback in self.progress_callbacks.get(logger.sid, []):

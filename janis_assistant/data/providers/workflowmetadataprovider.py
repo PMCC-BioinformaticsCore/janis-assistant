@@ -1,17 +1,8 @@
-from datetime import datetime
-
 from typing import Optional, Set
 
 from janis_assistant.data.enums import TaskStatus
-
-from janis_assistant.data.models.base import KVDatabaseObject
-from janis_assistant.data.models.run import SubmissionModel, RunModel
-
-from janis_assistant.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
-from janis_assistant.management.filescheme import FileScheme
-from janis_assistant.engines import Engine
-from janis_assistant.utils.getuser import lookup_username
+from janis_assistant.data.models.base import KVDatabaseObject
 
 
 class SubmissionDbMetadata(KVDatabaseObject):
@@ -29,6 +20,9 @@ class SubmissionDbMetadata(KVDatabaseObject):
         engine_id: str = None,
         configuration=None,
         db_config=None,
+        submission_workflow=None,
+        submission_inputs=None,
+        submission_resources=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -46,6 +40,10 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self.configuration = configuration
         self.db_config = db_config
         self.name = name
+
+        self.submission_workflow = submission_workflow
+        self.submission_inputs = submission_inputs
+        self.submission_resources = submission_resources
 
     @classmethod
     def fields_to_encode(cls) -> Optional[Set[str]]:

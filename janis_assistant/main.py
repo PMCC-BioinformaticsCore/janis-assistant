@@ -6,34 +6,30 @@
 
 
 """
-import sys, os
+import os
+import sys
 from inspect import isclass
 from textwrap import dedent
-
-import janis_core as j
 from typing import Optional, Dict, Union, Type, List
 
+import janis_core as j
 from janis_core import InputQualityType, Tool, DynamicWorkflow
 
-from janis_assistant.data.providers.janisdbprovider import TaskRow
-from janis_assistant.templates import TemplateInput, EnvironmentTemplate
-
-from janis_assistant.management.workflowmanager import WorkflowManager
-
-from janis_assistant.management.filescheme import (
-    FileScheme,
-    LocalFileScheme,
-    SSHFileScheme,
-)
+import janis_assistant.templates as janistemplates
 from janis_assistant.engines import Engine, get_engine_type, Cromwell, EngineType
-from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.management.configuration import (
     JanisConfiguration,
     EnvVariables,
     stringify_dict_keys_or_return_value,
 )
-import janis_assistant.templates as janistemplates
+from janis_assistant.management.filescheme import (
+    FileScheme,
+    LocalFileScheme,
+    SSHFileScheme,
+)
+from janis_assistant.management.workflowmanager import WorkflowManager
+from janis_assistant.templates import TemplateInput
 from janis_assistant.utils import (
     Logger,
     get_janis_workflow_from_searchname,
@@ -384,7 +380,6 @@ def fromjanis(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     name: str = None,
     engine: Union[str, Engine] = None,
-    filescheme: Union[str, FileScheme] = LocalFileScheme(),
     validation_reqs=None,
     batchrun_reqs=None,
     hints: Optional[Dict[str, str]] = None,
@@ -475,8 +470,6 @@ def fromjanis(
         watch=watch,
         **kwargs,
     )
-    fs = get_filescheme_from_fs(filescheme, **kwargs)
-    environment = Environment(f"custom_{wf.id()}", eng, fs)
 
     try:
 
@@ -490,7 +483,7 @@ def fromjanis(
         tm = cm.start_task(
             submission_id=row.submission_id,
             tool=wf,
-            environment=environment,
+            engine=eng,
             validation_requirements=validation_reqs,
             batchrun_requirements=batchrun_reqs,
             output_dir=row.output_dir,
@@ -518,7 +511,7 @@ def fromjanis(
     except Exception as e:
         # Have to make sure we stop the engine if something happens when creating the task that causes
         # janis to exit early
-        environment.engine.stop_engine()
+        eng.stop_engine()
         raise e
 
 

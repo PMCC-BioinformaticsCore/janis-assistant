@@ -5,11 +5,11 @@ from shutil import rmtree
 from typing import Dict, Optional, Union, List
 from contextlib import contextmanager
 
+from janis_assistant.engines import Engine
 from janis_core import Workflow, Logger, Tool
 
 from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.providers.janisdbprovider import TasksDbProvider, TaskRow
-from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.management.workflowmanager import WorkflowManager
 from janis_assistant.utils import generate_new_id, fully_qualify_filename
@@ -43,12 +43,6 @@ class ConfigManager:
 
         self._connection: Optional[sqlite3.Connection] = None
         self._taskDB: Optional[TasksDbProvider] = None
-        # self.environmentDB = EnvironmentDbProvider(self.connection, self.cursor)
-        # self.engineDB = EngineDbProvider(self.connection, self.cursor)
-        # self.fileschemeDB = FileschemeDbProvider(self.connection, self.cursor)
-
-        # if self.is_new:
-        #     self.insert_default_environments()
 
     def get_lazy_db_connection(self):
         if self._taskDB is None:
@@ -195,7 +189,7 @@ class ConfigManager:
         tool: Tool,
         output_dir: str,
         execution_dir: str,
-        environment: Environment,
+        engine: Engine,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
         batchrun_requirements: Optional[BatchRunRequirements],
@@ -218,7 +212,7 @@ class ConfigManager:
             tool=tool,
             output_dir=output_dir,
             execution_dir=execution_dir,
-            environment=environment,
+            engine=engine,
             hints=hints,
             inputs_dict=inputs_dict,
             validation_requirements=validation_requirements,

@@ -954,15 +954,6 @@ def do_inputs(args):
         print(outs, file=sys.stdout)
 
 
-def do_environment(args):
-    method = args.method
-
-    if method == "list":
-        return print(", ".join(ConfigManager.manager().environmentDB.get_env_ids()))
-
-    raise NotImplementedError(f"No implementation for '{method}' yet")
-
-
 def do_query(args):
     status = None
     if args.status:

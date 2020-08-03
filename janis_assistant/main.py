@@ -568,7 +568,7 @@ def pause(wid):
     wm = ConfigManager.manager().from_submission_id_or_path(wid)
     if not wm:
         raise Exception("Couldn't find workflow manager with wid = " + str(wid))
-    wm.mark_paused()
+    wm.mark_paused(wm.execution_dir)
 
 
 def abort_wids(sids: List[str]):

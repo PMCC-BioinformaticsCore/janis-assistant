@@ -21,6 +21,7 @@ import os
 import queue
 import sys
 import time
+from shutil import rmtree
 from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any, Tuple
@@ -90,6 +91,7 @@ class WorkflowManager:
         configuration = "configuration"
         database = "database"
         mysql = "configuration/mysql"
+        semaphore = "semaphore"
 
     def __init__(
         self,
@@ -323,7 +325,7 @@ class WorkflowManager:
 
         db = WorkflowDbManager.get_workflow_metadatadb(
             path, submission_id, readonly=readonly
-        )
+        ).metadata
 
         if not submission_id:
             submission_id = db.submission_id  # .get_meta_info(InfoKeys.taskId)
@@ -340,7 +342,7 @@ class WorkflowManager:
             )
             JanisConfiguration.initial_configuration(None)
 
-        db.close()
+        # db.close()
 
         tm = WorkflowManager(
             execution_dir=path,
@@ -537,7 +539,11 @@ class WorkflowManager:
 
         # get a logfile and start doing stuff
         rc = 0
+
         try:
+            # remove semaphores
+            self.remove_semaphores()
+
             logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
 
             Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
@@ -547,13 +553,13 @@ class WorkflowManager:
 
             self.start_engine_if_required()
 
-            # if self.database.submission_metadata.please_abort:
-            #     Logger.info("Detected please_abort request, aborting")
-            #     return self.abort()
-            #
-            # if self.database.submission_metadata.please_pause:
-            #     Logger.info("Detecting please_pause request, exiting")
-            #     return self.stop_computation()
+            if os.path.exists(self.get_abort_semaphore_path()):
+                Logger.info("Detected please_abort request, aborting")
+                return self.abort()
+
+            if os.path.exists(self.get_pause_semaphore_path()):
+                Logger.info("Detected please_pause request, exiting")
+                return self.stop_computation()
 
             # check status and see if we can resume
             self.submit_workflow_if_required()
@@ -584,12 +590,12 @@ class WorkflowManager:
                         break
                 except queue.Empty:
 
-                    # if self.database.submission_metadata.please_abort:
-                    #     self.abort()
-                    #     return
-                    # if self.database.submission_metadata.please_pause:
-                    #     self.database.submission_metadata.please_pause = False
-                    #     return self.stop_computation()
+                    if os.path.exists(self.get_abort_semaphore_path()):
+                        self.abort()
+                        return
+                    if os.path.exists(self.get_pause_semaphore_path()):
+                        self.stop_computation()
+                        return
 
                     continue
 
@@ -632,13 +638,20 @@ class WorkflowManager:
                 f"Exiting with rc={rc} janis task '{self.submission_id}' as an issue occurred when running the workflow"
             )
 
-    def mark_paused(self):
+    @staticmethod
+    def mark_paused(execution_dir):
         try:
-            self.database.submission_metadata.please_pause = True
+            path = os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    execution_dir, WorkflowManager.WorkflowManagerPath.semaphore
+                ),
+                "abort",
+            )
+            with open(path, "w+") as f:
+                f.write(f"Requesting pause {DateUtil.now()}")
             Logger.info(
                 "Marked workflow as paused, this may take some time properly pause"
             )
-            self.database.submission_metadata.commit()
             return True
         except Exception as e:
             Logger.critical("Couldn't mark paused: " + str(e))
@@ -1267,6 +1280,16 @@ class WorkflowManager:
             os.makedirs(val, exist_ok=True)
         return val
 
+    def get_pause_semaphore_path(self):
+        return os.path.join(
+            self.get_path_for_component(self.WorkflowManagerPath.semaphore), "pause"
+        )
+
+    def get_abort_semaphore_path(self):
+        return os.path.join(
+            self.get_path_for_component(self.WorkflowManagerPath.semaphore), "abort"
+        )
+
     @staticmethod
     def create_dir_structure(path):
         WorkflowManager._create_dir_if_needed(path)
@@ -1333,22 +1356,23 @@ class WorkflowManager:
     @staticmethod
     def mark_aborted(execution_dir, wid: Optional[str]) -> bool:
         try:
-            if not wid:
-                db = WorkflowManager.from_path_get_latest_manager(
-                    execution_dir, readonly=False
-                ).database.submission_metadata
-            else:
-                db = WorkflowDbManager.get_workflow_metadatadb(
-                    execution_dir, wid, readonly=False
-                )
-            db.please_abort = True
-            db.kvdb.commit()
-            db.close()
-            Logger.info("Marked workflow as aborted, this may take some time full exit")
+            path = os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    execution_dir, WorkflowManager.WorkflowManagerPath.semaphore
+                ),
+                "abort",
+            )
+            with open(path, "w+") as f:
+                f.write(f"Requesting abort {DateUtil.now()}")
             return True
         except Exception as e:
             Logger.critical("Couldn't mark aborted: " + str(e))
             return False
+
+    def remove_semaphores(self):
+        path = self.get_path_for_component(self.WorkflowManagerPath.semaphore)
+        if os.path.exists(path):
+            rmtree(path)
 
     def abort(self) -> bool:
         self.set_status(TaskStatus.ABORTED, force_notification=True)
@@ -1357,6 +1381,7 @@ class WorkflowManager:
         engine = self.engine
         try:
             status = bool(engine.terminate_task(self.get_engine_id()))
+            self.remove_semaphores()
         except Exception as e:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:
@@ -1379,6 +1404,8 @@ class WorkflowManager:
                 self.dbcontainer.stop()
 
             self.database.close()
+
+            self.remove_semaphores()
 
         except Exception as e:
             Logger.critical(

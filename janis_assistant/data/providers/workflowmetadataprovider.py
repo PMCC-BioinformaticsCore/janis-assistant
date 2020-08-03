@@ -1,7 +1,10 @@
 from datetime import datetime
 
-from typing import Optional
+from typing import Optional, Set
 
+from janis_assistant.data.enums import TaskStatus
+
+from janis_assistant.data.models.base import KVDatabaseObject
 from janis_assistant.data.models.run import SubmissionModel, RunModel
 
 from janis_assistant.data.enums.workflowmetadatakeys import WorkflowMetadataDbKeys
@@ -11,59 +14,134 @@ from janis_assistant.engines import Engine
 from janis_assistant.utils.getuser import lookup_username
 
 
+class SubmissionDbMetadata(KVDatabaseObject):
+    def __init__(
+        self,
+        submission_id: str = None,
+        run_id: str = None,
+        name: str = None,
+        status: TaskStatus = None,
+        last_updated=None,
+        keep_execution_dir=True,
+        container_version=None,
+        container_type=None,
+        engine=None,
+        engine_id: str = None,
+        configuration=None,
+        db_config=None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        self._submission_id = submission_id
+        self._run_id = run_id
+        self.status = TaskStatus(status) if status is not None else None
+
+        self.last_updated = last_updated
+        self.keep_execution_dir = keep_execution_dir
+        self.container_version = container_version
+        self.container_type = container_type
+        self.engine = engine
+        self.engine_id = engine_id
+        self.configuration = configuration
+        self.db_config = db_config
+        self.name = name
+
+    @classmethod
+    def fields_to_encode(cls) -> Optional[Set[str]]:
+        return {
+            "engine",
+            "configuration",
+            "container_type",
+            "db_config",
+            "start",
+            "status",
+        }
+
+
 class SubmissionMetadataDbProvider(KvDB):
-
-    attributes_to_persist = {a.value for a in WorkflowMetadataDbKeys}
-
-    @staticmethod
-    def new(dblocation: str, submission_id: str):
-        t = SubmissionMetadataDbProvider(dblocation, submission_id)
-
-        t.submission_id = submission_id
-        t.start = datetime.now()
-
-        return t
-
-    def __init__(self, dblocation, submission_id, readonly=False):
-        super().__init__(dblocation, "workflow-" + submission_id, readonly=readonly)
-        self.kvdb.autocommit = False
-        if WorkflowMetadataDbKeys.submission_id.value not in self.kvdb:
-            # Initialise to give prompts to IDE
-            self.submission_id = None
-            self.name = None
-
-            self.status = None
-            self.last_updated = None
-            self.please_abort = False
-            self.please_pause = False
-
-            self.keepexecutiondir = None
-
-            self.containerversion = None
-            self.containertype = None
-
-            self.engine: Optional[Engine] = None
-            self.filescheme: Optional[FileScheme] = None
-
-            self.configuration = None
-            self.dbconfig = None
-
-        self.kvdb.autocommit = True
-        self.kvdb.commit()
-
-    def to_model(self):
-        return RunModel(
-            id_=RunModel.DEFAULT_ID,
-            submission_id=self.submission_id,
-            engine_id=self.engine_wid,
-            name=self.name,
-            status=self.status,
-            # start=self.start,
-            # finish=self.finish,
-            execution_dir=self.execution_dir,
-            # en=self.engine.id() if self.engine else None,
-            # filesystem=self.filescheme.id() if self.filescheme else None,
-            labels=self.labels,
-            error=self.error,
-            # author=self.author,
+    def __init__(
+        self,
+        db,
+        readonly: bool,
+        submission_id: str,
+        run_id: str,
+        obj: Optional[SubmissionDbMetadata] = None,
+    ):
+        super().__init__(
+            base=SubmissionDbMetadata,
+            db=db,
+            readonly=readonly,
+            tablename="submission_metadata",
+            scopes={"submission_id": submission_id, "run_id": run_id},
         )
+
+        self.metadata = obj if obj is not None else self.get()
+
+    def set_metadata(self, obj: SubmissionDbMetadata):
+        self.metadata = obj
+        self.commit()
+
+    def get(self) -> SubmissionDbMetadata:
+        return SubmissionDbMetadata.decode_rows_to_dict(self.get_rows())
+
+    def commit(self):
+        self.save_obj(self.metadata)
+
+
+# class SubmissionMetadataDbProvider(KvDB):
+#
+#     attributes_to_persist = {a.value for a in WorkflowMetadataDbKeys}
+#
+#     @staticmethod
+#     def new(dblocation: str, submission_id: str):
+#         t = SubmissionMetadataDbProvider(dblocation, submission_id)
+#
+#         t.submission_id = submission_id
+#         t.start = datetime.now()
+#
+#         return t
+#
+#     def __init__(self, dblocation, submission_id, readonly=False):
+#         super().__init__(dblocation, "workflow-" + submission_id, readonly=readonly)
+#         self.kvdb.autocommit = False
+#         if WorkflowMetadataDbKeys.submission_id.value not in self.kvdb:
+#             # Initialise to give prompts to IDE
+#             self.submission_id = None
+#             self.name = None
+#
+#             self.status = None
+#             self.last_updated = None
+#             self.please_abort = False
+#             self.please_pause = False
+#
+#             self.keepexecutiondir = None
+#
+#             self.containerversion = None
+#             self.containertype = None
+#
+#             self.engine: Optional[Engine] = None
+#             self.filescheme: Optional[FileScheme] = None
+#
+#             self.configuration = None
+#             self.dbconfig = None
+#
+#         self.kvdb.autocommit = True
+#         self.kvdb.commit()
+#
+#     def to_model(self):
+#         return RunModel(
+#             id_=RunModel.DEFAULT_ID,
+#             submission_id=self.submission_id,
+#             engine_id=self.engine_id,
+#             name=self.name,
+#             status=self.status,
+#             # start=self.start,
+#             # finish=self.finish,
+#             execution_dir=self.execution_dir,
+#             # en=self.engine.id() if self.engine else None,
+#             # filesystem=self.filescheme.id() if self.filescheme else None,
+#             labels=self.labels,
+#             error=self.error,
+#             # author=self.author,
+#         )

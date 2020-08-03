@@ -1,50 +1,76 @@
-import sqlitedict
+from typing import Type, Dict, Optional, Set
+from sqlite3 import Connection
+
 from janis_core import Logger
 
+from janis_assistant.data.dbproviderbase import DbBase
+from janis_assistant.data.models.base import KVDatabaseObject, deserialize_inner
 
-class KvDB(object):
+
+class KvDB(DbBase):
 
     attributes_to_persist = {}
 
-    def __init__(self, dblocation, tablename, readonly=False):
-        sqlitedict.logger.disabled = True
-        ro = "r" if readonly else "c"
-        Logger.debug(f"Opening connection to {dblocation}/{tablename} with mode {ro}")
-        self.kvdb = sqlitedict.SqliteDict(
-            dblocation, tablename=tablename, autocommit=True, flag=ro
-        )
+    def __init__(
+        self,
+        base: Type[KVDatabaseObject],
+        db: Connection,
+        readonly: bool,
+        tablename: str,
+        scopes: Dict[str, str],
+        scopes_keys: Optional[Set] = None,
+    ):
 
-    def __setattr__(self, name, value):
+        super().__init__(db=db, tablename=tablename, readonly=readonly)
 
-        if name in self.attributes_to_persist:
+        self._base = base
+        self._scopes = scopes or {}
+        self._scopes_keys = sorted(scopes_keys or self._scopes.keys())
+
+        schema = self.schema()
+        with self.with_cursor() as cursor:
+            cursor.execute(schema)
+
+    def schema(self):
+        scopes = ",\n".join(f"    {k} STRING NOT NULL" for k in self._scopes_keys)
+        return f"""
+CREATE TABLE IF NOT EXISTS {self._tablename} (
+    id STRING NOT NULL,
+{scopes},
+    value BINARY,
+    PRIMARY KEY (id, {', '.join(self._scopes_keys)})
+);
+"""
+
+    def save_obj(self, obj: KVDatabaseObject):
+        rows = obj.get_encoded_rows()
+        keys = ["id", *self._scopes_keys, "value"]
+        scopes = list(self._scopes[s] for s in self._scopes_keys)
+
+        fvalues = []
+        inner_qs = ", ".join("?" for _ in range(len(keys)))
+        replacer = ",\n    ".join(f"({inner_qs})" for _ in range(len(rows)))
+        for row in rows:
+            fvalues.extend([row[0], *scopes, row[1]])
+
+        query = f"""
+REPLACE INTO {self._tablename}
+    ({', '.join(keys)})
+VALUES
+    {replacer}
+"""
+        with self.with_cursor() as cursor:
             try:
-                self.kvdb[name] = value
+                cursor.execute(query, fvalues)
             except Exception as e:
-                Logger.critical(f"Failed to write {name}={value} due to: {e}")
-            return
+                Logger.critical("Error executing query: " + query)
+                raise e
 
-        super().__setattr__(name, value)
+    def get_rows(self):
+        scopes = " AND ".join(f"{k} = ?" for k in self._scopes_keys)
+        scope_values = [self._scopes[k] for k in self._scopes_keys]
+        query = f"SELECT id, value FROM {self._tablename} WHERE {scopes}"
+        with self.with_cursor() as cursor:
+            rows = cursor.execute(query, scope_values).fetchall()
 
-    def __getattr__(self, item):
-        if item in self.attributes_to_persist:
-            if item in self.kvdb:
-                return self[item]
-            return None
-        if item in self.__dict__:
-            return self.__dict__[item]
-
-        raise AttributeError(
-            f"Couldn't find attribute '{item}'' on {self.__class__.__name__}"
-        )
-
-    def __getitem__(self, item):
-        return self.kvdb.__getitem__(item)
-
-    def __setitem__(self, key, value):
-        return self.kvdb.__setitem__(key, value)
-
-    def commit(self):
-        return self.kvdb.commit()
-
-    def close(self):
-        return self.kvdb.close()
+        return rows

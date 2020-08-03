@@ -54,13 +54,13 @@ class ConfigManager:
         if self._taskDB is None:
             self._connection = self.db_connection()
 
-            self._taskDB = TasksDbProvider(self._connection)
+            self._taskDB = TasksDbProvider(self._connection, readonly=self.readonly)
 
         return self._taskDB
 
     @contextmanager
     def with_cursor(self):
-        yield self.get_lazy_db_connection().db.cursor()
+        yield self.get_lazy_db_connection()._db.cursor()
 
     def db_connection(self):
         config = JanisConfiguration.manager()

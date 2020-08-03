@@ -20,34 +20,46 @@ from janis_assistant.data.models.base import DatabaseObject
 T = TypeVar("T")
 
 
-class DbProviderBase(Generic[T]):
-    def __init__(
-        self,
-        base_type: Type[DatabaseObject],
-        db: Connection,
-        tablename: str,
-        scopes: Dict[str, str],
-    ):
+class DbBase:
+    def __init__(self, db: Connection, tablename: str, readonly: bool):
+        self._db = db
+        self._tablename = tablename
+        self._readonly = readonly
 
-        self.db: Connection = db
-        self.tablename = tablename
-        self.scopes = scopes
-        self.base = base_type
+    def commit(self):
+        if self._readonly:
+            Logger.critical("Attempting to commit to readonly connection")
 
-        schema = self.table_schema()
-        with self.with_cursor() as cursor:
-            cursor.execute(schema)
+        self._db.commit()
 
     @contextmanager
     def with_cursor(self) -> ContextManager[Cursor]:
         cursor = None
         try:
-            cursor = self.db.cursor()
+            cursor = self._db.cursor()
             yield cursor
         finally:
             # Change back up
             if cursor:
                 cursor.close()
+
+
+class DbProviderBase(DbBase, Generic[T]):
+    def __init__(
+        self,
+        base_type: Type[DatabaseObject],
+        db: Connection,
+        tablename: str,
+        readonly: bool,
+        scopes: Dict[str, str],
+    ):
+        super().__init__(db=db, tablename=tablename, readonly=readonly)
+        self._scopes = scopes
+        self._base = base_type
+
+        schema = self.table_schema()
+        with self.with_cursor() as cursor:
+            cursor.execute(schema)
 
     def get(
         self,
@@ -57,13 +69,13 @@ class DbProviderBase(Generic[T]):
     ) -> Optional[List[T]]:
         jkeys = ", ".join(keys) if isinstance(keys, list) else keys
         if jkeys == "*":
-            keys = [t.dbalias for t in self.base.keymap()]
+            keys = [t.dbalias for t in self._base.keymap()]
             jkeys = ", ".join(keys) if isinstance(keys, list) else keys
 
         values = []
         whereclauses = []
-        if self.scopes:
-            scopes = self.scopes.items()
+        if self._scopes:
+            scopes = self._scopes.items()
             whereclauses.extend(f"{k} = ?" for k, _ in scopes)
             values.extend(v for _, v in scopes)
 
@@ -71,7 +83,7 @@ class DbProviderBase(Generic[T]):
             whereclauses.append(where[0])
             values.extend(where[1])
 
-        query = f"SELECT {jkeys} FROM {self.tablename}"
+        query = f"SELECT {jkeys} FROM {self._tablename}"
 
         if whereclauses:
             query += f" WHERE {' AND '.join(whereclauses)}"
@@ -90,32 +102,29 @@ class DbProviderBase(Generic[T]):
                     return None
                 elif "locked" in str(e):
                     Logger.debug(
-                        f"We hit the janis database.{self.tablename} at the same time the janis process wrote to it, we'll skip for now "
+                        f"We hit the janis database.{self._tablename} at the same time the janis process wrote to it, we'll skip for now "
                     )
                     return None
                 raise
 
-        parsedrows = [self.base.deserialize(keys, r) for r in rows]
+        parsedrows = [self._base.deserialize(keys, r) for r in rows]
         return parsedrows
 
-    def commit(self):
-        return self.db.commit()
-
     def get_primary_keys(self):
-        pkeys = [t.dbalias for t in self.base.keymap() if t.is_primary]
+        pkeys = [t.dbalias for t in self._base.keymap() if t.is_primary]
         # if len(pkeys) == 0:
         # pkeys = ["id"]
         return pkeys
 
     def get_id_keys(self):
-        idkeys = [t.dbalias for t in self.base.keymap() if t.is_id_key or t.is_primary]
+        idkeys = [t.dbalias for t in self._base.keymap() if t.is_id_key or t.is_primary]
         if len(idkeys) == 0:
             idkeys = ["id"]
         return idkeys
 
     def table_schema(self):
 
-        tschema = self.base.table_schema().strip()
+        tschema = self._base.table_schema().strip()
 
         pkey_schema = ""
         pkeys = self.get_primary_keys()
@@ -129,7 +138,7 @@ class DbProviderBase(Generic[T]):
                 tschema = tschema[:-1]
 
         schema = f"""\
-        CREATE TABLE IF NOT EXISTS {self.tablename} (
+        CREATE TABLE IF NOT EXISTS {self._tablename} (
             {tschema}
             {pkey_schema}
         )
@@ -147,14 +156,14 @@ class DbProviderBase(Generic[T]):
         existing_keys = set()  # (*pkeys_ordered)
 
         # get all primary keys
-        prows = f"SELECT {', '.join(idkeys_ordered)} FROM {self.tablename}"
+        prows = f"SELECT {', '.join(idkeys_ordered)} FROM {self._tablename}"
 
         with self.with_cursor() as cursor:
             rows = cursor.execute(prows).fetchall()
             for row in rows:
                 existing_keys.add(row)
 
-        dbalias_map = {t.dbalias: t.name for t in self.base.keymap()}
+        dbalias_map = {t.dbalias: t.name for t in self._base.keymap()}
 
         for el in els:
 
@@ -165,7 +174,7 @@ class DbProviderBase(Generic[T]):
             ]
             if missing_pkeys:
                 raise Exception(
-                    f"An internal error occurred when updating the {self.tablename} database, "
+                    f"An internal error occurred when updating the {self._tablename} database, "
                     f"the object {repr(el)} was missing the primary keys {', '.join(missing_pkeys)}"
                 )
             obj_exists = tuple(el_pkeys) in existing_keys
@@ -207,7 +216,7 @@ class DbProviderBase(Generic[T]):
                 ]
 
                 prepared_statement = f"""
-                UPDATE {self.tablename}
+                UPDATE {self._tablename}
                     SET {', '.join(f'{k} = ?' for k in keys_np)}
                 WHERE
                     {" AND ".join([*id_withvalues_updater_keys, *id_novalues_updater_keys])}
@@ -218,7 +227,7 @@ class DbProviderBase(Generic[T]):
                 )
             else:
                 prepared_statement = f"""
-                INSERT INTO {self.tablename}
+                INSERT INTO {self._tablename}
                     ({', '.join(keys)})
                 VALUES
                     ({', '.join(f'?' for _ in keys)});

@@ -1,10 +1,68 @@
 import json
+import base64
+import pickle
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, Set
 
 from janis_core import Logger
+
+
+def serialize(val):
+    should_serialize, value = _serialize_inner(val)
+
+    if should_serialize:
+        return json.dumps(value)
+    return value
+
+
+def _serialize_inner(val) -> Tuple[bool, Optional[any]]:
+    if val is None:
+        return False, None
+    elif isinstance(val, (str, float, bool, int)):
+        return False, val
+    elif isinstance(val, datetime):
+        return False, str(val)
+    elif isinstance(val, Enum):
+        return False, val.value
+    elif isinstance(val, list):
+        return True, [_serialize_inner(el)[1] for el in val]
+    elif isinstance(val, dict):
+        return (
+            True,
+            {k: _serialize_inner(v)[1] for k, v in val.items()},
+        )
+
+    return False, json.dumps(val)
+
+
+def deserialize_inner(val):
+    if val is None:
+        return None
+    try:
+        return json.loads(val)
+    except Exception as ex:
+        Logger.debug(
+            f"Couldn't deserialize value, using string representation instead (value: {repr(val)}): {repr(ex)}"
+        )
+        return str(val)
+
+
+def pickle_obj(obj):
+    try:
+        return pickle.dumps(obj, protocol=2)
+    except Exception as ex:
+        Logger.warn(f"Couldn't pickle {repr(obj)} as encountered {repr(ex)}")
+        return None
+
+
+def unpickle_obj(obj):
+    try:
+        return pickle.loads(obj)
+    except Exception as ex:
+        Logger.warn(f"Couldn't unpickle {repr(obj)} as encountered {repr(ex)}")
+        return None
 
 
 class DatabaseObjectField:
@@ -46,7 +104,7 @@ class DatabaseObject(ABC):
             if val is None:
                 continue
             keys.append(dbkey)
-            values.append(DatabaseObject.serialize(val))
+            values.append(serialize(val))
 
         return keys, values
 
@@ -63,7 +121,7 @@ class DatabaseObject(ABC):
         dbalias_to_decode = {t.dbalias for t in km if t.encode}
 
         initdict = {
-            rkeymap[dbalias]: cls.deserialize_inner(value)
+            rkeymap[dbalias]: deserialize_inner(value)
             if dbalias in dbalias_to_decode
             else value
             for dbalias, value in zip(keys, row)
@@ -71,42 +129,50 @@ class DatabaseObject(ABC):
 
         return cls(**initdict)
 
-    @staticmethod
-    def serialize(val):
-        should_serialize, value = DatabaseObject._serialize_inner(val)
 
-        if should_serialize:
-            return json.dumps(value)
-        return value
+class KVDatabaseObject(ABC):
+    def __init__(self, **kwargs):
+        self._changes = {}
+        for k, v in kwargs.items():
+            self.__setattr__(k, v)
 
-    @staticmethod
-    def _serialize_inner(val) -> Tuple[bool, Optional[any]]:
-        if val is None:
-            return False, None
-        elif isinstance(val, (str, float, bool, int)):
-            return False, val
-        elif isinstance(val, datetime):
-            return False, str(val)
-        elif isinstance(val, Enum):
-            return False, val.value
-        elif isinstance(val, list):
-            return True, [DatabaseObject._serialize_inner(el)[1] for el in val]
-        elif isinstance(val, dict):
-            return (
-                True,
-                {k: DatabaseObject._serialize_inner(v)[1] for k, v in val.items()},
-            )
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+        if not key.startswith("_"):
+            self._changes[key] = value
 
-        return False, json.dumps(val)
+    def discard_changes(self):
+        self._changes = {}
 
-    @staticmethod
-    def deserialize_inner(val):
-        if val is None:
-            return None
-        try:
-            return json.loads(val)
-        except Exception as ex:
-            Logger.debug(
-                f"Couldn't deserialize value, using string representation instead (value: {repr(val)}): {repr(ex)}"
-            )
-            return str(val)
+    def get_encoded_changes(self):
+        return self.encode_field_dict(self._changes)
+
+    def get_encoded_rows(self):
+        return self.encode_field_dict(self.__dict__)
+
+    @classmethod
+    def encode_field_dict(cls, d: dict) -> (str, str):
+        encode_fields = set(cls.fields_to_encode() or [])
+        fields_to_ignore = set(cls.fields_to_ignore() or [])
+        rows = []
+        for k, v in d.items():
+            if k.startswith("_") or v is None or k in fields_to_ignore:
+                continue
+
+            rows.append((k, pickle_obj(v)))
+
+        return rows
+
+    @classmethod
+    def decode_rows_to_dict(cls, rows: List[Tuple[str, str]]):
+        encoded = set(cls.fields_to_encode() or [])
+        kwargs = {k: unpickle_obj(v) for k, v in rows}
+        return cls(**kwargs)
+
+    @classmethod
+    def fields_to_encode(cls) -> Optional[Set[str]]:
+        pass
+
+    @classmethod
+    def fields_to_ignore(cls) -> Optional[Set[str]]:
+        pass

@@ -7,10 +7,11 @@ from janis_assistant.data.models.joblabel import JobLabelModel
 class JobLabelDbProvider(DbProviderBase[JobLabelModel]):
     CURRENT_SCHEMA_VERSION = 1
 
-    def __init__(self, db: Connection, submission_id: str):
+    def __init__(self, db: Connection, readonly: bool, submission_id: str):
         super().__init__(
             base_type=JobLabelModel,
             db=db,
+            readonly=readonly,
             tablename="joblabels",
             scopes={"submission_id": submission_id},
         )

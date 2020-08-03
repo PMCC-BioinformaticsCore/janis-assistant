@@ -26,6 +26,7 @@ from subprocess import call
 from typing import Optional, List, Dict, Union, Any, Tuple
 
 from janis_assistant.data.models.joblabel import JobLabelModel
+from janis_assistant.data.providers.workflowmetadataprovider import SubmissionDbMetadata
 from janis_assistant.utils.getuser import lookup_username
 from janis_core import (
     InputSelector,
@@ -106,7 +107,7 @@ class WorkflowManager:
         self._failed_engine_attempts = None
 
         # hydrate from here if required
-        self._engine_wid = None
+        self._engine_id = None
         self.execution_dir = fully_qualify_filename(execution_dir)
         self.create_dir_structure(self.execution_dir)
 
@@ -120,8 +121,8 @@ class WorkflowManager:
         self._prev_status = None
         self._engine: Optional[Engine] = None
 
-        if not self._engine_wid:
-            self._engine_wid = self.get_engine_wid()
+        if not self._engine_id:
+            self._engine_id = self.get_engine_id()
 
     @staticmethod
     def has(
@@ -198,23 +199,35 @@ class WorkflowManager:
             ]
         )
 
-        tm.database.submission_metadata.submission_id = submission_id
-        tm.database.submission_metadata.engine = environment.engine
-        tm.database.submission_metadata.filescheme = environment.filescheme
-        tm.database.submission_metadata.environment = environment.id()
-        tm.database.submission_metadata.name = tool.id()
-        tm.database.submission_metadata.start = DateUtil.now()
-        tm.database.submission_metadata.executiondir = None
-        tm.database.submission_metadata.keepexecutiondir = keep_intermediate_files
-        tm.database.submission_metadata.configuration = jc
-        tm.database.submission_metadata.dbconfig = dbconfig
+        tm.database.submission_metadata.set_metadata(
+            SubmissionDbMetadata(
+                submission_id=submission_id,
+                run_id=RunModel.DEFAULT_ID,
+                engine=environment.engine,
+                name=tool.id(),
+                start=DateUtil.now(),
+                keep_execution_dir=keep_intermediate_files,
+                configuration=jc,
+                db_config=jc,
+                # This is the only time we're allowed to skip the tm.set_status
+                # This is a temporary stop gap until "notification on status" is implemented.
+                # tm.set_status(TaskStatus.PROCESSING)
+                status=TaskStatus.PROCESSING,
+            )
+        )
 
-        # This is the only time we're allowed to skip the tm.set_status
-        # This is a temporary stop gap until "notification on status" is implemented.
-        # tm.set_status(TaskStatus.PROCESSING)
-        tm.database.submission_metadata.status = TaskStatus.PROCESSING
+        # tm.database.submission_metadata.submission_id = submission_id
+        # tm.database.submission_metadata.engine = environment.engine
+        # # tm.database.submission_metadata.filescheme = environment.filescheme
+        # # tm.database.submission_metadata.environment = environment.id()
+        # tm.database.submission_metadata.name = tool.id()
+        # tm.database.submission_metadata.start = DateUtil.now()
+        # tm.database.submission_metadata.executiondir = None
+        # tm.database.submission_metadata.keepexecutiondir = keep_intermediate_files
+        # tm.database.submission_metadata.configuration = jc
+        # tm.database.submission_metadata.dbconfig = dbconfig
 
-        tm.database.commit()
+        # tm.database.commit()
 
         spec = get_ideal_specification_for_engine(environment.engine)
         spec_translator = get_translator(spec)
@@ -239,13 +252,13 @@ class WorkflowManager:
             WorkflowManager.WorkflowManagerPath.workflow
         )
 
-        tm.database.submission_metadata.submission_workflow = os.path.join(
+        tm.database.submission_metadata.metadata.submission_workflow = os.path.join(
             outdir_workflow, spec_translator.filename(tool_evaluate)
         )
-        tm.database.submission_metadata.submission_inputs = os.path.join(
+        tm.database.submission_metadata.metadata.submission_inputs = os.path.join(
             outdir_workflow, spec_translator.inputs_filename(tool_evaluate)
         )
-        tm.database.submission_metadata.submission_resources = os.path.join(
+        tm.database.submission_metadata.metadata.submission_resources = os.path.join(
             outdir_workflow, spec_translator.dependencies_filename(tool_evaluate)
         )
 
@@ -272,7 +285,7 @@ class WorkflowManager:
 
     def start_or_submit(self, run_in_background, watch=False):
         # check container environment is loaded
-        metadb = self.database.submission_metadata
+        metadb = self.database.submission_metadata.metadata
 
         jc = metadb.configuration
         metadb.containertype = jc.container.__name__
@@ -281,7 +294,7 @@ class WorkflowManager:
         # this happens for all workflows no matter what type
         self.set_status(TaskStatus.QUEUED)
 
-        wid = metadb.submission_id
+        wid = metadb._submission_id
 
         # resubmit the engine
         if not run_in_background:
@@ -506,7 +519,7 @@ class WorkflowManager:
                 Logger.info("Exiting")
 
     def process_completed_task(self):
-        status: TaskStatus = self.database.submission_metadata.status
+        status: TaskStatus = self.database.submission_metadata.metadata.status
         Logger.info(f"Task has finished with status: {status}")
         try:
             self.save_metadata_if_required()
@@ -556,13 +569,13 @@ class WorkflowManager:
 
             self.start_engine_if_required()
 
-            if self.database.submission_metadata.please_abort:
-                Logger.info("Detected please_abort request, aborting")
-                return self.abort()
-
-            if self.database.submission_metadata.please_pause:
-                Logger.info("Detecting please_pause request, exiting")
-                return self.stop_computation()
+            # if self.database.submission_metadata.please_abort:
+            #     Logger.info("Detected please_abort request, aborting")
+            #     return self.abort()
+            #
+            # if self.database.submission_metadata.please_pause:
+            #     Logger.info("Detecting please_pause request, exiting")
+            #     return self.stop_computation()
 
             # check status and see if we can resume
             self.submit_workflow_if_required()
@@ -576,10 +589,10 @@ class WorkflowManager:
 
                 self.main_queue.put(lambda: self.save_metadata(meta)),
 
-            self.get_engine().add_callback(self.get_engine_wid(), callback=callb)
+            self.get_engine().add_callback(self.get_engine_id(), callback=callb)
 
             # add extra check for engine on resume
-            meta = self._engine.metadata(self.get_engine_wid())
+            meta = self._engine.metadata(self.get_engine_id())
             if meta and meta.status in TaskStatus.final_states():
                 self.save_metadata(meta)
                 return self.process_completed_task()
@@ -593,12 +606,12 @@ class WorkflowManager:
                         break
                 except queue.Empty:
 
-                    if self.database.submission_metadata.please_abort:
-                        self.abort()
-                        return
-                    if self.database.submission_metadata.please_pause:
-                        self.database.submission_metadata.please_pause = False
-                        return self.stop_computation()
+                    # if self.database.submission_metadata.please_abort:
+                    #     self.abort()
+                    #     return
+                    # if self.database.submission_metadata.please_pause:
+                    #     self.database.submission_metadata.please_pause = False
+                    #     return self.stop_computation()
 
                     continue
 
@@ -950,20 +963,20 @@ class WorkflowManager:
                 f"Workflow '{self.submission_id}' has submitted, skipping"
             )
 
-        fn_wf = self.database.submission_metadata.submission_workflow
-        fn_inp = self.database.submission_metadata.submission_inputs
-        fn_deps = self.database.submission_metadata.submission_resources
+        fn_wf = self.database.submission_metadata.metadata.submission_workflow
+        fn_inp = self.database.submission_metadata.metadata.submission_inputs
+        fn_deps = self.database.submission_metadata.metadata.submission_resources
 
         engine = self.get_engine()
 
         Logger.debug(f"Submitting task '{self.submission_id}' to '{engine.id()}'")
-        self._engine_wid = engine.start_from_paths(
+        self._engine_id = engine.start_from_paths(
             self.submission_id, fn_wf, fn_inp, fn_deps
         )
-        self.database.submission_metadata.engine_wid = self._engine_wid
+        self.database.submission_metadata.metadata.engine_id = self._engine_id
 
         Logger.info(
-            f"Submitted workflow ({self.submission_id}), got engine id = '{self.get_engine_wid()}'"
+            f"Submitted workflow ({self.submission_id}), got engine id = '{self.get_engine_id()}'"
         )
         self.database.progressDB.set(ProgressKeys.submitWorkflow)
 
@@ -979,14 +992,14 @@ class WorkflowManager:
         if isinstance(engine, Cromwell):
             import json
 
-            meta = engine.raw_metadata(self.get_engine_wid())
+            meta = engine.raw_metadata(self.get_engine_id())
             nattempts = 5
             for at in range(nattempts):
                 if meta is None:
                     Logger.warn(
                         f"Engine '{engine.id()}' didn't return metadata for Janis to persist, will try {nattempts - at - 1} more times"
                     )
-                    meta = engine.raw_metadata(self.get_engine_wid())
+                    meta = engine.raw_metadata(self.get_engine_id())
                 else:
                     break
             if meta is None:
@@ -1017,13 +1030,13 @@ class WorkflowManager:
                 f"Workflow '{self.submission_id}' has copied outputs, skipping"
             )
 
-        if self.database.submission_metadata.status != TaskStatus.COMPLETED:
+        if self.database.submission_metadata.metadata.status != TaskStatus.COMPLETED:
             return Logger.warn(
                 f"Skipping copying outputs as the workflow {self.database.submission_metadata.status}"
             )
 
         wf_outputs: List[WorkflowOutputModel] = self.database.outputsDB.get()
-        engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
+        engine_outputs = self.get_engine().outputs_task(self.get_engine_id())
 
         submission = self.database.submissions.get_by_id(
             self.submission_id, allow_operational_errors=False
@@ -1039,7 +1052,7 @@ class WorkflowManager:
                 Logger.warn(
                     f"Engine '{self.get_engine().id()}' didn't return outputs for Janis to copy, will try {nattempts - at - 1} more times"
                 )
-                engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
+                engine_outputs = self.get_engine().outputs_task(self.get_engine_id())
             else:
                 break
 
@@ -1252,16 +1265,16 @@ class WorkflowManager:
         import tabulate
 
         # log all the metadata we have:
-        results = self.database.submission_metadata.kvdb.items()
+        results = self.database.submission_metadata.metadata.get_encoded_rows()
         header = ("Key", "Value")
         res = tabulate.tabulate([header, ("wid", self.submission_id), *results])
         print(res)
         return res
 
-    def get_engine_wid(self):
-        if not self._engine_wid:
-            self._engine_wid = self.database.submission_metadata.engine_wid
-        return self._engine_wid
+    def get_engine_id(self):
+        if not self._engine_id:
+            self._engine_id = self.database.submission_metadata.metadata.engine_id
+        return self._engine_id
 
     def get_task_path(self):
         return self.execution_dir
@@ -1316,14 +1329,14 @@ class WorkflowManager:
                 )
 
     def set_status(self, status: TaskStatus, force_notification=False):
-        prev = self.database.submission_metadata.status
+        prev = self.database.submission_metadata.metadata.status
 
         if prev == status and not force_notification:
             return
 
         Logger.info("Status changed to: " + str(status))
         self.database.runevents.update(run_id=RunModel.DEFAULT_ID, status=status)
-        self.database.submission_metadata.status = status
+        self.database.submission_metadata.metadata.status = status
         self.database.commit()
         # send an email here
         meta = self.database.get_metadata()
@@ -1374,7 +1387,7 @@ class WorkflowManager:
 
         engine = self.get_engine()
         try:
-            status = bool(engine.terminate_task(self.get_engine_wid()))
+            status = bool(engine.terminate_task(self.get_engine_id()))
         except Exception as e:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:

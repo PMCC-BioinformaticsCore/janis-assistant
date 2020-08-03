@@ -29,10 +29,11 @@ def groupby(
 
 
 class JobDbProvider(DbProviderBase):
-    def __init__(self, db, submission_id):
+    def __init__(self, db, readonly, submission_id):
         super().__init__(
             base_type=RunJobModel,
             db=db,
+            readonly=readonly,
             tablename="jobs",
             scopes={"submission_id": submission_id},
         )

@@ -18,7 +18,6 @@ from janis_assistant.data.providers.outputdbprovider import OutputDbProvider
 from janis_assistant.data.providers.internalprogressdb import InternalProgressDb
 from janis_assistant.data.providers.joblabeldbprovider import JobLabelDbProvider
 from janis_assistant.data.providers.submissiondbprovider import SubmissionDbProvider
-from janis_assistant.data.providers.versionsdbprovider import VersionsDbProvider
 from janis_assistant.data.providers.workflowmetadataprovider import (
     SubmissionMetadataDbProvider,
 )
@@ -66,29 +65,27 @@ class WorkflowDbManager:
 
         self.connection = self.db_connection()
 
-        sqlpath = self.get_sql_path()
-        self.submissions = SubmissionDbProvider(db=self.connection)
+        dbkwargs = {
+            "db": self.connection,
+            "readonly": readonly,
+            "submission_id": submission_id,
+        }
+
+        self.submissions = SubmissionDbProvider(db=self.connection, readonly=readonly)
+        self.runs = RunDbProvider(**dbkwargs)
+        self.runevents = RunStatusDbProvider(**dbkwargs)
+        self.progressDB = InternalProgressDb(**dbkwargs)
+        self.outputsDB = OutputDbProvider(**dbkwargs)
+        self.jobsDB = JobDbProvider(**dbkwargs)
+        self.inputsDB = InputDbProvider(**dbkwargs)
+        self.joblabelsDB = JobLabelDbProvider(**dbkwargs)
+
         self.submission_metadata = SubmissionMetadataDbProvider(
-            sqlpath, submission_id=submission_id, readonly=readonly
+            db=self.connection,
+            readonly=readonly,
+            submission_id=submission_id,
+            run_id=RunModel.DEFAULT_ID,
         )
-
-        self.runs = RunDbProvider(db=self.connection, submission_id=submission_id)
-        self.runevents = RunStatusDbProvider(
-            db=self.connection, submission_id=submission_id
-        )
-        self.progressDB = InternalProgressDb(
-            db=self.connection, submission_id=submission_id
-        )
-        self.outputsDB = OutputDbProvider(
-            db=self.connection, submission_id=submission_id
-        )
-        self.jobsDB = JobDbProvider(db=self.connection, submission_id=submission_id)
-        self.inputsDB = InputDbProvider(db=self.connection, submission_id=submission_id)
-        self.joblabelsDB = JobLabelDbProvider(
-            db=self.connection, submission_id=submission_id
-        )
-
-        self.versionsDB = VersionsDbProvider(dblocation=sqlpath, readonly=readonly)
 
     @contextmanager
     def with_cursor(self):
@@ -107,20 +104,23 @@ class WorkflowDbManager:
         connection = None
         sqlpath = WorkflowDbManager.get_sql_path_base(execpath)
 
-        if not wid:
+        Logger.debug("Opening database connection to get wid from: " + sqlpath)
+        try:
+            connection = sqlite3.connect(f"file:{sqlpath}?mode=ro", uri=True)
+        except:
+            Logger.critical("Error when opening DB connection to: " + sqlpath)
+            raise
+        if wid is None:
+            wid = SubmissionDbProvider(db=connection, readonly=readonly).get_latest()
+        if wid is None:
+            raise Exception("Couldn't get WID in task directory")
 
-            Logger.debug("Opening database connection to get wid from: " + sqlpath)
-            try:
-                connection = sqlite3.connect(f"file:{sqlpath}?mode=ro", uri=True)
-            except:
-                Logger.critical("Error when opening DB connection to: " + sqlpath)
-                raise
-
-            wid = SubmissionDbProvider(db=connection).get_latest()
-            if not wid:
-                raise Exception("Couldn't get WID in task directory")
-
-        retval = SubmissionMetadataDbProvider(sqlpath, wid, readonly=readonly)
+        retval = SubmissionMetadataDbProvider(
+            db=connection,
+            readonly=readonly,
+            submission_id=wid,
+            run_id=RunModel.DEFAULT_ID,
+        )
         if connection:
             connection.close()
         return retval
@@ -188,7 +188,7 @@ class WorkflowDbManager:
         jobs = self.jobsDB.get_all_mapped()
         if jobs is None:
             Logger.log(
-                f"Jobs list for {self.submission_metadata.submission_id} was None, skipping this time."
+                f"Jobs list for {self.submission_metadata.metadata.submission_id} was None, skipping this time."
             )
             return None
 
@@ -227,7 +227,7 @@ class WorkflowDbManager:
 
         # return WorkflowModel(
         #     wid=self.workflowmetadata.submission_id,
-        #     engine_wid=self.workflowmetadata.engine_wid,
+        #     engine_id=self.workflowmetadata.engine_id,
         #     name=self.workflowmetadata.name,
         #     start=self.workflowmetadata.start,
         #     finish=self.workflowmetadata.finish,

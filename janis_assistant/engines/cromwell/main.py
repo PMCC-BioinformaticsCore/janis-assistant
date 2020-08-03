@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import threading
+import math
 from datetime import datetime
 from urllib import request, parse
 
@@ -54,6 +55,7 @@ class Cromwell(Engine):
         self._logger = None
         self._process = None
         self._timer_thread = None
+        self._start_time = DateUtil.now()
 
     def __init__(
         self,
@@ -96,6 +98,7 @@ class Cromwell(Engine):
         # Last contacted is used to determine
         self.last_contacted = None
         self.timeout = 10  # minutes
+        self._start_time = None
 
         self.connectionerrorcount = 0
         self.should_stop = False
@@ -163,12 +166,33 @@ class Cromwell(Engine):
 
         self.stop_engine()
 
+    def get_poll_interval(self):
+        """
+        Get poll interval in SECONDS
+        """
+
+        max_poll = 60  # seconds
+        min_poll = 5  # seconds
+        falloff = 30 * 60  # seconds
+
+        # https://www.desmos.com/calculator/f5lmjtctfg
+        # ~ (max_poll - min_poll)/2 * (tanh(x/falloff - pi) + 1) + min_poll
+        #
+        # It's just a tanh graph that's been rebiased tanh(x-pi) + 1
+        # and then scaled
+
+        x = (DateUtil.now() - (self._start_time or DateUtil.now())).total_seconds()
+        return (max_poll - min_poll) / 2 * (
+            math.tanh(math.pi * (2 * x / falloff - 1)) + 1
+        ) + min_poll
+
     def start_engine(self, additional_cromwell_options: List[str] = None):
 
         from janis_assistant.management.configuration import JanisConfiguration
 
         jc = JanisConfiguration.manager()
 
+        self._start_time = DateUtil.now()
         self.timeout = jc.cromwell.timeout or 10
 
         if self.test_connection():
@@ -440,7 +464,7 @@ class Cromwell(Engine):
                     callback(meta)
 
         # call timer again
-        time = 6
+        time = self.get_poll_interval()
         threading.Timer(time, self.poll_metadata).start()
 
     @staticmethod

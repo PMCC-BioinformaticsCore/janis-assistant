@@ -250,11 +250,13 @@ class WorkflowDbManager:
         #     inputs=inputs,
         # )
 
-    def flatten_jobs(self, jobs: List[RunJobModel]):
-        flattened = jobs
+    @staticmethod
+    def flatten_jobs(jobs: List[RunJobModel]):
+        flattened = []
         for j in jobs:
+            flattened.append(j)
             if j.jobs:
-                flattened.extend(self.flatten_jobs(j.jobs))
+                flattened.extend(WorkflowDbManager.flatten_jobs(j.jobs))
         return flattened
 
     def commit(self):

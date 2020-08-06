@@ -1,4 +1,4 @@
-from typing import Type, Dict, Optional, Set
+from typing import Type, Dict, Optional, Set, List, Tuple
 from sqlite3 import Connection
 
 from janis_core import Logger
@@ -13,7 +13,6 @@ class KvDB(DbBase):
 
     def __init__(
         self,
-        base: Type[KVDatabaseObject],
         db: Connection,
         readonly: bool,
         tablename: str,
@@ -23,7 +22,6 @@ class KvDB(DbBase):
 
         super().__init__(db=db, tablename=tablename, readonly=readonly)
 
-        self._base = base
         self._scopes = scopes or {}
         self._scopes_keys = sorted(scopes_keys or self._scopes.keys())
 
@@ -42,8 +40,12 @@ CREATE TABLE IF NOT EXISTS {self._tablename} (
 );
 """
 
-    def save_obj(self, obj: KVDatabaseObject):
-        rows = obj.get_encoded_rows()
+    def save_encoded_rows(self, rows: List[Tuple[str, str]]):
+        if len(rows) == 0:
+            return Logger.debug(
+                f"Skipping save of {self.__class__.__name__} for empty set of changes"
+            )
+
         keys = ["id", *self._scopes_keys, "value"]
         scopes = list(self._scopes[s] for s in self._scopes_keys)
 
@@ -53,18 +55,20 @@ CREATE TABLE IF NOT EXISTS {self._tablename} (
         for row in rows:
             fvalues.extend([row[0], *scopes, row[1]])
 
-        query = f"""
-REPLACE INTO {self._tablename}
-    ({', '.join(keys)})
-VALUES
-    {replacer}
-"""
-        with self.with_cursor() as cursor:
-            try:
-                cursor.execute(query, fvalues)
-            except Exception as e:
-                Logger.critical("Error executing query: " + query)
-                raise e
+        if not self._readonly:
+
+            query = f"""
+    REPLACE INTO {self._tablename}
+        ({', '.join(keys)})
+    VALUES
+        {replacer}
+    """
+            with self.with_cursor() as cursor:
+                try:
+                    cursor.execute(query, fvalues)
+                except Exception as e:
+                    Logger.critical("Error executing query: " + query)
+                    raise e
 
     def get_rows(self):
         scopes = " AND ".join(f"{k} = ?" for k in self._scopes_keys)

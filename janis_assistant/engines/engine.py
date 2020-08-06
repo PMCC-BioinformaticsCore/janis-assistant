@@ -69,7 +69,7 @@ class Engine(Archivable, ABC):
     keys_to_ignore = {"progress_callbacks"}
 
     def __getstate__(self):
-        d = self.__dict__.copy()
+        d = super().__getstate__().copy()
         for k in self.keys_to_ignore:
             if k in d:
                 del d[k]

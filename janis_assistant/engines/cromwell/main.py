@@ -227,8 +227,8 @@ class Cromwell(Engine):
                 [f"-Xmx{jc.cromwell.memory}M", f"-Xms{max(jc.cromwell.memory//2, 1)}M"]
             )
 
-        if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
-            cmd.append("-DLOG_LEVEL=DEBUG")
+        # if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
+        #     cmd.append("-DLOG_LEVEL=DEBUG")
 
         if additional_cromwell_options:
             cmd.extend(additional_cromwell_options)

@@ -11,12 +11,8 @@ Run / monitor separation:
     We'll add a try:catch: to the whole monitor to ensure that we don't leave
     any processing lying around.
 
-
-
-
-
-
 """
+
 import os
 import queue
 import sys
@@ -118,10 +114,10 @@ class WorkflowManager:
 
         self._prev_status = None
         self.engine: Optional[Engine] = engine
+
         # mfranklin: 2020-08-04
-        # I removed the ability for you to specify non-local fileschemes that
-        # janis could copy from / to. It's still there as a remnant, but this
-        # used to be: fs = environment.filescheme
+        # I removed the ability for you to specify non-local
+        #  fileschemes that janis could copy from / to.
         self.filescheme = LocalFileScheme()
 
         if not self._engine_id:
@@ -134,7 +130,9 @@ class WorkflowManager:
         status: Optional[TaskStatus],
         name: Optional[str] = None,
     ):
-        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir, submission_id)
+        metadb: SubmissionDbMetadata = WorkflowDbManager.get_workflow_metadatadb(
+            outdir, submission_id
+        ).metadata
 
         has = True
         if has and status:
@@ -247,6 +245,7 @@ class WorkflowManager:
             outdir_workflow, spec_translator.dependencies_filename(tool_evaluate)
         )
 
+        tm.database.submission_metadata.save_changes()
         tm.database.commit()
 
         if not dryrun:
@@ -275,6 +274,8 @@ class WorkflowManager:
         jc = metadb.configuration
         metadb.containertype = jc.container.__name__
         metadb.containerversion = jc.container.test_available_by_getting_version()
+
+        self.database.submission_metadata.save_changes()
 
         # this happens for all workflows no matter what type
         self.set_status(TaskStatus.QUEUED)
@@ -449,7 +450,12 @@ class WorkflowManager:
                 meta, is_finished = self.get_meta_call()
                 if meta:
                     if has_printed or not is_finished:
-                        call("clear")
+                        try:
+                            call("clear")
+                        except Exception as e:
+                            Logger.log(
+                                f"We got a subprocess error when clearing the screen: {repr(e)}"
+                            )
                     print(meta.format(**kwargs))
                     has_printed = True
 
@@ -581,6 +587,7 @@ class WorkflowManager:
                 self.save_metadata(meta)
                 return self.process_completed_task()
 
+            last_semaphore_check = None
             while True:
                 try:
                     cb = self.main_queue.get(False)
@@ -589,15 +596,23 @@ class WorkflowManager:
                     if res is True:
                         break
                 except queue.Empty:
-
-                    if os.path.exists(self.get_abort_semaphore_path()):
-                        self.abort()
-                        return
-                    if os.path.exists(self.get_pause_semaphore_path()):
-                        self.stop_computation()
-                        return
+                    if (
+                        last_semaphore_check is None
+                        or (DateUtil.now() - last_semaphore_check).total_seconds() > 2
+                    ):
+                        Logger.log("Checking semaphores")
+                        last_semaphore_check = DateUtil.now()
+                        if os.path.exists(self.get_abort_semaphore_path()):
+                            self.abort()
+                            break
+                        if os.path.exists(self.get_pause_semaphore_path()):
+                            self.stop_computation()
+                            break
 
                     continue
+                except Exception as e:
+                    Logger.warn("Something has gone TERRIBLY wrong" + repr(e))
+                    raise e
 
             self.process_completed_task()
             return self
@@ -637,6 +652,7 @@ class WorkflowManager:
             Logger.critical(
                 f"Exiting with rc={rc} janis task '{self.submission_id}' as an issue occurred when running the workflow"
             )
+            sys.exit(rc)
 
     @staticmethod
     def mark_paused(execution_dir):
@@ -1329,7 +1345,9 @@ class WorkflowManager:
         Logger.info("Status changed to: " + str(status))
         self.database.runevents.update(run_id=RunModel.DEFAULT_ID, status=status)
         self.database.submission_metadata.metadata.status = status
+        self.database.submission_metadata.save_changes()
         self.database.commit()
+
         # send an email here
         meta = self.database.get_metadata()
         for idx in range(1, 6):
@@ -1398,6 +1416,7 @@ class WorkflowManager:
             self.set_status(TaskStatus.SUSPENDED)
             # reset pause flag
             self.database.commit()
+            self.database.submission_metadata.save_changes()
 
             self.engine.stop_engine()
             if self.dbcontainer:

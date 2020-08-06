@@ -295,7 +295,7 @@ class ConfigManager:
                     status=status,
                 )
                 if metadb:
-                    model = metadb.to_model()
+                    model = metadb
                     model.outdir = row.output_dir
                     relevant[row.submission_id] = model
             except Exception as e:

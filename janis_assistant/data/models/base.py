@@ -50,6 +50,8 @@ def deserialize_inner(val):
 
 
 def pickle_obj(obj):
+    if obj is None:
+        return None
     try:
         return pickle.dumps(obj, protocol=2)
     except Exception as ex:
@@ -58,6 +60,8 @@ def pickle_obj(obj):
 
 
 def unpickle_obj(obj):
+    if obj is None:
+        return None
     try:
         return pickle.loads(obj)
     except Exception as ex:
@@ -165,9 +169,13 @@ class KVDatabaseObject(ABC):
 
     @classmethod
     def decode_rows_to_dict(cls, rows: List[Tuple[str, str]]):
-        encoded = set(cls.fields_to_encode() or [])
         kwargs = {k: unpickle_obj(v) for k, v in rows}
         return cls(**kwargs)
+
+    def update_from_rows(self, rows: List[Tuple[str, str]]):
+        for k, v in rows:
+            self.__setattr__(k, unpickle_obj(v))
+        return self
 
     @classmethod
     def fields_to_encode(cls) -> Optional[Set[str]]:

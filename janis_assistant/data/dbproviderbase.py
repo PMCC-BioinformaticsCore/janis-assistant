@@ -8,11 +8,15 @@ from typing import (
     Optional,
     TypeVar,
     Generic,
+    Set,
 )
 from abc import abstractmethod
 from sqlite3 import Connection, Cursor, OperationalError
 from contextlib import contextmanager
 
+from janis_assistant.utils import second_formatter
+
+from janis_assistant.utils.dateutil import DateUtil
 from janis_core import Logger
 
 from janis_assistant.data.models.base import DatabaseObject
@@ -57,9 +61,12 @@ class DbProviderBase(DbBase, Generic[T]):
         self._scopes = scopes
         self._base = base_type
 
-        schema = self.table_schema()
-        with self.with_cursor() as cursor:
-            cursor.execute(schema)
+        self._id_cache: Set = None
+
+        if not self._readonly:
+            schema = self.table_schema()
+            with self.with_cursor() as cursor:
+                cursor.execute(schema)
 
     def get(
         self,
@@ -145,7 +152,50 @@ class DbProviderBase(DbBase, Generic[T]):
         """
         return schema
 
+    def populate_cache_if_required(self):
+        if self._id_cache is not None:
+            return False
+        self.populate_cache()
+        return True
+
+    def populate_cache(self):
+        self._id_cache = set()
+        idkeys = set(self.get_id_keys())
+        idkeys_ordered = list(idkeys)
+        prows = f"SELECT {', '.join(idkeys_ordered)} FROM {self._tablename}"
+        with self.with_cursor() as cursor:
+            rows = cursor.execute(prows).fetchall()
+            for row in rows:
+                self._id_cache.add(row)
+
+    def filter_updates(
+        self, jobs: List[T], add_inserts_to_cache=True
+    ) -> Tuple[List[T], List[T]]:
+        self.populate_cache_if_required()
+
+        updates = []
+        inserts = []
+
+        idkeys = set(self.get_id_keys())
+        idkeys_ordered = list(idkeys)
+        dbalias_map = {t.dbalias: t.name for t in self._base.keymap()}
+
+        for job in jobs:
+            el_idkey = tuple([getattr(job, dbalias_map[_k]) for _k in idkeys_ordered])
+            if el_idkey in self._id_cache:
+                updates.append(job)
+            else:
+                inserts.append(job)
+
+        for job in inserts:
+            el_idkey = tuple([getattr(job, dbalias_map[_k]) for _k in idkeys_ordered])
+            self._id_cache.add(el_idkey)
+
+        return updates, inserts
+
     def insert_or_update_many(self, els: List[T]):
+        if len(els) == 0:
+            return
         queries: Dict[str, List[List[any]]] = {}
         update_separator = ",\n"
         tab = "\t"
@@ -156,95 +206,96 @@ class DbProviderBase(DbBase, Generic[T]):
         existing_keys = set()  # (*pkeys_ordered)
 
         # get all primary keys
-        prows = f"SELECT {', '.join(idkeys_ordered)} FROM {self._tablename}"
-
-        with self.with_cursor() as cursor:
-            rows = cursor.execute(prows).fetchall()
-            for row in rows:
-                existing_keys.add(row)
 
         dbalias_map = {t.dbalias: t.name for t in self._base.keymap()}
 
-        for el in els:
+        updates, inserts = self.filter_updates(els)
 
-            keys, values = el.prepare_insert()
-            el_pkeys = [getattr(el, dbalias_map[_k]) for _k in idkeys_ordered]
-            missing_pkeys = [
-                _k for _k in pkeys_ordered if getattr(el, dbalias_map[_k]) is None
+        def add_query(query, values):
+            if query in queries:
+                queries[query].append(values)
+            else:
+                queries[query] = [values]
+
+        for job in updates:
+            keys, values = job.prepare_insert()
+            # el_pkeys = [getattr(job, dbalias_map[_k]) for _k in idkeys_ordered]
+
+            keys_np, values_np = [], []
+            for k, v in zip(keys, values):
+                if k in idkeys:
+                    continue
+
+                keys_np.append(k)
+                values_np.append(v)
+
+            # problem is we want to update matching on some fields when they are NULL, our WHERE statement
+            # should be something like:
+            #   WHERE id1 = ? AND id2 = ? AND id3 is null AND id4 is null
+
+            id_keyvalues = {
+                pkey: getattr(job, dbalias_map[pkey]) for pkey in idkeys_ordered
+            }
+            id_withvalues_keyvalue_ordered = [
+                (idkey, idvalue)
+                for idkey, idvalue in id_keyvalues.items()
+                if idvalue is not None
             ]
-            if missing_pkeys:
-                raise Exception(
-                    f"An internal error occurred when updating the {self._tablename} database, "
-                    f"the object {repr(el)} was missing the primary keys {', '.join(missing_pkeys)}"
-                )
-            obj_exists = tuple(el_pkeys) in existing_keys
+            id_withvalues_updater_keys = [
+                f"{idkey} = ?" for idkey, _ in id_withvalues_keyvalue_ordered
+            ]
+            id_withvalues_updater_values = [
+                idvalue for _, idvalue in id_withvalues_keyvalue_ordered
+            ]
+            id_novalues_updater_keys = [
+                f"{idkey} is NULL"
+                for idkey, idvalue in id_keyvalues.items()
+                if idvalue is None
+            ]
 
-            pkey_updater = " AND ".join(f"{k_} = ?" for k_ in idkeys_ordered)
+            prepared_statement = f"""
+            UPDATE {self._tablename}
+                SET {', '.join(f'{k} = ?' for k in keys_np)}
+            WHERE
+                {" AND ".join([*id_withvalues_updater_keys, *id_novalues_updater_keys])}
+            """
+            vtuple = (
+                *values_np,
+                *id_withvalues_updater_values,
+            )
 
-            if obj_exists:
-                # it exists, we'll update
-                keys_np, values_np = [], []
-                for k, v in zip(keys, values):
-                    if k in idkeys:
-                        continue
+            add_query(prepared_statement, vtuple)
 
-                    keys_np.append(k)
-                    values_np.append(v)
+        for job in inserts:
+            keys, values = job.prepare_insert()
+            # el_pkeys = [getattr(job, dbalias_map[_k]) for _k in idkeys_ordered]
+            prepared_statement = f"""
+            INSERT INTO {self._tablename}
+                ({', '.join(keys)})
+            VALUES
+                ({', '.join(f'?' for _ in keys)});
+            """
+            add_query(prepared_statement, values)
 
-                # problem is we want to update matching on some fields when they are NULL, our WHERE statement
-                # should be something like:
-                #   WHERE id1 = ? AND id2 = ? AND id3 is null AND id4 is null
-
-                id_keyvalues = {
-                    pkey: getattr(el, dbalias_map[pkey]) for pkey in idkeys_ordered
-                }
-                id_withvalues_keyvalue_ordered = [
-                    (idkey, idvalue)
-                    for idkey, idvalue in id_keyvalues.items()
-                    if idvalue is not None
-                ]
-                id_withvalues_updater_keys = [
-                    f"{idkey} = ?" for idkey, _ in id_withvalues_keyvalue_ordered
-                ]
-                id_withvalues_updater_values = [
-                    idvalue for _, idvalue in id_withvalues_keyvalue_ordered
-                ]
-                id_novalues_updater_keys = [
-                    f"{idkey} is NULL"
-                    for idkey, idvalue in id_keyvalues.items()
-                    if idvalue is None
-                ]
-
-                prepared_statement = f"""
-                UPDATE {self._tablename}
-                    SET {', '.join(f'{k} = ?' for k in keys_np)}
-                WHERE
-                    {" AND ".join([*id_withvalues_updater_keys, *id_novalues_updater_keys])}
-                """
-                vtuple = (
-                    *values_np,
-                    *id_withvalues_updater_values,
-                )
-            else:
-                prepared_statement = f"""
-                INSERT INTO {self._tablename}
-                    ({', '.join(keys)})
-                VALUES
-                    ({', '.join(f'?' for _ in keys)});
-                """
-                vtuple = values
-
-            if prepared_statement in queries:
-                queries[prepared_statement].append(vtuple)
-            else:
-                queries[prepared_statement] = [vtuple]
-
+        Logger.log(
+            f"DB {self._tablename}: Inserting {len(inserts)} and updating {len(updates)} rows"
+        )
         with self.with_cursor() as cursor:
+            start = DateUtil.now()
+            if len(inserts) + len(updates) > 300:
+                Logger.warn(
+                    f"DB '{self._tablename}' is inserting {len(inserts)} and updating {len(updates)} rows, this might take a while"
+                )
             for query, vvalues in queries.items():
                 try:
                     Logger.log(f"Running query: {query}\n\t: values: {vvalues}")
                     cursor.executemany(query, vvalues)
                 except OperationalError as e:
                     Logger.log_ex(e)
+            seconds = (DateUtil.now() - start).total_seconds()
+            if seconds > 2:
+                Logger.warn(
+                    f"DB '{self._tablename}' took {second_formatter(seconds)} to insert {len(inserts)} and update {len(updates)} rows"
+                )
 
         return True

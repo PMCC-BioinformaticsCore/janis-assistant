@@ -131,7 +131,7 @@ class WorkflowDbManager:
             connection = sqlite3.connect(
                 f"file:{WorkflowDbManager.get_sql_path_base(path)}?mode=ro", uri=True
             )
-            submissiondb = SubmissionDbProvider(db=connection)
+            submissiondb = SubmissionDbProvider(db=connection, readonly=True)
             return submissiondb.get_latest()
 
         except:
@@ -165,10 +165,14 @@ class WorkflowDbManager:
         # Let's just say the actual workflow metadata has to updated separately
         self.runs.insert_or_update_many([metadata])
         alljobs = self.flatten_jobs(metadata.jobs or [])
+        try:
+            self.jobsDB.insert_or_update_many(alljobs)
 
-        self.jobsDB.insert_or_update_many(alljobs)
+            self.submission_metadata.metadata.last_updated = DateUtil.now()
+            self.submission_metadata.save_changes()
 
-        # self.submission_metadata.last_updated = DateUtil.now()
+        except Exception as e:
+            Logger.warn(f"Error persisting metadata: {repr(e)}")
         # if metadata.error:
         #     self.submission_metadata.error = metadata.error
         # if metadata.execution_dir:
@@ -206,8 +210,14 @@ class WorkflowDbManager:
 
         submission.runs = runs
 
-        for r in submission.runs:
+        self.submission_metadata.update()
+        last_updated = self.submission_metadata.metadata.last_updated
 
+        if submission.runs is None:
+            return None
+
+        for r in submission.runs:
+            r.last_updated = last_updated
             r.jobs = job_by_sid.get(r.id_)
             r.inputs = inputs_by_sid.get(r.id_)
             r.outputs = outputs_by_sid.get(r.id_)

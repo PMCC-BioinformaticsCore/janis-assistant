@@ -1,5 +1,7 @@
 from typing import Optional, Set
 
+from janis_core import Logger
+
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 from janis_assistant.data.models.base import KVDatabaseObject
@@ -64,27 +66,36 @@ class SubmissionMetadataDbProvider(KvDB):
         readonly: bool,
         submission_id: str,
         run_id: str,
-        obj: Optional[SubmissionDbMetadata] = None,
+        metadata: Optional[SubmissionDbMetadata] = None,
     ):
         super().__init__(
-            base=SubmissionDbMetadata,
             db=db,
             readonly=readonly,
             tablename="submission_metadata",
             scopes={"submission_id": submission_id, "run_id": run_id},
         )
 
-        self.metadata = obj if obj is not None else self.get()
+        self.metadata = metadata if metadata is not None else self.get()
 
     def set_metadata(self, obj: SubmissionDbMetadata):
         self.metadata = obj
         self.commit()
 
+    def update(self):
+        self.metadata.update_from_rows(self.get_rows())
+        self.metadata.discard_changes()
+
     def get(self) -> SubmissionDbMetadata:
         return SubmissionDbMetadata.decode_rows_to_dict(self.get_rows())
 
-    def commit(self):
-        self.save_obj(self.metadata)
+    def save(self):
+        self.save_encoded_rows(self.metadata.get_encoded_rows())
+
+    def save_changes(self):
+        rows = self.metadata.get_encoded_changes()
+        Logger.log(f"Updating workflow fields: {rows}")
+        self.save_encoded_rows(rows)
+        self.metadata.discard_changes()
 
 
 # class SubmissionMetadataDbProvider(KvDB):

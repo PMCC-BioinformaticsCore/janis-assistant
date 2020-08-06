@@ -9,6 +9,5 @@ from janis_assistant.management.filescheme import (
 
 from janis_assistant.engines import Cromwell, CWLTool, Toil, CromwellConfiguration
 from janis_assistant.management.workflowmanager import WorkflowManager, TaskStatus
-from janis_assistant.environments.environment import Environment
 from janis_assistant.validation import ValidationRequirements
 from janis_assistant.__meta__ import __version__

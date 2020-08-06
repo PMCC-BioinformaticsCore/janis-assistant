@@ -10,10 +10,11 @@ from janis_assistant.utils.dateutil import DateUtil
 class OutputDbProvider(DbProviderBase[WorkflowOutputModel]):
     CURRENT_SCHEMA_VERSION = 1
 
-    def __init__(self, db, submission_id):
+    def __init__(self, db, readonly, submission_id):
         super().__init__(
             base_type=WorkflowOutputModel,
             db=db,
+            readonly=readonly,
             tablename="outputs",
             scopes={"submission_id": submission_id},
         )

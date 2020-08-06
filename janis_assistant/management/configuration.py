@@ -442,7 +442,7 @@ class JanisConfiguration(NoAttributeErrors):
     @staticmethod
     def get_value_for_key(d, key, default):
         val = d.get(key)
-        if not val:
+        if val is None:
             return default.get(key) if default else None
 
         Logger.log(f"Got value '{val}' for key '{key}'")

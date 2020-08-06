@@ -32,7 +32,6 @@ setup(
         "path",
         "python-dateutil",
         "progressbar2",
-        "sqlitedict",
         "tabulate",
         "ruamel.yaml >= 0.12.4, <= 0.16.5",
         "cwltool",

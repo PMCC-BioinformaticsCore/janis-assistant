@@ -11,26 +11,19 @@ Run / monitor separation:
     We'll add a try:catch: to the whole monitor to ensure that we don't leave
     any processing lying around.
 
-
-
-
-
-
 """
+
 import os
-import sys
 import queue
+import sys
 import time
+from shutil import rmtree
 from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any, Tuple
 
-from janis_assistant.data.models.joblabel import JobLabelModel
-from janis_assistant.utils.getuser import lookup_username
 from janis_core import (
-    InputSelector,
     Logger,
-    Workflow,
     File,
     Array,
     LogLevel,
@@ -38,14 +31,16 @@ from janis_core import (
     Tool,
     WorkflowBase,
 )
+from janis_core.operators.operator import Operator
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
-from janis_core.operators.operator import Operator
 from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
+from janis_assistant.data.models.joblabel import JobLabelModel
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.run import SubmissionModel, RunModel
+from janis_assistant.data.providers.workflowmetadataprovider import SubmissionDbMetadata
 from janis_assistant.engines import (
     get_ideal_specification_for_engine,
     Cromwell,
@@ -53,7 +48,6 @@ from janis_assistant.engines import (
     CromwellConfiguration,
     Engine,
 )
-from janis_assistant.environments.environment import Environment
 from janis_assistant.management.configuration import (
     JanisConfiguration,
     JanisDatabaseConfigurationHelper,
@@ -77,6 +71,7 @@ from janis_assistant.utils import (
 )
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.getuser import lookup_username
 from janis_assistant.validation import ValidationRequirements
 
 
@@ -92,12 +87,13 @@ class WorkflowManager:
         configuration = "configuration"
         database = "database"
         mysql = "configuration/mysql"
+        semaphore = "semaphore"
 
     def __init__(
         self,
         execution_dir: str,
         submission_id: str,
-        environment: Environment = None,
+        engine: Engine = None,
         readonly=False,
     ):
         # do stuff here
@@ -106,22 +102,26 @@ class WorkflowManager:
         self._failed_engine_attempts = None
 
         # hydrate from here if required
-        self._engine_wid = None
+        self._engine_id = None
         self.execution_dir = fully_qualify_filename(execution_dir)
         self.create_dir_structure(self.execution_dir)
 
         self.database = WorkflowDbManager(
             submission_id, self.get_task_path_safe(), readonly=readonly
         )
-        self.environment = environment
         self.dbcontainer: MySql = None
         self.main_queue = queue.Queue()
 
         self._prev_status = None
-        self._engine: Optional[Engine] = None
+        self.engine: Optional[Engine] = engine
 
-        if not self._engine_wid:
-            self._engine_wid = self.get_engine_wid()
+        # mfranklin: 2020-08-04
+        # I removed the ability for you to specify non-local
+        #  fileschemes that janis could copy from / to.
+        self.filescheme = LocalFileScheme()
+
+        if not self._engine_id:
+            self._engine_id = self.get_engine_id()
 
     @staticmethod
     def has(
@@ -129,9 +129,10 @@ class WorkflowManager:
         submission_id: str,
         status: Optional[TaskStatus],
         name: Optional[str] = None,
-        environment: Optional[str] = None,
     ):
-        metadb = WorkflowDbManager.get_workflow_metadatadb(outdir, submission_id)
+        metadb: SubmissionDbMetadata = WorkflowDbManager.get_workflow_metadatadb(
+            outdir, submission_id
+        ).metadata
 
         has = True
         if has and status:
@@ -150,7 +151,7 @@ class WorkflowManager:
         output_dir: str,
         execution_dir: str,
         tool: Tool,
-        environment: Environment,
+        engine: Engine,
         hints: Dict[str, str],
         validation_requirements: Optional[ValidationRequirements],
         batchrun_requirements: Optional[BatchRunRequirements],
@@ -174,12 +175,8 @@ class WorkflowManager:
 
         # output directory has been created
 
-        environment.identifier += "_" + submission_id
-
         tm = WorkflowManager(
-            submission_id=submission_id,
-            execution_dir=execution_dir,
-            environment=environment,
+            submission_id=submission_id, execution_dir=execution_dir, engine=engine,
         )
 
         tm.database.submissions.insert_or_update_many(
@@ -192,31 +189,30 @@ class WorkflowManager:
                     labels=[],
                     tags=[],
                     timestamp=DateUtil.now(),
-                    engine_type=environment.engine.id(),
+                    engine_type=engine.id(),
                     engine_url=None,
                 )
             ]
         )
 
-        tm.database.submission_metadata.submission_id = submission_id
-        tm.database.submission_metadata.engine = environment.engine
-        tm.database.submission_metadata.filescheme = environment.filescheme
-        tm.database.submission_metadata.environment = environment.id()
-        tm.database.submission_metadata.name = tool.id()
-        tm.database.submission_metadata.start = DateUtil.now()
-        tm.database.submission_metadata.executiondir = None
-        tm.database.submission_metadata.keepexecutiondir = keep_intermediate_files
-        tm.database.submission_metadata.configuration = jc
-        tm.database.submission_metadata.dbconfig = dbconfig
+        tm.database.submission_metadata.set_metadata(
+            SubmissionDbMetadata(
+                submission_id=submission_id,
+                run_id=RunModel.DEFAULT_ID,
+                engine=engine,
+                name=tool.id(),
+                start=DateUtil.now(),
+                keep_execution_dir=keep_intermediate_files,
+                configuration=jc,
+                db_config=dbconfig,
+                # This is the only time we're allowed to skip the tm.set_status
+                # This is a temporary stop gap until "notification on status" is implemented.
+                # tm.set_status(TaskStatus.PROCESSING)
+                status=TaskStatus.PROCESSING,
+            )
+        )
 
-        # This is the only time we're allowed to skip the tm.set_status
-        # This is a temporary stop gap until "notification on status" is implemented.
-        # tm.set_status(TaskStatus.PROCESSING)
-        tm.database.submission_metadata.status = TaskStatus.PROCESSING
-
-        tm.database.commit()
-
-        spec = get_ideal_specification_for_engine(environment.engine)
+        spec = get_ideal_specification_for_engine(engine)
         spec_translator = get_translator(spec)
         tool_evaluate = tm.prepare_and_output_workflow_to_evaluate_if_required(
             run_id=RunModel.DEFAULT_ID,
@@ -239,16 +235,17 @@ class WorkflowManager:
             WorkflowManager.WorkflowManagerPath.workflow
         )
 
-        tm.database.submission_metadata.submission_workflow = os.path.join(
+        tm.database.submission_metadata.metadata.submission_workflow = os.path.join(
             outdir_workflow, spec_translator.filename(tool_evaluate)
         )
-        tm.database.submission_metadata.submission_inputs = os.path.join(
+        tm.database.submission_metadata.metadata.submission_inputs = os.path.join(
             outdir_workflow, spec_translator.inputs_filename(tool_evaluate)
         )
-        tm.database.submission_metadata.submission_resources = os.path.join(
+        tm.database.submission_metadata.metadata.submission_resources = os.path.join(
             outdir_workflow, spec_translator.dependencies_filename(tool_evaluate)
         )
 
+        tm.database.submission_metadata.save_changes()
         tm.database.commit()
 
         if not dryrun:
@@ -272,16 +269,18 @@ class WorkflowManager:
 
     def start_or_submit(self, run_in_background, watch=False):
         # check container environment is loaded
-        metadb = self.database.submission_metadata
+        metadb = self.database.submission_metadata.metadata
 
         jc = metadb.configuration
         metadb.containertype = jc.container.__name__
         metadb.containerversion = jc.container.test_available_by_getting_version()
 
+        self.database.submission_metadata.save_changes()
+
         # this happens for all workflows no matter what type
         self.set_status(TaskStatus.QUEUED)
 
-        wid = metadb.submission_id
+        wid = metadb._submission_id
 
         # resubmit the engine
         if not run_in_background:
@@ -327,18 +326,13 @@ class WorkflowManager:
 
         db = WorkflowDbManager.get_workflow_metadatadb(
             path, submission_id, readonly=readonly
-        )
+        ).metadata
 
         if not submission_id:
             submission_id = db.submission_id  # .get_meta_info(InfoKeys.taskId)
 
         if not submission_id:
             raise Exception(f"Couldn't find workflow with id '{submission_id}'")
-
-        envid = db.environment  # .get_meta_info(InfoKeys.environment)
-        eng = db.engine
-        fs = db.filescheme
-        env = Environment(envid, eng, fs)
 
         try:
             JanisConfiguration._managed = db.configuration
@@ -349,12 +343,12 @@ class WorkflowManager:
             )
             JanisConfiguration.initial_configuration(None)
 
-        db.close()
+        # db.close()
 
         tm = WorkflowManager(
             execution_dir=path,
             submission_id=submission_id,
-            environment=env,
+            engine=db.engine,
             readonly=readonly,
         )
         return tm
@@ -456,7 +450,12 @@ class WorkflowManager:
                 meta, is_finished = self.get_meta_call()
                 if meta:
                     if has_printed or not is_finished:
-                        call("clear")
+                        try:
+                            call("clear")
+                        except Exception as e:
+                            Logger.log(
+                                f"We got a subprocess error when clearing the screen: {repr(e)}"
+                            )
                     print(meta.format(**kwargs))
                     has_printed = True
 
@@ -506,7 +505,7 @@ class WorkflowManager:
                 Logger.info("Exiting")
 
     def process_completed_task(self):
-        status: TaskStatus = self.database.submission_metadata.status
+        status: TaskStatus = self.database.submission_metadata.metadata.status
         Logger.info(f"Task has finished with status: {status}")
         try:
             self.save_metadata_if_required()
@@ -520,10 +519,10 @@ class WorkflowManager:
         self.copy_logs_if_required()
         self.copy_outputs_if_required()
 
-        if self.database.submission_metadata.status == TaskStatus.COMPLETED:
+        if status == TaskStatus.COMPLETED:
             self.remove_exec_dir_if_required()
 
-        self.get_engine().stop_engine()
+        self.engine.stop_engine()
         if self.dbcontainer:
             self.dbcontainer.stop()
 
@@ -546,7 +545,11 @@ class WorkflowManager:
 
         # get a logfile and start doing stuff
         rc = 0
+
         try:
+            # remove semaphores
+            self.remove_semaphores()
+
             logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
 
             Logger.set_write_location(os.path.join(logsdir, "janis-monitor.log"))
@@ -556,12 +559,12 @@ class WorkflowManager:
 
             self.start_engine_if_required()
 
-            if self.database.submission_metadata.please_abort:
+            if os.path.exists(self.get_abort_semaphore_path()):
                 Logger.info("Detected please_abort request, aborting")
                 return self.abort()
 
-            if self.database.submission_metadata.please_pause:
-                Logger.info("Detecting please_pause request, exiting")
+            if os.path.exists(self.get_pause_semaphore_path()):
+                Logger.info("Detected please_pause request, exiting")
                 return self.stop_computation()
 
             # check status and see if we can resume
@@ -576,14 +579,15 @@ class WorkflowManager:
 
                 self.main_queue.put(lambda: self.save_metadata(meta)),
 
-            self.get_engine().add_callback(self.get_engine_wid(), callback=callb)
+            self.engine.add_callback(self.get_engine_id(), callback=callb)
 
             # add extra check for engine on resume
-            meta = self._engine.metadata(self.get_engine_wid())
+            meta = self.engine.metadata(self.get_engine_id())
             if meta and meta.status in TaskStatus.final_states():
                 self.save_metadata(meta)
                 return self.process_completed_task()
 
+            last_semaphore_check = None
             while True:
                 try:
                     cb = self.main_queue.get(False)
@@ -592,15 +596,23 @@ class WorkflowManager:
                     if res is True:
                         break
                 except queue.Empty:
-
-                    if self.database.submission_metadata.please_abort:
-                        self.abort()
-                        return
-                    if self.database.submission_metadata.please_pause:
-                        self.database.submission_metadata.please_pause = False
-                        return self.stop_computation()
+                    if (
+                        last_semaphore_check is None
+                        or (DateUtil.now() - last_semaphore_check).total_seconds() > 2
+                    ):
+                        Logger.log("Checking semaphores")
+                        last_semaphore_check = DateUtil.now()
+                        if os.path.exists(self.get_abort_semaphore_path()):
+                            self.abort()
+                            break
+                        if os.path.exists(self.get_pause_semaphore_path()):
+                            self.stop_computation()
+                            break
 
                     continue
+                except Exception as e:
+                    Logger.warn("Something has gone TERRIBLY wrong" + repr(e))
+                    raise e
 
             self.process_completed_task()
             return self
@@ -616,10 +628,12 @@ class WorkflowManager:
             try:
                 rc = TaskStatus.FAILED.get_exit_code()
                 self.set_status(TaskStatus.FAILED)
-                self.database.submission_metadata.error = traceback.format_exc()
+                self.database.submission_metadata.metadata.error = (
+                    traceback.format_exc()
+                )
                 self.database.commit()
 
-                self.get_engine().stop_engine()
+                self.engine.stop_engine()
                 if self.dbcontainer:
                     self.dbcontainer.stop()
 
@@ -638,28 +652,30 @@ class WorkflowManager:
             Logger.critical(
                 f"Exiting with rc={rc} janis task '{self.submission_id}' as an issue occurred when running the workflow"
             )
+            sys.exit(rc)
 
-    def mark_paused(self):
+    @staticmethod
+    def mark_paused(execution_dir):
         try:
-            self.database.submission_metadata.please_pause = True
+            path = os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    execution_dir, WorkflowManager.WorkflowManagerPath.semaphore
+                ),
+                "abort",
+            )
+            with open(path, "w+") as f:
+                f.write(f"Requesting pause {DateUtil.now()}")
             Logger.info(
                 "Marked workflow as paused, this may take some time properly pause"
             )
-            self.database.submission_metadata.commit()
             return True
         except Exception as e:
             Logger.critical("Couldn't mark paused: " + str(e))
             return False
 
-    def get_engine(self):
-        if not self._engine:
-            self._engine = self.environment.engine
-        return self._engine
-
     def start_engine_if_required(self):
         # engine should be loaded from the DB
-        engine = self.get_engine()
-        self.environment.engine = engine
+        engine = self.engine
 
         is_allegedly_started = engine.test_connection()
 
@@ -674,7 +690,7 @@ class WorkflowManager:
         if not engine.config:
             Logger.info("Skipping start database as Janis is not managing the config")
         else:
-            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.dbconfig
+            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
             dbtype = dbconfig.which_db_to_use()
             if dbtype == dbconfig.DatabaseTypeToUse.existing:
                 engine.config.database = dbconfig.get_config_for_existing_config()
@@ -700,7 +716,7 @@ class WorkflowManager:
         if engine_is_started is False or engine_is_started is None:
             raise Exception(f"The engine '{engine.id()}' was not be started, returning")
         # Write the new engine details back into the database (for like PID, host and is_started)
-        self.database.submission_metadata.engine = engine
+        self.database.submission_metadata.metadata.engine = engine
 
     def start_mysql_and_prepare_cromwell_config(self):
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
@@ -750,7 +766,7 @@ class WorkflowManager:
 
         containers_to_lookup = list(reverse_lookup.keys())
         digest_map = get_digests_from_containers(containers_to_lookup)
-        Logger.info(f"Found {len(digest_map)} digests.")
+        Logger.debug(f"Found {len(digest_map)} docker digests.")
         Logger.log("Found the following container-to-tool lookup table:")
         Logger.log(CwlTranslator.stringify_translated_inputs(reverse_lookup))
 
@@ -805,8 +821,6 @@ class WorkflowManager:
             allow_empty_container=allow_empty_container,
             container_override=container_override,
         )
-
-        Logger.info(f"Saved workflow with id '{tool.id()}' to '{outdir_workflow}'")
 
         modifiers = []
         if validation:
@@ -950,20 +964,20 @@ class WorkflowManager:
                 f"Workflow '{self.submission_id}' has submitted, skipping"
             )
 
-        fn_wf = self.database.submission_metadata.submission_workflow
-        fn_inp = self.database.submission_metadata.submission_inputs
-        fn_deps = self.database.submission_metadata.submission_resources
+        fn_wf = self.database.submission_metadata.metadata.submission_workflow
+        fn_inp = self.database.submission_metadata.metadata.submission_inputs
+        fn_deps = self.database.submission_metadata.metadata.submission_resources
 
-        engine = self.get_engine()
+        engine = self.engine
 
         Logger.debug(f"Submitting task '{self.submission_id}' to '{engine.id()}'")
-        self._engine_wid = engine.start_from_paths(
+        self._engine_id = engine.start_from_paths(
             self.submission_id, fn_wf, fn_inp, fn_deps
         )
-        self.database.submission_metadata.engine_wid = self._engine_wid
+        self.database.submission_metadata.metadata.engine_id = self._engine_id
 
         Logger.info(
-            f"Submitted workflow ({self.submission_id}), got engine id = '{self.get_engine_wid()}'"
+            f"Submitted workflow ({self.submission_id}), got engine id = '{self.get_engine_id()}'"
         )
         self.database.progressDB.set(ProgressKeys.submitWorkflow)
 
@@ -973,20 +987,20 @@ class WorkflowManager:
                 f"Workflow '{self.submission_id}' has saved metadata, skipping"
             )
 
-        engine = self.get_engine()
+        engine = self.engine
 
         metadir = self.get_path_for_component(self.WorkflowManagerPath.metadata)
         if isinstance(engine, Cromwell):
             import json
 
-            meta = engine.raw_metadata(self.get_engine_wid())
+            meta = engine.raw_metadata(self.get_engine_id())
             nattempts = 5
             for at in range(nattempts):
                 if meta is None:
                     Logger.warn(
                         f"Engine '{engine.id()}' didn't return metadata for Janis to persist, will try {nattempts - at - 1} more times"
                     )
-                    meta = engine.raw_metadata(self.get_engine_wid())
+                    meta = engine.raw_metadata(self.get_engine_id())
                 else:
                     break
             if meta is None:
@@ -1017,13 +1031,13 @@ class WorkflowManager:
                 f"Workflow '{self.submission_id}' has copied outputs, skipping"
             )
 
-        if self.database.submission_metadata.status != TaskStatus.COMPLETED:
+        if self.database.submission_metadata.metadata.status != TaskStatus.COMPLETED:
             return Logger.warn(
-                f"Skipping copying outputs as the workflow {self.database.submission_metadata.status}"
+                f"Skipping copying outputs as the workflow {self.database.submission_metadata.metadata.status}"
             )
 
         wf_outputs: List[WorkflowOutputModel] = self.database.outputsDB.get()
-        engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
+        engine_outputs = self.engine.outputs_task(self.get_engine_id())
 
         submission = self.database.submissions.get_by_id(
             self.submission_id, allow_operational_errors=False
@@ -1037,19 +1051,18 @@ class WorkflowManager:
         for at in range(nattempts):
             if engine_outputs is None:
                 Logger.warn(
-                    f"Engine '{self.get_engine().id()}' didn't return outputs for Janis to copy, will try {nattempts - at - 1} more times"
+                    f"Engine '{self.engine.id()}' didn't return outputs for Janis to copy, will try {nattempts - at - 1} more times"
                 )
-                engine_outputs = self.get_engine().outputs_task(self.get_engine_wid())
+                engine_outputs = self.engine.outputs_task(self.get_engine_id())
             else:
                 break
 
         if engine_outputs is None or len(engine_outputs) == 0:
             return Logger.critical(
-                f"Engine '{self.get_engine().id()}' didn't return outputs for Janis to copy, skipping"
+                f"Engine '{self.engine.id()}' didn't return outputs for Janis to copy, skipping"
             )
 
         eoutkeys = engine_outputs.keys()
-        fs = self.environment.filescheme
 
         for out in wf_outputs:
             eout = engine_outputs.get(out.id_)
@@ -1060,7 +1073,7 @@ class WorkflowManager:
                 )
                 continue
             originalfile, newfilepath = self.copy_output(
-                fs=fs,
+                fs=self.filescheme,
                 output_dir=submission.output_dir,
                 outputid=out.id_,
                 prefix=out.output_name,
@@ -1234,9 +1247,11 @@ class WorkflowManager:
         return [original_filepath, newoutputfilepath]
 
     def remove_exec_dir_if_required(self):
-        status = self.database.submission_metadata.status
+        status = self.database.submission_metadata.metadata.status
 
-        keep_intermediate = self.database.submission_metadata.keepexecutiondir
+        keep_intermediate = (
+            self.database.submission_metadata.metadata.keep_execution_dir
+        )
         if (
             not keep_intermediate
             and status is not None
@@ -1245,23 +1260,23 @@ class WorkflowManager:
             execdir = self.get_path_for_component(self.WorkflowManagerPath.execution)
             if execdir and execdir != "None":
                 Logger.info("Cleaning up execution directory")
-                self.environment.filescheme.rm_dir(execdir)
+                self.filescheme.rm_dir(execdir)
                 self.database.progressDB.set(ProgressKeys.cleanedUp)
 
     def log_dbtaskinfo(self):
         import tabulate
 
         # log all the metadata we have:
-        results = self.database.submission_metadata.kvdb.items()
+        results = self.database.submission_metadata.metadata.get_encoded_rows()
         header = ("Key", "Value")
         res = tabulate.tabulate([header, ("wid", self.submission_id), *results])
         print(res)
         return res
 
-    def get_engine_wid(self):
-        if not self._engine_wid:
-            self._engine_wid = self.database.submission_metadata.engine_wid
-        return self._engine_wid
+    def get_engine_id(self):
+        if not self._engine_id:
+            self._engine_id = self.database.submission_metadata.metadata.engine_id
+        return self._engine_id
 
     def get_task_path(self):
         return self.execution_dir
@@ -1280,6 +1295,16 @@ class WorkflowManager:
         if not os.path.exists(val):
             os.makedirs(val, exist_ok=True)
         return val
+
+    def get_pause_semaphore_path(self):
+        return os.path.join(
+            self.get_path_for_component(self.WorkflowManagerPath.semaphore), "pause"
+        )
+
+    def get_abort_semaphore_path(self):
+        return os.path.join(
+            self.get_path_for_component(self.WorkflowManagerPath.semaphore), "abort"
+        )
 
     @staticmethod
     def create_dir_structure(path):
@@ -1306,25 +1331,23 @@ class WorkflowManager:
             on_base = os.path.join(od, base)
 
             if j.stdout and os.path.exists(j.stdout):
-                self.environment.filescheme.cp_from(
-                    j.stdout, on_base + "_stdout", force=True
-                )
+                self.filescheme.cp_from(j.stdout, on_base + "_stdout", force=True)
 
             if j.stderr and os.path.exists(j.stderr):
-                self.environment.filescheme.cp_from(
-                    j.stderr, on_base + "_stderr", force=True
-                )
+                self.filescheme.cp_from(j.stderr, on_base + "_stderr", force=True)
 
     def set_status(self, status: TaskStatus, force_notification=False):
-        prev = self.database.submission_metadata.status
+        prev = self.database.submission_metadata.metadata.status
 
         if prev == status and not force_notification:
             return
 
         Logger.info("Status changed to: " + str(status))
         self.database.runevents.update(run_id=RunModel.DEFAULT_ID, status=status)
-        self.database.submission_metadata.status = status
+        self.database.submission_metadata.metadata.status = status
+        self.database.submission_metadata.save_changes()
         self.database.commit()
+
         # send an email here
         meta = self.database.get_metadata()
         for idx in range(1, 6):
@@ -1351,30 +1374,32 @@ class WorkflowManager:
     @staticmethod
     def mark_aborted(execution_dir, wid: Optional[str]) -> bool:
         try:
-            if not wid:
-                db = WorkflowManager.from_path_get_latest_manager(
-                    execution_dir, readonly=False
-                ).database.submission_metadata
-            else:
-                db = WorkflowDbManager.get_workflow_metadatadb(
-                    execution_dir, wid, readonly=False
-                )
-            db.please_abort = True
-            db.kvdb.commit()
-            db.close()
-            Logger.info("Marked workflow as aborted, this may take some time full exit")
+            path = os.path.join(
+                WorkflowManager.get_path_for_component_and_dir(
+                    execution_dir, WorkflowManager.WorkflowManagerPath.semaphore
+                ),
+                "abort",
+            )
+            with open(path, "w+") as f:
+                f.write(f"Requesting abort {DateUtil.now()}")
             return True
         except Exception as e:
             Logger.critical("Couldn't mark aborted: " + str(e))
             return False
 
+    def remove_semaphores(self):
+        path = self.get_path_for_component(self.WorkflowManagerPath.semaphore)
+        if os.path.exists(path):
+            rmtree(path)
+
     def abort(self) -> bool:
         self.set_status(TaskStatus.ABORTED, force_notification=True)
         status = False
 
-        engine = self.get_engine()
+        engine = self.engine
         try:
-            status = bool(engine.terminate_task(self.get_engine_wid()))
+            status = bool(engine.terminate_task(self.get_engine_id()))
+            self.remove_semaphores()
         except Exception as e:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:
@@ -1391,12 +1416,15 @@ class WorkflowManager:
             self.set_status(TaskStatus.SUSPENDED)
             # reset pause flag
             self.database.commit()
+            self.database.submission_metadata.save_changes()
 
-            self.get_engine().stop_engine()
+            self.engine.stop_engine()
             if self.dbcontainer:
                 self.dbcontainer.stop()
 
             self.database.close()
+
+            self.remove_semaphores()
 
         except Exception as e:
             Logger.critical(

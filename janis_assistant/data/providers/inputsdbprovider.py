@@ -22,10 +22,11 @@ class InputDbProvider(DbProviderBase[WorkflowInputModel]):
     #     )
     #     """
 
-    def __init__(self, db: Connection, submission_id: str):
+    def __init__(self, db: Connection, readonly: bool, submission_id: str):
         super().__init__(
             base_type=WorkflowInputModel,
             db=db,
+            readonly=readonly,
             tablename="inputs",
             scopes={"submission_id": submission_id},
         )

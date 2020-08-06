@@ -12,13 +12,22 @@ from janis_assistant.data.dbproviderbase import DbProviderBase
 class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
     CURRENT_SCHEMA_VERSION = 2
 
-    def __init__(self, db):
+    def __init__(self, db, readonly):
         super().__init__(
-            base_type=SubmissionModel, db=db, tablename="submissions", scopes={}
+            base_type=SubmissionModel,
+            db=db,
+            readonly=readonly,
+            tablename="submissions",
+            scopes={},
         )
 
-    def get_by_id(self, submission_id, allow_operational_errors=True) -> Optional[SubmissionModel]:
-        s = self.get(where=("id = ?", [submission_id]), allow_operational_errors=allow_operational_errors)
+    def get_by_id(
+        self, submission_id, allow_operational_errors=True
+    ) -> Optional[SubmissionModel]:
+        s = self.get(
+            where=("id = ?", [submission_id]),
+            allow_operational_errors=allow_operational_errors,
+        )
         if s is None:
             return None
         if len(s) != 1:
@@ -29,7 +38,7 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
         return s[0]
 
     def get_existing_ids(self) -> Set[str]:
-        query = f"SELECT id FROM {self.tablename} ORDER BY timestamp"
+        query = f"SELECT id FROM {self._tablename} ORDER BY timestamp"
         with self.with_cursor() as cursor:
             cursor.execute(query)
             rows = cursor.fetchall()
@@ -41,7 +50,7 @@ class SubmissionDbProvider(DbProviderBase[SubmissionModel]):
     def get_latest(self) -> str:
         with self.with_cursor() as cursor:
             cursor.execute(
-                f"SELECT id FROM {self.tablename} ORDER BY timestamp DESC LIMIT 1"
+                f"SELECT id FROM {self._tablename} ORDER BY timestamp DESC LIMIT 1"
             )
             latest = cursor.fetchone()[0]
 

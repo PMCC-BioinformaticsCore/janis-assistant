@@ -50,8 +50,14 @@ class TaskRow(DatabaseObject):
 class TasksDbProvider(DbProviderBase):
     table_name = "tasks"
 
-    def __init__(self, connection):
-        super().__init__(TaskRow, connection, TasksDbProvider.table_name, {})
+    def __init__(self, connection, readonly):
+        super().__init__(
+            TaskRow,
+            db=connection,
+            readonly=readonly,
+            tablename=TasksDbProvider.table_name,
+            scopes={},
+        )
 
     def get_by_id(self, id_) -> Optional[TaskRow]:
         rows = self.get(where=("id = ?", [id_]))

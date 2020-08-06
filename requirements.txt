@@ -5,5 +5,4 @@ black
 pre-commit
 requests
 python-dateutil
-sqlitedict
 tabulate

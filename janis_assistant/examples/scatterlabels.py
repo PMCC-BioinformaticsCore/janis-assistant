@@ -19,4 +19,5 @@ w.step(
 
 w.output("out", source=w.print, extension=".csv")
 
-w.translate("cwl")
+if __name__ == "__main__":
+    w.translate("cwl")

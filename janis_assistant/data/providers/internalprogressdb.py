@@ -42,9 +42,13 @@ class InternalProgressDb(DbProviderBase):
         )
         """
 
-    def __init__(self, db, submission_id):
+    def __init__(self, db, readonly, submission_id):
         super().__init__(
-            None, db, tablename="progress", scopes={"submission_id": submission_id}
+            None,
+            db,
+            readonly=readonly,
+            tablename="progress",
+            scopes={"submission_id": submission_id},
         )
         self.submission_id = submission_id
 

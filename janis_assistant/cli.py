@@ -681,6 +681,8 @@ def check_logger_args(args):
         level = LogLevel.from_str(args.logLevel)
 
     Logger.set_console_level(level)
+    if level > LogLevel.DEBUG:
+        Logger.set_write_level(level)
 
 
 def add_init_args(args):
@@ -952,15 +954,6 @@ def do_inputs(args):
             out.write(str(outs))
     else:
         print(outs, file=sys.stdout)
-
-
-def do_environment(args):
-    method = args.method
-
-    if method == "list":
-        return print(", ".join(ConfigManager.manager().environmentDB.get_env_ids()))
-
-    raise NotImplementedError(f"No implementation for '{method}' yet")
 
 
 def do_query(args):

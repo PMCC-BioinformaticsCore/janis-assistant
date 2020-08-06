@@ -66,7 +66,18 @@ class Engine(Archivable, ABC):
     def metadata(self, identifier) -> RunModel:
         pass
 
+    keys_to_ignore = {"progress_callbacks"}
+
+    def __getstate__(self):
+        d = super().__getstate__().copy()
+        for k in self.keys_to_ignore:
+            if k in d:
+                del d[k]
+
+        return d
+
     def __setstate__(self, state):
         super().__setstate__(state)
         # Don't reopen as we can't reconnect to the Cromwell instance anyway
         self._logfp = None  # open(self.logfile, "a+")
+        self.progress_callbacks = {}

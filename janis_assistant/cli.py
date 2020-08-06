@@ -681,6 +681,8 @@ def check_logger_args(args):
         level = LogLevel.from_str(args.logLevel)
 
     Logger.set_console_level(level)
+    if level > LogLevel.DEBUG:
+        Logger.set_write_level(level)
 
 
 def add_init_args(args):

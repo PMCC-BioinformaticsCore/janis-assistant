@@ -131,6 +131,7 @@ class JanisConfiguration(NoAttributeErrors):
             UseManagedMySqlInstance = "should_manage_mysql"
             UseDatabase = "use_database"
             AdditionalParameters = "additional_params"  # string or list of strings
+            PollingInterval = "polling_interval"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -145,6 +146,10 @@ class JanisConfiguration(NoAttributeErrors):
             self.url = JanisConfiguration.get_value_for_key(d, self.Keys.Url, default)
             self.memory = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Memory, default
+            )
+
+            self.polling_interval = JanisConfiguration.get_value_for_key(
+                d, self.Keys.PollingInterval, default
             )
 
             self.call_caching_method = JanisConfiguration.get_value_for_key(

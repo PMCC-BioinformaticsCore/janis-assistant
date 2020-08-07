@@ -67,6 +67,7 @@ class Cromwell(Engine):
         config: CromwellConfiguration = None,
         config_path=None,
         execution_dir: str = None,
+        polling_interval: Optional[int] = None,
     ):
 
         super().__init__(
@@ -98,6 +99,16 @@ class Cromwell(Engine):
         # Last contacted is used to determine
         self.last_contacted = None
         self.timeout = 10  # minutes
+        if polling_interval is not None:
+            polling_interval = int(polling_interval)
+            if polling_interval < 3:
+                Logger.warn(
+                    f"The polling interval for Cromwell was {polling_interval} seconds, but Janis "
+                    f"requires > 3 seconds to ensure metadata is processed correctly"
+                )
+                polling_interval = None
+
+        self.polling_interval = polling_interval
         self._start_time = None
 
         self.connectionerrorcount = 0
@@ -170,6 +181,8 @@ class Cromwell(Engine):
         """
         Get poll interval in SECONDS
         """
+        if self.polling_interval is not None:
+            return self.polling_interval
 
         max_poll = 60  # seconds
         min_poll = 5  # seconds

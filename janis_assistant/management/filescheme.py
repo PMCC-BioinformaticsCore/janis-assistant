@@ -166,12 +166,12 @@ class LocalFileScheme(FileScheme):
                 s, d = to_copy.pop(0)
 
                 if os.path.exists(d) and force:
-                    Logger.info(f"Destination exists, overwriting '{d}'")
+                    Logger.debug(f"Destination exists, overwriting '{d}'")
                     if os.path.isdir(d):
                         rmtree(d)
                     else:
                         os.remove(d)
-                Logger.info(f"Hard linking {s} → {d}")
+                Logger.log(f"Hard linking {s} → {d}")
 
                 if os.path.isdir(s):
                     os.makedirs(d, exist_ok=True)
@@ -188,7 +188,7 @@ class LocalFileScheme(FileScheme):
                     Logger.warn("Couldn't link file: " + str(e))
 
                     # if this fails, it should error
-                    Logger.info(f"Copying file {s} → {d}")
+                    Logger.log(f"Copying file {s} → {d}")
                     copyfile(s, d)
         except Exception as e:
             Logger.critical(f"An unexpected error occurred when link/copying {s}: {e}")

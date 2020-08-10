@@ -56,19 +56,26 @@ class JanisConfiguration(NoAttributeErrors):
         return JanisConfiguration._managed
 
     @staticmethod
-    def initial_configuration(potential_paths: Optional[Union[str, List[str]]]):
+    def initial_configuration(
+        path: Optional[str], potential_paths: Optional[Union[str, List[str]]] = None
+    ):
 
         paths_to_check = []
-        if potential_paths:
-            if isinstance(potential_paths, list):
-                paths_to_check.extend(potential_paths)
-            else:
-                paths_to_check.append(potential_paths)
+        if path is not None:
+            if not os.path.exists(path):
+                raise Exception(f"Couldn't find Janis configuration at path: {path}")
+            paths_to_check = [path]
+        else:
+            if potential_paths:
+                if isinstance(potential_paths, list):
+                    paths_to_check.extend(potential_paths)
+                else:
+                    paths_to_check.append(potential_paths)
 
-        default_path = EnvVariables.config_path.resolve(False)
-        if default_path:
-            paths_to_check.append(default_path)
-        paths_to_check.append(EnvVariables.config_path.default())
+            default_path = EnvVariables.config_path.resolve(False)
+            if default_path:
+                paths_to_check.append(default_path)
+            paths_to_check.append(EnvVariables.config_path.default())
 
         for p in paths_to_check:
             if p:

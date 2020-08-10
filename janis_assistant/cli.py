@@ -812,7 +812,7 @@ def do_rm(args):
 
 
 def do_run(args):
-    jc = JanisConfiguration.initial_configuration(args.config)
+    jc = JanisConfiguration.initial_configuration(path=args.config)
 
     validation_reqs, batchrun_reqs = None, None
 
@@ -917,7 +917,7 @@ def do_spider(args):
 def do_inputs(args):
 
     if args.config or args.recipe:
-        JanisConfiguration.initial_configuration(args.config)
+        JanisConfiguration.initial_configuration(path=args.config,)
 
     quality_type = None
 

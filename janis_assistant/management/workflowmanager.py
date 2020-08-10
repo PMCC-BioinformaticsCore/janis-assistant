@@ -430,14 +430,15 @@ class WorkflowManager:
         else:
             self.poll_stored_metadata_with_clear(**kwargs)
 
-    def get_meta_call(self):
+    def get_meta_call(self) -> Tuple[Optional[SubmissionModel], bool]:
         meta = self.database.get_metadata()
         if meta is None:
             return None, False
 
         return (
             meta,
-            meta and all(m.status in TaskStatus.final_states() for m in meta.runs),
+            meta is not None
+            and all(m.status in TaskStatus.final_states() for m in meta.runs),
         )
 
     def poll_stored_metadata_with_clear(self, seconds=3, **kwargs):
@@ -446,18 +447,31 @@ class WorkflowManager:
 
             # We won't clear the screen if we haven't printed (first loop) and it's finished
             has_printed = False
+            last_updated = None
+            metadata_skips = 0
             while not is_finished:
                 meta, is_finished = self.get_meta_call()
                 if meta:
-                    if has_printed or not is_finished:
+                    lu = meta.runs[0].last_updated
+                    if (
+                        (lu > last_updated or metadata_skips > 50)
+                        and has_printed
+                        or not is_finished
+                    ):
+                        metadata_skips = 0
                         try:
                             call("clear")
                         except Exception as e:
                             Logger.log(
                                 f"We got a subprocess error when clearing the screen: {repr(e)}"
                             )
-                    print(meta.format(**kwargs))
-                    has_printed = True
+                        print(meta.format(**kwargs))
+                        has_printed = True
+                    else:
+                        Logger.log(
+                            f"No job status updates were find, we'll wait another {seconds} seconds"
+                        )
+                        metadata_skips += 1
 
                 if seconds < 0:
                     is_finished = True

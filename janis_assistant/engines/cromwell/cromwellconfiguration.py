@@ -384,7 +384,30 @@ hsqldb.script_format=3
             key_map = {"actor_factory": "actor-factory"}
 
             @classmethod
-            def slurm(cls, call_caching_method: str = None):
+            def slurm(
+                cls,
+                jobqueues,
+                jobemail,
+                afternotokaycatch: bool = True,
+                call_caching_method: str = None,
+            ):
+
+                afternotokaycommand = ""
+                if afternotokaycatch:
+                    afternotokaycommand = f" && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
+
+                emailextra = (
+                    f"--mail-user {jobemail} --mail-type END" if jobemail else ""
+                )
+
+                partitions = (
+                    ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
+                )
+
+                if partitions:
+                    partition_string = f'${{if defined(queue) then ("-p" + queue) else "-p {partitions}"}}'
+                else:
+                    partition_string = '${"-p" + queue}'
 
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
@@ -397,17 +420,22 @@ String? docker
 String? queue
 """.strip(),
                         submit=f"""
-    jobname='{CromwellConfiguration.JOBNAME_TRANSFORM}'
-    sbatch \\
-        -J $jobname \\
-        -D ${{cwd}} \\
-        -o ${{out}} \\
-        -e ${{err}} \\
-        -t 0:${{duration}} \\
-        ${{"-p " + queue}} \\
-        ${{"-n " + cpu}} \\
-        --mem=${{memory_mb}} \\
-        --wrap "/usr/bin/env ${{job_shell}} ${{script}}" """,
+jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
+JOBID=$(sbatch \\
+    --parsable \\
+    -J $jobname \\
+    -D ${{cwd}} \\
+    -o ${{cwd}}/execution/stdout \\
+    -e ${{cwd}}/execution/stderr \\
+    --mem=${{memory_mb}} \\
+    --cpus-per-task ${{select_first([cpu, 1])}} \\
+    {partition_string} \\
+    -t '0:${{duration}}' \\
+    {emailextra} \\
+    --wrap "/usr/bin/env ${{job_shell}} ${{script}}",
+    {afternotokaycommand} \\
+    && echo Submitted batch job $JOBID
+""",
                         kill="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*",
@@ -428,7 +456,12 @@ String? queue
                 afternotokaycatch: bool = True,
                 call_caching_method: str = None,
             ):
-                slurm = cls.slurm(call_caching_method=call_caching_method)
+                slurm = cls.slurm(
+                    jobemail=jobemail,
+                    jobqueues=jobqueues,
+                    afternotokaycatch=afternotokaycatch,
+                    call_caching_method=call_caching_method,
+                )
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
@@ -446,13 +479,6 @@ String? queue
                     f"--mail-user {jobemail} --mail-type END" if jobemail else ""
                 )
 
-                slurm.config.runtime_attributes = """\
-Int duration
-Int? cpu = 1
-Int memory_mb = 3500
-String? docker
-String? queue
-"""
                 # slurm.config.submit = None
                 slurm.config.submit_docker = f"""\
             {singularityloadinstructions or ''}

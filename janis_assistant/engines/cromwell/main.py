@@ -703,6 +703,7 @@ class Cromwell(Engine):
         try:
             r = request.urlopen(url)
             self.connectionerrorcount = 0
+            self.metadataerrorcount = 0
 
             self.last_contacted = datetime.now()
 
@@ -717,17 +718,27 @@ class Cromwell(Engine):
                 # Usually means Cromwell hasn't loaded properly yet
                 return None
 
+            er_message = "An unexpected error occurred: " + str(e)
             try:
                 body = e.read().decode()
                 jsonobj = json.loads(body) if body else {}
-                message = jsonobj.get(
-                    "message", "An unexpected error occurred: " + str(e)
-                )
-                Logger.warn("Response when getting Cromwell metadata: " + str(message))
+                message = jsonobj.get("message")
+                if message:
+                    er_message = f"Response when getting Cromwell metadata: {message}"
             except Exception as ee:
-                Logger.warn(str(e))
+                er_message = (
+                    f"An additional error occurred while trying to determine the reason"
+                    f" why Cromwell metadata failed (internal: {repr(ee)}): {repr(e)})"
+                )
             finally:
+                Logger.warn("Couldn't get Cromwell metadata: " + str(er_message))
+                self.metadataerrorcount += 1
+                if self.metadataerrorcount > 5:
+                    # we could check the status of the workflow, or we could just suspend it really
+                    # 5 consecutive errors
+                    raise e
                 return None
+
         except request.URLError as e:
             self.connectionerrorcount += 1
             if (
@@ -737,7 +748,7 @@ class Cromwell(Engine):
                     "last_updated_threshold"
                 )  # idk, pick a number
                 return None
-            if self.connectionerrorcount > 5:
+            if self.connectionerrorcount > 15:
                 raise e
             else:
                 Logger.warn("Error connecting to cromwell instance: " + str(e))

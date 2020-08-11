@@ -281,18 +281,19 @@ class Cromwell(Engine):
             self._process.stdout.readline, "b"
         ):  # replace '' with b'' for Python 3
 
-            line = None if not c else c.decode("utf-8").rstrip()
-
-            rc = self._process.poll()
-            if rc is not None:
-                critical_suffix = f"Last received message '{line}'. "
-                Logger.critical(
-                    f"Cromwell has exited with rc={rc}. {critical_suffix}The last lines of the logfile ({self.logfile}):"
-                )
-                Logger.critical(tail(self._logfp, 10))
-                return False
+            line = None
+            if c:
+                line = c.decode("utf-8").rstrip()
 
             if not line:
+                rc = self.process.poll()
+                if rc is not None:
+                    critical_suffix = f"Last received message '{line}'. "
+                    Logger.critical(
+                        f"Cromwell has exited with rc={rc}. {critical_suffix}The last lines of the logfile ({self.logfile}):"
+                    )
+                    Logger.critical(tail(self._logfp, 10))
+                    return False
                 continue
 
             if self._logfp and not self._logfp.closed:

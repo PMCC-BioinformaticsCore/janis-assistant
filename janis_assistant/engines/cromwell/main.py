@@ -500,8 +500,8 @@ class Cromwell(Engine):
         if fromenv and os.path.exists(fromenv):
             return fromenv
 
-        potentials = reversed(
-            sorted(glob(os.path.join(man.configdir + "cromwell-*.jar")))
+        potentials = list(
+            reversed(sorted(glob(os.path.join(man.configdir, "cromwell-*.jar"))))
         )
 
         valid_paths = [p for p in potentials if os.path.exists(p)]

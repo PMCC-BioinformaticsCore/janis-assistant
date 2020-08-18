@@ -286,7 +286,7 @@ class Cromwell(Engine):
                 line = c.decode("utf-8").rstrip()
 
             if not line:
-                rc = self.process.poll()
+                rc = self._process.poll()
                 if rc is not None:
                     critical_suffix = f"Last received message '{line}'. "
                     Logger.critical(
@@ -333,7 +333,7 @@ class Cromwell(Engine):
             "Cromwell exited with rc = {rc}, check the engine log for more information"
         )
         self.process_id = None
-        self.process = None
+        self._process = None
 
     def stop_engine(self):
         if self._logger:

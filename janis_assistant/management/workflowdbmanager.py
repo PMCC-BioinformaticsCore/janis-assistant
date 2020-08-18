@@ -189,6 +189,18 @@ class WorkflowDbManager:
             Logger.debug("Something happened when getting 'submission' for metadata")
             return
 
+        dbmeta = self.submission_metadata.metadata
+        name = dbmeta.name
+        status = dbmeta.status
+        error = dbmeta.error
+
+        if name:
+            submission.name = name
+        if status:
+            submission.status = status
+        if error:
+            submission.error = error
+
         jobs = self.jobsDB.get_all_mapped()
         if jobs is None:
             Logger.log(

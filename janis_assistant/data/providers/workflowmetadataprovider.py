@@ -25,6 +25,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
         submission_workflow=None,
         submission_inputs=None,
         submission_resources=None,
+        error=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -42,6 +43,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self.configuration = configuration
         self.db_config = db_config
         self.name = name
+        self.error = error
 
         self.submission_workflow = submission_workflow
         self.submission_inputs = submission_inputs

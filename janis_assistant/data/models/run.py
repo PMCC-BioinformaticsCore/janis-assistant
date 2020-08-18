@@ -168,6 +168,9 @@ class SubmissionModel(DatabaseObject):
         # metadata not populated directly by DB, but might be used for formatting
         engine_url: Optional[str] = None,
         runs: List[RunModel] = None,
+        name: Optional[str] = None,
+        status: Optional[TaskStatus] = None,
+        error: Optional[str] = None
         # From previous WorkflowModel, some data is now derived:
         #   runs:
         #       - Start / finish times
@@ -187,8 +190,13 @@ class SubmissionModel(DatabaseObject):
         # other things
         self.runs = runs or []
         self.engine_url = engine_url
+        self.name = name
+        self.status = status
+        self.error = error
 
     def get_names(self):
+        if self.name:
+            return self.name
         if not self.runs:
             return "N/A"
         return ", ".join(set(r.name for r in self.runs if r.name))
@@ -250,12 +258,19 @@ class SubmissionModel(DatabaseObject):
                 updated_text = "Just now"
             updated_text += f" ({last_updated.replace(microsecond=0).isoformat()})"
 
-        engine_ids, statuses, errors = "", "", ""
+        engine_ids, rstatuses, errors = "", "", []
+
+        if self.error:
+            errors.append(f"GLOBAL: {self.error}")
 
         if self.runs:
             engine_ids = ", ".join(r.engine_id for r in self.runs if r.engine_id)
-            statuses = ", ".join(str(r.status) for r in self.runs if r.status)
-            errors = ", ".join(r.error for r in self.runs if r.error)
+            errors.extend(r.error for r in self.runs if r.error)
+
+            rstatuses = ", ".join(str(r.status) for r in self.runs if r.status)
+
+        statuses = self.status if self.status else rstatuses
+        ers = "\n".join(errors)
 
         return f"""\
 SID:        {self.id_}
@@ -275,7 +290,7 @@ Jobs:
 {nl.join(j.format(tb, **kwargs) for j in sorted(self.runs, key=lambda j: j.start or DateUtil.now()))}       
 
 
-{("Error: " + errors) if errors else ''}
+{("Error: " + ers) if ers else ''}
     """.strip()
 
 

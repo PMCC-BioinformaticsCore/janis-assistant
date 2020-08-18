@@ -452,19 +452,27 @@ class WorkflowManager:
             while not is_finished:
                 meta, is_finished = self.get_meta_call()
                 if meta:
-                    lu = meta.runs[0].last_updated
-                    if (
-                        (lu > last_updated or metadata_skips > 50)
-                        and has_printed
-                        or not is_finished
+                    has_updated = (
+                        bool(meta.runs) and meta.runs[0].last_updated > last_updated
+                    )
+                    ignore_has_updated = metadata_skips > 20
+                    is_running = not is_finished
+                    if not has_printed or (
+                        is_running and (has_updated or ignore_has_updated)
                     ):
                         metadata_skips = 0
-                        try:
-                            call("clear")
-                        except Exception as e:
-                            Logger.log(
-                                f"We got a subprocess error when clearing the screen: {repr(e)}"
-                            )
+                        if meta.runs:
+                            last_updated = meta.runs[0].last_updated
+
+                        # only clear the screen if we haven't updated
+                        if has_printed or is_running:
+
+                            try:
+                                call("clear")
+                            except Exception as e:
+                                Logger.log(
+                                    f"We got a subprocess error when clearing the screen: {repr(e)}"
+                                )
                         print(meta.format(**kwargs))
                         has_printed = True
                     else:
@@ -644,7 +652,7 @@ class WorkflowManager:
 
             err = traceback.format_exc()
             Logger.critical(
-                f"A fatal error occurred while monitoring workflow = '{self.submission_id}', exiting: {e}: {err}"
+                f"A fatal error occurred while monitoring workflow = '{self.submission_id}', exiting: {e}:\n {err}"
             )
 
             try:

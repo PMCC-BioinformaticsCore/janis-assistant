@@ -181,14 +181,18 @@ class DbProviderBase(DbBase, Generic[T]):
         dbalias_map = {t.dbalias: t.name for t in self._base.keymap()}
 
         for job in jobs:
-            el_idkey = tuple([getattr(job, dbalias_map[_k]) for _k in idkeys_ordered])
+            el_idkey = tuple(
+                [str(getattr(job, dbalias_map[_k])) for _k in idkeys_ordered]
+            )
             if el_idkey in self._id_cache:
                 updates.append(job)
             else:
                 inserts.append(job)
 
         for job in inserts:
-            el_idkey = tuple([getattr(job, dbalias_map[_k]) for _k in idkeys_ordered])
+            el_idkey = tuple(
+                [str(getattr(job, dbalias_map[_k])) for _k in idkeys_ordered]
+            )
             self._id_cache.add(el_idkey)
 
         return updates, inserts

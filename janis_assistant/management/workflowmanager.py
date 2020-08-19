@@ -454,7 +454,8 @@ class WorkflowManager:
                 if meta:
 
                     has_updated = (
-                        bool(meta.runs)
+                        last_updated is not None
+                        and bool(meta.runs)
                         and meta.runs[0].last_updated is not None
                         and meta.runs[0].last_updated > last_updated
                     )

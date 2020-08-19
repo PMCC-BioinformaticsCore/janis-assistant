@@ -13,7 +13,7 @@ from textwrap import dedent
 from typing import Optional, Dict, Union, Type, List
 
 import janis_core as j
-from janis_core import InputQualityType, Tool, DynamicWorkflow
+from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel
 
 import janis_assistant.templates as janistemplates
 from janis_assistant.engines import Engine, get_engine_type, Cromwell, EngineType
@@ -448,6 +448,17 @@ def fromjanis(
         execution_dir=execution_dir,
         store_in_centraldb=not no_store,
     )
+
+    # set logger for submit
+    Logger.set_write_level(Logger.CONSOLE_LEVEL)
+    logpath = os.path.join(
+        WorkflowManager.get_path_for_component_and_dir(
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
+        ),
+        "janis-submit.log",
+    )
+    Logger.WRITE_LEVELS = {Logger.CONSOLE_LEVEL: (logpath, open(logpath, "a"))}
+    Logger.debug(f"Set submission logging to '{logpath}'")
     print(row.submission_id, file=sys.stdout)
 
     engine = engine or jc.engine
@@ -502,7 +513,7 @@ def fromjanis(
             check_files=check_files,
             **kwargs,
         )
-        Logger.log("Finished starting task task")
+        Logger.log("Finished starting task")
         return tm
 
     except KeyboardInterrupt:

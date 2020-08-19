@@ -390,11 +390,12 @@ hsqldb.script_format=3
                 jobemail,
                 afternotokaycatch: bool = True,
                 call_caching_method: str = None,
+                sbatch: str = "sbatch",
             ):
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = f" && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
+                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 emailextra = (
                     f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""
@@ -426,7 +427,7 @@ String? queue
 """,
                         submit=f"""
 jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-JOBID=$(sbatch \\
+JOBID=$({sbatch} \\
     --parsable \\
     --job-name $jobname \\
     --chdir ${{cwd}} \\
@@ -460,17 +461,19 @@ JOBID=$(sbatch \\
                 singularityloadinstructions: Optional[str] = None,
                 afternotokaycatch: bool = True,
                 call_caching_method: str = None,
+                sbatch: str = "sbatch",
             ):
                 slurm = cls.slurm(
                     jobemail=jobemail,
                     jobqueues=jobqueues,
                     afternotokaycatch=afternotokaycatch,
                     call_caching_method=call_caching_method,
+                    sbatch=sbatch,
                 )
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = f" && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
+                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 partition_string = ""
                 if jobqueues:
@@ -504,7 +507,7 @@ fi
 
 # Submit the script to SLURM
 jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-JOBID=$(sbatch \\
+JOBID=$({sbatch} \\
     --parsable \\
     --job-name $jobname \\
     --mem ${{memory_mb}} \\

@@ -32,6 +32,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         max_ram=None,
         can_run_in_foreground=True,
         run_in_background=False,
+        sbatch: str = "sbatch",
     ):
         """
         :param intermediate_execution_dir: A location where the execution should take place
@@ -44,6 +45,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         :param singularity_load_instructions: Ensure singularity with this command executed in shell
         :param max_cores: Maximum number of cores a task can request
         :param max_ram: Maximum amount of ram (GB) that a task can request
+        :param sbatch: Override the sbatch command
         """
 
         super().__init__(
@@ -60,6 +62,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         self.queues = queues or []
         self.send_job_emails = send_job_emails
         self.catch_slurm_errors = catch_slurm_errors
+        self.sbatch = sbatch or "sbatch"
 
     def cromwell(self, janis_configuration):
 
@@ -82,6 +85,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,
                         call_caching_method=janis_configuration.cromwell.call_caching_method,
+                        sbatch=self.sbatch,
                     )
                 },
             ),

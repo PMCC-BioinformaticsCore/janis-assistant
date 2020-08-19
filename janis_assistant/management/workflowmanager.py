@@ -452,8 +452,11 @@ class WorkflowManager:
             while not is_finished:
                 meta, is_finished = self.get_meta_call()
                 if meta:
+
                     has_updated = (
-                        bool(meta.runs) and meta.runs[0].last_updated > last_updated
+                        bool(meta.runs)
+                        and meta.runs[0].last_updated is not None
+                        and meta.runs[0].last_updated > last_updated
                     )
                     ignore_has_updated = metadata_skips > 20
                     is_running = not is_finished

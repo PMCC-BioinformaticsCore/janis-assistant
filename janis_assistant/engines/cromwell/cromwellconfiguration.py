@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Tuple, Any, Dict, Union, List
+from typing import Tuple, Any, Dict, Union, List, Optional
 
 from janis_assistant.utils import stringify_value_or_array
 from janis_core.utils.logger import Logger
@@ -347,9 +347,9 @@ hsqldb.script_format=3
                     self.concurrent_job_limit = concurrent_job_limit
                     self.filesystems = filesystems
 
-                    self.runtime_attributes = (runtime_attributes or "").replace(
-                        "\n", "\\n"
-                    )
+                    self.runtime_attributes = runtime_attributes or ""  #     .replace(
+                    #     "\n", "\\n"
+                    # )
 
                     self.submit = submit
                     self.submit_docker = submit_docker
@@ -397,17 +397,22 @@ hsqldb.script_format=3
                     afternotokaycommand = f" && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 emailextra = (
-                    f"--mail-user {jobemail} --mail-type END" if jobemail else ""
+                    f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""
                 )
 
-                partitions = (
-                    ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
-                )
-
-                if partitions:
-                    partition_string = f'${{if defined(queue) then ("-p" + queue) else "-p {partitions}"}}'
-                else:
-                    partition_string = '${"-p" + queue}'
+                partition_string = ""
+                if jobqueues:
+                    partitions = (
+                        ",".join(jobqueues)
+                        if isinstance(jobqueues, list)
+                        else jobqueues
+                    )
+                    if partitions:
+                        partition_string = (
+                            f'-p ${{select_first([queue, "{partitions}"])}}'
+                        )
+                    else:
+                        partition_string = '${"-p" + queue}'
 
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
@@ -418,19 +423,19 @@ Int? cpu = 1
 Int memory_mb = 3500
 String? docker
 String? queue
-""".strip(),
+""",
                         submit=f"""
 jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
 JOBID=$(sbatch \\
     --parsable \\
-    -J $jobname \\
-    -D ${{cwd}} \\
-    -o ${{cwd}}/execution/stdout \\
-    -e ${{cwd}}/execution/stderr \\
-    --mem=${{memory_mb}} \\
+    --job-name $jobname \\
+    --chdir ${{cwd}} \\
+    -output ${{cwd}}/execution/stdout \\
+    --error ${{cwd}}/execution/stderr \\
+    --mem ${{memory_mb}} \\
     --cpus-per-task ${{select_first([cpu, 1])}} \\
     {partition_string} \\
-    -t '0:${{duration}}' \\
+    -time '0:${{duration}}' \\
     {emailextra} \\
     --wrap "/usr/bin/env ${{job_shell}} ${{script}}",
     {afternotokaycommand} \\
@@ -448,11 +453,11 @@ JOBID=$(sbatch \\
             @classmethod
             def slurm_singularity(
                 cls,
-                singularityloadinstructions,
-                singularitycontainerdir,
-                buildinstructions,
-                jobemail,
-                jobqueues,
+                singularitycontainerdir: str,
+                jobqueues: Optional[Union[str, List[str]]] = None,
+                buildinstructions: Optional[str] = None,
+                jobemail: Optional[str] = None,
+                singularityloadinstructions: Optional[str] = None,
                 afternotokaycatch: bool = True,
                 call_caching_method: str = None,
             ):
@@ -467,46 +472,52 @@ JOBID=$(sbatch \\
                 if afternotokaycatch:
                     afternotokaycommand = f" && NTOKDEP=$(sbatch --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
-                partitions = (
-                    ",".join(jobqueues) if isinstance(jobqueues, list) else jobqueues
-                )
-                if partitions:
-                    partition_string = f'${{if defined(queue) then ("-p" + queue) else "-p {partitions}"}}'
-                else:
-                    partition_string = '${"-p" + queue}'
+                partition_string = ""
+                if jobqueues:
+                    partitions = (
+                        ",".join(jobqueues)
+                        if isinstance(jobqueues, list)
+                        else jobqueues
+                    )
+                    if partitions:
+                        partition_string = (
+                            f'-p ${{select_first([queue, "{partitions}"])}}'
+                        )
+                    else:
+                        partition_string = '${"-p" + queue}'
 
                 emailextra = (
-                    f"--mail-user {jobemail} --mail-type END" if jobemail else ""
+                    f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""
                 )
 
                 # slurm.config.submit = None
                 slurm.config.submit_docker = f"""\
-            {singularityloadinstructions or ''}
+{singularityloadinstructions or ''}
 
-            docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
-            image={singularitycontainerdir}/$docker_subbed.sif
-            lock_path={singularitycontainerdir}/$docker_subbed.lock
+docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
+image={singularitycontainerdir}/$docker_subbed.sif
+lock_path={singularitycontainerdir}/$docker_subbed.lock
 
-            if [ ! -f "$image" ]; then
-              {buildinstructions}
-            fi
+if [ ! -f "$image" ]; then
+  {buildinstructions or 'singularity pull $image docker://${docker}'}
+fi
 
-            # Submit the script to SLURM
-            jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-            JOBID=$(sbatch \\
-                --parsable \\
-                -J $jobname \\
-                --mem=${{memory_mb}} \\
-                --cpus-per-task ${{select_first([cpu, 1])}} \\
-                {partition_string} \\
-                -D ${{cwd}} \\
-                -o ${{cwd}}/execution/stdout \\
-                -e ${{cwd}}/execution/stderr \\
-                -t '0:${{duration}}' \\
-                {emailextra} \\
-                --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
-                {afternotokaycommand} \\
-                && echo Submitted batch job $JOBID
+# Submit the script to SLURM
+jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
+JOBID=$(sbatch \\
+    --parsable \\
+    --job-name $jobname \\
+    --mem ${{memory_mb}} \\
+    --cpus-per-task ${{select_first([cpu, 1])}} \\
+    {partition_string} \\
+    --chdir ${{cwd}} \\
+    --output ${{cwd}}/execution/stdout \\
+    --error ${{cwd}}/execution/stderr \\
+    --time '0:${{duration}}' \\
+    {emailextra} \\
+    --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
+    {afternotokaycommand} \\
+    && echo Submitted batch job $JOBID
             """
                 return slurm
 

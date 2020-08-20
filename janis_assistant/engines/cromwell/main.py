@@ -292,7 +292,7 @@ class Cromwell(Engine):
                     Logger.critical(
                         f"Cromwell has exited with rc={rc}. {critical_suffix}The last lines of the logfile ({self.logfile}):"
                     )
-                    Logger.critical(tail(self._logfp, 10))
+                    Logger.critical("".join(tail(self._logfp, 10)))
                     return False
                 continue
 

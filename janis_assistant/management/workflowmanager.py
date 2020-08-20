@@ -582,6 +582,8 @@ class WorkflowManager:
             infopath = os.path.join(logsdir, f"janis-monitor.{wid}.info.log")
             warnpath = os.path.join(logsdir, f"janis-monitor.{wid}.warn.log")
 
+            Logger.info("Logging debug information to: " + str(debugpath))
+
             Logger.WRITE_LEVELS = {
                 LogLevel.DEBUG: (debugpath, open(debugpath, "a")),
                 LogLevel.INFO: (infopath, open(infopath, "a")),

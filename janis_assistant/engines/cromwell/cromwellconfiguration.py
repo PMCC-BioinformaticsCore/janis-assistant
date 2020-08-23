@@ -438,7 +438,7 @@ JOBID=$({sbatch} \\
     {partition_string} \\
     -time '0:${{duration}}' \\
     {emailextra} \\
-    --wrap "/usr/bin/env ${{job_shell}} ${{script}}",
+    --wrap "/usr/bin/env ${{job_shell}} ${{script}}")
     {afternotokaycommand} \\
     && echo Submitted batch job $JOBID
 """,

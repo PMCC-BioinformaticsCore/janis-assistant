@@ -740,7 +740,7 @@ class Cromwell(Engine):
                     raise e
                 return None
 
-        except request.URLError as e:
+        except (request.URLError, ConnectionResetError) as e:
             self.connectionerrorcount += 1
             if (
                 datetime.now() - self.last_contacted
@@ -752,7 +752,7 @@ class Cromwell(Engine):
             if self.connectionerrorcount > 15:
                 raise e
             else:
-                Logger.warn("Error connecting to cromwell instance: " + str(e))
+                Logger.warn("Error connecting to cromwell instance: " + repr(e))
             return None
 
     def metadata(self, identifier, expand_subworkflows=True) -> Optional[RunModel]:

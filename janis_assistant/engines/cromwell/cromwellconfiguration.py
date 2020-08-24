@@ -431,14 +431,14 @@ JOBID=$({sbatch} \\
     --parsable \\
     --job-name $jobname \\
     --chdir ${{cwd}} \\
-    -output ${{cwd}}/execution/stdout \\
+    --output ${{cwd}}/execution/stdout \\
     --error ${{cwd}}/execution/stderr \\
     --mem ${{memory_mb}} \\
     --cpus-per-task ${{select_first([cpu, 1])}} \\
     {partition_string} \\
     -time '0:${{duration}}' \\
     {emailextra} \\
-    --wrap "/usr/bin/env ${{job_shell}} ${{script}}")
+    --wrap "/usr/bin/env ${{job_shell}} ${{script}}") \\
     {afternotokaycommand} \\
     && echo Submitted batch job $JOBID
 """,

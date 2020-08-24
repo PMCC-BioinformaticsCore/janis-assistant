@@ -89,6 +89,12 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
                     )
                 },
             ),
+            services=CromwellConfiguration.Services(
+                metadata=CromwellConfiguration.Services.MetadataService(
+                    # 2 million rows
+                    read_row_number_safety_threshold=2000000
+                )
+            ),
         )
 
         beconfig: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[

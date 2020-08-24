@@ -804,6 +804,51 @@ JOBID=$({sbatch} \\
             "blacklist_cache": "blacklist-cache",
         }
 
+    class Services(Serializable):
+        class MetadataService(Serializable):
+            def __init__(
+                self,
+                summary_refresh_interval: Optional[Union[str, int]] = None,
+                summary_refresh_limit: Optional[int] = None,
+                read_row_number_safety_threshold: Optional[int] = None,
+                db_batch_size: Optional[int] = None,
+                db_flush_rate: Optional[int] = None,
+            ):
+                """
+                
+                :param summary_refresh_interval: Set this value to "Inf" to turn off metadata summary refresh.  The default value is currently "1 second"
+                :param summary_refresh_limit: maximum number of metadata rows to be considered per summarization cycle
+                :param db_batch_size:
+                :param db_flush_rate:
+                """
+                self.summary_refesh_interval = summary_refresh_interval
+                self.summary_refresh_limit = summary_refresh_limit
+                self.read_row_number_safety_threshold = read_row_number_safety_threshold
+                self.db_batch_size = db_batch_size
+                self.db_flush_rate = db_flush_rate
+
+            key_map = {
+                "summary_refresh_interval": "metadata-summary-refresh-interval",
+                "summary_refresh_limit": "metadata-summary-refresh-limit",
+                "db_batch_size": "db-batch-size",
+                "db_flush_rate": "db-flush-rate",
+                "read_row_number_safety_threshold": "metadata-read-row-number-safety-threshold",
+            }
+
+            def to_dict(self):
+                return {
+                    "class": "cromwell.services.metadata.impl.MetadataServiceActor",
+                    "config": super().to_dict(),
+                }
+
+        def __init__(self, metadata: MetadataService, **kwargs):
+            self.__d = {}
+            self.__d.update(kwargs)
+            self.__d["MetadataService"] = metadata
+
+        def to_dict(self):
+            return self.__d
+
     def __init__(
         self,
         webservice: Webservice = None,
@@ -815,6 +860,7 @@ JOBID=$({sbatch} \\
         docker: Docker = Docker.default(),
         cache: CallCaching = None,
         aws=None,
+        services: Services = None,
         additional_params=None,
     ):
         if webservice is not None and isinstance(

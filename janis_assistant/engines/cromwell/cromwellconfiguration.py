@@ -436,7 +436,7 @@ JOBID=$({sbatch} \\
     --mem ${{memory_mb}} \\
     --cpus-per-task ${{select_first([cpu, 1])}} \\
     {partition_string} \\
-    -time '0:${{duration}}' \\
+    --time '0:${{duration}}' \\
     {emailextra} \\
     --wrap "/usr/bin/env ${{job_shell}} ${{script}}") \\
     {afternotokaycommand} \\

@@ -22,6 +22,7 @@ class NotificationManager:
 
     @staticmethod
     def send_email(subject: str, body: str):
+        import tempfile, os
 
         nots = JanisConfiguration.manager().notifications
 
@@ -46,12 +47,23 @@ Subject: {subject}
 
 {body}"""
 
-        command = f"echo '{email_template}' | {mail_program}"
-        Logger.log("Sending email with command: " + str(command.replace("\n", "\\n")))
+        # 2020-08-24 mfranklin: Write to disk and cat, because some emails are just too big
+        fd, path = tempfile.mkstemp()
         try:
-            subprocess.call(command, shell=True)
-        except Exception as e:
-            Logger.critical(f"Couldn't send email '{subject}' to {emails}: {e}")
+            with os.fdopen(fd, "w") as tmp:
+                # do stuff with temp file
+                tmp.write(email_template)
+
+            command = f"cat '{path}' | {mail_program}"
+            Logger.log(
+                "Sending email with command: " + str(command.replace("\n", "\\n"))
+            )
+            try:
+                subprocess.call(command, shell=True)
+            except Exception as e:
+                Logger.critical(f"Couldn't send email '{subject}' to {emails}: {e}")
+        finally:
+            os.remove(path)
 
     _status_change_template = """\
 <h1>Status change: {status}</h1>

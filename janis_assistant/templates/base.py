@@ -69,7 +69,7 @@ class EnvironmentTemplate(ABC):
         logsdir: str,
         config,
         capture_output: bool = False,
-        log_output_to_stdout: bool=False,
+        log_output_to_stdout: bool = False,
     ):
         import subprocess
 
@@ -80,9 +80,13 @@ class EnvironmentTemplate(ABC):
 
         try:
             if capture_output:
-                out = subprocess.check_output(
-                    command, close_fds=True, stderr=subprocess.STDOUT
-                ).decode().strip()
+                out = (
+                    subprocess.check_output(
+                        command, close_fds=True, stderr=subprocess.STDOUT
+                    )
+                    .decode()
+                    .strip()
+                )
                 Logger.info(out)
                 if log_output_to_stdout:
                     print(out, file=sys.stdout)

@@ -287,6 +287,8 @@ class CWLTool(Engine):
             return ups
 
         updates = {}
+        if out is None:
+            return {}
 
         if is_python_primitive(out):
             updates[key] = WorkflowOutputModel(

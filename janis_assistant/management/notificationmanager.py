@@ -42,7 +42,7 @@ class NotificationManager:
         email_template = f"""\
 Content-Type: text/html
 To: {"; ".join(emails)}
-From: janis-noreply@petermac.org
+From: {nots.from_email}
 Subject: {subject}
 
 {body}"""

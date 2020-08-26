@@ -366,6 +366,7 @@ class JanisConfiguration(NoAttributeErrors):
         class Keys(HashableEnum):
             # Events = "events"   # All events currently
             Email = "email"
+            FromEmail = "fromEmail"
             MailProgram = "mail_program"
             # Slack = "slack"     # unused
 
@@ -374,6 +375,9 @@ class JanisConfiguration(NoAttributeErrors):
 
             self.email = JanisConfiguration.get_value_for_key(
                 d, self.Keys.Email, default
+            )
+            self.from_email = JanisConfiguration.get_value_for_key(
+                d, self.Keys.FromEmail, default
             )
 
             self.mail_program = JanisConfiguration.get_value_for_key(
@@ -497,7 +501,8 @@ class JanisConfiguration(NoAttributeErrors):
                 JanisConfiguration.JanisConfigurationTemplate.Keys.Id: "local"
             },
             JanisConfiguration.Keys.Notifications: {
-                JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None
+                JanisConfiguration.JanisConfigurationNotifications.Keys.Email: None,
+                JanisConfiguration.JanisConfigurationNotifications.Keys.FromEmail: "janis-noreply@petermac.org",
             },
             JanisConfiguration.Keys.RunInBackground: None,
             JanisConfiguration.Keys.CallCachingEnabled: True,

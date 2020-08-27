@@ -402,6 +402,7 @@ def fromjanis(
     allow_empty_container=False,
     check_files=True,
     container_override: dict = None,
+    strict_inputs=False,
     **kwargs,
 ):
     cm = ConfigManager.manager()
@@ -435,6 +436,7 @@ def fromjanis(
             inputs=inputs,
             required_inputs=required_inputs,
             batchrun_options=batchrun_reqs,
+            strict_inputs=strict_inputs,
         )
     )
 

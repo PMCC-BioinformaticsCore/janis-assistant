@@ -482,6 +482,12 @@ def add_run_args(parser, add_workflow_argument=True):
     inpmanip_args = parser.add_argument_group("input manipulation")
 
     inpmanip_args.add_argument(
+        "--strict-inputs",
+        help="Throw an error if inputs exist in the workflow that aren't used",
+        action="store_true",
+    )
+
+    inpmanip_args.add_argument(
         "-r",
         "--recipe",
         help="Use a provided recipe from a provided template",
@@ -636,6 +642,12 @@ def add_run_args(parser, add_workflow_argument=True):
         help="Don't store the workflow ID in the primary database. This means you're unable to watch the workflow by "
         "the ID, and must instead specify the path. This may be useful where multiple jobs are launched at once, and "
         "Janis is unable to appropriately manage locks on the central task database.",
+    )
+
+    beta_args.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Setup the workflow, but don't actually run the workflow",
     )
 
     parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
@@ -898,6 +910,8 @@ def do_run(args):
         container_override=parse_container_override_format(args.container_override),
         skip_digest_lookup=args.skip_digest_lookup,
         skip_digest_cache=args.skip_digest_cache,
+        dryrun=args.dry_run,
+        strict_inputs=args.strict_inputs,
     )
 
     Logger.info("Exiting")

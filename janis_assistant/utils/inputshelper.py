@@ -10,6 +10,7 @@ def cascade_inputs(
     inputs: Optional[Union[Dict, List[Union[str, Dict]]]],
     required_inputs: Optional[Dict],
     batchrun_options: Optional[BatchRunRequirements] = None,
+    strict_inputs: bool = False,
 ):
 
     list_of_input_dicts: List[Dict] = []
@@ -26,10 +27,20 @@ def cascade_inputs(
                     raise FileNotFoundError("Couldn't find inputs file: " + str(inp))
                 list_of_input_dicts.append(parse_dict(inputsfile))
 
+    ins = None
+    if batchrun_options:
+        ins = cascade_batchrun_inputs(wf, list_of_input_dicts, batchrun_options)
+    else:
+        ins = cascade_regular_inputs(list_of_input_dicts)
+
+    if strict_inputs:
+        # make all the inputs in "ins" required (make sure they don't override already required inputs)
+        required_inputs = {**ins, **(required_inputs or {})}
+
     if required_inputs:
         if wf is None:
             raise Exception(
-                "cascade_inputs requires wf parameter if required_inputs is present"
+                "cascade_inputs requires 'wf' parameter if required_inputs is present"
             )
         if isinstance(wf, DynamicWorkflow):
             pass
@@ -42,13 +53,7 @@ def cascade_inputs(
                     f"There were unrecognised inputs provided to the tool \"{wf.id()}\", keys: {', '.join(invalid_keys)}"
                 )
 
-            list_of_input_dicts.append(parse_known_inputs(wf, required_inputs))
-
-    ins = None
-    if batchrun_options:
-        ins = cascade_batchrun_inputs(wf, list_of_input_dicts, batchrun_options)
-    else:
-        ins = cascade_regular_inputs(list_of_input_dicts)
+            ins = {**required_inputs}
 
     return ins
 

@@ -1198,7 +1198,8 @@ class WorkflowManager:
 
                 # choose tag
                 new_prefix = prefix
-                if isinstance(new_prefix, list) and len(new_prefix) > 1:
+                if nshards > 1 and isinstance(new_prefix, list) and len(new_prefix) > 1:
+                    # this is likely a double array of prefixes, so we'll need to grab the new one out
                     new_prefix = new_prefix[i]
                     new_shard = new_shard[min(len(new_shard), 1) :]
 
@@ -1266,9 +1267,9 @@ class WorkflowManager:
             if original_filepath and iscopyable:
                 ext = extension or get_extension(engine_output.original_path)
                 if ext:
-                    dot = "" if ext[0] == "." else "."
-                    outfn += dot + ext
-                    newoutputfilepath += dot + ext
+                    # mfranklin: require user to correctly specific "." in extension
+                    outfn += ext
+                    newoutputfilepath += ext
                 fs.cp_from(engine_output.original_path, newoutputfilepath, force=True)
             elif engine_output.value:
                 if isinstance(fs, LocalFileScheme):

@@ -903,7 +903,7 @@ class WorkflowManager:
         self.evaluate_job_labels(tool_to_evaluate, inputs=mapped_inps, run_id=run_id)
         self.database.inputsDB.insert_inputs_from_dict(mapped_inps)
 
-        self.evaluate_output_params(
+        self.evaluate_and_save_output_params(
             wf=tool_to_evaluate, inputs=mapped_inps, run_id=run_id
         )
 
@@ -927,7 +927,8 @@ class WorkflowManager:
         if len(labels) > 0:
             self.database.joblabelsDB.insert_or_update_many(labels)
 
-    def evaluate_output_params(self, wf: Tool, inputs: dict, run_id):
+    @staticmethod
+    def evaluate_output_params(wf: Tool, inputs: dict, submission_id, run_id):
 
         output_names: Dict[str, any] = {}
         output_folders: Dict[str, any] = {}
@@ -935,10 +936,10 @@ class WorkflowManager:
 
         if isinstance(wf, WorkflowBase):
             for o in wf.output_nodes.values():
-                output_names[o.id()] = self.evaluate_output_selector(
+                output_names[o.id()] = WorkflowManager.evaluate_output_selector(
                     o.output_name, inputs
                 )
-                output_folders[o.id()] = self.evaluate_output_selector(
+                output_folders[o.id()] = WorkflowManager.evaluate_output_selector(
                     o.output_folder, inputs
                 )
                 output_extensions[o.id()] = o.extension
@@ -967,7 +968,7 @@ class WorkflowManager:
             outputs.append(
                 WorkflowOutputModel(
                     id_=o.id(),
-                    submission_id=self.database.outputsDB.submission_id,
+                    submission_id=submission_id,
                     run_id=run_id,
                     is_copyable=iscopyable,
                     original_path=None,
@@ -979,10 +980,17 @@ class WorkflowManager:
                     extension=ext,
                 )
             )
+        return outputs
+
+    def evaluate_and_save_output_params(self, wf: Tool, inputs: dict, run_id):
+        outputs = self.evaluate_output_params(
+            wf=wf, inputs=inputs, submission_id=self.submission_id, run_id=run_id
+        )
 
         return self.database.outputsDB.insert_many(outputs)
 
-    def evaluate_output_selector(self, selector, inputs: dict):
+    @staticmethod
+    def evaluate_output_selector(selector, inputs: dict):
         try:
             if selector is None:
                 return None

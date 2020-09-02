@@ -81,6 +81,13 @@ class CromwellConfiguration(Serializable):
 
     CATCH_ERROR_COMMAND = '[ ! -f rc ] && (echo 1 >> ${cwd}/execution/rc) && (echo "A slurm error occurred" >> ${cwd}/execution/stderr)'
 
+    DEFAULT_LOCALIZATION_STRATEGY = [
+        "hard-link",
+        "cached-copy",
+        "copy",
+        "soft-link",
+    ]
+
     def output(self):
         s = super().output()
 
@@ -283,7 +290,7 @@ hsqldb.script_format=3
                             hashing_strategy=None,
                             check_sibling_md5=None,
                         ):
-                            self.duplication_strategy = duplication_strategy
+                            self.duplication_strategy = duplication_strategy or [""]
                             self.hashing_strategy = hashing_strategy
                             self.check_sibling_md5 = check_sibling_md5
 
@@ -302,7 +309,7 @@ hsqldb.script_format=3
                         self.localization = (
                             localization
                             if localization is not None
-                            else ["hard-link", "cached-copy"]
+                            else CromwellConfiguration.DEFAULT_LOCALIZATION_STRATEGY
                         )
                         self.enabled = enabled
                         self.caching = caching
@@ -313,15 +320,10 @@ hsqldb.script_format=3
                         return {
                             "local": CromwellConfiguration.Backend.Provider.Config.Filesystem(
                                 caching=CromwellConfiguration.Backend.Provider.Config.Filesystem.Caching(
-                                    duplication_strategy=[
-                                        "hard-link",
-                                        "cached-copy",
-                                        "copy",
-                                        "soft-link",
-                                    ],
+                                    duplication_strategy=CromwellConfiguration.DEFAULT_LOCALIZATION_STRATEGY,
                                     hashing_strategy=(cache_method or "file"),
                                 ),
-                                localization=["hard-link", "cached-copy"],
+                                localization=CromwellConfiguration.DEFAULT_LOCALIZATION_STRATEGY,
                             )
                         }
 

@@ -13,7 +13,7 @@ from textwrap import dedent
 from typing import Optional, Dict, Union, Type, List
 
 import janis_core as j
-from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel
+from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
 
 import janis_assistant.templates as janistemplates
 from janis_assistant.engines import Engine, get_engine_type, Cromwell, EngineType
@@ -176,11 +176,22 @@ def spider_tool(
     force=False,
     only_toolbox=False,
     trace=False,
+    print_all_tools=False,
 ):
     j.JanisShed.should_trace = trace
     toolref = resolve_tool(
         tool, name, from_toolshed=True, force=force, only_toolbox=only_toolbox
     )
+
+    if print_all_tools:
+        from tabulate import tabulate
+
+        tools = [
+            [tools[0].id(), ", ".join(t.version() for t in tools)]
+            for tools in JanisShed.get_all_tools()
+        ]
+
+        print(tabulate(sorted(tools, key=lambda k: k[0].casefold())))
 
     if not toolref:
         raise Exception(f"Couldn't find tool: '{tool}'")

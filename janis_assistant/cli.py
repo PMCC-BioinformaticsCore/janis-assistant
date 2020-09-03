@@ -215,6 +215,9 @@ def add_spider_args(parser):
         action="store_true",
         help="Adds statements to help find why a tool isn't appearing in the toolbox",
     )
+    parser.add_argument(
+        "--all", action="store_true", help="Print all tools in alphabetical order",
+    )
 
 
 def add_resume_args(parser):
@@ -925,6 +928,7 @@ def do_spider(args):
         force=args.no_cache,
         only_toolbox=args.toolbox,
         trace=args.trace,
+        print_all_tools=args.all,
     )
 
 

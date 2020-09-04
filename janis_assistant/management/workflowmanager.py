@@ -994,6 +994,8 @@ class WorkflowManager:
         try:
             if selector is None:
                 return None
+            if isinstance(selector, bool):
+                return selector
             return convert_value_or_list_to_string(
                 Operator.evaluate_arg(selector, inputs)
             )
@@ -1120,8 +1122,8 @@ class WorkflowManager:
                 fs=self.filescheme,
                 output_dir=submission.output_dir,
                 outputid=out.id_,
-                prefix=out.output_name,
-                tag=out.output_folder,
+                output_name_prefix=out.output_name,
+                output_folders=out.output_folder,
                 secondaries=out.secondaries,
                 extension=out.extension,
                 engine_output=eout,
@@ -1150,8 +1152,8 @@ class WorkflowManager:
         fs: FileScheme,
         output_dir: str,
         outputid,
-        prefix,
-        tag,
+        output_name_prefix,
+        output_folders,
         secondaries,
         extension,
         iscopyable,
@@ -1189,7 +1191,7 @@ class WorkflowManager:
                     ar.extend(iterable[1 + tag_index_to_explode :])
                 return ar
 
-            tag_index_to_explode = find_element_where_length_is(tag, nshards)
+            tag_index_to_explode = find_element_where_length_is(output_folders, nshards)
 
             for i in range(nshards):
                 eout = engine_output[i]
@@ -1197,15 +1199,15 @@ class WorkflowManager:
                 new_shard = [*prev_shards, i]
 
                 # choose tag
-                new_prefix = prefix
+                new_prefix = output_name_prefix
                 if nshards > 1 and isinstance(new_prefix, list) and len(new_prefix) > 1:
                     # this is likely a double array of prefixes, so we'll need to grab the new one out
                     new_prefix = new_prefix[i]
                     new_shard = new_shard[min(len(new_shard), 1) :]
 
-                new_tag = tag
+                new_tag = output_folders
                 if tag_index_to_explode is not None:
-                    new_tag = explode_at_index(tag, tag_index_to_explode, i)
+                    new_tag = explode_at_index(output_folders, tag_index_to_explode, i)
                     new_shard = new_shard[min(len(new_shard), 1) :]
 
                 outs.append(
@@ -1213,8 +1215,8 @@ class WorkflowManager:
                         fs,
                         output_dir=output_dir,
                         outputid=outputid,
-                        tag=new_tag,
-                        prefix=new_prefix,
+                        output_folders=new_tag,
+                        output_name_prefix=new_prefix,
                         engine_output=eout,
                         shard=new_shard,
                         secondaries=secondaries,
@@ -1225,9 +1227,7 @@ class WorkflowManager:
 
             return [o[0] for o in outs], [o[1] for o in outs]
 
-        final_tags = tag
-
-        outfn = outputid
+        final_tags = output_folders
 
         if final_tags and any(isinstance(t, list) for t in final_tags):
             Logger.critical(
@@ -1235,16 +1235,47 @@ class WorkflowManager:
             )
             final_tags = None
 
-        if prefix:
-            if isinstance(prefix, list):
-                if len(prefix) > 1:
+        using_original_filename = (
+            output_name_prefix is False or output_name_prefix is None
+        )
+        has_original_path = (
+            isinstance(engine_output, WorkflowOutputModel)
+            and engine_output.original_path
+        )
+        if using_original_filename and not has_original_path:
+            using_original_filename = False
+            Logger.warn(
+                "The output '{outputid}' requested original filename, but there wasn't a file to copy. "
+                "Janis will use the output_id to construct the output name"
+            )
+
+        if using_original_filename:
+            outfn = os.path.basename(engine_output.original_path)
+        elif output_name_prefix is True:
+            outfn = outputid
+        else:
+            if isinstance(output_name_prefix, list):
+                if len(output_name_prefix) > 1:
                     Logger.critical(
-                        f"Expected only one output_name for this copy, but found ({', '.join(prefix)}) [{len(prefix)}], using the first outputname"
+                        f"Expected only one output_name for this copy, but found ({', '.join(output_name_prefix)}) [{len(output_name_prefix)}], using the first outputname"
                     )
-                else:
-                    outfn = prefix[0]
+                outfn = output_name_prefix[0]
             else:
-                outfn = prefix
+                outfn = output_name_prefix
+
+        if not using_original_filename:
+            if shard is not None:
+                # add shards if we're not using the original filename AND
+                # there's shards we need to unclash
+                for s in shard:
+                    outfn += f"_shard-{s}"
+
+            ext = extension
+            if ext is None and has_original_path:
+                ext = get_extension(engine_output.original_path)
+            if ext:
+                # mfranklin: require user to correctly specific "." in extension
+                outfn += ext
 
         if final_tags is None:
             final_tags = []
@@ -1252,10 +1283,6 @@ class WorkflowManager:
         outdir = os.path.join(output_dir, "/".join(final_tags))
 
         fs.mkdirs(outdir)
-
-        if shard is not None:
-            for s in shard:
-                outfn += f"_shard-{s}"
 
         # copy output
 
@@ -1265,11 +1292,6 @@ class WorkflowManager:
         if isinstance(engine_output, WorkflowOutputModel):
             original_filepath = engine_output.original_path
             if original_filepath and iscopyable:
-                ext = extension or get_extension(engine_output.original_path)
-                if ext:
-                    # mfranklin: require user to correctly specific "." in extension
-                    outfn += ext
-                    newoutputfilepath += ext
                 fs.cp_from(engine_output.original_path, newoutputfilepath, force=True)
             elif engine_output.value:
                 if isinstance(fs, LocalFileScheme):

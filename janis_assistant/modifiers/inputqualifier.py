@@ -53,7 +53,7 @@ class InputFileQualifierModifier(PipelineModifierBase):
                         nin[tag] = intype.coerce_value_if_possible(value)
                     except Exception as e:
                         raise Exception(
-                            f"Couldn't coerce the input for '{tag}' ({value}) to type '{intype}': {e}"
+                            f"Couldn't coerce the input for '{tag}' ('{value}') to type '{intype}': {e}"
                         )
                     continue
 

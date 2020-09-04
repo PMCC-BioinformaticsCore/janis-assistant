@@ -66,7 +66,10 @@ class WorkflowOutputModel(DatabaseObject):
         self.id_ = id_
         self.submission_id = submission_id
         self.run_id = run_id
-        self.output_name = stringify_value_or_array(output_name)
+        if isinstance(output_name, bool):
+            self.output_name = output_name
+        else:
+            self.output_name = stringify_value_or_array(output_name)
         self.output_folder = stringify_value_or_array(output_folder)
         self.secondaries = secondaries
         self.extension = extension

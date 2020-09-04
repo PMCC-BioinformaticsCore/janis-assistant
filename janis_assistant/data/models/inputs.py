@@ -13,7 +13,7 @@ class WorkflowInputModel(DatabaseObject):
             DatabaseObjectField("id_", dbalias="id", is_primary=True),
             DatabaseObjectField("submission_id", is_primary=True),
             DatabaseObjectField("run_id", is_primary=True),
-            DatabaseObjectField("value"),
+            DatabaseObjectField("value", encode=True),
             DatabaseObjectField("size"),  # bytes
         ]
 

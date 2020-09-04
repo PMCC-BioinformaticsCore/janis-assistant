@@ -9,32 +9,27 @@ from typing import List, Tuple, Union, Optional, Set
 from janis_core import Logger
 
 
-def serialize(val):
-    should_serialize, value = _serialize_inner(val)
+def prep_object_for_db(val, encode: bool):
+    prepped = _prepare_for_serialization(val)
+    if not encode:
+        return prepped
+    else:
+        return json.dumps(prepped)
 
-    if should_serialize:
-        return json.dumps(value)
-    return value
 
-
-def _serialize_inner(val) -> Tuple[bool, Optional[any]]:
+def _prepare_for_serialization(val) -> Optional[any]:
     if val is None:
-        return False, None
-    elif isinstance(val, (str, float, bool, int)):
-        return False, val
-    elif isinstance(val, datetime):
-        return False, str(val)
+        return None
     elif isinstance(val, Enum):
-        return False, val.value
+        return val.value
+    elif isinstance(val, datetime):
+        return str(val)
     elif isinstance(val, list):
-        return True, [_serialize_inner(el)[1] for el in val]
+        return [_prepare_for_serialization(el)[1] for el in val]
     elif isinstance(val, dict):
-        return (
-            True,
-            {k: _serialize_inner(v)[1] for k, v in val.items()},
-        )
+        return {k: _prepare_for_serialization(v)[1] for k, v in val.items()}
 
-    return False, json.dumps(val)
+    return val
 
 
 def deserialize_inner(val):
@@ -43,6 +38,7 @@ def deserialize_inner(val):
     try:
         return json.loads(val)
     except Exception as ex:
+        # tbh, sometimes the mysql database converts '"myvalue"' -> 'myvalue' (dropping the quotes), we'll do
         Logger.debug(
             f"Couldn't deserialize value, using string representation instead (value: {repr(val)}): {repr(ex)}"
         )
@@ -108,7 +104,8 @@ class DatabaseObject(ABC):
             if val is None:
                 continue
             keys.append(dbkey)
-            values.append(serialize(val))
+            prepared_val = prep_object_for_db(val, encode=t.encode)
+            values.append(prepared_val)
 
         return keys, values
 

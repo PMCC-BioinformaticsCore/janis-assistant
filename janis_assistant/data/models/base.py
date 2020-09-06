@@ -25,9 +25,9 @@ def _prepare_for_serialization(val) -> Optional[any]:
     elif isinstance(val, datetime):
         return str(val)
     elif isinstance(val, list):
-        return [_prepare_for_serialization(el)[1] for el in val]
+        return [_prepare_for_serialization(el) for el in val]
     elif isinstance(val, dict):
-        return {k: _prepare_for_serialization(v)[1] for k, v in val.items()}
+        return {k: _prepare_for_serialization(v) for k, v in val.items()}
 
     return val
 

@@ -1,6 +1,10 @@
 from unittest import TestCase
 from os.path import join as ospathjoin
 
+from janis_assistant.data.models.base import (
+    _prepare_for_serialization,
+    prep_object_for_db,
+)
 from janis_assistant.utils import (
     get_extension,
     second_formatter,
@@ -256,3 +260,70 @@ class TestRecursiveJoin(TestCase):
     def test_three_layers_mixed(self):
         ar = [["1", "2", ["3", 4], 5, [[[[[6.0]]], 7]]], "8"]
         self.assertEqual("1,2,3,4,5,6.0,7,8", recursively_join(ar, ","))
+
+
+class TestPrepareForSerialization(TestCase):
+    def test_simple_int(self):
+        val = prep_object_for_db(1, encode=False)
+        self.assertEqual(1, val)
+        self.assertIsInstance(val, int)
+
+    def test_simple_bool(self):
+        val = prep_object_for_db(False, encode=False)
+        self.assertFalse(val)
+
+    def test_simple_float(self):
+        val = prep_object_for_db(1.0, encode=False)
+        self.assertEqual(1.0, val)
+        self.assertIsInstance(val, float)
+
+    def test_simple_string(self):
+        val = prep_object_for_db("1.0", encode=False)
+        self.assertEqual("1.0", val)
+        self.assertIsInstance(val, str)
+
+    def test_list_ints(self):
+        val = prep_object_for_db([1, 2, 3], encode=False)
+        self.assertListEqual([1, 2, 3], val)
+        self.assertIsInstance(val, list)
+        self.assertIsInstance(val[0], int)
+
+    def test_dict_mixed(self):
+        val = prep_object_for_db({"string": "hi", "int": 1, "bool": True}, encode=False)
+        self.assertDictEqual({"string": "hi", "int": 1, "bool": True}, val)
+
+    def test_encoded_int(self):
+        val = prep_object_for_db(1, encode=True)
+        self.assertEqual("1", val)
+        self.assertIsInstance(val, str)
+
+    def test_encoded_bool(self):
+        val = prep_object_for_db(False, encode=True)
+        self.assertEqual("false", val)
+        self.assertIsInstance(val, str)
+
+    def test_encoded_float(self):
+        val = prep_object_for_db(1.0, encode=True)
+        self.assertEqual("1.0", val)
+        self.assertIsInstance(val, str)
+
+    def test_encoded_string(self):
+        val = prep_object_for_db("1.0", encode=True)
+        self.assertEqual('"1.0"', val)
+        self.assertIsInstance(val, str)
+
+    def test_encoded_list_ints(self):
+        val = prep_object_for_db([1, 2, 3], encode=True)
+        self.assertEqual("[1, 2, 3]", val)
+        self.assertIsInstance(val, str)
+
+    def test_encoded_list_mixed(self):
+        val = prep_object_for_db([1, "hi", 3.0, True], encode=True)
+        self.assertEqual('[1, "hi", 3.0, true]', val)
+        self.assertIsInstance(val, str)
+
+    def test_encoded_dict_mixed(self):
+        val = prep_object_for_db(
+            {"string": "hi", "int": 1, "float": 1.0, "bool": True}, encode=True
+        )
+        self.assertEqual('{"string": "hi", "int": 1, "float": 1.0, "bool": true}', val)

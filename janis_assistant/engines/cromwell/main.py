@@ -360,10 +360,10 @@ class Cromwell(Engine):
             except Exception as e:
                 # can't do
                 Logger.warn("Couldn't stop Cromwell process: " + str(e))
-                pass
         else:
             Logger.warn("Couldn't stop Cromwell process as Janis wasn't managing it")
 
+        Logger.debug("Setting 'cromwell.is_started' to False")
         self.is_started = False
 
     # API

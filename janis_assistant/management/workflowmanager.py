@@ -1452,6 +1452,7 @@ class WorkflowManager:
                 ),
                 "abort",
             )
+            Logger.info(f"Aborting task '{wid}' by writing to '{path}'")
             with open(path, "w+") as f:
                 f.write(f"Requesting abort {DateUtil.now()}")
             return True

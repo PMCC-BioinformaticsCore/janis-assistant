@@ -593,7 +593,8 @@ class WorkflowManager:
             # in case anything relies on CD, we'll throw it into janis/execution
             os.chdir(self.get_path_for_component(self.WorkflowManagerPath.execution))
 
-            self.start_engine_if_required()
+            jc = JanisConfiguration.manager()
+            self.start_engine_if_required(jc)
 
             if os.path.exists(self.get_abort_semaphore_path()):
                 Logger.info("Detected please_abort request, aborting")
@@ -709,7 +710,7 @@ class WorkflowManager:
             Logger.critical("Couldn't mark paused: " + str(e))
             return False
 
-    def start_engine_if_required(self):
+    def start_engine_if_required(self, jc):
         # engine should be loaded from the DB
         engine = self.engine
 
@@ -741,6 +742,10 @@ class WorkflowManager:
                     "-Ddatabase.db.url=" + cromwelldb_config.db.url
                 )
                 engine.config.database = cromwelldb_config
+            elif dbtype == dbconfig.DatabaseTypeToUse.from_script:
+                engine.config.database = dbconfig.get_config_for_template_supplied(
+                    self.execution_dir
+                )
             else:
                 Logger.warn(
                     "Skipping database config as '--no-database' option was provided."

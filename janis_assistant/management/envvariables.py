@@ -23,6 +23,7 @@ class EnvVariables(HashableEnum):
     search_path = "JANIS_SEARCHPATH"
     recipe_paths = "JANIS_RECIPEPATHS"
     recipe_directory = "JANIS_RECIPEDIRECTORY"  # secretly comma separated
+    db_script_generator = "JANIS_DBCREDENTIALSGENERATOR"
 
     cromwelljar = "JANIS_CROMWELLJAR"
 

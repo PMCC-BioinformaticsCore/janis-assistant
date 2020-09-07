@@ -96,6 +96,7 @@ class MySql(object):
                 Logger.critical(rc)
 
     def stop(self):
+        Logger.debug("Received STOP request for mySQL container")
         self.container.stop_container()
 
     def prepare_mysql_dirs(self):

@@ -137,6 +137,7 @@ class JanisConfiguration(NoAttributeErrors):
             MySqlDbName = "mysql_dbname"
             UseManagedMySqlInstance = "should_manage_mysql"
             UseDatabase = "use_database"
+            GeneratedDbCredentials = "generated_db_credentials_from_script"
             AdditionalParameters = "additional_params"  # string or list of strings
             PollingInterval = "polling_interval"
 
@@ -185,6 +186,9 @@ class JanisConfiguration(NoAttributeErrors):
             self.use_database = JanisConfiguration.get_value_for_key(
                 d, self.Keys.UseDatabase, default
             )
+            self.generated_db_credentials_from_script = JanisConfiguration.get_value_for_key(
+                d, self.Keys.GeneratedDbCredentials, default
+            )
 
             self.additional_params = JanisConfiguration.get_value_for_key(
                 d, self.Keys.AdditionalParameters, default
@@ -204,6 +208,7 @@ class JanisConfiguration(NoAttributeErrors):
                 mysql_config=existing_config,
                 skip_database=self.use_database is False,
                 run_managed_mysql_instance=self.mysql_instance,
+                generated_db_credentials_from_script=self.generated_db_credentials_from_script,
             )
 
     class JanisConfigurationRecipes(NoAttributeErrors):
@@ -532,6 +537,7 @@ class JanisDatabaseConfigurationHelper:
         existing = "existing"
         managed = "managed"
         filebased = "filebased"
+        from_script = "from_script"
 
     class MySqlInstanceConfig:
         def __init__(self, url, username, password, dbname="cromwell"):
@@ -545,10 +551,12 @@ class JanisDatabaseConfigurationHelper:
         mysql_config: MySqlInstanceConfig = None,
         run_managed_mysql_instance=None,
         skip_database=None,
+        generated_db_credentials_from_script=None,
     ):
         self.mysql_config = mysql_config
         self.should_manage_mysql = run_managed_mysql_instance
         self.skip_database = skip_database
+        self.generated_db_credentials_from_script = generated_db_credentials_from_script
 
     def which_db_to_use(self) -> DatabaseTypeToUse:
         if self.mysql_config is not None:
@@ -557,6 +565,8 @@ class JanisDatabaseConfigurationHelper:
             return self.DatabaseTypeToUse.none
         elif self.should_manage_mysql is True:
             return self.DatabaseTypeToUse.managed
+        elif self.generated_db_credentials_from_script is True:
+            return self.DatabaseTypeToUse.from_script
         return self.DatabaseTypeToUse.filebased
 
     def get_config_for_existing_config(self):
@@ -607,6 +617,51 @@ class JanisDatabaseConfigurationHelper:
         return CromwellConfiguration.Database.mysql(
             username=None, password=None, url=url
         )
+
+    def get_config_for_template_supplied(self, output_dir: str):
+        try:
+            import subprocess, os, json
+            from janis_assistant.management.envvariables import EnvVariables
+            from janis_assistant.engines.cromwell.cromwellconfiguration import (
+                CromwellConfiguration,
+            )
+
+            file_path = os.getenv(EnvVariables.db_script_generator)
+            Logger.debug(
+                f"Found path '{EnvVariables.db_script_generator}' to generate database credentials"
+            )
+            if file_path is None:
+                raise Exception(
+                    f"Couldn't get database credentials as couldn't find value in env var '{EnvVariables.db_script_generator}'"
+                )
+            if not os.path.exists(file_path):
+                raise Exception(f"Couldn't locate script '{file_path}' to execute")
+
+            val = subprocess.check_output([file_path, output_dir])
+            d = json.loads(val)
+            Logger.debug(
+                "Received keys from database credentials script: " + ", ".join(d.keys())
+            )
+
+            keys = {"username", "password", "database", "host"}
+            missing_keys = {k for k in keys if k not in d}
+            if len(missing_keys) > 0:
+                raise Exception(
+                    "The script to generate database credentials was missing the keys: "
+                    + ", ".join(missing_keys)
+                )
+
+            return CromwellConfiguration.Database.mysql(
+                username=d["username"],
+                password=d["password"],
+                database=d["database"],
+                url=d["host"],
+            )
+        except Exception as e:
+            Logger.critical(
+                "Failed to get database configuration details from script: " + repr(e)
+            )
+            raise
 
 
 def stringify_dict_keys_or_return_value(d):

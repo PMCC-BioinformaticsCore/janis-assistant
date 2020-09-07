@@ -445,6 +445,7 @@ JOBID=$({sbatch} \\
     && echo Submitted batch job $JOBID
 """,
                         kill="scancel ${job_id}",
+                        kill_docker="scancel ${job_id}",
                         check_alive="scontrol show job ${job_id}",
                         job_id_regex="Submitted batch job (\\d+).*",
                         filesystems=cls.Config.Filesystem.default_filesystem(

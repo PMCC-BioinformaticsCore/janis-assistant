@@ -601,8 +601,8 @@ JOBID=$({sbatch} \\
     jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
     walltime='00:00:${{duration}}'
 
-    JOBID=$(echo "/usr/bin/env ${{job_shell}} ${{script}}" \\
-        | qsub \\
+    JOBID=$(echo "/usr/bin/env ${{job_shell}} ${{script}}" | \\
+        qsub \\
             -V \\
             -d ${{cwd}} \\
             -N $jobname \\
@@ -679,8 +679,8 @@ JOBID=$({sbatch} \\
 
     JOBID=$(echo \\
         "{loadinstructions} \\
-        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" \\
-        | qsub \\
+        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" | \\
+        qsub \\
             -v ${{cwd}} \\
             -N $jobname \\
             {emailparams} \\

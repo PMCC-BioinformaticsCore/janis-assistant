@@ -546,11 +546,9 @@ class WorkflowManager:
         self.copy_outputs_if_required()
 
         if status == TaskStatus.COMPLETED:
-            self.remove_exec_dir_if_required()
+            self.cleanup_execution()
 
-        self.engine.stop_engine()
-        if self.dbcontainer:
-            self.dbcontainer.stop()
+        self.stop_engine_and_db()
 
         rc = status.get_exit_code()
         if rc != 0:
@@ -602,7 +600,7 @@ class WorkflowManager:
 
             if os.path.exists(self.get_pause_semaphore_path()):
                 Logger.info("Detected please_pause request, exiting")
-                return self.stop_computation()
+                return self.suspend_workflow()
 
             # check status and see if we can resume
             self.submit_workflow_if_required()
@@ -643,7 +641,7 @@ class WorkflowManager:
                             self.abort()
                             break
                         if os.path.exists(self.get_pause_semaphore_path()):
-                            self.stop_computation()
+                            self.suspend_workflow()
                             break
 
                     continue
@@ -670,9 +668,7 @@ class WorkflowManager:
                 )
                 self.database.commit()
 
-                self.engine.stop_engine()
-                if self.dbcontainer:
-                    self.dbcontainer.stop()
+                self.stop_engine_and_db()
 
                 self.database.close()
             except Exception as e:
@@ -690,6 +686,11 @@ class WorkflowManager:
                 f"Exiting with rc={rc} janis task '{self.submission_id}' as an issue occurred when running the workflow"
             )
             sys.exit(rc)
+
+    def stop_engine_and_db(self):
+        self.engine.stop_engine()
+        if self.dbcontainer:
+            self.dbcontainer.stop()
 
     @staticmethod
     def mark_paused(execution_dir):
@@ -1318,7 +1319,7 @@ class WorkflowManager:
 
         return [original_filepath, newoutputfilepath]
 
-    def remove_exec_dir_if_required(self):
+    def cleanup_execution(self):
         status = self.database.submission_metadata.metadata.status
 
         keep_intermediate = (
@@ -1334,6 +1335,11 @@ class WorkflowManager:
                 Logger.info("Cleaning up execution directory")
                 self.filescheme.rm_dir(execdir)
                 self.database.progressDB.set(ProgressKeys.cleanedUp)
+
+            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
+            dbtype = dbconfig.which_db_to_use()
+            if dbtype == JanisDatabaseConfigurationHelper.DatabaseTypeToUse.from_script:
+                dbconfig.run_delete_database_script(self.execution_dir)
 
     def log_dbtaskinfo(self):
         import tabulate
@@ -1476,24 +1482,20 @@ class WorkflowManager:
         except Exception as e:
             Logger.critical("Couldn't abort task from engine: " + str(e))
         try:
-            engine.stop_engine()
-            if self.dbcontainer:
-                self.dbcontainer.stop()
+            self.stop_engine_and_db()
         except Exception as e:
             Logger.critical("Couldn't stop engine: " + str(e))
 
         return status
 
-    def stop_computation(self):
+    def suspend_workflow(self):
         try:
             self.set_status(TaskStatus.SUSPENDED)
             # reset pause flag
             self.database.commit()
             self.database.submission_metadata.save_changes()
 
-            self.engine.stop_engine()
-            if self.dbcontainer:
-                self.dbcontainer.stop()
+            self.stop_engine_and_db()
 
             self.database.close()
 

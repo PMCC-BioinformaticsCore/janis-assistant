@@ -663,6 +663,36 @@ class JanisDatabaseConfigurationHelper:
             )
             raise
 
+    def run_delete_database_script(self, execution_dir: str):
+        try:
+            import subprocess, os
+            from janis_assistant.management.envvariables import EnvVariables
+
+            file_path = os.getenv(EnvVariables.db_script_generator_cleanup)
+
+            if file_path is None:
+                raise Exception(
+                    f"Couldn't delete generated database credentials as couldn't find value in env var '{EnvVariables.db_script_generator_cleanup}'"
+                )
+            Logger.debug(
+                f"Found path '{EnvVariables.db_script_generator_cleanup}' to delete database credentials"
+            )
+            if not os.path.exists(file_path):
+                raise Exception(f"Couldn't locate script '{file_path}' to execute")
+
+            val = subprocess.check_output([file_path, execution_dir])
+            if val is not None and len(val) > 0:
+                Logger.info(
+                    f"Successfully deleted DB credentials and received message: {val}"
+                )
+            else:
+                Logger.info("Deleted credentials with rc=0")
+        except Exception as e:
+            Logger.warn(
+                f"Failed to delete database configuration details for execution directory '{execution_dir}': "
+                + repr(e)
+            )
+
 
 def stringify_dict_keys_or_return_value(d):
     if d is None:

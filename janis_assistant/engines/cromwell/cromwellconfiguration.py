@@ -394,11 +394,6 @@ hsqldb.script_format=3
                 call_caching_method: str = None,
                 sbatch: str = "sbatch",
             ):
-
-                afternotokaycommand = ""
-                if afternotokaycatch:
-                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
-
                 emailextra = (
                     f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""
                 )
@@ -416,6 +411,10 @@ hsqldb.script_format=3
                         )
                     else:
                         partition_string = '${"-p" + queue}'
+
+                afternotokaycommand = ""
+                if afternotokaycatch:
+                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
@@ -474,10 +473,6 @@ JOBID=$({sbatch} \\
                     sbatch=sbatch,
                 )
 
-                afternotokaycommand = ""
-                if afternotokaycatch:
-                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --kill-on-invalid-dep=yes --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
-
                 partition_string = ""
                 if jobqueues:
                     partitions = (
@@ -491,6 +486,10 @@ JOBID=$({sbatch} \\
                         )
                     else:
                         partition_string = '${"-p" + queue}'
+
+                afternotokaycommand = ""
+                if afternotokaycatch:
+                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 emailextra = (
                     f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""

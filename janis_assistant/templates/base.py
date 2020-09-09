@@ -23,6 +23,7 @@ class EnvironmentTemplate(ABC):
         mail_program=None,
         max_cores=None,
         max_ram=None,
+        max_duration=None,
         can_run_in_foreground=True,
         run_in_background=None,
         containertype: Type[Container] = Docker,
@@ -31,6 +32,7 @@ class EnvironmentTemplate(ABC):
         self.containertype = containertype
         self.max_cores = max_cores
         self.max_ram = max_ram
+        self.max_duration = max_duration
 
         self.can_run_in_foreground = can_run_in_foreground
         self.run_in_background = run_in_background
@@ -113,6 +115,9 @@ class EnvironmentTemplate(ABC):
 
         if self.max_ram and not configuration.environment.max_ram:
             configuration.environment.max_ram = self.max_ram
+
+        if self.max_duration and not configuration.environment.max_duration:
+            configuration.environment.max_duration = self.max_duration
 
         if self.run_in_background is not None:
             configuration.run_in_background = self.run_in_background
@@ -199,6 +204,7 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
         build_instructions=f"singularity pull $image docker://${{docker}}",
         max_cores=None,
         max_ram=None,
+        max_duration=None,
         can_run_in_foreground=True,
         run_in_background=False,
     ):
@@ -207,6 +213,7 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
             containertype=Singularity,
             max_cores=max_cores,
             max_ram=max_ram,
+            max_duration=max_duration,
             can_run_in_foreground=can_run_in_foreground,
             run_in_background=run_in_background,
         )

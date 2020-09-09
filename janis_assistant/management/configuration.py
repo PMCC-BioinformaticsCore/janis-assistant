@@ -112,6 +112,7 @@ class JanisConfiguration(NoAttributeErrors):
         class Keys(HashableEnum):
             MaxCores = "max_cores"
             MaxRam = "max_ram"
+            MaxDuration = "max_duration"
 
         def __init__(self, d: dict, default: dict):
             d = d if d else {}
@@ -121,6 +122,9 @@ class JanisConfiguration(NoAttributeErrors):
             )
             self.max_ram = JanisConfiguration.get_value_for_key(
                 d, self.Keys.MaxRam, default
+            )
+            self.max_duration = JanisConfiguration.get_value_for_key(
+                d, self.Keys.MaxDuration, default
             )
 
     class JanisConfigurationCromwell(NoAttributeErrors):

@@ -601,7 +601,7 @@ def abort_wids(sids: List[str]):
     for sid in sids:
         try:
             row = ConfigManager.manager().get_row_for_submission_id_or_path(sid)
-            WorkflowManager.mark_aborted(row.execution_dir, row.output_dir)
+            WorkflowManager.mark_aborted(row.execution_dir, row.submission_id)
         except Exception as e:
             Logger.critical(f"Couldn't abort '{sid}': " + str(e))
             raise e

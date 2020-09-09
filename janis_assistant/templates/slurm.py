@@ -13,6 +13,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         "limit_resources",
         "max_cores",
         "max_ram",
+        "max_duration",
         "can_run_in_foreground",
         "run_in_background",
         "intermediate_execution_dir",
@@ -30,6 +31,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         singularity_load_instructions=None,
         max_cores=None,
         max_ram=None,
+        max_duration=None,
         can_run_in_foreground=True,
         run_in_background=False,
         sbatch: str = "sbatch",
@@ -45,6 +47,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         :param singularity_load_instructions: Ensure singularity with this command executed in shell
         :param max_cores: Maximum number of cores a task can request
         :param max_ram: Maximum amount of ram (GB) that a task can request
+        :param max_duration: Maximum amount of time in seconds (s) that a task can request
         :param sbatch: Override the sbatch command
         """
 
@@ -55,6 +58,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             load_instructions=singularity_load_instructions,
             max_cores=max_cores,
             max_ram=max_ram,
+            max_duration=max_duration,
             can_run_in_foreground=can_run_in_foreground,
             run_in_background=run_in_background,
         )

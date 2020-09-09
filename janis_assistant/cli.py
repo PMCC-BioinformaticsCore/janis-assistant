@@ -508,6 +508,12 @@ def add_run_args(parser, add_workflow_argument=True):
         help="maximum GB of memory to use when generating resource overrides",
     )
 
+    inpmanip_args.add_argument(
+        "--max-duration",
+        type=int,
+        help="maximum seconds that a task can request when generating resource overrides",
+    )
+
     # add hints
     hint_args = parser.add_argument_group("hints")
     for HintType in HINTS:
@@ -900,6 +906,7 @@ def do_run(args):
         watch=args.progress,
         max_cores=args.max_cores,
         max_mem=args.max_memory,
+        max_duration=args.max_duration,
         force=args.no_cache,
         recipes=args.recipe,
         keep_intermediate_files=keep_intermediate_files,

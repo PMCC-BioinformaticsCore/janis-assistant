@@ -565,7 +565,11 @@ JOBID=$({sbatch} \\
             # noinspection PyPep8
             @classmethod
             def torque(
-                cls, queues: Union[str, List[str]], call_caching_method: str = None
+                cls,
+                queues: Union[str, List[str]],
+                call_caching_method: str = None,
+                afternotokaycatch=False,
+                jobemail: str = None,
             ):
                 """
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
@@ -577,18 +581,39 @@ JOBID=$({sbatch} \\
                         ",".join(queues) if isinstance(queues, list) else queues
                     )
 
+                emailparams = f"-m ea -M {jobemail}" if jobemail else ""
+
+                afternotokaycommand = ""
+                if afternotokaycatch:
+                    afternotokaycommand = f" && NTOKDEP=$(echo '{CromwellConfiguration.CATCH_ERROR_COMMAND}' | qsub -m p -W depend=afternotok:$JOBID -l nodes=1:ppn=1,mem=1GB,walltime=00:01:00)"
+
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
                     config=cls.Config(
-                        runtime_attributes=f"""
+                        runtime_attributes="""\
     Int duration = 86400
     Int? cpu = 1
     Int memory_mb = 3500
-     """,
+    String? docker
+    """,
                         submit=f"""
     chmod +x ${{script}}
-    echo "${{job_shell}} ${{script}}" | qsub -V -d ${{cwd}} -N ${{job_name}} -o ${{out}} -e ${{err}} {qparam} -l nodes=1:ppn=${{cpu}}" \
-        -l walltime=${{duration}} -l mem=${{memory_mb}}
+
+    jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
+    walltime='00:00:${{duration}}'
+
+    JOBID=$(echo "/usr/bin/env ${{job_shell}} ${{script}}" | \\
+        qsub \\
+            -V \\
+            -d ${{cwd}} \\
+            -N $jobname \\
+            -o ${{out}} \\
+            -e ${{err}} \\
+            {emailparams} \\
+            {qparam} \\ 
+            -l nodes=1:ppn=${{cpu}},mem=${{memory_mb}}mb,walltime=$walltime | cut -d. -f1 )  \\
+    {afternotokaycommand} \\
+    && echo $JOBID
             """,
                         job_id_regex="^(\\d+).*",
                         kill="qdel ${job_id}",
@@ -614,7 +639,12 @@ JOBID=$({sbatch} \\
                 Source: https://gatkforums.broadinstitute.org/wdl/discussion/12992/failed-to-evaluate-job-outputs-error
                 """
 
-                torq = cls.torque(queues, call_caching_method=call_caching_method)
+                torq = cls.torque(
+                    queues=queues,
+                    call_caching_method=call_caching_method,
+                    afternotokaycatch=afternotokaycatch,
+                    jobemail=jobemail,
+                )
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
@@ -635,27 +665,22 @@ JOBID=$({sbatch} \\
 
                 torq.config.kill_docker = torq.config.kill
 
-                torq.config.submit = None
-                torq.config.runtime_attributes = """\
-    Int duration = 86400
-    Int? cpu = 1
-    Int memory_mb = 3500
-    String? docker"""
-
                 torq.config.submit_docker = f"""
+    chmod +x ${{script}}
+
     docker_subbed=$(sed -e 's/[^A-Za-z0-9._-]/_/g' <<< ${{docker}})
     image={singularitycontainerdir}/$docker_subbed.sif
     jobname={CromwellConfiguration.JOBNAME_TRANSFORM}
-    walltime='00:00:~{{duration}}' # $(echo $((${{runtime_minutes}} * 60)) | dc -e '?1~r60~r60~r[[0]P]szn[:]ndZ2>zn[:]ndZ2>zn')
+    walltime='00:00:${{duration}}'
 
     if [ ! -f $image ]; then
-        {singularityloadinstructions}
+        {singularityloadinstructions or ''}
         {buildinstructions}
     fi
 
-    JOBID=$(echo \
+    JOBID=$(echo \\
         "{loadinstructions} \\
-        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" |\\
+        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" | \\
         qsub \\
             -v ${{cwd}} \\
             -N $jobname \\

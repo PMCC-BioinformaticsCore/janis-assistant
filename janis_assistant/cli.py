@@ -9,6 +9,7 @@ from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation
 from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
@@ -17,7 +18,7 @@ from janis_assistant.management.configuration import JanisConfiguration
 from janis_assistant.data.enums.taskstatus import TaskStatus
 
 from janis_assistant.main import (
-    fromjanis,
+    # fromjanis2,
     translate,
     generate_inputs,
     cleanup,
@@ -26,9 +27,15 @@ from janis_assistant.main import (
     abort_wids,
     spider_tool,
     pause,
+    fromjanis2,
+    prepare_job,
 )
 from janis_assistant.management.configmanager import ConfigManager
-from janis_assistant.utils import parse_additional_arguments
+from janis_assistant.utils import (
+    parse_additional_arguments,
+    parse_dict,
+    get_file_from_searchname,
+)
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_assistant.utils.dateutil import DateUtil
@@ -413,14 +420,19 @@ def add_inputs_args(parser):
     return parser
 
 
-def add_run_args(parser, add_workflow_argument=True):
-
+def add_prepare_args(parser, add_workflow_argument=True):
     if add_workflow_argument:
         parser.add_argument(
             "workflow",
             help="Run the workflow defined in this file or available within the toolbox",
         )
 
+    add_args_for_general_wf_prepare(parser)
+
+    return parser
+
+
+def add_args_for_general_wf_prepare(parser):
     parser.add_argument("-c", "--config", help="Path to config file")
 
     parser.add_argument(
@@ -521,27 +533,6 @@ def add_run_args(parser, add_workflow_argument=True):
             hint_args.add_argument(
                 "--hint-" + HintType.key(), choices=HintType.symbols()
             )
-
-    # workflow collection
-
-    wfcol_group = parser.add_argument_group("workflow collection arguments")
-
-    wfcol_group.add_argument(
-        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
-    )
-
-    wfcol_group.add_argument(
-        "-n",
-        "--name",
-        help="If you have multiple workflows in your file, you may want to "
-        "help Janis out to select the right workflow to run",
-    )
-
-    wfcol_group.add_argument(
-        "--no-cache",
-        help="Force re-download of workflow if remote",
-        action="store_true",
-    )
 
     # container lookups
 
@@ -661,6 +652,45 @@ def add_run_args(parser, add_workflow_argument=True):
 
     parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
 
+
+def add_run_args(parser, add_workflow_argument=True):
+
+    parser.add_argument(
+        "-j",
+        "--job",
+        help="Job file which contains all arguments. Specifying this option "
+        "will ignore ALL other fields except the workflow",
+    )
+
+    # workflow collection
+
+    wfcol_group = parser.add_argument_group("workflow collection arguments")
+
+    wfcol_group.add_argument(
+        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
+    )
+
+    wfcol_group.add_argument(
+        "-n",
+        "--name",
+        help="If you have multiple workflows in your file, you may want to "
+        "help Janis out to select the right workflow to run",
+    )
+
+    wfcol_group.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
+
+    if add_workflow_argument:
+        parser.add_argument(
+            "workflow",
+            help="Run the workflow defined in this file or available within the toolbox",
+        )
+
+    add_args_for_general_wf_prepare(parser)
+
     return parser
 
 
@@ -735,7 +765,7 @@ def do_init(args):
         stream=stream,
         unparsed_init_args=args.init_params,
         output_location=args.output,
-        force=args.force,
+        force=args.no_cache,
     )
     if args.ensure_cromwell:
         cromwell_loc = Cromwell.resolve_jar(None)
@@ -833,95 +863,91 @@ def do_rm(args):
 
 
 def do_run(args):
-    jc = JanisConfiguration.initial_configuration(path=args.config)
 
-    validation_reqs, batchrun_reqs = None, None
+    if args.job:
+        from os import getcwd
 
-    if args.validation_fields:
-        Logger.info("Will prepare validation")
-        validation_reqs = ValidationRequirements(
-            truthVCF=args.validation_truth_vcf,
-            reference=args.validation_reference,
-            fields=args.validation_fields,
-            intervals=args.validation_intervals,
+        # parse and load the job file
+        Logger.info("Specified job file, ignoring all other parameters")
+        d = parse_dict(get_file_from_searchname(args.job, getcwd()))
+        job = PreparedSubmission(**d)
+
+    else:
+        jc = JanisConfiguration.initial_configuration(path=args.config)
+
+        # the args.extra_inputs parameter are inputs that we MUST match
+        # we'll need to parse them manually and then pass them to fromjanis as requiring a match
+        required_inputs = parse_additional_arguments(args.extra_inputs)
+
+        inputs = args.inputs or []
+        # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
+        # annoying if you forget to put the inputs before the workflow positional argument.
+        # TBH, we could automatically do this for all params, but it's a little trickier
+
+        if "inputs" in required_inputs:
+            ins = required_inputs.pop("inputs")
+            inputs.extend(ins if isinstance(ins, list) else [ins])
+        if "i" in required_inputs:
+            ins = required_inputs.pop("i")
+            inputs.extend(ins if isinstance(ins, list) else [ins])
+
+        validation, batchrun = None, None
+        if args.validation_fields:
+            Logger.info("Will prepare validation")
+            validation = ValidationRequirements(
+                truthVCF=args.validation_truth_vcf,
+                reference=args.validation_reference,
+                fields=args.validation_fields,
+                intervals=args.validation_intervals,
+            )
+
+        if args.batchrun:
+            Logger.info("Will prepare batch run")
+            batchrun = BatchRunRequirements(
+                fields=args.batchrun_fields, groupby=args.batchrun_groupby
+            )
+
+        job = prepare_job(
+            engine=args.engine,
+            output_dir=args.output_dir,
+            execution_dir=args.execution_dir,
+            max_cores=args.max_cores,
+            max_memory=args.max_memory,
+            max_duration=args.max_duration,
+            run_in_foreground=args.foreground is True,
+            run_in_background=args.background is True,
+            check_files=not args.skip_file_check,
+            container_override=parse_container_override_format(args.container_override),
+            skip_digest_lookup=args.skip_digest_lookup,
+            skip_digest_cache=args.skip_digest_cache,
+            hints={
+                k[5:]: v
+                for k, v in vars(args).items()
+                if k.startswith("hint_") and v is not None
+            },
+            validation_reqs=validation,
+            batchrun_reqs=batchrun,
+            # inputs
+            inputs=inputs,
+            required_inputs=required_inputs,
+            watch=args.progress,
+            force=args.no_cache,
+            recipes=args.recipe,
+            keep_intermediate_files=args.keep_intermediate_files is True,
+            workflow=args.workflow,
+            only_toolbox=args.toolbox,
+            name=args.name,
+            no_store=args.no_store,
+            allow_empty_container=args.allow_empty_container,
+            strict_inputs=args.strict_inputs,
         )
 
-    if args.batchrun:
-        Logger.info("Will prepare batch run")
-        batchrun_reqs = BatchRunRequirements(
-            fields=args.batchrun_fields, groupby=args.batchrun_groupby
-        )
-
-    hints = {
-        k[5:]: v
-        for k, v in vars(args).items()
-        if k.startswith("hint_") and v is not None
-    }
-
-    # the args.extra_inputs parameter are inputs that we MUST match
-    # we'll need to parse them manually and then pass them to fromjanis as requiring a match
-    required_inputs = parse_additional_arguments(args.extra_inputs)
-
-    inputs = args.inputs or []
-    # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
-    # annoying if you forget to put the inputs before the workflow positional argument.
-    # TBH, we could automatically do this for all params, but it's a little trickier
-
-    if "inputs" in required_inputs:
-        ins = required_inputs.pop("inputs")
-        inputs.extend(ins if isinstance(ins, list) else [ins])
-    if "i" in required_inputs:
-        ins = required_inputs.pop("i")
-        inputs.extend(ins if isinstance(ins, list) else [ins])
-
-    keep_intermediate_files = args.keep_intermediate_files is True
-
-    db_config = jc.cromwell.get_database_config_helper()
-
-    if args.mysql:
-        db_config.should_manage_mysql = True
-
-    if args.no_database:
-        db_config.skip_database = True
-
-    if args.development:
-        # no change for using mysql, as a database is the default
-        keep_intermediate_files = True
-        JanisConfiguration.manager().cromwell.call_caching_enabled = True
-
-    wid = fromjanis(
+    jobfile = fromjanis2(
         args.workflow,
+        jobfile=job,
         name=args.name,
-        validation_reqs=validation_reqs,
-        batchrun_reqs=batchrun_reqs,
-        engine=args.engine,
-        # filescheme=args.filescheme,
-        hints=hints,
-        output_dir=args.output_dir,
-        execution_dir=args.execution_dir,
-        inputs=inputs,
-        required_inputs=required_inputs,
-        # filescheme_ssh_binding=args.filescheme_ssh_binding,
-        cromwell_url=args.cromwell_url,
-        watch=args.progress,
-        max_cores=args.max_cores,
-        max_mem=args.max_memory,
-        max_duration=args.max_duration,
-        force=args.no_cache,
-        recipes=args.recipe,
-        keep_intermediate_files=keep_intermediate_files,
-        run_in_background=(args.background is True),
-        run_in_foreground=(args.foreground is True),
-        dbconfig=db_config,
         only_toolbox=args.toolbox,
-        no_store=args.no_store,
-        allow_empty_container=args.allow_empty_container,
-        check_files=not args.skip_file_check,
-        container_override=parse_container_override_format(args.container_override),
-        skip_digest_lookup=args.skip_digest_lookup,
-        skip_digest_cache=args.skip_digest_cache,
-        dryrun=args.dry_run,
-        strict_inputs=args.strict_inputs,
+        force=args.no_cache,
     )
 
     Logger.info("Exiting")

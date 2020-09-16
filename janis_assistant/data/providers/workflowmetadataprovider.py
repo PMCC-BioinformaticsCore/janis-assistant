@@ -5,6 +5,7 @@ from janis_core import Logger
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 from janis_assistant.data.models.base import KVDatabaseObject
+from janis_assistant.management.configuration import DatabaseTypeToUse
 
 
 class SubmissionDbMetadata(KVDatabaseObject):
@@ -21,11 +22,11 @@ class SubmissionDbMetadata(KVDatabaseObject):
         engine=None,
         engine_id: str = None,
         configuration=None,
-        db_config=None,
         submission_workflow=None,
         submission_inputs=None,
         submission_resources=None,
         error=None,
+        db_type: DatabaseTypeToUse = None,
         **kwargs,
     ):
         super().__init__(**kwargs)

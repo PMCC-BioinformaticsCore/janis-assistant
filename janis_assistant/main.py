@@ -16,6 +16,7 @@ import janis_core as j
 from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
 
 import janis_assistant.templates as janistemplates
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines import Engine, get_engine_type, Cromwell, EngineType
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.management.configuration import (
@@ -349,8 +350,8 @@ def init_template(
                     )
                     keys_to_skip = set()
 
-                outd[JanisConfiguration.Keys.Engine] = EngineType.cromwell
-                outd[JanisConfiguration.Keys.Template] = {
+                outd["engine"] = EngineType.cromwell
+                outd["template"] = {
                     s.id(): parsed.get(s.id(), mapped_schema_to_default.get(s.id()))
                     for s in schema
                     if (s.identifier in parsed)
@@ -359,9 +360,7 @@ def init_template(
                         and s.identifier not in keys_to_skip
                     )
                 }
-                outd[JanisConfiguration.Keys.Template][
-                    JanisConfiguration.JanisConfigurationTemplate.Keys.Id
-                ] = templatename
+                outd["template"]["id"] = templatename
 
             cached_outd = stringify_dict_keys_or_return_value(outd)
         return cached_outd
@@ -387,38 +386,19 @@ def init_template(
         ruamel.yaml.dump(get_config(), sys.stdout, default_flow_style=False)
 
 
-def fromjanis(
+def fromjanis2(
     workflow: Union[str, j.Tool, Type[j.Tool]],
+    jobfile: PreparedSubmission,
+    engine: Union[str, Engine, None] = None,
+    # toolbox args
     name: str = None,
-    engine: Union[str, Engine] = None,
-    validation_reqs=None,
-    batchrun_reqs=None,
-    hints: Optional[Dict[str, str]] = None,
-    output_dir: Optional[str] = None,
-    execution_dir: Optional[str] = None,
-    dryrun: bool = False,
-    inputs: Union[str, dict] = None,
-    required_inputs: dict = None,
-    watch=True,
-    max_cores=None,
-    max_memory=None,
-    max_duration=None,
-    force=False,
-    keep_intermediate_files=False,
-    recipes=None,
-    run_in_background=True,
-    run_in_foreground=None,
-    dbconfig=None,
     only_toolbox=False,
-    no_store=False,
-    allow_empty_container=False,
-    check_files=True,
-    container_override: dict = None,
-    strict_inputs=False,
-    **kwargs,
+    force=False,
+    # specific engine args
+    cromwell_jar: Optional[str] = None,
+    cromwell_url: Optional[str] = None,
 ):
     cm = ConfigManager.manager()
-    jc = JanisConfiguration.manager()
 
     wf: Optional[Tool] = resolve_tool(
         tool=workflow,
@@ -430,10 +410,113 @@ def fromjanis(
     if not wf:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    # if isinstance(tool, j.CommandTool):
-    #     tool = tool.wrapped_in_wf()
-    # elif isinstance(tool, j.CodeTool):
-    #     tool = tool.wrapped_in_wf()
+    row = cm.create_task_base(
+        wf,
+        outdir=jobfile.output_dir,
+        execution_dir=jobfile.execution_dir,
+        store_in_centraldb=not jobfile.no_store,
+    )
+
+    jobfile.execution_dir = row.execution_dir
+    jobfile.output_dir = row.output_dir
+
+    # set logger for submit
+    Logger.set_write_level(Logger.CONSOLE_LEVEL)
+    logpath = os.path.join(
+        WorkflowManager.get_path_for_component_and_dir(
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
+        ),
+        "janis-submit.log",
+    )
+    Logger.WRITE_LEVELS = {Logger.CONSOLE_LEVEL: (logpath, open(logpath, "a"))}
+    Logger.debug(f"Set submission logging to '{logpath}'")
+    print(row.submission_id, file=sys.stdout)
+
+    eng = get_engine_from_eng(
+        engine or jobfile.engine or jobfile.config.engine,
+        wid=row.submission_id,
+        execdir=WorkflowManager.get_path_for_component_and_dir(
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.execution
+        ),
+        confdir=WorkflowManager.get_path_for_component_and_dir(
+            row.execution_dir, WorkflowManager.WorkflowManagerPath.configuration
+        ),
+        logfile=os.path.join(
+            WorkflowManager.get_path_for_component_and_dir(
+                row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
+            ),
+            "engine.log",
+        ),
+        cromwell_jar=cromwell_jar,
+        cromwell_url=cromwell_url,
+    )
+
+    try:
+
+        # Note: run_in_foreground can be None, so
+        # (not (run_in_foreground is True)) != (run_in_foreground is False)
+
+        should_run_in_background = (
+            jobfile.background is True or jobfile.config.run_in_background is True
+        ) and not (jobfile.foreground is True)
+
+        tm = cm.start_task(
+            submission_id=row.submission_id, tool=wf, engine=eng, job=jobfile,
+        )
+        Logger.log("Finished starting task")
+        return tm
+
+    except KeyboardInterrupt:
+        Logger.info("Exiting...")
+
+    except Exception as e:
+        # Have to make sure we stop the engine if something happens when creating the task that causes
+        # janis to exit early
+        eng.stop_engine()
+        raise e
+
+
+def prepare_job(
+    workflow: Union[str, j.Tool, Type[j.Tool]],
+    # workflow search options
+    name: str,
+    engine: str,
+    only_toolbox,
+    force,
+    batchrun_reqs,
+    validation_reqs,
+    hints: Optional[Dict[str, str]],
+    output_dir: Optional[str],
+    execution_dir: Optional[str],
+    inputs: Union[str, dict],
+    required_inputs: dict,
+    watch,
+    max_cores,
+    max_memory,
+    max_duration,
+    keep_intermediate_files,
+    recipes,
+    run_in_background,
+    run_in_foreground,
+    no_store,
+    allow_empty_container,
+    check_files,
+    container_override: dict,
+    strict_inputs,
+    skip_digest_lookup,
+    skip_digest_cache,
+):
+    jc = JanisConfiguration.manager()
+
+    wf: Optional[Tool] = resolve_tool(
+        tool=workflow,
+        name=name,
+        from_toolshed=True,
+        only_toolbox=only_toolbox,
+        force=force,
+    )
+    if not wf:
+        raise Exception("Couldn't find workflow with name: " + str(workflow))
 
     # organise inputs
     inputsdict = {}
@@ -456,95 +539,44 @@ def fromjanis(
         wf.constructor(inputsdict, hints)
         inputsdict = wf.modify_inputs(inputsdict, hints)
 
-    row = cm.create_task_base(
-        wf,
-        outdir=output_dir,
+    return PreparedSubmission(
+        config=jc,
+        inputs=inputsdict,
+        hints=hints,
+        output_dir=output_dir,
         execution_dir=execution_dir,
-        store_in_centraldb=not no_store,
+        keep_intermediate_files=keep_intermediate_files,
+        recipes=recipes,
+        max_cores=max_cores or jc.environment.max_cores,
+        max_memory=max_memory or jc.environment.max_memory,
+        max_duration=max_duration or jc.environment.max_duration,
+        batchrun=batchrun_reqs,
+        validation=validation_reqs,
+        allow_empty_container=allow_empty_container,
+        container_override=container_override,
+        should_watch_if_background=watch,
+        skip_digest_lookup=skip_digest_lookup,
+        skip_digest_cache=skip_digest_cache,
+        skip_file_check=not check_files,
+        foreground=run_in_foreground,
+        background=run_in_background,
+        no_store=no_store,
+        strict_inputs=strict_inputs,
     )
 
-    # set logger for submit
-    Logger.set_write_level(Logger.CONSOLE_LEVEL)
-    logpath = os.path.join(
-        WorkflowManager.get_path_for_component_and_dir(
-            row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
-        ),
-        "janis-submit.log",
-    )
-    Logger.WRITE_LEVELS = {Logger.CONSOLE_LEVEL: (logpath, open(logpath, "a"))}
-    Logger.debug(f"Set submission logging to '{logpath}'")
-    print(row.submission_id, file=sys.stdout)
 
-    engine = engine or jc.engine
-
-    eng = get_engine_from_eng(
-        engine,
-        wid=row.submission_id,
-        execdir=WorkflowManager.get_path_for_component_and_dir(
-            row.execution_dir, WorkflowManager.WorkflowManagerPath.execution
-        ),
-        confdir=WorkflowManager.get_path_for_component_and_dir(
-            row.execution_dir, WorkflowManager.WorkflowManagerPath.configuration
-        ),
-        logfile=os.path.join(
-            WorkflowManager.get_path_for_component_and_dir(
-                row.execution_dir, WorkflowManager.WorkflowManagerPath.logs
-            ),
-            "engine.log",
-        ),
-        watch=watch,
-        **kwargs,
-    )
-
-    try:
-
-        # Note: run_in_foreground can be None, so
-        # (not (run_in_foreground is True)) != (run_in_foreground is False)
-
-        should_run_in_background = (
-            run_in_background is True or jc.run_in_background is True
-        ) and not (run_in_foreground is True)
-
-        tm = cm.start_task(
-            submission_id=row.submission_id,
-            tool=wf,
-            engine=eng,
-            validation_requirements=validation_reqs,
-            batchrun_requirements=batchrun_reqs,
-            output_dir=row.output_dir,
-            execution_dir=row.execution_dir,
-            hints=hints,
-            inputs_dict=inputsdict,
-            dryrun=dryrun,
-            watch=watch,
-            max_cores=max_cores,
-            max_memory=max_memory,
-            max_duration=max_duration,
-            keep_intermediate_files=keep_intermediate_files,
-            run_in_background=should_run_in_background,
-            dbconfig=dbconfig,
-            allow_empty_container=allow_empty_container,
-            container_override=container_override,
-            check_files=check_files,
-            **kwargs,
-        )
-        Logger.log("Finished starting task")
-        return tm
-
-    except KeyboardInterrupt:
-        Logger.info("Exiting...")
-
-    except Exception as e:
-        # Have to make sure we stop the engine if something happens when creating the task that causes
-        # janis to exit early
-        eng.stop_engine()
-        raise e
-
-
-def get_engine_from_eng(eng, wid, logfile, confdir, execdir: str, **kwargs):
+def get_engine_from_eng(
+    eng,
+    wid,
+    logfile,
+    confdir,
+    execdir: str,
+    cromwell_url: Optional[str],
+    cromwell_jar: Optional[str],
+):
 
     if eng == "cromwell":
-        url = kwargs.get("cromwell_url") or JanisConfiguration.manager().cromwell.url
+        url = cromwell_url or JanisConfiguration.manager().cromwell.url
         if url:
             Logger.info("Found cromwell_url: " + url)
         return Cromwell(
@@ -552,7 +584,7 @@ def get_engine_from_eng(eng, wid, logfile, confdir, execdir: str, **kwargs):
             logfile=logfile,
             confdir=confdir,
             host=url,
-            cromwelljar=kwargs.get("cromwell_jar"),
+            cromwelljar=cromwell_jar,
             execution_dir=execdir,
         )
 

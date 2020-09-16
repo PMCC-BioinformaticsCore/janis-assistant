@@ -39,6 +39,7 @@ from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
 from janis_assistant.data.models.joblabel import JobLabelModel
 from janis_assistant.data.models.outputs import WorkflowOutputModel
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.data.models.run import SubmissionModel, RunModel
 from janis_assistant.data.providers.workflowmetadataprovider import SubmissionDbMetadata
 from janis_assistant.engines import (
@@ -148,28 +149,9 @@ class WorkflowManager:
     @staticmethod
     def from_janis(
         submission_id: str,
-        output_dir: str,
-        execution_dir: str,
         tool: Tool,
+        prepared_submission: PreparedSubmission,
         engine: Engine,
-        hints: Dict[str, str],
-        validation_requirements: Optional[ValidationRequirements],
-        batchrun_requirements: Optional[BatchRunRequirements],
-        inputs_dict: dict = None,
-        dryrun=False,
-        watch=True,
-        max_cores=None,
-        max_memory=None,
-        max_duration=None,
-        keep_intermediate_files=False,
-        run_in_background=True,
-        dbconfig=None,
-        allow_empty_container=False,
-        container_override: dict = None,
-        check_files=True,
-        skip_digest_lookup=False,
-        skip_digest_cache=False,
-        **kwargs,
     ):
 
         jc = JanisConfiguration.manager()
@@ -177,15 +159,17 @@ class WorkflowManager:
         # output directory has been created
 
         tm = WorkflowManager(
-            submission_id=submission_id, execution_dir=execution_dir, engine=engine,
+            submission_id=submission_id,
+            execution_dir=prepared_submission.execution_dir,
+            engine=engine,
         )
 
         tm.database.submissions.insert_or_update_many(
             [
                 SubmissionModel(
                     id_=submission_id,
-                    output_dir=output_dir,
-                    execution_dir=execution_dir,
+                    output_dir=prepared_submission.output_dir,
+                    execution_dir=prepared_submission.execution_dir,
                     author=lookup_username(),
                     labels=[],
                     tags=[],
@@ -203,9 +187,9 @@ class WorkflowManager:
                 engine=engine,
                 name=tool.id(),
                 start=DateUtil.now(),
-                keep_execution_dir=keep_intermediate_files,
+                keep_execution_dir=prepared_submission.keep_intermediate_files,
                 configuration=jc,
-                db_config=dbconfig,
+                db_config=prepared_submission.config,
                 # This is the only time we're allowed to skip the tm.set_status
                 # This is a temporary stop gap until "notification on status" is implemented.
                 # tm.set_status(TaskStatus.PROCESSING)
@@ -219,18 +203,18 @@ class WorkflowManager:
             run_id=RunModel.DEFAULT_ID,
             tool=tool,
             translator=spec_translator,
-            validation=validation_requirements,
-            batchrun=batchrun_requirements,
-            hints=hints,
-            additional_inputs=inputs_dict,
-            max_cores=max_cores or jc.environment.max_cores,
-            max_memory=max_memory or jc.environment.max_ram,
-            max_duration=max_duration or jc.environment.max_duration,
-            allow_empty_container=allow_empty_container,
-            container_override=container_override,
-            check_files=check_files,
-            skip_digest_lookup=skip_digest_lookup,
-            skip_digest_cache=skip_digest_cache,
+            validation=prepared_submission.validation,
+            batchrun=prepared_submission.batchrun,
+            hints=prepared_submission.hints,
+            additional_inputs=prepared_submission.inputs,
+            max_cores=prepared_submission.max_cores,
+            max_memory=prepared_submission.max_memory,
+            max_duration=prepared_submission.max_duration,
+            allow_empty_container=prepared_submission.allow_empty_container,
+            container_override=prepared_submission.container_override,
+            check_files=not prepared_submission.skip_file_check,
+            skip_digest_lookup=prepared_submission.skip_digest_lookup,
+            skip_digest_cache=prepared_submission.skip_digest_cache,
         )
 
         outdir_workflow = tm.get_path_for_component(
@@ -250,9 +234,9 @@ class WorkflowManager:
         tm.database.submission_metadata.save_changes()
         tm.database.commit()
 
-        if not dryrun:
+        if not prepared_submission.dry_run:
             if (
-                not run_in_background
+                not prepared_submission.background
                 and jc.template
                 and jc.template.template
                 and jc.template.template.can_run_in_foreground is False
@@ -261,7 +245,10 @@ class WorkflowManager:
                     f"Your template '{jc.template.template.__class__.__name__}' is not allowed to run "
                     f"in the foreground, try adding the '--background' argument"
                 )
-            tm.start_or_submit(run_in_background=run_in_background, watch=watch)
+            tm.start_or_submit(
+                run_in_background=prepared_submission.background,
+                watch=prepared_submission.should_watch_if_background,
+            )
         else:
             tm.set_status(TaskStatus.DRY_RUN)
 

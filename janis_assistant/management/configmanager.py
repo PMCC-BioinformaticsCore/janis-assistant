@@ -5,6 +5,7 @@ from shutil import rmtree
 from typing import Dict, Optional, Union, List
 from contextlib import contextmanager
 
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines import Engine
 from janis_core import Workflow, Logger, Tool
 
@@ -34,12 +35,12 @@ class ConfigManager:
         # will search os.env for potential configs
         config = JanisConfiguration.manager()
         self.readonly = readonly
-        self.is_new = not os.path.exists(config.dbpath)
+        self.is_new = not os.path.exists(config.db_path)
 
-        cp = os.path.dirname(config.dbpath)
+        cp = os.path.dirname(config.db_path)
         os.makedirs(cp, exist_ok=True)
-        if config.outputdir:
-            os.makedirs(config.outputdir, exist_ok=True)
+        if config.output_dir:
+            os.makedirs(config.output_dir, exist_ok=True)
 
         self._connection: Optional[sqlite3.Connection] = None
         self._taskDB: Optional[TasksDbProvider] = None
@@ -61,14 +62,14 @@ class ConfigManager:
         try:
             if self.readonly:
                 Logger.debug(
-                    "Opening database connection to in READONLY mode: " + config.dbpath
+                    "Opening database connection to in READONLY mode: " + config.db_path
                 )
-                return sqlite3.connect(f"file:{config.dbpath}?mode=ro", uri=True)
+                return sqlite3.connect(f"file:{config.db_path}?mode=ro", uri=True)
 
-            Logger.debug("Opening database connection: " + config.dbpath)
-            return sqlite3.connect(config.dbpath)
+            Logger.debug("Opening database connection: " + config.db_path)
+            return sqlite3.connect(config.db_path)
         except:
-            Logger.critical("Error when opening DB connection to: " + config.dbpath)
+            Logger.critical("Error when opening DB connection to: " + config.db_path)
             raise
 
     def commit(self):
@@ -107,16 +108,16 @@ class ConfigManager:
         
         """
 
-        if not outdir and not config.outputdir:
+        if not outdir and not config.output_dir:
             raise Exception(
-                f"You must specify an output directory (or specify an '{JanisConfiguration.Keys.OutputDir.value}' "
+                f"You must specify an output directory (or specify an 'output_dir' "
                 f"in your configuration)"
             )
 
         default_outdir = None
 
-        if config.outputdir:
-            default_outdir = os.path.join(config.outputdir, wf.id())
+        if config.output_dir:
+            default_outdir = os.path.join(config.output_dir, wf.id())
 
         forbiddenids = set()
         if store_in_centraldb:
@@ -131,9 +132,9 @@ class ConfigManager:
 
                     config = JanisConfiguration.manager()
                     dt = datetime.utcnow()
-                    np = f"{config.dbpath}.original-{dt.strftime('%Y%m%d')}"
+                    np = f"{config.db_path}.original-{dt.strftime('%Y%m%d')}"
                     Logger.warn(f"Moving old janis-db to '{np}'")
-                    move(config.dbpath, np)
+                    move(config.db_path, np)
                     self._taskDB = None
                     return self.create_task_base(
                         wf, outdir=outdir, store_in_centraldb=store_in_centraldb
@@ -184,52 +185,11 @@ class ConfigManager:
         return row
 
     def start_task(
-        self,
-        submission_id: str,
-        tool: Tool,
-        output_dir: str,
-        execution_dir: str,
-        engine: Engine,
-        hints: Dict[str, str],
-        validation_requirements: Optional[ValidationRequirements],
-        batchrun_requirements: Optional[BatchRunRequirements],
-        inputs_dict: dict = None,
-        dryrun=False,
-        watch=True,
-        max_cores=None,
-        max_memory=None,
-        max_duration=None,
-        keep_intermediate_files=False,
-        run_in_background=True,
-        dbconfig=None,
-        allow_empty_container=False,
-        container_override: dict = None,
-        check_files=True,
-        **kwargs,
+        self, submission_id: str, tool: Tool, engine: Engine, job: PreparedSubmission
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
-            submission_id,
-            tool=tool,
-            output_dir=output_dir,
-            execution_dir=execution_dir,
-            engine=engine,
-            hints=hints,
-            inputs_dict=inputs_dict,
-            validation_requirements=validation_requirements,
-            batchrun_requirements=batchrun_requirements,
-            dryrun=dryrun,
-            watch=watch,
-            max_cores=max_cores,
-            max_memory=max_memory,
-            max_duration=max_duration,
-            keep_intermediate_files=keep_intermediate_files,
-            run_in_background=run_in_background,
-            dbconfig=dbconfig,
-            allow_empty_container=allow_empty_container,
-            container_override=container_override,
-            check_files=check_files,
-            **kwargs,
+            submission_id, tool=tool, engine=engine, prepared_submission=job,
         )
 
     def get_row_for_submission_id_or_path(self, submission_id) -> TaskRow:

@@ -9,6 +9,7 @@ from janis_core.utils.logger import Logger
 
 from janis_assistant.management.envvariables import EnvVariables, HashableEnum
 from janis_assistant.templates import from_template
+from janis_assistant.utils.callprogram import collect_output_from_command
 
 
 class NoAttributeErrors:
@@ -641,7 +642,13 @@ class JanisDatabaseConfigurationHelper:
             if not os.path.exists(file_path):
                 raise Exception(f"Couldn't locate script '{file_path}' to execute")
 
-            val = subprocess.check_output([file_path, output_dir])
+            try:
+                val = collect_output_from_command(
+                    [file_path, output_dir], stderr=Logger.guess_log
+                )
+            except Exception as e:
+                Logger.critical(f"Failed to generate database credentials ({repr(e)})")
+                raise
             d = json.loads(val)
             Logger.debug(
                 "Received keys from database credentials script: " + ", ".join(d.keys())
@@ -684,7 +691,9 @@ class JanisDatabaseConfigurationHelper:
             if not os.path.exists(file_path):
                 raise Exception(f"Couldn't locate script '{file_path}' to execute")
 
-            val = subprocess.check_output([file_path, execution_dir])
+            val = collect_output_from_command(
+                [file_path, execution_dir], stderr=Logger.guess_log
+            )
             if val is not None and len(val) > 0:
                 Logger.info(
                     f"Successfully deleted DB credentials and received message: {val}"

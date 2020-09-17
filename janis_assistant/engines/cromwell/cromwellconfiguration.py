@@ -243,8 +243,12 @@ class CromwellConfiguration(Serializable):
             connection_timeout=5000,
             database="cromwell",
             url="127.0.0.1",
-            maxConnections=None,
+            maxConnections=20,
         ):
+            if maxConnections < 0:
+                from multiprocessing import cpu_count
+
+                maxConnections = cpu_count() + 1
             return cls(
                 profile="slick.jdbc.MySQLProfile$",
                 db=cls.Db(

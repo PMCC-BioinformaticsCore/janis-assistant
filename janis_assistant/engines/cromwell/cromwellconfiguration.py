@@ -217,6 +217,7 @@ class CromwellConfiguration(Serializable):
                 password=None,
                 num_threads=None,
                 maxConnections=None,
+                numThreads=8,
             ):
                 self.driver = driver
                 self.url = url
@@ -225,6 +226,7 @@ class CromwellConfiguration(Serializable):
                 self.connectionTimeout = connection_timeout
                 self.num_threads = num_threads
                 self.maxConnections = maxConnections
+                self.numThreads = numThreads
 
         def __init__(self, profile=None, insert_batch_size=None, db: Db = None):
             self.db = db
@@ -243,12 +245,8 @@ class CromwellConfiguration(Serializable):
             connection_timeout=5000,
             database="cromwell",
             url="127.0.0.1",
-            maxConnections=20,
+            maxConnections=None,
         ):
-            if maxConnections < 0:
-                from multiprocessing import cpu_count
-
-                maxConnections = cpu_count() + 1
             return cls(
                 profile="slick.jdbc.MySQLProfile$",
                 db=cls.Db(

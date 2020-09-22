@@ -185,11 +185,20 @@ class ConfigManager:
         return row
 
     def start_task(
-        self, submission_id: str, tool: Tool, engine: Engine, job: PreparedSubmission
+        self,
+        submission_id: str,
+        tool: Tool,
+        engine: Engine,
+        job: PreparedSubmission,
+        tool_ref: str,
     ) -> WorkflowManager:
 
         return WorkflowManager.from_janis(
-            submission_id, tool=tool, engine=engine, prepared_submission=job,
+            submission_id,
+            tool=tool,
+            engine=engine,
+            prepared_submission=job,
+            tool_ref=tool_ref,
         )
 
     def get_row_for_submission_id_or_path(self, submission_id) -> TaskRow:

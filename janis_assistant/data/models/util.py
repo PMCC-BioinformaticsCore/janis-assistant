@@ -1,4 +1,5 @@
 import json
+from enum import Enum
 from typing import Dict, Tuple, Any
 
 
@@ -15,6 +16,8 @@ class Serializable:
             return key, None
         if isinstance(value, int) or isinstance(value, str) or isinstance(value, float):
             return key, value
+        elif isinstance(value, Enum):
+            return key, value.value
         elif isinstance(value, dict):
             return key, Serializable.serialize_dict(value, {})
         elif isinstance(value, list):

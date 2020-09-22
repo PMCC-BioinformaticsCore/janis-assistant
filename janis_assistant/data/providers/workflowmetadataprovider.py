@@ -5,7 +5,11 @@ from janis_core import Logger
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 from janis_assistant.data.models.base import KVDatabaseObject
-from janis_assistant.management.configuration import DatabaseTypeToUse
+from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.management.configuration import (
+    DatabaseTypeToUse,
+    JanisDatabaseConfigurationHelper,
+)
 
 
 class SubmissionDbMetadata(KVDatabaseObject):
@@ -13,6 +17,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self,
         submission_id: str = None,
         run_id: str = None,
+        prepared_job: PreparedSubmission = None,
         name: str = None,
         status: TaskStatus = None,
         last_updated=None,
@@ -21,12 +26,11 @@ class SubmissionDbMetadata(KVDatabaseObject):
         container_type=None,
         engine=None,
         engine_id: str = None,
-        configuration=None,
         submission_workflow=None,
         submission_inputs=None,
         submission_resources=None,
         error=None,
-        db_type: DatabaseTypeToUse = None,
+        db_configuration: JanisDatabaseConfigurationHelper = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -35,14 +39,15 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self._run_id = run_id
         self.status = TaskStatus(status) if status is not None else None
 
+        self.prepared_job = prepared_job
+
         self.last_updated = last_updated
         self.keep_execution_dir = keep_execution_dir
         self.container_version = container_version
         self.container_type = container_type
         self.engine = engine
         self.engine_id = engine_id
-        self.configuration = configuration
-        self.db_config = db_config
+        self.db_configuration = db_configuration
         self.name = name
         self.error = error
 
@@ -56,7 +61,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
             "engine",
             "configuration",
             "container_type",
-            "db_config",
+            "db_type",
             "start",
             "status",
         }

@@ -235,9 +235,12 @@ class Cromwell(Engine):
         Logger.info(f"Starting cromwell ({cromwell_loc})...")
         cmd = ["java", "-DLOG_MODE=standard"]
 
-        if jc.cromwell and jc.cromwell.memory:
+        if jc.cromwell and jc.cromwell.memory_mb:
             cmd.extend(
-                [f"-Xmx{jc.cromwell.memory}M", f"-Xms{max(jc.cromwell.memory//2, 1)}M"]
+                [
+                    f"-Xmx{jc.cromwell.memory_mb}M",
+                    f"-Xms{max(jc.cromwell.memory_mb//2, 1)}M",
+                ]
             )
 
         # if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:

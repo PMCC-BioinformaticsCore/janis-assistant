@@ -1,6 +1,7 @@
 import sys
 import argparse
 import json
+from typing import Optional
 
 import ruamel.yaml
 import tabulate
@@ -13,7 +14,10 @@ from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
-from janis_assistant.management.configuration import JanisConfiguration
+from janis_assistant.management.configuration import (
+    JanisConfiguration,
+    DatabaseTypeToUse,
+)
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
 
@@ -737,7 +741,6 @@ def check_logger_args(args):
 
 
 def add_init_args(args):
-    args.add_argument("-r", "--recipe", help="Recipes from template", action="append")
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
     args.add_argument(
         "-f", "--force", help="Overwrite the template if it exits", action="store_true"
@@ -765,7 +768,7 @@ def do_init(args):
         stream=stream,
         unparsed_init_args=args.init_params,
         output_location=args.output,
-        force=args.no_cache,
+        force=args.force,
     )
     if args.ensure_cromwell:
         cromwell_loc = Cromwell.resolve_jar(None)
@@ -907,6 +910,12 @@ def do_run(args):
                 fields=args.batchrun_fields, groupby=args.batchrun_groupby
             )
 
+        db_type: Optional[DatabaseTypeToUse] = None
+        if args.no_database:
+            db_type = DatabaseTypeToUse.none
+        elif args.mysql:
+            db_type = DatabaseTypeToUse.managed
+
         job = prepare_job(
             engine=args.engine,
             output_dir=args.output_dir,
@@ -940,6 +949,7 @@ def do_run(args):
             no_store=args.no_store,
             allow_empty_container=args.allow_empty_container,
             strict_inputs=args.strict_inputs,
+            db_type=db_type,
         )
 
     jobfile = fromjanis2(

@@ -23,6 +23,9 @@ from janis_assistant.management.configuration import (
     JanisConfiguration,
     EnvVariables,
     stringify_dict_keys_or_return_value,
+    JanisConfigurationEnvironment,
+    DatabaseTypeToUse,
+    JanisConfigurationCromwell,
 )
 from janis_assistant.management.filescheme import (
     FileScheme,
@@ -400,6 +403,8 @@ def fromjanis2(
 ):
     cm = ConfigManager.manager()
 
+    tool_ref = workflow
+
     wf: Optional[Tool] = resolve_tool(
         tool=workflow,
         name=name,
@@ -433,7 +438,7 @@ def fromjanis2(
     print(row.submission_id, file=sys.stdout)
 
     eng = get_engine_from_eng(
-        engine or jobfile.engine or jobfile.config.engine,
+        engine or jobfile.engine,
         wid=row.submission_id,
         execdir=WorkflowManager.get_path_for_component_and_dir(
             row.execution_dir, WorkflowManager.WorkflowManagerPath.execution
@@ -453,15 +458,12 @@ def fromjanis2(
 
     try:
 
-        # Note: run_in_foreground can be None, so
-        # (not (run_in_foreground is True)) != (run_in_foreground is False)
-
-        should_run_in_background = (
-            jobfile.background is True or jobfile.config.run_in_background is True
-        ) and not (jobfile.foreground is True)
-
         tm = cm.start_task(
-            submission_id=row.submission_id, tool=wf, engine=eng, job=jobfile,
+            submission_id=row.submission_id,
+            tool=wf,
+            engine=eng,
+            job=jobfile,
+            tool_ref=tool_ref,
         )
         Logger.log("Finished starting task")
         return tm
@@ -505,6 +507,7 @@ def prepare_job(
     strict_inputs,
     skip_digest_lookup,
     skip_digest_cache,
+    db_type: DatabaseTypeToUse = None,
 ):
     jc = JanisConfiguration.manager()
 
@@ -539,30 +542,47 @@ def prepare_job(
         wf.constructor(inputsdict, hints)
         inputsdict = wf.modify_inputs(inputsdict, hints)
 
-    return PreparedSubmission(
-        config=jc,
+    should_run_in_background = (
+        run_in_background is True or jc.run_in_background is True
+    ) and not (run_in_foreground is True)
+
+    submission = PreparedSubmission(
+        # job stuff
         inputs=inputsdict,
         hints=hints,
         output_dir=output_dir,
         execution_dir=execution_dir,
         keep_intermediate_files=keep_intermediate_files,
+        engine=engine or jc.engine,
         recipes=recipes,
-        max_cores=max_cores or jc.environment.max_cores,
-        max_memory=max_memory or jc.environment.max_memory,
-        max_duration=max_duration or jc.environment.max_duration,
         batchrun=batchrun_reqs,
         validation=validation_reqs,
         allow_empty_container=allow_empty_container,
         container_override=container_override,
+        run_in_background=should_run_in_background,
+        # config stuff
+        environment=JanisConfigurationEnvironment(
+            max_cores=max_cores or jc.environment.max_cores,
+            max_memory=max_memory or jc.environment.max_memory,
+            max_duration=max_duration or jc.environment.max_duration,
+        ),
+        cromwell=jc.cromwell,
+        template=jc.template,
+        notifications=jc.notifications,
         should_watch_if_background=watch,
         skip_digest_lookup=skip_digest_lookup,
         skip_digest_cache=skip_digest_cache,
         skip_file_check=not check_files,
-        foreground=run_in_foreground,
-        background=run_in_background,
         no_store=no_store,
         strict_inputs=strict_inputs,
+        digest_cache_location=jc.digest_cache_location,
     )
+
+    if db_type:
+        submission.cromwell = submission.cromwell or JanisConfigurationCromwell()
+        submission.cromwell.db_type = db_type
+
+    return submission
 
 
 def get_engine_from_eng(
@@ -575,7 +595,8 @@ def get_engine_from_eng(
     cromwell_jar: Optional[str],
 ):
 
-    if eng == "cromwell":
+    engid = str(eng)
+    if engid == EngineType.cromwell.value:
         url = cromwell_url or JanisConfiguration.manager().cromwell.url
         if url:
             Logger.info("Found cromwell_url: " + url)

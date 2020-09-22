@@ -17,6 +17,8 @@ import os
 import queue
 import sys
 import time
+from datetime import datetime
+from io import StringIO
 from shutil import rmtree
 from enum import Enum
 from subprocess import call
@@ -52,6 +54,7 @@ from janis_assistant.engines import (
 from janis_assistant.management.configuration import (
     JanisConfiguration,
     JanisDatabaseConfigurationHelper,
+    DatabaseTypeToUse,
 )
 from janis_assistant.management.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.management.mysql import MySql
@@ -149,6 +152,7 @@ class WorkflowManager:
     @staticmethod
     def from_janis(
         submission_id: str,
+        tool_ref: str,
         tool: Tool,
         prepared_submission: PreparedSubmission,
         engine: Engine,
@@ -162,6 +166,11 @@ class WorkflowManager:
             submission_id=submission_id,
             execution_dir=prepared_submission.execution_dir,
             engine=engine,
+        )
+
+        # let's write out the prepared_submission for
+        tm.write_prepared_submission_file(
+            tool_ref=tool_ref, prepared_job=prepared_submission
         )
 
         tm.database.submissions.insert_or_update_many(
@@ -189,7 +198,9 @@ class WorkflowManager:
                 start=DateUtil.now(),
                 keep_execution_dir=prepared_submission.keep_intermediate_files,
                 configuration=jc,
-                db_config=prepared_submission.config,
+                db_configuration=prepared_submission.cromwell.get_database_config_helper()
+                if prepared_submission.cromwell
+                else None,
                 # This is the only time we're allowed to skip the tm.set_status
                 # This is a temporary stop gap until "notification on status" is implemented.
                 # tm.set_status(TaskStatus.PROCESSING)
@@ -207,9 +218,9 @@ class WorkflowManager:
             batchrun=prepared_submission.batchrun,
             hints=prepared_submission.hints,
             additional_inputs=prepared_submission.inputs,
-            max_cores=prepared_submission.max_cores,
-            max_memory=prepared_submission.max_memory,
-            max_duration=prepared_submission.max_duration,
+            max_cores=prepared_submission.environment.max_cores,
+            max_memory=prepared_submission.environment.max_memory,
+            max_duration=prepared_submission.environment.max_duration,
             allow_empty_container=prepared_submission.allow_empty_container,
             container_override=prepared_submission.container_override,
             check_files=not prepared_submission.skip_file_check,
@@ -236,7 +247,7 @@ class WorkflowManager:
 
         if not prepared_submission.dry_run:
             if (
-                not prepared_submission.background
+                not prepared_submission.run_in_background
                 and jc.template
                 and jc.template.template
                 and jc.template.template.can_run_in_foreground is False
@@ -246,7 +257,7 @@ class WorkflowManager:
                     f"in the foreground, try adding the '--background' argument"
                 )
             tm.start_or_submit(
-                run_in_background=prepared_submission.background,
+                run_in_background=prepared_submission.run_in_background,
                 watch=prepared_submission.should_watch_if_background,
             )
         else:
@@ -534,10 +545,10 @@ class WorkflowManager:
         self.copy_logs_if_required()
         self.copy_outputs_if_required()
 
+        self.stop_engine_and_db()
+
         if status == TaskStatus.COMPLETED:
             self.cleanup_execution()
-
-        self.stop_engine_and_db()
 
         rc = status.get_exit_code()
         if rc != 0:
@@ -633,6 +644,8 @@ class WorkflowManager:
                             self.suspend_workflow()
                             break
 
+                    time.sleep(0.5)
+
                     continue
                 except Exception as e:
                     Logger.warn("Something has gone TERRIBLY wrong" + repr(e))
@@ -717,23 +730,23 @@ class WorkflowManager:
         if not engine.config:
             Logger.info("Skipping start database as Janis is not managing the config")
         else:
-            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
-            dbtype = dbconfig.which_db_to_use()
-            if dbtype == dbconfig.DatabaseTypeToUse.existing:
-                engine.config.database = dbconfig.get_config_for_existing_config()
-            elif dbtype == dbconfig.DatabaseTypeToUse.filebased:
-                engine.config.database = dbconfig.get_config_for_filebased_db(
+            db_config: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_configuration
+            dbtype = db_config.db_type
+            if dbtype == DatabaseTypeToUse.existing:
+                engine.config.database = db_config.get_config_for_existing_config()
+            elif dbtype == DatabaseTypeToUse.filebased:
+                engine.config.database = db_config.get_config_for_filebased_db(
                     path=self.get_path_for_component(self.WorkflowManagerPath.database)
                     + "/cromwelldb"
                 )
-            elif dbtype == dbconfig.DatabaseTypeToUse.managed:
+            elif dbtype == DatabaseTypeToUse.managed:
                 cromwelldb_config = self.start_mysql_and_prepare_cromwell_config()
                 additional_cromwell_params.append(
                     "-Ddatabase.db.url=" + cromwelldb_config.db.url
                 )
                 engine.config.database = cromwelldb_config
-            elif dbtype == dbconfig.DatabaseTypeToUse.from_script:
-                engine.config.database = dbconfig.get_config_for_template_supplied(
+            elif dbtype == DatabaseTypeToUse.from_script:
+                engine.config.database = db_config.get_config_for_template_supplied(
                     self.execution_dir
                 )
             else:
@@ -812,6 +825,51 @@ class WorkflowManager:
         )
 
         return retval
+
+    def write_prepared_submission_file(
+        self, tool_ref: str, prepared_job: PreparedSubmission
+    ):
+        import ruamel.yaml
+
+        yaml = ruamel.yaml.YAML()
+
+        d = prepared_job.to_dict()
+        io = StringIO()
+        yaml.dump(d, io)
+        s = io.getvalue()
+
+        out_job_path = os.path.join(self.execution_dir, "job.yaml")
+        out_run_path = os.path.join(self.execution_dir, "run.sh")
+
+        if os.path.exists(out_job_path):
+            Logger.warn(
+                f"There was already a job file at '{out_job_path}', skipping write"
+            )
+        else:
+            with open(out_job_path, "w+") as f:
+                f.write(s)
+
+        if not isinstance(tool_ref, str):
+            Logger.info(
+                "The workflow name / path wasn't provided, skipping writing a 'run.sh' file"
+            )
+        if os.path.exists(out_run_path):
+            Logger.warn(
+                f"There was already a 'run.sh' script at '{out_run_path}', skipping write"
+            )
+        else:
+            with open(out_run_path, "w+") as f:
+                f.write(
+                    f"""\
+# This script was automatically generated by Janis on {str(datetime.now())}.
+
+janis run \\
+    -j {out_job_path} \\
+    {tool_ref}
+"""
+                )
+
+        return io.getvalue()
 
     def prepare_and_output_workflow_to_evaluate_if_required(
         self,
@@ -1327,9 +1385,9 @@ class WorkflowManager:
                 self.filescheme.rm_dir(execdir)
                 self.database.progressDB.set(ProgressKeys.cleanedUp)
 
-            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
+            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_configuration
             dbtype = dbconfig.which_db_to_use()
-            if dbtype == JanisDatabaseConfigurationHelper.DatabaseTypeToUse.from_script:
+            if dbtype == DatabaseTypeToUse.from_script:
                 dbconfig.run_delete_database_script(self.execution_dir)
 
     def log_dbtaskinfo(self):

@@ -54,8 +54,8 @@ class NoAttributeErrors:
 
 
 class JanisConfigurationTemplate(Serializable):
-    def __init__(self, id: str = "local", **d):
-        self.id = id
+    def __init__(self, id: str = None, **d):
+        self.id = id or "local"  # change default here
         self.templateconfig = {k: v for k, v in d.items()}
 
         Logger.log("Got template ID: " + str(self.id))
@@ -105,14 +105,16 @@ class JanisConfigurationCromwell(Serializable):
         mysql_credentials: Union[dict, MySqlInstanceConfig] = None,
         additional_config_lines: str = None,
     ):
-        self.jarpath = jar
-        self.configpath = config_path
+        self.jar = jar
+        self.config_path = config_path
         self.url = url
         self.memory_mb = memory_mb
         self.call_caching_method = call_caching_method
         self.timeout = timeout
         self.polling_interval = polling_interval
-        self.db_type = db_type
+        self.db_type = (
+            DatabaseTypeToUse(db_type) if db_type else DatabaseTypeToUse.filebased
+        )
         self.mysql_credentials = None
         if mysql_credentials:
             self.mysql_credentials = parse_if_dict(
@@ -290,18 +292,18 @@ class JanisConfigurationNotifications(Serializable):
 
 class JanisConfiguration(NoAttributeErrors, Serializable):
 
-    _managed = None  # type: JanisConfiguration
+    # _managed = None  # type: JanisConfiguration
 
     _configpath = None
 
-    @staticmethod
-    def manager():
-        """
-        :return: JanisConfiguration
-        """
-        if not JanisConfiguration._managed:
-            JanisConfiguration._managed = JanisConfiguration()
-        return JanisConfiguration._managed
+    # @staticmethod
+    # def manager():
+    #     """
+    #     :return: JanisConfiguration
+    #     """
+    #     if not JanisConfiguration._managed:
+    #         JanisConfiguration._managed = JanisConfiguration()
+    #     return JanisConfiguration._managed
 
     @staticmethod
     def initial_configuration(
@@ -441,14 +443,16 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         return stringify_dict_keys_or_return_value(deflt)
 
 
-class JanisDatabaseConfigurationHelper:
+class JanisDatabaseConfigurationHelper(Serializable):
     def __init__(
         self,
         db_type: DatabaseTypeToUse,
-        mysql_credentials: Optional[MySqlInstanceConfig],
+        mysql_credentials: Optional[Union[MySqlInstanceConfig, dict]],
     ):
         self.db_type = db_type
-        self.mysql_config = mysql_credentials
+        self.mysql_config = parse_if_dict(
+            MySqlInstanceConfig, mysql_credentials, "mysql_config"
+        )
 
     def which_db_to_use(self) -> DatabaseTypeToUse:
         return self.db_type

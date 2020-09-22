@@ -55,7 +55,9 @@ class NoAttributeErrors:
 
 class JanisConfigurationTemplate(Serializable):
     def __init__(self, id: str = None, **d):
-        self.id = id or "local"  # change default here
+        self.id = (
+            id or EnvVariables.default_template.resolve() or "local"
+        )  # change default here
         self.templateconfig = {k: v for k, v in d.items()}
 
         Logger.log("Got template ID: " + str(self.id))

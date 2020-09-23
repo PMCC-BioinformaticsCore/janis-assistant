@@ -1,5 +1,7 @@
 from typing import List, Dict
 import os
+
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.management.configuration import JanisConfiguration
 
 from janis_assistant.data.container.parse_pattern import (
@@ -47,7 +49,7 @@ def get_digest_from_container(container: str, skip_cache=False):
 
 
 def get_cache_path_from_container(container: str) -> str:
-    cache_path = JanisConfiguration.manager().digest_cache_location
+    cache_path = PreparedSubmission.instance().digest_cache_location
 
     os.makedirs(cache_path, exist_ok=True)
     container_cache_path = os.path.join(

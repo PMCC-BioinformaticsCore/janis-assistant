@@ -14,7 +14,6 @@ from glob import glob
 from typing import Optional, List, Tuple, Union
 
 from janis_assistant.data.models.run import RunModel
-from janis_core import LogLevel
 from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
 
@@ -200,13 +199,12 @@ class Cromwell(Engine):
         ) + min_poll
 
     def start_engine(self, additional_cromwell_options: List[str] = None):
+        from ...data.models.preparedjob import PreparedSubmission
 
-        from janis_assistant.management.configuration import JanisConfiguration
-
-        jc = JanisConfiguration.manager()
+        job = PreparedSubmission.instance()
 
         self._start_time = DateUtil.now()
-        self.timeout = jc.cromwell.timeout or 10
+        self.timeout = job.cromwell.timeout or 10
 
         if self.test_connection():
             Logger.info("Engine has already been started")
@@ -230,16 +228,16 @@ class Cromwell(Engine):
                 f.writelines(self.config.output())
 
         Logger.log("Finding cromwell jar")
-        cromwell_loc = self.resolve_jar(self.cromwelljar)
+        cromwell_loc = self.resolve_jar(self.cromwelljar, job.cromwell, job.config_dir)
 
         Logger.info(f"Starting cromwell ({cromwell_loc})...")
         cmd = ["java", "-DLOG_MODE=standard"]
 
-        if jc.cromwell and jc.cromwell.memory_mb:
+        if job.cromwell and job.cromwell.memory_mb:
             cmd.extend(
                 [
-                    f"-Xmx{jc.cromwell.memory_mb}M",
-                    f"-Xms{max(jc.cromwell.memory_mb//2, 1)}M",
+                    f"-Xmx{job.cromwell.memory_mb}M",
+                    f"-Xms{max(job.cromwell.memory_mb//2, 1)}M",
                 ]
             )
 
@@ -485,26 +483,27 @@ class Cromwell(Engine):
         threading.Timer(time, self.poll_metadata).start()
 
     @staticmethod
-    def resolve_jar(cromwelljar):
-        from janis_assistant.management.configuration import JanisConfiguration
+    def resolve_jar(cromwelljar, janiscromwellconf, configdir):
 
-        man = JanisConfiguration.manager()
-        if not man:
-            raise Exception(
-                f"No configuration was initialised. This is "
-                f"likely an error, and you should raise an issue at {ISSUE_URL}"
-            )
-
-        if cromwelljar and os.path.exists(cromwelljar):
+        if cromwelljar:
+            if not os.path.exists(cromwelljar):
+                raise Exception(
+                    f"Specified cromwell jar '{cromwelljar}' but this didn't exist"
+                )
             return cromwelljar
-        if man.cromwell.jarpath and os.path.exists(man.cromwell.jarpath):
-            return man.cromwell.jarpath
+
+        if (
+            janiscromwellconf
+            and janiscromwellconf.jar
+            and os.path.exists(janiscromwellconf.jar)
+        ):
+            return janiscromwellconf.jar
         fromenv = EnvVariables.cromwelljar.resolve(False)
         if fromenv and os.path.exists(fromenv):
             return fromenv
 
         potentials = list(
-            reversed(sorted(glob(os.path.join(man.configdir, "cromwell-*.jar"))))
+            reversed(sorted(glob(os.path.join(configdir, "cromwell-*.jar"))))
         )
 
         valid_paths = [p for p in potentials if os.path.exists(p)]
@@ -554,7 +553,7 @@ class Cromwell(Engine):
             Logger.info(
                 f"Couldn't find cromwell at any of the usual spots, downloading '{cromwellfilename}' now"
             )
-            cromwelljar = os.path.join(man.configdir, cromwellfilename)
+            cromwelljar = os.path.join(configdir, cromwellfilename)
             request.urlretrieve(cromwellurl, cromwelljar, show_progress)
             Logger.info(f"Downloaded {cromwellfilename}")
 
@@ -656,9 +655,9 @@ class Cromwell(Engine):
     def find_or_generate_config(
         self, identifier, config: CromwellConfiguration, config_path
     ):
-        from janis_assistant.management.configuration import JanisConfiguration
+        from ...data.models.preparedjob import PreparedSubmission
 
-        jc = JanisConfiguration.manager()
+        job = PreparedSubmission.instance()
 
         if config:
             self.config = config
@@ -666,12 +665,12 @@ class Cromwell(Engine):
         elif config_path:
             shutil.copyfile(config_path, self.config_path)
 
-        elif jc.cromwell.configpath:
-            shutil.copyfile(jc.cromwell.configpath, self.config_path)
+        elif job and job.cromwell.config_path:
+            shutil.copyfile(job.cromwell.config_path, self.config_path)
 
         else:
-            self.config: CromwellConfiguration = jc.template.template.engine_config(
-                EngineType.cromwell, jc
+            self.config: CromwellConfiguration = job.template.template.engine_config(
+                EngineType.cromwell, job
             ) or CromwellConfiguration()
             if not self.config.system:
                 self.config.system = CromwellConfiguration.System()

@@ -14,7 +14,6 @@ from janis_assistant.engines.enginetypes import EngineType
 from janis_core.utils.logger import Logger
 
 from janis_assistant.management.envvariables import EnvVariables, HashableEnum
-from janis_assistant.templates import from_template
 
 
 def parse_if_dict(T: Type, val, path: str, skip_if_empty=True):
@@ -55,6 +54,8 @@ class NoAttributeErrors:
 
 class JanisConfigurationTemplate(Serializable):
     def __init__(self, id: str = None, **d):
+        from janis_assistant.templates import from_template
+
         self.id = (
             id or EnvVariables.default_template.resolve() or "local"
         )  # change default here
@@ -282,7 +283,7 @@ class JanisConfigurationRecipes(Serializable):
 class JanisConfigurationNotifications(Serializable):
     def __init__(
         self,
-        email: str,
+        email: str = None,
         from_email: str = "janis-noreply@petermac.org",
         mail_program: str = None,
     ):
@@ -294,10 +295,9 @@ class JanisConfigurationNotifications(Serializable):
 
 class JanisConfiguration(NoAttributeErrors, Serializable):
 
-    # _managed = None  # type: JanisConfiguration
-
     _configpath = None
 
+    # _managed = None  # type: JanisConfiguration
     # @staticmethod
     # def manager():
     #     """

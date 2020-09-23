@@ -8,6 +8,7 @@
 """
 import os
 import sys
+from datetime import datetime
 from inspect import isclass
 from textwrap import dedent
 from typing import Optional, Dict, Union, Type, List
@@ -71,7 +72,7 @@ def resolve_tool(
             import hashlib
 
             fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
-            outdir = os.path.join(JanisConfiguration.manager().configdir, "cached")
+            outdir = os.path.join(PreparedSubmission.instance().configdir, "cached")
             os.makedirs(outdir, exist_ok=True)
             dest = os.path.join(outdir, fn)
             Logger.log(f"Localising '{tool}' to '{dest}'")
@@ -105,6 +106,7 @@ def resolve_tool(
 
 
 def translate(
+    config: JanisConfiguration,
     tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
     translation: str,
     name: str = None,
@@ -126,8 +128,7 @@ def translate(
 
     inputsdict = {}
     if recipes:
-        jc = JanisConfiguration.manager()
-        valuesfromrecipe = jc.recipes.get_recipe_for_keys(recipes)
+        valuesfromrecipe = config.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
     inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
@@ -204,6 +205,7 @@ def spider_tool(
 
 
 def generate_inputs(
+    jc: JanisConfiguration,
     tool: Union[str, j.CommandTool, j.Workflow],
     all=False,
     name=None,
@@ -222,7 +224,6 @@ def generate_inputs(
 
     values_to_ignore = set()
     if recipes:
-        jc = JanisConfiguration.manager()
         for k in jc.recipes.get_recipe_for_keys(recipes):
             values_to_ignore.add(k)
 
@@ -415,12 +416,7 @@ def fromjanis2(
     if not wf:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    row = cm.create_task_base(
-        wf,
-        outdir=jobfile.output_dir,
-        execution_dir=jobfile.execution_dir,
-        store_in_centraldb=not jobfile.no_store,
-    )
+    row = cm.create_task_base(wf=wf, job=jobfile,)
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir
@@ -481,6 +477,7 @@ def fromjanis2(
 def prepare_job(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     # workflow search options
+    jc: JanisConfiguration,
     name: str,
     engine: str,
     only_toolbox,
@@ -509,7 +506,6 @@ def prepare_job(
     skip_digest_cache,
     db_type: DatabaseTypeToUse = None,
 ):
-    jc = JanisConfiguration.manager()
 
     wf: Optional[Tool] = resolve_tool(
         tool=workflow,
@@ -538,6 +534,8 @@ def prepare_job(
         )
     )
 
+    output_dir = generate_output_dir_from(wf.id(), output_dir, jc.output_dir)
+
     if isinstance(wf, DynamicWorkflow):
         wf.constructor(inputsdict, hints)
         inputsdict = wf.modify_inputs(inputsdict, hints)
@@ -548,34 +546,39 @@ def prepare_job(
 
     submission = PreparedSubmission(
         # job stuff
-        inputs=inputsdict,
-        hints=hints,
-        output_dir=output_dir,
+        config_dir=jc.config_dir,
+        db_path=jc.db_path,
         execution_dir=execution_dir,
-        keep_intermediate_files=keep_intermediate_files,
         engine=engine or jc.engine,
-        recipes=recipes,
-        batchrun=batchrun_reqs,
-        validation=validation_reqs,
-        allow_empty_container=allow_empty_container,
-        container_override=container_override,
-        run_in_background=should_run_in_background,
-        # config stuff
+        cromwell=jc.cromwell,
+        template=jc.template,
+        notifications=jc.notifications,
         environment=JanisConfigurationEnvironment(
             max_cores=max_cores or jc.environment.max_cores,
             max_memory=max_memory or jc.environment.max_memory,
             max_duration=max_duration or jc.environment.max_duration,
         ),
-        cromwell=jc.cromwell,
-        template=jc.template,
-        notifications=jc.notifications,
-        should_watch_if_background=watch,
+        run_in_background=should_run_in_background,
+        digest_cache_location=jc.digest_cache_location,
+        # job information
+        inputs=inputsdict,
+        output_dir=output_dir,
+        keep_intermediate_files=keep_intermediate_files,
+        recipes=recipes,
+        hints=hints,
+        allow_empty_container=allow_empty_container,
+        container_override=container_override,
         skip_digest_lookup=skip_digest_lookup,
         skip_digest_cache=skip_digest_cache,
+        batchrun=batchrun_reqs,
+        store_in_central_db=no_store,
         skip_file_check=not check_files,
-        no_store=no_store,
         strict_inputs=strict_inputs,
-        digest_cache_location=jc.digest_cache_location,
+        validation=validation_reqs,
+        # config stuff
+        should_watch_if_background=watch,
+        call_caching_enabled=jc.call_caching_enabled,
+        container_type=jc.container.get_container_type(),
     )
 
     if db_type:
@@ -583,6 +586,28 @@ def prepare_job(
         submission.cromwell.db_type = db_type
 
     return submission
+
+
+# output dir
+def generate_output_dir_from(wf_id, output_dir, jc_output_dir):
+    if not output_dir and not jc_output_dir:
+        raise Exception(
+            f"You must specify an output directory (or specify an 'output_dir' "
+            f"in your configuration)"
+        )
+
+    default_outdir = None
+    if jc_output_dir:
+        default_outdir = os.path.join(jc_output_dir, wf_id)
+
+    if not output_dir:
+        od = default_outdir
+        dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = os.path.join(od, dt)
+
+    output_dir = fully_qualify_filename(output_dir)
+
+    return output_dir
 
 
 def get_engine_from_eng(
@@ -597,7 +622,7 @@ def get_engine_from_eng(
 
     engid = str(eng)
     if engid == EngineType.cromwell.value:
-        url = cromwell_url or JanisConfiguration.manager().cromwell.url
+        url = cromwell_url or PreparedSubmission.instance().cromwell.url
         if url:
             Logger.info("Found cromwell_url: " + url)
         return Cromwell(

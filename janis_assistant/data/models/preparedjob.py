@@ -1,12 +1,13 @@
 from typing import Dict, List, Union, Optional
 
+from janis_core import Logger
+
+from janis_assistant.containers import Container, get_container_by_name, ContainerType
+
 from janis_assistant.validation import ValidationRequirements
 
 from janis_assistant.management.configuration import (
     parse_if_dict,
-    JanisConfiguration,
-    JanisDatabaseConfigurationHelper,
-    DatabaseTypeToUse,
     JanisConfigurationCromwell,
     JanisConfigurationTemplate,
     JanisConfigurationNotifications,
@@ -34,9 +35,21 @@ class PreparedSubmission(Serializable):
         "foreground": "F",
     }
 
+    _instance = None  # type: PreparedSubmission
+
+    @staticmethod
+    def instance():
+        """
+        :return: JanisConfiguration
+        """
+        if PreparedSubmission._instance is None:
+            raise Exception("Couldn't find instance of prepared submission")
+        return PreparedSubmission._instance
+
     def __init__(
         self,
         config_dir: str = None,
+        db_path: str = None,
         execution_dir=None,
         engine: str = None,
         cromwell: JanisConfigurationCromwell = None,
@@ -45,10 +58,10 @@ class PreparedSubmission(Serializable):
         environment: JanisConfigurationEnvironment = None,
         run_in_background: bool = None,
         digest_cache_location: str = None,
+        # job information
         inputs: Dict = None,
         output_dir: str = None,
         keep_intermediate_files: bool = None,
-        development: bool = None,
         recipes: List[str] = None,
         hints: Dict[str, str] = None,
         allow_empty_container: bool = None,
@@ -56,12 +69,14 @@ class PreparedSubmission(Serializable):
         skip_digest_lookup: bool = None,
         skip_digest_cache: bool = None,
         batchrun: Union[BatchRunRequirements, Dict] = None,
-        no_store: bool = None,
+        store_in_central_db: bool = None,
         skip_file_check: bool = None,
         strict_inputs: bool = False,
         validation: ValidationRequirements = None,
         should_watch_if_background: bool = False,
         dry_run: bool = None,
+        call_caching_enabled: bool = None,
+        container_type: str = None,
     ):
         """
 
@@ -84,7 +99,7 @@ class PreparedSubmission(Serializable):
         :param skip_digest_lookup:
         :param skip_digest_cache:
         :param batchrun:
-        :param no_store:
+        :param store_in_central_db:
         :param skip_file_check:
         :param strict_inputs:
         :param validation:
@@ -92,6 +107,7 @@ class PreparedSubmission(Serializable):
         :param cromwell_db_type:
         """
         self.config_dir = config_dir
+        self.db_path = db_path
 
         self.output_dir = output_dir
 
@@ -126,7 +142,6 @@ class PreparedSubmission(Serializable):
         self.output_dir = output_dir
         self.execution_dir = execution_dir
         self.keep_intermediate_files = keep_intermediate_files
-        self.development = development
         self.recipes = recipes
         self.allow_empty_container = allow_empty_container
         self.container_override = container_override
@@ -138,16 +153,29 @@ class PreparedSubmission(Serializable):
         self.validation: Optional[ValidationRequirements] = parse_if_dict(
             ValidationRequirements, validation, "validation"
         )
-        self.no_store = no_store
+        self.store_in_central_db = store_in_central_db
         self.skip_file_check = skip_file_check
         self.strict_inputs = strict_inputs
         self.should_watch_if_background = should_watch_if_background
 
         self.run_in_background = run_in_background
         self.digest_cache_location = digest_cache_location
+        self.call_caching_enabled = call_caching_enabled
+
+        self.container_type = ContainerType(container_type)
+        self._container = get_container_by_name(container_type)
 
         # more thought required to turn this into a configurable parameter
         self.dry_run = dry_run
+
+        if not self._instance:
+            Logger.debug("Setting prepared job")
+            PreparedSubmission._instance = self
+        else:
+            from traceback import format_stack
+
+            Logger.critical("Setting prepared job, when already set")
+            Logger.debug("\n".join(format_stack()))
 
     def get_database_config_helper(self):
         if self.cromwell and self.cromwell.db_type:

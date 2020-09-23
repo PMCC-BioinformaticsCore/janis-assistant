@@ -33,14 +33,14 @@ class ConfigManager:
         # Before the manager() is called, someone (the CLI definitely) MUST call
         # JanisConfiguration.inital_configuration(potential_config_paths), this
         # will search os.env for potential configs
-        config = JanisConfiguration.manager()
+        job = PreparedSubmission.instance()
         self.readonly = readonly
-        self.is_new = not os.path.exists(config.db_path)
+        self.is_new = not os.path.exists(job.db_path)
 
-        cp = os.path.dirname(config.db_path)
+        cp = os.path.dirname(job.db_path)
         os.makedirs(cp, exist_ok=True)
-        if config.output_dir:
-            os.makedirs(config.output_dir, exist_ok=True)
+        if job.output_dir:
+            os.makedirs(job.output_dir, exist_ok=True)
 
         self._connection: Optional[sqlite3.Connection] = None
         self._taskDB: Optional[TasksDbProvider] = None
@@ -58,18 +58,18 @@ class ConfigManager:
         yield self.get_lazy_db_connection()._db.cursor()
 
     def db_connection(self):
-        config = JanisConfiguration.manager()
+        job = PreparedSubmission.instance()
         try:
             if self.readonly:
                 Logger.debug(
-                    "Opening database connection to in READONLY mode: " + config.db_path
+                    "Opening database connection to in READONLY mode: " + job.db_path
                 )
-                return sqlite3.connect(f"file:{config.db_path}?mode=ro", uri=True)
+                return sqlite3.connect(f"file:{job.db_path}?mode=ro", uri=True)
 
-            Logger.debug("Opening database connection: " + config.db_path)
-            return sqlite3.connect(config.db_path)
+            Logger.debug("Opening database connection: " + job.db_path)
+            return sqlite3.connect(job.db_path)
         except:
-            Logger.critical("Error when opening DB connection to: " + config.db_path)
+            Logger.critical("Error when opening DB connection to: " + job.db_path)
             raise
 
     def commit(self):
@@ -98,29 +98,28 @@ class ConfigManager:
         self.get_lazy_db_connection().remove_by_id(task.submission_id)
         Logger.info("Deleted task: " + task.submission_id)
 
-    def create_task_base(
-        self, wf: Workflow, outdir=None, execution_dir=None, store_in_centraldb=True
-    ):
-        config = JanisConfiguration.manager()
+    def get_ids(self, db_path):
+        try:
+            with self.with_cursor() as cursor:
+                return set(
+                    t[0] for t in cursor.execute("SELECT id FROM tasks").fetchall()
+                )
+        except sqlite3.OperationalError as e:
+            if "no such column: id" in repr(e):
+                from shutil import move
 
-        """
-        If you don't spec
-        
-        """
+                dt = datetime.utcnow()
+                np = f"{db_path}.original-{dt.strftime('%Y%m%d')}"
+                Logger.warn(f"Moving old janis-db to '{np}'")
+                move(db_path, np)
+                self._taskDB = None
+                return self.get_ids(db_path)
+            raise
 
-        if not outdir and not config.output_dir:
-            raise Exception(
-                f"You must specify an output directory (or specify an 'output_dir' "
-                f"in your configuration)"
-            )
-
-        default_outdir = None
-
-        if config.output_dir:
-            default_outdir = os.path.join(config.output_dir, wf.id())
+    def create_task_base(self, wf: Workflow, job: PreparedSubmission):
 
         forbiddenids = set()
-        if store_in_centraldb:
+        if job.store_in_central_db:
             try:
                 with self.with_cursor() as cursor:
                     forbiddenids = set(
@@ -130,47 +129,32 @@ class ConfigManager:
                 if "no such column: id" in repr(e):
                     from shutil import move
 
-                    config = JanisConfiguration.manager()
                     dt = datetime.utcnow()
-                    np = f"{config.db_path}.original-{dt.strftime('%Y%m%d')}"
+                    np = f"{job.db_path}.original-{dt.strftime('%Y%m%d')}"
                     Logger.warn(f"Moving old janis-db to '{np}'")
-                    move(config.db_path, np)
+                    move(job.db_path, np)
                     self._taskDB = None
-                    return self.create_task_base(
-                        wf, outdir=outdir, store_in_centraldb=store_in_centraldb
-                    )
+                    return self.create_task_base(wf=wf, job=job)
                 raise
-        if outdir:
-            if os.path.exists(outdir):
-                # this should theoretically scoop through all the ones in the taskDB and
-                # add them to the forbidden ones, though this might cause more issues for now.
-                forbiddenids = forbiddenids.union(set(os.listdir(outdir)))
-        else:
-            if os.path.exists(default_outdir):
-                forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
 
         submission_id = generate_new_id(forbiddenids)
 
-        output_dir = outdir
-        if not output_dir:
-            od = default_outdir
-            dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = os.path.join(od, f"{dt}_{submission_id}/")
+        output_dir = fully_qualify_filename(job.output_dir)
 
-        output_dir = fully_qualify_filename(output_dir)
-
-        if not execution_dir:
-            execution_dir = os.path.join(output_dir, "janis")
-        execution_dir = fully_qualify_filename(execution_dir)
+        if not job.execution_dir:
+            job.execution_dir = os.path.join(output_dir, "janis")
+        job.execution_dir = fully_qualify_filename(job.execution_dir)
 
         Logger.info(
-            f"Starting task with id = '{submission_id}' | output dir: {output_dir} | execution dir: {execution_dir}"
+            f"Starting task with id = '{submission_id}' | output dir: {job.output_dir} | execution dir: {job.execution_dir}"
         )
 
-        row = TaskRow(submission_id, execution_dir=execution_dir, output_dir=output_dir)
-        WorkflowManager.create_dir_structure(execution_dir)
+        row = TaskRow(
+            submission_id, execution_dir=job.execution_dir, output_dir=output_dir
+        )
+        WorkflowManager.create_dir_structure(job.execution_dir)
 
-        if store_in_centraldb:
+        if job.store_in_central_db:
             self.get_lazy_db_connection().insert_task(row)
         else:
             Logger.info(

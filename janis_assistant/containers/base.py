@@ -1,5 +1,11 @@
 from abc import abstractmethod, ABC
+from enum import Enum
 from typing import Dict
+
+
+class ContainerType(Enum):
+    docker = "docker"
+    singularity = "singularity"
 
 
 class Container(ABC):
@@ -27,6 +33,11 @@ class Container(ABC):
                 f"failing with the internal error: {internal}"
             )
             self.internal = internal
+
+    @staticmethod
+    @abstractmethod
+    def get_container_type():
+        pass
 
     @staticmethod
     @abstractmethod

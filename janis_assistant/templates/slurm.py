@@ -1,5 +1,6 @@
 from typing import Union, List
 
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -68,11 +69,11 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         self.catch_slurm_errors = catch_slurm_errors
         self.sbatch = sbatch or "sbatch"
 
-    def cromwell(self, janis_configuration):
+    def cromwell(self, job: PreparedSubmission):
 
         job_email = None
         if self.send_job_emails:
-            job_email = janis_configuration.notifications.email
+            job_email = job.notifications.email
 
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(
@@ -88,7 +89,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
                         jobemail=job_email,
                         jobqueues=self.queues,
                         afternotokaycatch=self.catch_slurm_errors,
-                        call_caching_method=janis_configuration.cromwell.call_caching_method,
+                        call_caching_method=job.cromwell.call_caching_method,
                         sbatch=self.sbatch,
                     )
                 },
@@ -107,14 +108,14 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         if self.intermediate_execution_dir:
             beconfig.root = self.intermediate_execution_dir
 
-        if janis_configuration.call_caching_enabled:
+        if job.call_caching_enabled:
             config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
 
         return config
 
-    def engine_config(self, engine: EngineType, janis_configuration):
+    def engine_config(self, engine: EngineType, job):
         if engine == EngineType.cromwell:
-            return self.cromwell(janis_configuration)
+            return self.cromwell(job)
 
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"

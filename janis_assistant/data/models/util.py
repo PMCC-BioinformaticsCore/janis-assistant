@@ -37,7 +37,7 @@ class Serializable:
         for k, v in d.items():
             if v is None:
                 continue
-            if k.startswith("__"):
+            if k.startswith("_"):
                 continue
             k, v = Serializable.serialize(km.get(k, k), v)
             if not isinstance(v, bool) and not v:

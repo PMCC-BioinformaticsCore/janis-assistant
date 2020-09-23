@@ -867,9 +867,11 @@ JOBID=$({sbatch} \\
         self.aws: CromwellConfiguration.AWS = aws
 
         if additional_params is None:
-            from janis_assistant.management.configuration import JanisConfiguration
+            from janis_assistant.data.models.preparedjob import PreparedSubmission
 
-            additional_params = JanisConfiguration.manager().cromwell.additional_params
+            job = PreparedSubmission.instance()
+            if job and job.cromwell:
+                additional_params = job.cromwell.additional_params
 
         if additional_params is not None:
             additional_params = stringify_value_or_array(

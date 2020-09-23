@@ -158,8 +158,6 @@ class WorkflowManager:
         engine: Engine,
     ):
 
-        jc = JanisConfiguration.manager()
-
         # output directory has been created
 
         tm = WorkflowManager(
@@ -197,7 +195,7 @@ class WorkflowManager:
                 name=tool.id(),
                 start=DateUtil.now(),
                 keep_execution_dir=prepared_submission.keep_intermediate_files,
-                configuration=jc,
+                prepared_job=prepared_submission,
                 db_configuration=prepared_submission.cromwell.get_database_config_helper()
                 if prepared_submission.cromwell
                 else None,
@@ -248,12 +246,12 @@ class WorkflowManager:
         if not prepared_submission.dry_run:
             if (
                 not prepared_submission.run_in_background
-                and jc.template
-                and jc.template.template
-                and jc.template.template.can_run_in_foreground is False
+                and prepared_submission.template
+                and prepared_submission.template.template
+                and prepared_submission.template.template.can_run_in_foreground is False
             ):
                 raise Exception(
-                    f"Your template '{jc.template.template.__class__.__name__}' is not allowed to run "
+                    f"Your template '{prepared_submission.template.template.__class__.__name__}' is not allowed to run "
                     f"in the foreground, try adding the '--background' argument"
                 )
             tm.start_or_submit(
@@ -271,9 +269,9 @@ class WorkflowManager:
         # check container environment is loaded
         metadb = self.database.submission_metadata.metadata
 
-        jc = metadb.configuration
-        metadb.containertype = jc.container.__name__
-        metadb.containerversion = jc.container.test_available_by_getting_version()
+        jc = metadb.prepared_job
+        metadb.containertype = jc._container.__name__
+        metadb.containerversion = jc._container.test_available_by_getting_version()
 
         self.database.submission_metadata.save_changes()
 
@@ -591,8 +589,7 @@ class WorkflowManager:
             # in case anything relies on CD, we'll throw it into janis/execution
             os.chdir(self.get_path_for_component(self.WorkflowManagerPath.execution))
 
-            jc = JanisConfiguration.manager()
-            self.start_engine_if_required(jc)
+            self.start_engine_if_required()
 
             if os.path.exists(self.get_abort_semaphore_path()):
                 Logger.info("Detected please_abort request, aborting")
@@ -713,7 +710,7 @@ class WorkflowManager:
             Logger.critical("Couldn't mark paused: " + str(e))
             return False
 
-    def start_engine_if_required(self, jc):
+    def start_engine_if_required(self):
         # engine should be loaded from the DB
         engine = self.engine
 
@@ -740,7 +737,9 @@ class WorkflowManager:
                     + "/cromwelldb"
                 )
             elif dbtype == DatabaseTypeToUse.managed:
-                cromwelldb_config = self.start_mysql_and_prepare_cromwell_config()
+                cromwelldb_config = self.start_mysql_and_prepare_cromwell_config(
+                    self.database.submission_metadata.metadata.prepared_job
+                )
                 additional_cromwell_params.append(
                     "-Ddatabase.db.url=" + cromwelldb_config.db.url
                 )
@@ -766,7 +765,7 @@ class WorkflowManager:
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
 
         containerdir = self.get_path_for_component(self.WorkflowManagerPath.database)
-        conf = JanisConfiguration.manager()
+        conf = PreparedSubmission.instance()
         if (
             conf
             and conf.template
@@ -776,7 +775,7 @@ class WorkflowManager:
 
         self.dbcontainer = MySql(
             wid=self.submission_id,
-            container=JanisConfiguration.manager().container,
+            container=conf._container,
             datadirectory=self.get_path_for_component(
                 self.WorkflowManagerPath.database
             ),

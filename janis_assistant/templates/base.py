@@ -10,6 +10,7 @@ from janis_assistant.containers.singularity import Singularity
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.data.models.workflowjob import RunJobModel
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import fully_qualify_filename
 
@@ -51,7 +52,7 @@ class EnvironmentTemplate(ABC):
         )
 
     @abstractmethod
-    def engine_config(self, engine: EngineType, janis_configuration):
+    def engine_config(self, engine: EngineType, job: PreparedSubmission):
         pass
 
     def get_job_analysis_from(self, job: RunJobModel) -> Optional[str]:

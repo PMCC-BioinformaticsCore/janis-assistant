@@ -5,6 +5,7 @@ from typing import Optional
 
 import ruamel.yaml
 import tabulate
+from janis_assistant.management.envvariables import EnvVariables
 
 from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation
 from janis_core.utils.logger import Logger, LogLevel
@@ -771,7 +772,11 @@ def do_init(args):
         force=args.force,
     )
     if args.ensure_cromwell:
-        cromwell_loc = Cromwell.resolve_jar(None)
+        cromwell_loc = Cromwell.resolve_jar(
+            cromwelljar=None,
+            janiscromwellconf=None,
+            configdir=EnvVariables.config_dir.resolve(),
+        )
         Logger.info("Located Cromwell at: " + str(cromwell_loc))
 
 
@@ -917,6 +922,7 @@ def do_run(args):
             db_type = DatabaseTypeToUse.managed
 
         job = prepare_job(
+            jc=jc,
             engine=args.engine,
             output_dir=args.output_dir,
             execution_dir=args.execution_dir,

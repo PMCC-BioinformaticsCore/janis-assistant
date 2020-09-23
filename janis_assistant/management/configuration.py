@@ -14,8 +14,8 @@ from janis_assistant.engines.enginetypes import EngineType
 from janis_core.utils.logger import Logger
 
 from janis_assistant.management.envvariables import EnvVariables, HashableEnum
-from janis_assistant.templates import from_template
 from janis_assistant.utils.callprogram import collect_output_from_command
+
 
 def parse_if_dict(T: Type, val, path: str, skip_if_empty=True):
     if val is None:
@@ -36,7 +36,6 @@ def parse_if_dict(T: Type, val, path: str, skip_if_empty=True):
         f"Couldn't parse for type '{T.__name__}', "
         f"expected dict but received '{val.__class__.__name__}' for {str(val)}"
     )
-
 
 
 class NoAttributeErrors:

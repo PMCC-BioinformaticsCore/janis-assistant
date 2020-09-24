@@ -143,7 +143,10 @@ def translate(
     container_overrides = container_override
     if not skip_digest_lookup:
         container_overrides = WorkflowManager.prepare_container_override(
-            toolref, container_override, skip_digest_cache=skip_digest_cache
+            toolref,
+            container_override,
+            cache_location=config.digest_cache_location,
+            skip_digest_cache=skip_digest_cache,
         )
 
     if isinstance(toolref, j.WorkflowBase):

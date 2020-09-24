@@ -199,8 +199,8 @@ class EnvironmentTemplate(ABC):
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(
         self,
-        mail_program: str,
-        container_dir: str,
+        mail_program: str = None,
+        container_dir: str = None,
         load_instructions=None,
         build_instructions=f"singularity pull $image docker://${{docker}}",
         max_cores=None,
@@ -235,7 +235,25 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
                 f"Expected an absolute paths for {', '.join(invalid_paths)}"
             )
 
-        # little bit hacky
+        # if container_dir isn't specified
+
+        if container_dir is None:
+            from os import getenv
+
+            envs_to_search = ["CWL_SINGULARITY_CACHE", "SINGULARITY_TMPDIR"]
+            for env in envs_to_search:
+                e = getenv(env)
+                if e:
+                    container_dir = e
+                    break
+
+            if container_dir is None:
+                raise Exception(
+                    "Couldn't find a directory to cache singularity containers, please provide a "
+                    "'container_dir', or set one of the following env variables: "
+                    + ", ".join(envs_to_search)
+                )
+
         Singularity.containerdir = container_dir
         Singularity.loadinstructions = load_instructions
         Singularity.buildinstructions = build_instructions

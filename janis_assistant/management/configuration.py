@@ -367,6 +367,8 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         self.config_dir = config_dir
         self.db_path = fully_qualify_filename(os.path.join(self.config_dir, "janis.db"))
         self.digest_cache_location = digest_cache_location
+        if not digest_cache_location:
+            self.digest_cache_location = os.path.join(self.config_dir, "digest_cache")
 
         self.output_dir = output_dir
         self.execution_dir = execution_dir

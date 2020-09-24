@@ -224,6 +224,7 @@ class WorkflowManager:
             check_files=not prepared_submission.skip_file_check,
             skip_digest_lookup=prepared_submission.skip_digest_lookup,
             skip_digest_cache=prepared_submission.skip_digest_cache,
+            cache_location=prepared_submission.digest_cache_location,
         )
 
         outdir_workflow = tm.get_path_for_component(
@@ -285,7 +286,14 @@ class WorkflowManager:
             return self.resume()
 
         loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
-        command = ["janis", "--logLevel", loglevel, "resume", "--foreground", wid]
+        command = [
+            "janis",
+            "--logLevel",
+            loglevel,
+            "resume",
+            "--foreground",
+            self.execution_dir,
+        ]
         scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
         logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
         jc.template.template.submit_detatched_resume(
@@ -792,7 +800,10 @@ class WorkflowManager:
 
     @staticmethod
     def prepare_container_override(
-        tool: Tool, container_override: Optional[dict], skip_digest_cache=False
+        tool: Tool,
+        container_override: Optional[dict],
+        cache_location: str,
+        skip_digest_cache=False,
     ):
         from janis_assistant.data.container import get_digests_from_containers
 
@@ -808,7 +819,11 @@ class WorkflowManager:
             reverse_lookup[key] = reverse_lookup.get(key, []) + [versioned_toolid]
 
         containers_to_lookup = list(reverse_lookup.keys())
-        digest_map = get_digests_from_containers(containers_to_lookup)
+        digest_map = get_digests_from_containers(
+            containers_to_lookup,
+            cache_location=cache_location,
+            skip_cache=skip_digest_cache,
+        )
         Logger.debug(f"Found {len(digest_map)} docker digests.")
         Logger.log("Found the following container-to-tool lookup table:")
         Logger.log(CwlTranslator.stringify_translated_inputs(reverse_lookup))
@@ -879,6 +894,7 @@ janis run \\
         batchrun: Optional[BatchRunRequirements],
         hints: Dict[str, str],
         additional_inputs: dict,
+        cache_location: Optional[str],
         max_cores=None,
         max_memory=None,
         max_duration=None,
@@ -930,7 +946,10 @@ janis run \\
         container_overrides = container_override
         if not skip_digest_lookup:
             container_overrides = self.prepare_container_override(
-                tool, container_override, skip_digest_cache=skip_digest_cache
+                tool,
+                container_override,
+                cache_location=cache_location,
+                skip_digest_cache=skip_digest_cache,
             )
 
         translator.translate(

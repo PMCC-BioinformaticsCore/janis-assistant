@@ -13,21 +13,23 @@ from janis_assistant.data.container.registries import *
 
 
 def get_digests_from_containers(
-    containers: List[str], skip_cache=False
+    containers: List[str], cache_location: str, skip_cache=False
 ) -> Dict[str, str]:
     retval = {}
     for container in containers:
-        digest = get_digest_from_container(container, skip_cache=skip_cache)
+        digest = get_digest_from_container(
+            container, cache_location=cache_location, skip_cache=skip_cache
+        )
         if digest:
             retval[container] = digest
 
     return retval
 
 
-def get_digest_from_container(container: str, skip_cache=False):
+def get_digest_from_container(container: str, cache_location: str, skip_cache=False):
     try:
         if not skip_cache:
-            from_cache = try_lookup_in_cache(container)
+            from_cache = try_lookup_in_cache(container, cache_location=cache_location)
             if from_cache:
                 return from_cache
 
@@ -48,18 +50,19 @@ def get_digest_from_container(container: str, skip_cache=False):
         Logger.critical(f"Couldn't get digest for {str(container)}: {str(e)}")
 
 
-def get_cache_path_from_container(container: str) -> str:
-    cache_path = PreparedSubmission.instance().digest_cache_location
+def get_cache_path_from_container(cache_location: str, container: str) -> str:
 
-    os.makedirs(cache_path, exist_ok=True)
+    os.makedirs(cache_location, exist_ok=True)
     container_cache_path = os.path.join(
-        cache_path, ContainerInfo.convert_to_filename(container)
+        cache_location, ContainerInfo.convert_to_filename(container)
     )
     return container_cache_path
 
 
-def try_lookup_in_cache(container: str) -> Optional[str]:
-    container_cache_path = get_cache_path_from_container(container)
+def try_lookup_in_cache(container: str, cache_location: str) -> Optional[str]:
+    container_cache_path = get_cache_path_from_container(
+        cache_location=cache_location, container=container
+    )
     if not os.path.exists(container_cache_path):
         return None
     try:

@@ -21,7 +21,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
 
     def __init__(
         self,
-        container_dir: str,
+        container_dir: str = None,
         intermediate_execution_dir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
@@ -37,7 +37,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
     ):
         """
         :param intermediate_execution_dir: A location where the execution should take place
-        :param container_dir: Location where to save and execute containers from
+        :param container_dir: Location where to save and execute containers to, this will also look at the env variables 'CWL_SINGULARITY_CACHE', 'SINGULARITY_TMPDIR'
         :param queues: A queue that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
         :param send_job_emails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END

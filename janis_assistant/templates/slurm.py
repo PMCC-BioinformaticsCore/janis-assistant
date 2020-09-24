@@ -22,7 +22,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
 
     def __init__(
         self,
-        container_dir: str,
+        container_dir: str = None,
         intermediate_execution_dir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
@@ -38,8 +38,8 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         sbatch: str = "sbatch",
     ):
         """
-        :param intermediate_execution_dir: A location where the execution should take place
-        :param container_dir: Location where to save and execute containers from
+        :param intermediate_execution_dir: A location where the execution should take place, this overrides the regular <output-dir>/execution directory
+        :param container_dir: Location where to save and execute containers to, this will also look at the env variables 'CWL_SINGULARITY_CACHE', 'SINGULARITY_TMPDIR'\
         :param queues: A single or list of queues that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
         :param catch_slurm_errors: Catch Slurm errors (like OOM or walltime)

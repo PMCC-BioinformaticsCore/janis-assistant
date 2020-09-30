@@ -1098,6 +1098,7 @@ def do_translate(args):
     # required_inputs = parse_additional_arguments(args.extra_inputs)
 
     translate(
+        config=jc,
         tool=args.workflow,
         translation=args.translation,
         name=args.name,

@@ -158,6 +158,14 @@ def get_workflow_from_file(file, name, include_commandtools=False):
     if len(ptypes_casesensitive) == 1:
         return ptypes_casesensitive[0][1]
 
+    if name is None:
+        mains = [v for (k, v) in ptypes if k == "__JANIS_ENTRYPOINT"]
+        if len(mains) > 0:
+            Logger.debug(
+                "Using workflow defined by '__JANIS_ENTRYPOINT' as no name was used"
+            )
+            return mains[0]
+
     wftypes = [
         t
         for t in ptypes

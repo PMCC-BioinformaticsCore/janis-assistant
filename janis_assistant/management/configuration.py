@@ -348,7 +348,6 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
 
     def __init__(
         self,
-        config_dir: str = EnvVariables.config_dir.resolve(True),
         output_dir: str = EnvVariables.output_dir.resolve(False),
         execution_dir: str = EnvVariables.exec_dir.resolve(False),
         call_caching_enabled: bool = True,
@@ -364,7 +363,7 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         search_paths: List[str] = None,
     ):
 
-        self.config_dir = config_dir
+        self.config_dir = EnvVariables.config_dir.resolve(True)
         self.db_path = fully_qualify_filename(os.path.join(self.config_dir, "janis.db"))
         self.digest_cache_location = digest_cache_location
         if not digest_cache_location:

@@ -267,9 +267,11 @@ class SubmissionModel(DatabaseObject):
             engine_ids = ", ".join(r.engine_id for r in self.runs if r.engine_id)
             errors.extend(r.error for r in self.runs if r.error)
 
-            rstatuses = ", ".join(str(r.status) for r in self.runs if r.status)
+            rstatuses = ", ".join(
+                str(r.status.to_string()) for r in self.runs if r.status
+            )
 
-        statuses = self.status if self.status else rstatuses
+        statuses = self.status.to_string() if self.status else rstatuses
         ers = "\n".join(errors)
 
         return f"""\

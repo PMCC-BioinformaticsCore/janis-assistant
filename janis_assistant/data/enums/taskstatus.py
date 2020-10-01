@@ -31,7 +31,7 @@ class TaskStatus(Enum):
     def is_in_final_state(self):
         return self in self.final_states()
 
-    def __str__(self):
+    def to_string(self):
         __str = {
             TaskStatus.PROCESSING.value: "Processing",
             TaskStatus.QUEUED.value: "Queued",

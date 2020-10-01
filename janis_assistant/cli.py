@@ -23,15 +23,12 @@ from janis_assistant.management.configuration import (
 from janis_assistant.data.enums.taskstatus import TaskStatus
 
 from janis_assistant.main import (
-    # fromjanis2,
     translate,
     generate_inputs,
     cleanup,
     init_template,
-    resume,
     abort_wids,
     spider_tool,
-    pause,
     fromjanis2,
     prepare_job,
 )
@@ -40,6 +37,7 @@ from janis_assistant.utils import (
     parse_additional_arguments,
     parse_dict,
     get_file_from_searchname,
+    fully_qualify_filename,
 )
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
@@ -233,13 +231,15 @@ def add_spider_args(parser):
 
 
 def add_resume_args(parser):
-    parser.add_argument("wid", help="WID to resume")
     parser.add_argument(
         "--foreground",
         action="store_true",
         help="By default, the workflow will be resubmitted per your template's recommendation. "
         "(This is often in the background). Use this option to force running in the foreground.",
     )
+    parser.add_argument("-j", help="job file")
+    parser.add_argument("wid", nargs="?", help="WID to resume")
+
     return parser
 
 
@@ -825,33 +825,54 @@ def do_watch(args):
     brief = args.brief
     monochrome = args.monochrome
 
-    tm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
-    tm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
+    wm = ConfigManager.get_from_path_or_submission_lazy(wid, readonly=False)
+    wm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
 
 
 def do_resume(args):
-    resume(args.wid, foreground=args.foreground)
+
+    # if args.job:
+    #     from os import getcwd
+    #
+    #     # parse and load the job file
+    #     Logger.info("Specified job file, ignoring all other parameters")
+    #     d = parse_dict(get_file_from_searchname(args.job, getcwd()))
+    #     job = PreparedSubmission(**d)
+    #     wm = ConfigManager.get_from_path_or_submission_lazy(
+    #         job.execution_dir, readonly=False
+    #     )
+    #
+    # else:
+    wm = ConfigManager.get_from_path_or_submission_lazy(args.wid, readonly=False)
+
+    run_in_background = False
+    if args.foreground:
+        run_in_background = False
+    elif wm.database.workflowmetadata.configuration.run_in_background:
+        run_in_background = True
+
+    wm.start_or_submit(run_in_background=run_in_background)
 
 
 def do_pause(args):
-    pause(args.wid)
+    wm = ConfigManager.get_from_path_or_submission_lazy(args.wid, readonly=True)
+    wm.mark_paused(wm.execution_dir)
 
 
 def do_metadata(args):
     wid = args.wid
     Logger.mute()
+    cm = ConfigManager(db_path=None)
     if wid == "*":
-        tasks = ConfigManager.manager().taskDB.get_all_tasks()
+        tasks = cm._taskDB.get_all_tasks()
         for t in tasks:
             try:
                 print("--- TASKID = " + t.wid + " ---")
-                ConfigManager.manager().from_submission_id_or_path(
-                    t.wid, readonly=True
-                ).log_dbtaskinfo()
+                cm.get_from_path_or_submission(t.wid, readonly=True).log_dbtaskinfo()
             except Exception as e:
                 print("\tAn error occurred: " + str(e))
     else:
-        tm = ConfigManager.manager().from_submission_id_or_path(wid)
+        tm = cm.get_from_path_or_submission(wid, readonly=True)
         tm.log_dbtaskinfo()
     Logger.unmute()
 
@@ -865,7 +886,9 @@ def do_rm(args):
     wids = args.wid
     for wid in wids:
         try:
-            ConfigManager.manager().remove_task(wid, keep_output=args.keep)
+            ConfigManager.get_from_path_or_submission_lazy(
+                wid, readonly=True
+            ).remove_task(wid, keep_output=args.keep)
         except Exception as e:
             Logger.critical(f"Can't remove {wid}: " + str(e))
 
@@ -983,8 +1006,9 @@ def do_spider(args):
 
 def do_inputs(args):
 
+    jc = None
     if args.config or args.recipe:
-        JanisConfiguration.initial_configuration(path=args.config,)
+        jc = JanisConfiguration.initial_configuration(path=args.config)
 
     quality_type = None
 
@@ -1000,7 +1024,8 @@ def do_inputs(args):
     }
 
     outd = generate_inputs(
-        args.workflow,
+        jc=jc,
+        tool=args.workflow,
         all=args.all,
         name=args.name,
         force=args.no_cache,
@@ -1029,7 +1054,7 @@ def do_query(args):
         status = TaskStatus(args.status.lower())
 
     name = args.name
-    tasks = ConfigManager.manager().query_tasks(status=status, name=name)
+    tasks = ConfigManager(db_path=None).query_tasks(status=status, name=name)
 
     prepared = [
         (
@@ -1038,7 +1063,7 @@ def do_query(args):
             t.name,
             t.start,
             (", ".join(t.labels) if t.labels else ""),
-            t.outdir,
+            t.execution_dir,
         )
         for wid, t in tasks.items()
     ]
@@ -1055,7 +1080,7 @@ def do_query(args):
 
 def do_rawquery(args):
     wid = args.wid
-    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
+    wm = ConfigManager.get_from_path_or_submission_lazy(wid, readonly=True)
     with wm.database.with_cursor() as cursor:
         result = cursor.execute(args.query).fetchall()
     return print(tabulate.tabulate(result))

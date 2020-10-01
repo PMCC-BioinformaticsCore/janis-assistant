@@ -50,6 +50,7 @@ from janis_assistant.engines import (
     CWLTool,
     CromwellConfiguration,
     Engine,
+    EngineType,
 )
 from janis_assistant.management.configuration import (
     JanisConfiguration,
@@ -271,19 +272,20 @@ class WorkflowManager:
         metadb = self.database.submission_metadata.metadata
 
         jc = metadb.prepared_job
+        PreparedSubmission._instance = jc
         metadb.containertype = jc._container.__name__
         metadb.containerversion = jc._container.test_available_by_getting_version()
 
         self.database.submission_metadata.save_changes()
 
+        # resubmit the engine
+        if not run_in_background:
+            return self.resume()
+
         # this happens for all workflows no matter what type
         self.set_status(TaskStatus.QUEUED)
 
         wid = metadb._submission_id
-
-        # resubmit the engine
-        if not run_in_background:
-            return self.resume()
 
         loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
         command = [
@@ -339,15 +341,6 @@ class WorkflowManager:
 
         if not submission_id:
             raise Exception(f"Couldn't find workflow with id '{submission_id}'")
-
-        try:
-            JanisConfiguration._managed = db.configuration
-        except Exception as e:
-            Logger.critical(
-                "The JanisConfiguration could not be loaded from the DB, this might be due to an older version, we'll load your current config instead. Error: "
-                + str(e)
-            )
-            JanisConfiguration.initial_configuration(None)
 
         # db.close()
 
@@ -576,6 +569,13 @@ class WorkflowManager:
         # get a logfile and start doing stuff
         rc = 0
 
+        meta = self.database.get_metadata()
+        status = meta.status
+        if status in TaskStatus.final_states():
+            return Logger.info(
+                f"This task has already finished and cannot be resumed, view the task outputs at file://{meta.output_dir}"
+            )
+
         try:
             # remove semaphores
             self.remove_semaphores()
@@ -683,7 +683,7 @@ class WorkflowManager:
                     "An additional fatal error occurred while trying to store Janis state: "
                     + str(e)
                     + "\n\nSee the logfile for more information: "
-                    + Logger.WRITE_LOCATION
+                    + str(Logger.WRITE_LOCATION)
                 )
 
         Logger.close_file()
@@ -696,6 +696,7 @@ class WorkflowManager:
 
     def stop_engine_and_db(self):
         self.engine.stop_engine()
+
         if self.dbcontainer:
             self.dbcontainer.stop()
 
@@ -745,9 +746,7 @@ class WorkflowManager:
                     + "/cromwelldb"
                 )
             elif dbtype == DatabaseTypeToUse.managed:
-                cromwelldb_config = self.start_mysql_and_prepare_cromwell_config(
-                    self.database.submission_metadata.metadata.prepared_job
-                )
+                cromwelldb_config = self.start_mysql_and_prepare_cromwell_config()
                 additional_cromwell_params.append(
                     "-Ddatabase.db.url=" + cromwelldb_config.db.url
                 )
@@ -1405,7 +1404,10 @@ janis run \\
 
             dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_configuration
             dbtype = dbconfig.which_db_to_use()
-            if dbtype == DatabaseTypeToUse.from_script:
+            if (
+                dbtype == DatabaseTypeToUse.from_script
+                and self.engine.engtype == EngineType.cromwell
+            ):
                 dbconfig.run_delete_database_script(self.execution_dir)
 
     def log_dbtaskinfo(self):

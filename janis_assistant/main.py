@@ -227,8 +227,13 @@ def generate_inputs(
 
     values_to_ignore = set()
     if recipes:
-        for k in jc.recipes.get_recipe_for_keys(recipes):
-            values_to_ignore.add(k)
+        if not jc:
+            Logger.warn(
+                "An internal error occurred when getting recipes from your config, please raise an issue on GitHub."
+            )
+        else:
+            for k in jc.recipes.get_recipe_for_keys(recipes):
+                values_to_ignore.add(k)
 
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(tool))
@@ -405,7 +410,7 @@ def fromjanis2(
     cromwell_jar: Optional[str] = None,
     cromwell_url: Optional[str] = None,
 ):
-    cm = ConfigManager.manager()
+    cm = ConfigManager(db_path=jobfile.db_path)
 
     tool_ref = workflow
 
@@ -457,15 +462,15 @@ def fromjanis2(
 
     try:
 
-        tm = cm.start_task(
+        wm = WorkflowManager.from_janis(
             submission_id=row.submission_id,
             tool=wf,
             engine=eng,
-            job=jobfile,
+            prepared_submission=jobfile,
             tool_ref=tool_ref,
         )
         Logger.log("Finished starting task")
-        return tm
+        return wm
 
     except KeyboardInterrupt:
         Logger.info("Exiting...")
@@ -574,7 +579,7 @@ def prepare_job(
         skip_digest_lookup=skip_digest_lookup,
         skip_digest_cache=skip_digest_cache,
         batchrun=batchrun_reqs,
-        store_in_central_db=no_store,
+        store_in_central_db=not no_store,
         skip_file_check=not check_files,
         strict_inputs=strict_inputs,
         validation=validation_reqs,
@@ -657,31 +662,11 @@ def get_filescheme_from_fs(fs, **kwargs):
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
 
 
-def resume(wid, foreground: bool = False):
-    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=False)
-    if not wm:
-        raise Exception("Couldn't find workflow manager with wid = " + str(wid))
-
-    run_in_background = False
-    if foreground:
-        run_in_background = False
-    elif wm.database.workflowmetadata.configuration.run_in_background:
-        run_in_background = True
-
-    wm.start_or_submit(run_in_background=run_in_background)
-
-
-def pause(wid):
-    wm = ConfigManager.manager().from_submission_id_or_path(wid)
-    if not wm:
-        raise Exception("Couldn't find workflow manager with wid = " + str(wid))
-    wm.mark_paused(wm.execution_dir)
-
-
 def abort_wids(sids: List[str]):
+    cm = ConfigManager(db_path=None)
     for sid in sids:
         try:
-            row = ConfigManager.manager().get_row_for_submission_id_or_path(sid)
+            row = cm.get_row_for_submission_id_or_path(sid)
             WorkflowManager.mark_aborted(row.execution_dir, row.submission_id)
         except Exception as e:
             Logger.critical(f"Couldn't abort '{sid}': " + str(e))
@@ -689,4 +674,4 @@ def abort_wids(sids: List[str]):
 
 
 def cleanup():
-    ConfigManager.manager().cleanup_missing_tasks()
+    ConfigManager(db_path=None).cleanup_missing_tasks()

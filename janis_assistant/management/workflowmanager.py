@@ -33,6 +33,7 @@ from janis_core import (
     Tool,
     WorkflowBase,
 )
+from janis_core.__meta__ import GITHUB_URL
 from janis_core.operators.operator import Operator
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
@@ -733,6 +734,11 @@ class WorkflowManager:
             engine.start_engine()
             return
 
+        if not engine.is_managing_cromwell:
+            raise Exception(
+                f"Janis isn't managing Cromwell, and couldn't connect on '{engine.host}'"
+            )
+
         additional_cromwell_params = []
         if not engine.config:
             Logger.info("Skipping start database as Janis is not managing the config")
@@ -758,7 +764,7 @@ class WorkflowManager:
                 )
             else:
                 Logger.warn(
-                    "Skipping database config as '--no-database' option was provided."
+                    "Skipping database configuration as '--no-database' option was provided."
                 )
 
         engine_is_started = engine.start_engine(
@@ -1047,7 +1053,7 @@ janis run \\
                     original_path=None,
                     new_path=None,
                     timestamp=None,
-                    output_name=output_names.get(o.id()),
+                    output_name=output_names.get(o.id(), True),
                     output_folder=output_folders.get(o.id()),
                     secondaries=secs,
                     extension=ext,
@@ -1312,18 +1318,20 @@ janis run \\
             output_name_prefix is False or output_name_prefix is None
         )
         has_original_path = (
-            isinstance(engine_output, WorkflowOutputModel)
-            and engine_output.original_path
+            iscopyable
+            and isinstance(engine_output, WorkflowOutputModel)
+            and isinstance(engine_output.value, str)
         )
         if using_original_filename and not has_original_path:
             using_original_filename = False
+            output_name_prefix = True
             Logger.warn(
-                "The output '{outputid}' requested original filename, but there wasn't a file to copy. "
+                f"The output '{outputid}' requested original filename, but there wasn't a file to copy. "
                 "Janis will use the output_id to construct the output name"
             )
 
         if using_original_filename:
-            outfn = os.path.basename(engine_output.original_path)
+            outfn = os.path.basename(engine_output.value)
         elif output_name_prefix is True:
             outfn = outputid
         else:
@@ -1345,10 +1353,18 @@ janis run \\
 
             ext = extension
             if ext is None and has_original_path:
-                ext = get_extension(engine_output.original_path)
+                ext = get_extension(engine_output.value)
             if ext:
                 # mfranklin: require user to correctly specific "." in extension
                 outfn += ext
+
+        if not isinstance(outfn, str):
+            Logger.warn(
+                f"An internal issue occurred when producing an output filename for '{outputid}', was expecting to use "
+                f"the original filename but this was not resolved correctly (resolved to: '{outfn}' [type: {type(outfn)}]). "
+                f"We'll instead use the output_id. Please raise an issue on GitHub ({GITHUB_URL}) for more information."
+            )
+            outfn = outputid
 
         if final_tags is None:
             final_tags = []

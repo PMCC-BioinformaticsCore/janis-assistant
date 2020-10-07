@@ -8,10 +8,12 @@ from janis_assistant.containers import get_container_by_name
 from janis_assistant.containers.base import Container
 
 from janis_assistant.data.models.util import Serializable
+from janis_core.utils.logger import Logger
+
 from janis_assistant.utils import fully_qualify_filename
 
 from janis_assistant.engines.enginetypes import EngineType
-from janis_core.utils.logger import Logger
+from janis_assistant.engines.cromwell.cromwellconfiguration import DatabaseTypeToUse
 
 from janis_assistant.management.envvariables import EnvVariables, HashableEnum
 from janis_assistant.utils.callprogram import collect_output_from_command

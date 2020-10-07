@@ -26,8 +26,8 @@ setup(
         "janis.extension": ["assistant=janis_assistant"],
     },
     install_requires=[
-        "janis-pipelines.core>=0.10.5",
-        "janis-pipelines.templates>=0.10.2",
+        "janis-pipelines.core>=0.10.7",
+        "janis-pipelines.templates>=0.10.3",
         "requests",
         "path",
         "python-dateutil",

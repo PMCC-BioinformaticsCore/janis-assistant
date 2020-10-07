@@ -1,17 +1,18 @@
 import sys
 import argparse
 import json
-from typing import Optional
+from typing import Optional, Tuple
 
 import ruamel.yaml
 import tabulate
 from janis_assistant.management.envvariables import EnvVariables
 
-from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation
+from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, Tool
 from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.management.workflowpreparer import do_extra_workflow_preparation
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
@@ -31,6 +32,7 @@ from janis_assistant.main import (
     spider_tool,
     fromjanis2,
     prepare_job,
+    resolve_tool,
 )
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.utils import (
@@ -38,6 +40,7 @@ from janis_assistant.utils import (
     parse_dict,
     get_file_from_searchname,
     fully_qualify_filename,
+    dict_to_yaml_string,
 )
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
@@ -61,6 +64,7 @@ def process_args(sysargs=None):
         "inputs": do_inputs,
         "watch": do_watch,
         "abort": do_abort,
+        "prepare": do_prepare,
         "metadata": do_metadata,
         "query": do_query,
         "rm": do_rm,
@@ -80,6 +84,7 @@ def process_args(sysargs=None):
     subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
+    add_prepare_args(subparsers.add_parser("prepare", help="Prepare a Janis workflow"))
     add_init_args(
         subparsers.add_parser("init", help="Initialise a Janis configuration")
     )
@@ -425,18 +430,6 @@ def add_inputs_args(parser):
     return parser
 
 
-def add_prepare_args(parser, add_workflow_argument=True):
-    if add_workflow_argument:
-        parser.add_argument(
-            "workflow",
-            help="Run the workflow defined in this file or available within the toolbox",
-        )
-
-    add_args_for_general_wf_prepare(parser)
-
-    return parser
-
-
 def add_args_for_general_wf_prepare(parser):
     parser.add_argument("-c", "--config", help="Path to config file")
 
@@ -699,8 +692,36 @@ def add_run_args(parser, add_workflow_argument=True):
     return parser
 
 
-def add_reconnect_args(parser):
-    parser.add_argument("wid", help="task-id to reconnect to")
+def add_prepare_args(parser, add_workflow_argument=True):
+    # workflow collection
+
+    wfcol_group = parser.add_argument_group("workflow collection arguments")
+
+    wfcol_group.add_argument(
+        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
+    )
+
+    wfcol_group.add_argument(
+        "-n",
+        "--name",
+        help="If you have multiple workflows in your file, you may want to "
+        "help Janis out to select the right workflow to run",
+    )
+
+    wfcol_group.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
+
+    if add_workflow_argument:
+        parser.add_argument(
+            "workflow",
+            help="Run the workflow defined in this file or available within the toolbox",
+        )
+
+    add_args_for_general_wf_prepare(parser)
+
     return parser
 
 
@@ -893,101 +914,123 @@ def do_rm(args):
             Logger.critical(f"Can't remove {wid}: " + str(e))
 
 
+def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
+    jc = JanisConfiguration.initial_configuration(path=args.config)
+
+    # the args.extra_inputs parameter are inputs that we MUST match
+    # we'll need to parse them manually and then pass them to fromjanis as requiring a match
+    required_inputs = parse_additional_arguments(args.extra_inputs)
+
+    inputs = args.inputs or []
+    # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
+    # annoying if you forget to put the inputs before the workflow positional argument.
+    # TBH, we could automatically do this for all params, but it's a little trickier
+
+    if "inputs" in required_inputs:
+        ins = required_inputs.pop("inputs")
+        inputs.extend(ins if isinstance(ins, list) else [ins])
+    if "i" in required_inputs:
+        ins = required_inputs.pop("i")
+        inputs.extend(ins if isinstance(ins, list) else [ins])
+
+    validation, batchrun = None, None
+    if args.validation_fields:
+        Logger.info("Will prepare validation")
+        validation = ValidationRequirements(
+            truthVCF=args.validation_truth_vcf,
+            reference=args.validation_reference,
+            fields=args.validation_fields,
+            intervals=args.validation_intervals,
+        )
+
+    if args.batchrun:
+        Logger.info("Will prepare batch run")
+        batchrun = BatchRunRequirements(
+            fields=args.batchrun_fields, groupby=args.batchrun_groupby
+        )
+
+    db_type: Optional[DatabaseTypeToUse] = None
+    if args.no_database:
+        db_type = DatabaseTypeToUse.none
+    elif args.mysql:
+        db_type = DatabaseTypeToUse.managed
+
+    wf = resolve_tool(
+        tool=args.workflow,
+        name=args.name,
+        from_toolshed=True,
+        only_toolbox=args.toolbox,
+        force=args.no_cache,
+    )
+
+    job = prepare_job(
+        workflow=wf,
+        jc=jc,
+        engine=args.engine,
+        output_dir=args.output_dir,
+        execution_dir=args.execution_dir,
+        max_cores=args.max_cores,
+        max_memory=args.max_memory,
+        max_duration=args.max_duration,
+        run_in_foreground=args.foreground is True,
+        run_in_background=args.background is True,
+        check_files=not args.skip_file_check,
+        container_override=parse_container_override_format(args.container_override),
+        skip_digest_lookup=args.skip_digest_lookup,
+        skip_digest_cache=args.skip_digest_cache,
+        hints={
+            k[5:]: v
+            for k, v in vars(args).items()
+            if k.startswith("hint_") and v is not None
+        },
+        validation_reqs=validation,
+        batchrun_reqs=batchrun,
+        # inputs
+        inputs=inputs,
+        required_inputs=required_inputs,
+        watch=args.progress,
+        recipes=args.recipe,
+        keep_intermediate_files=args.keep_intermediate_files is True,
+        no_store=args.no_store,
+        allow_empty_container=args.allow_empty_container,
+        strict_inputs=args.strict_inputs,
+        db_type=db_type,
+    )
+
+    return job, wf
+
+
+def do_prepare(args):
+
+    job, wf = prepare_from_args(args)
+
+    do_extra_workflow_preparation(wf, job.inputs, job.hints)
+
+    d = job.to_dict()
+    print(dict_to_yaml_string(d))
+
+
 def do_run(args):
 
     if args.job:
         from os import getcwd
 
+        workflow = resolve_tool(
+            tool=args.workflow,
+            name=args.name,
+            from_toolshed=True,
+            only_toolbox=args.toolbox,
+            force=args.no_cache,
+        )
         # parse and load the job file
         Logger.info("Specified job file, ignoring all other parameters")
         d = parse_dict(get_file_from_searchname(args.job, getcwd()))
         job = PreparedSubmission(**d)
 
     else:
-        jc = JanisConfiguration.initial_configuration(path=args.config)
+        job, workflow = prepare_from_args(args)
 
-        # the args.extra_inputs parameter are inputs that we MUST match
-        # we'll need to parse them manually and then pass them to fromjanis as requiring a match
-        required_inputs = parse_additional_arguments(args.extra_inputs)
-
-        inputs = args.inputs or []
-        # we'll manually suck "inputs" out of the extra parms, otherwise it's actually really
-        # annoying if you forget to put the inputs before the workflow positional argument.
-        # TBH, we could automatically do this for all params, but it's a little trickier
-
-        if "inputs" in required_inputs:
-            ins = required_inputs.pop("inputs")
-            inputs.extend(ins if isinstance(ins, list) else [ins])
-        if "i" in required_inputs:
-            ins = required_inputs.pop("i")
-            inputs.extend(ins if isinstance(ins, list) else [ins])
-
-        validation, batchrun = None, None
-        if args.validation_fields:
-            Logger.info("Will prepare validation")
-            validation = ValidationRequirements(
-                truthVCF=args.validation_truth_vcf,
-                reference=args.validation_reference,
-                fields=args.validation_fields,
-                intervals=args.validation_intervals,
-            )
-
-        if args.batchrun:
-            Logger.info("Will prepare batch run")
-            batchrun = BatchRunRequirements(
-                fields=args.batchrun_fields, groupby=args.batchrun_groupby
-            )
-
-        db_type: Optional[DatabaseTypeToUse] = None
-        if args.no_database:
-            db_type = DatabaseTypeToUse.none
-        elif args.mysql:
-            db_type = DatabaseTypeToUse.managed
-
-        job = prepare_job(
-            jc=jc,
-            engine=args.engine,
-            output_dir=args.output_dir,
-            execution_dir=args.execution_dir,
-            max_cores=args.max_cores,
-            max_memory=args.max_memory,
-            max_duration=args.max_duration,
-            run_in_foreground=args.foreground is True,
-            run_in_background=args.background is True,
-            check_files=not args.skip_file_check,
-            container_override=parse_container_override_format(args.container_override),
-            skip_digest_lookup=args.skip_digest_lookup,
-            skip_digest_cache=args.skip_digest_cache,
-            hints={
-                k[5:]: v
-                for k, v in vars(args).items()
-                if k.startswith("hint_") and v is not None
-            },
-            validation_reqs=validation,
-            batchrun_reqs=batchrun,
-            # inputs
-            inputs=inputs,
-            required_inputs=required_inputs,
-            watch=args.progress,
-            force=args.no_cache,
-            recipes=args.recipe,
-            keep_intermediate_files=args.keep_intermediate_files is True,
-            workflow=args.workflow,
-            only_toolbox=args.toolbox,
-            name=args.name,
-            no_store=args.no_store,
-            allow_empty_container=args.allow_empty_container,
-            strict_inputs=args.strict_inputs,
-            db_type=db_type,
-        )
-
-    jobfile = fromjanis2(
-        args.workflow,
-        jobfile=job,
-        name=args.name,
-        only_toolbox=args.toolbox,
-        force=args.no_cache,
-    )
+    jobfile = fromjanis2(workflow, jobfile=job,)
 
     Logger.info("Exiting")
     raise SystemExit

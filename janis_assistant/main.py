@@ -51,6 +51,7 @@ def resolve_tool(
     from_toolshed=False,
     force=False,
     only_toolbox=False,
+    raises=True,
 ):
     if isinstance(tool, j.Tool):
         return tool
@@ -101,8 +102,11 @@ def resolve_tool(
             tool, v = ps[0], ps[1]
 
         wf = j.JanisShed.get_tool(tool, v)
+        if wf:
+            return wf
 
-        return wf
+    if raises:
+        raise Exception("Couldn't find tool with name: " + str(tool))
 
 
 def translate(
@@ -402,29 +406,16 @@ def fromjanis2(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     jobfile: PreparedSubmission,
     engine: Union[str, Engine, None] = None,
-    # toolbox args
-    name: str = None,
-    only_toolbox=False,
-    force=False,
     # specific engine args
     cromwell_jar: Optional[str] = None,
     cromwell_url: Optional[str] = None,
 ):
     cm = ConfigManager(db_path=jobfile.db_path)
 
-    tool_ref = workflow
-
-    wf: Optional[Tool] = resolve_tool(
-        tool=workflow,
-        name=name,
-        from_toolshed=True,
-        only_toolbox=only_toolbox,
-        force=force,
-    )
-    if not wf:
+    if not workflow:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    row = cm.create_task_base(wf=wf, job=jobfile,)
+    row = cm.create_task_base(wf=workflow, job=jobfile,)
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir
@@ -464,10 +455,10 @@ def fromjanis2(
 
         wm = WorkflowManager.from_janis(
             submission_id=row.submission_id,
-            tool=wf,
+            tool=workflow,
             engine=eng,
             prepared_submission=jobfile,
-            tool_ref=tool_ref,
+            tool_ref=workflow.id(),
         )
         Logger.log("Finished starting task")
         return wm
@@ -486,10 +477,7 @@ def prepare_job(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     # workflow search options
     jc: JanisConfiguration,
-    name: str,
     engine: str,
-    only_toolbox,
-    force,
     batchrun_reqs,
     validation_reqs,
     hints: Optional[Dict[str, str]],
@@ -515,16 +503,6 @@ def prepare_job(
     db_type: DatabaseTypeToUse = None,
 ):
 
-    wf: Optional[Tool] = resolve_tool(
-        tool=workflow,
-        name=name,
-        from_toolshed=True,
-        only_toolbox=only_toolbox,
-        force=force,
-    )
-    if not wf:
-        raise Exception("Couldn't find workflow with name: " + str(workflow))
-
     # organise inputs
     inputsdict = {}
 
@@ -534,7 +512,7 @@ def prepare_job(
 
     inputsdict.update(
         cascade_inputs(
-            wf=wf,
+            wf=workflow,
             inputs=inputs,
             required_inputs=required_inputs,
             batchrun_options=batchrun_reqs,
@@ -542,11 +520,11 @@ def prepare_job(
         )
     )
 
-    output_dir = generate_output_dir_from(wf.id(), output_dir, jc.output_dir)
+    output_dir = generate_output_dir_from(workflow.id(), output_dir, jc.output_dir)
 
-    if isinstance(wf, DynamicWorkflow):
-        wf.constructor(inputsdict, hints)
-        inputsdict = wf.modify_inputs(inputsdict, hints)
+    if isinstance(workflow, DynamicWorkflow):
+        workflow.constructor(inputsdict, hints)
+        inputsdict = workflow.modify_inputs(inputsdict, hints)
 
     should_run_in_background = (
         run_in_background is True or jc.run_in_background is True

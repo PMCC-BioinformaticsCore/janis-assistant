@@ -40,6 +40,12 @@ from janis_assistant.utils import (
 from janis_assistant.utils.inputshelper import cascade_inputs
 
 
+def run_with_outputs(tool: j.Tool, input: Dict[str, str]) -> Dict[str, str]:
+    output = {}
+
+    return output
+
+
 def resolve_tool(
     tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
     name=None,
@@ -126,7 +132,13 @@ def translate(
         valuesfromrecipe = jc.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
+    inputsdict.update(
+        cascade_inputs(
+            wf=None,
+            inputs=inputs,
+            required_inputs=None,
+        )
+    )
 
     if isinstance(toolref, DynamicWorkflow):
         if not inputsdict:

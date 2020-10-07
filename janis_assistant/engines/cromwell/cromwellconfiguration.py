@@ -70,6 +70,14 @@ class Serializable:
         return cls.__init__(**kwargs)
 
 
+class DatabaseTypeToUse(Enum):
+    none = "none"
+    existing = "existing"
+    managed = "managed"
+    filebased = "filebased"
+    from_script = "from_script"
+
+
 class CromwellConfiguration(Serializable):
     """
     Based on information provided by: https://github.com/broadinstitute/cromwell/blob/develop/cromwell.examples.conf

@@ -52,6 +52,7 @@ from janis_assistant.engines import (
 from janis_assistant.management.configuration import (
     JanisConfiguration,
     JanisDatabaseConfigurationHelper,
+    DatabaseTypeToUse,
 )
 from janis_assistant.management.filescheme import FileScheme, LocalFileScheme
 from janis_assistant.management.mysql import MySql
@@ -733,26 +734,27 @@ class WorkflowManager:
         else:
             dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
             dbtype = dbconfig.which_db_to_use()
-            if dbtype == dbconfig.DatabaseTypeToUse.existing:
+            engine.db_type = dbtype
+            if dbtype == DatabaseTypeToUse.existing:
                 engine.config.database = dbconfig.get_config_for_existing_config()
-            elif dbtype == dbconfig.DatabaseTypeToUse.filebased:
+            elif dbtype == DatabaseTypeToUse.filebased:
                 engine.config.database = dbconfig.get_config_for_filebased_db(
                     path=self.get_path_for_component(self.WorkflowManagerPath.database)
                     + "/cromwelldb"
                 )
-            elif dbtype == dbconfig.DatabaseTypeToUse.managed:
+            elif dbtype == DatabaseTypeToUse.managed:
                 cromwelldb_config = self.start_mysql_and_prepare_cromwell_config()
                 additional_cromwell_params.append(
                     "-Ddatabase.db.url=" + cromwelldb_config.db.url
                 )
                 engine.config.database = cromwelldb_config
-            elif dbtype == dbconfig.DatabaseTypeToUse.from_script:
+            elif dbtype == DatabaseTypeToUse.from_script:
                 engine.config.database = dbconfig.get_config_for_template_supplied(
                     self.execution_dir
                 )
             else:
                 Logger.warn(
-                    "Skipping database config as '--no-database' option was provided."
+                    "Skipping database configuration as '--no-database' option was provided."
                 )
 
         engine_is_started = engine.start_engine(
@@ -1353,7 +1355,7 @@ class WorkflowManager:
 
             dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
             dbtype = dbconfig.which_db_to_use()
-            if dbtype == JanisDatabaseConfigurationHelper.DatabaseTypeToUse.from_script:
+            if dbtype == DatabaseTypeToUse.from_script:
                 dbconfig.run_delete_database_script(self.execution_dir)
 
     def log_dbtaskinfo(self):

@@ -2,10 +2,12 @@ import os.path
 from enum import Enum
 from typing import Optional, List, Union
 import ruamel.yaml
+from janis_core.utils.logger import Logger
+
 from janis_assistant.utils import fully_qualify_filename
 
 from janis_assistant.engines.enginetypes import EngineType
-from janis_core.utils.logger import Logger
+from janis_assistant.engines.cromwell.cromwellconfiguration import DatabaseTypeToUse
 
 from janis_assistant.management.envvariables import EnvVariables, HashableEnum
 from janis_assistant.templates import from_template
@@ -537,13 +539,6 @@ class JanisConfiguration(NoAttributeErrors):
 
 
 class JanisDatabaseConfigurationHelper:
-    class DatabaseTypeToUse(Enum):
-        none = "none"
-        existing = "existing"
-        managed = "managed"
-        filebased = "filebased"
-        from_script = "from_script"
-
     class MySqlInstanceConfig:
         def __init__(self, url, username, password, dbname="cromwell"):
             self.url = url
@@ -565,20 +560,20 @@ class JanisDatabaseConfigurationHelper:
 
     def which_db_to_use(self) -> DatabaseTypeToUse:
         if self.mysql_config is not None:
-            return self.DatabaseTypeToUse.existing
+            return DatabaseTypeToUse.existing
         elif self.skip_database:
-            return self.DatabaseTypeToUse.none
+            return DatabaseTypeToUse.none
         elif self.should_manage_mysql is True:
-            return self.DatabaseTypeToUse.managed
+            return DatabaseTypeToUse.managed
         elif self.generated_db_credentials_from_script is True:
-            return self.DatabaseTypeToUse.from_script
-        return self.DatabaseTypeToUse.filebased
+            return DatabaseTypeToUse.from_script
+        return DatabaseTypeToUse.filebased
 
     def get_config_for_existing_config(self):
         t = self.which_db_to_use()
-        if t != self.DatabaseTypeToUse.existing:
+        if t != DatabaseTypeToUse.existing:
             raise Exception(
-                f"Attempted to request database config for {self.DatabaseTypeToUse.existing.value} config, "
+                f"Attempted to request database config for {DatabaseTypeToUse.existing.value} config, "
                 f"but the database helper wants to use {t.value}"
             )
         from janis_assistant.engines.cromwell.cromwellconfiguration import (
@@ -596,9 +591,9 @@ class JanisDatabaseConfigurationHelper:
 
     def get_config_for_filebased_db(self, path):
         t = self.which_db_to_use()
-        if t != self.DatabaseTypeToUse.filebased:
+        if t != DatabaseTypeToUse.filebased:
             raise Exception(
-                f"Attempted to request database config for {self.DatabaseTypeToUse.filebased.value} config, "
+                f"Attempted to request database config for {DatabaseTypeToUse.filebased.value} config, "
                 f"but the database helper wants to use {t.value}"
             )
         from janis_assistant.engines.cromwell.cromwellconfiguration import (
@@ -609,9 +604,9 @@ class JanisDatabaseConfigurationHelper:
 
     def get_config_for_managed_mysql(self, url):
         t = self.which_db_to_use()
-        if t != self.DatabaseTypeToUse.managed:
+        if t != DatabaseTypeToUse.managed:
             raise Exception(
-                f"Attempted to request database config for {self.DatabaseTypeToUse.managed.value} "
+                f"Attempted to request database config for {DatabaseTypeToUse.managed.value} "
                 f"config, but the database helper wants to use {t.value}"
             )
 

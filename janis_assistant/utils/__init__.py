@@ -41,7 +41,7 @@ def get_extension(fn):
     idx = last_path_component[::-1].index(".")
     if idx <= 0:
         return None
-    return last_path_component[-idx:]
+    return "." + last_path_component[-idx:]
 
 
 uri_prefix = re.compile("^[A-z0-9]{2,}:\/\/")

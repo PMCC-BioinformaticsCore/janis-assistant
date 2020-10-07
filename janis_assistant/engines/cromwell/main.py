@@ -146,8 +146,7 @@ class Cromwell(Engine):
 
         try:
             r = request.urlopen(self.url_test())
-            r.raise_for_status()
-            return True
+            return r.code == 200
 
         except Exception as e:
             Logger.warn(f"Couldn't connect to Cromwell ({self.host}): {repr(e)}")

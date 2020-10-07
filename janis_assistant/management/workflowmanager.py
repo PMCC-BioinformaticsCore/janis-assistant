@@ -728,6 +728,11 @@ class WorkflowManager:
             engine.start_engine()
             return
 
+        if not engine.is_managing_cromwell:
+            raise Exception(
+                f"Janis isn't managing Cromwell, and couldn't connect on '{engine.host}'"
+            )
+
         additional_cromwell_params = []
         if not engine.config:
             Logger.info("Skipping start database as Janis is not managing the config")

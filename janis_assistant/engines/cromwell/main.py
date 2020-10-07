@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import shutil
@@ -6,20 +7,17 @@ import signal
 import subprocess
 import sys
 import threading
-import math
 from datetime import datetime
-from urllib import request, parse
-
 from glob import glob
 from typing import Optional, List, Tuple, Union
+from urllib import request, parse
 
-from janis_assistant.data.models.run import RunModel
-from janis_core import LogLevel
 from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
 
-from janis_assistant.__meta__ import ISSUE_URL
+from janis_assistant.__meta__ import ISSUE_URL, GITHUB_URL
 from janis_assistant.data.models.outputs import WorkflowOutputModel
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
@@ -28,12 +26,11 @@ from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.management.envvariables import EnvVariables
 from janis_assistant.utils import (
     ProcessLogger,
-    write_files_into_buffered_zip,
     find_free_port,
 )
 from janis_assistant.utils.dateutil import DateUtil
 from janis_assistant.utils.fileutil import tail
-from .cromwellconfiguration import CromwellConfiguration
+from .cromwellconfiguration import CromwellConfiguration, DatabaseTypeToUse
 from ..engine import Engine, TaskStatus
 
 CROMWELL_RELEASES = (
@@ -68,6 +65,7 @@ class Cromwell(Engine):
         config_path=None,
         execution_dir: str = None,
         polling_interval: Optional[int] = None,
+        db_type: DatabaseTypeToUse = None,
     ):
 
         super().__init__(
@@ -99,6 +97,8 @@ class Cromwell(Engine):
         # Last contacted is used to determine
         self.last_contacted = None
         self.timeout = 10  # minutes
+        self.db_type: Optional[DatabaseTypeToUse] = db_type
+        self.is_managing_cromwell = host is None
         if polling_interval is not None:
             polling_interval = int(polling_interval)
             if polling_interval < 3:
@@ -745,9 +745,24 @@ class Cromwell(Engine):
 
         except (request.URLError, ConnectionResetError) as e:
             self.connectionerrorcount += 1
-            if (
+            minutes_not_able_to_contact_cromwell = (
                 datetime.now() - self.last_contacted
-            ).total_seconds() / 60 > self.timeout:
+            ).total_seconds() / 60
+            if minutes_not_able_to_contact_cromwell > self.timeout:
+                message = (
+                    f"Janis is receiving a ConnectionResetError when contacting the Cromwell instance "
+                    f"({self.host}) {self.connectionerrorcount} times, and has been unable to connect to "
+                    f"Cromwell for {minutes_not_able_to_contact_cromwell} minutes. "
+                )
+                if self.db_type and self.db_type == DatabaseTypeToUse.filebased:
+                    ja_config_url = "https://janis.readthedocs.io/en/latest/references/configuration.html#cromwell"
+                    message += (
+                        "We've seen this issue more frequently when Janis is configuring Cromwell to use the "
+                        "file-based database. We recommend configuring Janis to use a MySQL database through the "
+                        f"`--mysql` flag, visitng '{ja_config_url}', or raising an issue on GitHub ({GITHUB_URL}) "
+                        f"for more information."
+                    )
+                Logger.warn(message)
                 self.something_has_happened_to_cromwell(
                     "last_updated_threshold"
                 )  # idk, pick a number

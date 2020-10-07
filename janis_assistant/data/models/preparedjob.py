@@ -74,7 +74,6 @@ class PreparedSubmission(Serializable):
         strict_inputs: bool = False,
         validation: ValidationRequirements = None,
         should_watch_if_background: bool = False,
-        dry_run: bool = None,
         call_caching_enabled: bool = None,
         container_type: str = None,
     ):
@@ -164,9 +163,6 @@ class PreparedSubmission(Serializable):
 
         self.container_type = ContainerType(container_type)
         self._container = get_container_by_name(container_type)
-
-        # more thought required to turn this into a configurable parameter
-        self.dry_run = dry_run
 
         if not self._instance:
             Logger.debug("Setting prepared job")

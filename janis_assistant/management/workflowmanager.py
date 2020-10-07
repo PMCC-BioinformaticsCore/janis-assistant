@@ -245,7 +245,8 @@ class WorkflowManager:
         tm.database.submission_metadata.save_changes()
         tm.database.commit()
 
-        if not prepared_submission.dry_run:
+        is_dry_run = False
+        if not is_dry_run:
             if (
                 not prepared_submission.run_in_background
                 and prepared_submission.template

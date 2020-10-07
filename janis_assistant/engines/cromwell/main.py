@@ -336,15 +336,23 @@ class Cromwell(Engine):
         self._process = None
 
     def stop_engine(self):
+
+        if not self.is_started:
+            return Logger.debug(
+                "Cromwell has already shut down, skipping shut down request"
+            )
+
         if self._logger:
             self._logger.terminate()
 
         self.should_stop = True
+
         if self._timer_thread:
             self._timer_thread.set()
 
         if not self.process_id:
-            Logger.warn("Could not find a cromwell process to end, SKIPPING")
+            self.is_started = False
+            Logger.info("Janis isn't managing Cromwell, skipping the shutdown")
             return
         Logger.info("Stopping cromwell")
         if self.process_id:

@@ -615,7 +615,7 @@ class Cromwell(Engine):
             newkey,
             WorkflowOutputModel(
                 id_=newkey,
-                original_path=fileloc,
+                original_path=None,
                 timestamp=DateUtil.now(),
                 new_path=None,
                 output_folder=None,

@@ -142,11 +142,11 @@ class JanisConfigurationRecipes(Serializable):
 
     def __init__(
         self,
-        recipes: dict,
-        paths: Union[str, List[str]],
-        directories: Union[str, List[str]],
+        recipes: dict = None,
+        paths: Union[str, List[str]] = None,
+        directories: Union[str, List[str]] = None,
     ):
-        self.recipes = recipes
+        self.recipes = recipes or {}
         self.paths: Optional[List[str]] = None
         self.directories: Optional[List[str]] = None
 
@@ -172,10 +172,7 @@ class JanisConfigurationRecipes(Serializable):
         if len(ext) == 0:
             return os.path.basename(path), path
 
-        if (
-            ext[1:]
-            in JanisConfiguration.JanisConfigurationRecipes.VALID_YAML_EXTENSIONS
-        ):
+        if ext[1:] in JanisConfigurationRecipes.VALID_YAML_EXTENSIONS:
             return os.path.basename(path)[: -len(ext)], path
 
         return None
@@ -354,7 +351,7 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         engine: str = EngineType.cromwell.value,
         cromwell: JanisConfigurationCromwell = None,
         template: JanisConfigurationTemplate = None,
-        recipes: dict = None,
+        recipes: JanisConfigurationRecipes = None,
         notifications: JanisConfigurationNotifications = None,
         environment: JanisConfigurationEnvironment = None,
         run_in_background: bool = None,
@@ -377,7 +374,9 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         self.call_caching_enabled = call_caching_enabled
         self.run_in_background = run_in_background
 
-        self.recipes = recipes
+        self.recipes = parse_if_dict(
+            JanisConfigurationRecipes, recipes or {}, "recipes", skip_if_empty=False,
+        )
 
         self.template = parse_if_dict(
             JanisConfigurationTemplate, template or {}, "template", skip_if_empty=False

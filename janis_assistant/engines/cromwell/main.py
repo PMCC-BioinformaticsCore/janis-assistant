@@ -343,11 +343,6 @@ class Cromwell(Engine):
         if self._timer_thread:
             self._timer_thread.set()
 
-        if self._logfp:
-            self._logfp.flush()
-            os.fsync(self._logfp.fileno())
-            self._logfp.close()
-
         if not self.process_id:
             Logger.warn("Could not find a cromwell process to end, SKIPPING")
             return

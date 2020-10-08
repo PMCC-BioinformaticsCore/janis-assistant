@@ -31,7 +31,9 @@ from janis_assistant.utils import (
 )
 from janis_assistant.utils.dateutil import DateUtil
 from janis_assistant.utils.fileutil import tail
-from .cromwellconfiguration import CromwellConfiguration, DatabaseTypeToUse
+from .cromwellconfiguration import CromwellConfiguration
+from janis_assistant.data.enums.dbtype import DatabaseTypeToUse
+
 from ..engine import Engine, TaskStatus
 
 CROMWELL_RELEASES = (

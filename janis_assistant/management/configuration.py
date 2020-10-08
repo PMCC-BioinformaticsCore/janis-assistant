@@ -13,7 +13,7 @@ from janis_core.utils.logger import Logger
 from janis_assistant.utils import fully_qualify_filename
 
 from janis_assistant.engines.enginetypes import EngineType
-from janis_assistant.engines.cromwell.cromwellconfiguration import DatabaseTypeToUse
+from janis_assistant.data.enums.dbtype import DatabaseTypeToUse
 
 from janis_assistant.management.envvariables import EnvVariables, HashableEnum
 from janis_assistant.utils.callprogram import collect_output_from_command
@@ -79,14 +79,6 @@ class JanisConfigurationEnvironment(NoAttributeErrors, Serializable):
         self.max_cores = max_cores
         self.max_memory = max_memory
         self.max_duration = max_duration
-
-
-class DatabaseTypeToUse(Enum):
-    none = "none"
-    existing = "existing"
-    managed = "managed"
-    filebased = "filebased"
-    from_script = "from_script"
 
 
 class MySqlInstanceConfig(Serializable):

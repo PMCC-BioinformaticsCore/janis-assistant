@@ -530,7 +530,7 @@ JOBID=$({sbatch} \\
     --error ${{cwd}}/execution/stderr \\
     --time '0:${{duration}}' \\
     {emailextra} \\
-    --wrap "singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
+    --wrap "singularity exec --containall --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}") \\
     {afternotokaycommand} \\
     && echo Submitted batch job $JOBID
             """
@@ -567,7 +567,7 @@ JOBID=$({sbatch} \\
 
                     {buildinstructions}
 
-                    singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}
+                    singularity exec --containall --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}
                     """
                 return config
 
@@ -689,7 +689,7 @@ JOBID=$({sbatch} \\
 
     JOBID=$(echo \\
         "{loadinstructions} \\
-        singularity exec --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" | \\
+        singularity exec --containall --bind ${{cwd}}:${{docker_cwd}} $image ${{job_shell}} ${{docker_script}}" | \\
         qsub \\
             -v ${{cwd}} \\
             -N $jobname \\

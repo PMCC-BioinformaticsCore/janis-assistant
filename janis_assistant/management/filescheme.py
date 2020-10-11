@@ -31,6 +31,10 @@ class FileScheme(Archivable, abc.ABC):
         return self.identifier
 
     @abc.abstractmethod
+    def exists(self, path):
+        pass
+
+    @abc.abstractmethod
     def cp_from(
         self,
         source,
@@ -197,6 +201,9 @@ class LocalFileScheme(FileScheme):
     def is_valid_prefix(prefix: str):
         return True
 
+    def exists(self, path):
+        return os.path.exists(path)
+
 
 class HTTPFileScheme(FileScheme):
     def __init__(self, identifier, credentials: any = None):
@@ -246,6 +253,16 @@ class HTTPFileScheme(FileScheme):
 
     def mkdirs(self, directory):
         return None
+
+    def exists(self, path):
+        import urllib.request
+
+        try:
+            req = urllib.request.Request(path, method="HEAD")
+            response = urllib.request.urlopen(req)
+            return response.getcode() == 200
+        except:
+            return False
 
 
 class SSHFileScheme(FileScheme):

@@ -687,6 +687,12 @@ def add_run_args(parser, add_workflow_argument=True):
             help="Run the workflow defined in this file or available within the toolbox",
         )
 
+    parser.add_argument(
+        "--wait",
+        action="store_true",
+        help="If the workflow is run in the background, don't exit until the workflow has moved to a terminal status.",
+    )
+
     add_args_for_general_wf_prepare(parser)
 
     return parser
@@ -1030,7 +1036,7 @@ def do_run(args):
     else:
         job, workflow = prepare_from_args(args)
 
-    jobfile = fromjanis2(workflow, jobfile=job,)
+    jobfile = fromjanis2(workflow, jobfile=job, wait=args.wait)
 
     Logger.info("Exiting")
     raise SystemExit

@@ -406,6 +406,7 @@ def fromjanis2(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     jobfile: PreparedSubmission,
     engine: Union[str, Engine, None] = None,
+    wait: bool = False,
     # specific engine args
     cromwell_jar: Optional[str] = None,
     cromwell_url: Optional[str] = None,
@@ -459,6 +460,7 @@ def fromjanis2(
             engine=eng,
             prepared_submission=jobfile,
             tool_ref=workflow.id(),
+            wait=wait,
         )
         Logger.log("Finished starting task")
         return wm

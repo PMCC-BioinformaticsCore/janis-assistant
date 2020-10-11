@@ -158,6 +158,7 @@ class WorkflowManager:
         tool: Tool,
         prepared_submission: PreparedSubmission,
         engine: Engine,
+        wait=False,
     ):
 
         # output directory has been created
@@ -266,6 +267,13 @@ class WorkflowManager:
             tm.set_status(TaskStatus.DRY_RUN)
 
         tm.database.commit()
+
+        if wait:
+            Logger.info("WAITING until task finishes before returning")
+            while (
+                not tm.database.submission_metadata.metadata.status.is_in_final_state()
+            ):
+                time.sleep(2)
 
         return tm
 

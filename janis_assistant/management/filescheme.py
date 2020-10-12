@@ -191,7 +191,9 @@ class LocalFileScheme(FileScheme):
                     Logger.log(f"Copying file {s} → {d}")
                     copyfile(s, d)
         except Exception as e:
-            Logger.critical(f"An unexpected error occurred when link/copying {s}: {e}")
+            Logger.critical(
+                f"An unexpected error occurred when link/copying {s} -> {d}: {e}"
+            )
 
     @staticmethod
     def is_valid_prefix(prefix: str):

@@ -1318,20 +1318,36 @@ class WorkflowManager:
         newoutputfilepath = os.path.join(outdir, outfn)
 
         if isinstance(engine_output, WorkflowOutputModel):
-            original_filepath = engine_output.original_path
-            if original_filepath and iscopyable:
-                fs.cp_from(engine_output.original_path, newoutputfilepath, force=True)
-            elif engine_output.value:
-                if isinstance(fs, LocalFileScheme):
+            value = engine_output.value
+            if iscopyable:
+                if value is None:
+                    Logger.critical(
+                        f"Couldn't copy the output for '{outputid}', as the engine returned no path"
+                    )
+                else:
+                    fs.cp_from(value, newoutputfilepath, force=True)
+                    original_filepath = value
+            else:
+                if value is None:
+                    Logger.warn(f"The output '{outputid}' had no value")
+                elif isinstance(fs, LocalFileScheme):
                     # Write engine_output to outpath
                     with open(newoutputfilepath, "w+") as outfile:
                         outfile.write(str(engine_output.value))
+                else:
+                    Logger.warn(
+                        f"Skipping writing the output value for '{outputid}' as Janis doesn't support writing values not on the local filesystem"
+                    )
         else:
             original_filepath = engine_output
             if isinstance(fs, LocalFileScheme):
                 # Write engine_output to outpath
                 with open(newoutputfilepath, "w+") as outfile:
                     outfile.write(str(engine_output))
+            else:
+                Logger.critical(
+                    f"Can't write output '{outputid}' to non-local filesystem '{fs.id()}'"
+                )
 
         for sec in secondaries or []:
             frompath = apply_secondary_file_format_to_filename(original_filepath, sec)

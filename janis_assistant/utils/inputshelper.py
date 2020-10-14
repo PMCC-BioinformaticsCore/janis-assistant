@@ -53,8 +53,6 @@ def cascade_inputs(
                     f"There were unrecognised inputs provided to the tool \"{wf.id()}\", keys: {', '.join(invalid_keys)}"
                 )
 
-            ins = {**required_inputs}
-
     return ins
 
 

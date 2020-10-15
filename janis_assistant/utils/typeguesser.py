@@ -19,7 +19,7 @@ def guess_datatype_by_filename(filename: str):
     :return:
     """
     dts = JanisShed.get_all_datatypes()
-    fs = FileScheme.get_type_by_prefix(filename)
+    fs = FileScheme.get_type_by_prefix(filename)()
     if not isinstance(fs, LocalFileScheme):
         Logger.warn(
             f"The filescheme detected by Janis for '{filename}' was not LOCAL. This guess datatype process may rely on "

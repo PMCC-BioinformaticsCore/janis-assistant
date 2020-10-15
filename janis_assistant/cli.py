@@ -12,7 +12,6 @@ from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
 from janis_assistant.data.models.preparedjob import PreparedSubmission
-from janis_assistant.management.workflowpreparer import do_extra_workflow_preparation
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
@@ -1009,8 +1008,6 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
 def do_prepare(args):
 
     job, wf = prepare_from_args(args)
-
-    do_extra_workflow_preparation(wf, job.inputs, job.hints)
 
     d = job.to_dict()
     print(dict_to_yaml_string(d))

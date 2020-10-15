@@ -1,4 +1,3 @@
-from os.path import exists
 from typing import Dict
 
 from janis_core import (
@@ -56,7 +55,9 @@ class InputChecker(PipelineModifierBase):
                     continue
                 raise Exception(f"Expected input '{inp.id()}' was not found or is null")
 
-            doesnt_exist.update(InputChecker.check_base_with_type(inp, intype, val))
+            fs = FileScheme.get_type_by_prefix(val)
+
+            doesnt_exist.update(InputChecker.check_base_with_type(fs, inp, intype, val))
 
         if len(doesnt_exist) > 0:
             import ruamel.yaml
@@ -65,34 +66,42 @@ class InputChecker(PipelineModifierBase):
             raise Exception("The following inputs were not found:\n" + stringified)
 
     @staticmethod
-    def check_base_with_type(inp: TInput, intype: DataType, val, suffix=""):
+    def check_base_with_type(
+        fs: FileScheme, inp: TInput, intype: DataType, val, suffix=""
+    ):
         doesnt_exist = {}
         if isinstance(intype, Array):
-            st = intype.subtype()
+            subtype = intype.subtype()
             if not isinstance(val, list):
                 raise Exception(
                     f"Expected {inp.id()} to be list, but {str(val)} was a {type(val)}"
                 )
-            for v, idx in zip(val, range(len(val))):
-                nsuffix = f"{suffix}_{idx}"
+            for innerval, idx in zip(val, range(len(val))):
+                nsuffix = f"{suffix}[{idx}]"
                 doesnt_exist.update(
-                    InputChecker.check_base_with_type(inp, st, v, suffix=nsuffix)
+                    InputChecker.check_base_with_type(
+                        fs, inp, subtype, innerval, suffix=nsuffix
+                    )
                 )
             return doesnt_exist
+
+        inpid = inp.id() + suffix
 
         if isinstance(val, list):
             raise Exception(f"Expected singular item for {inp.id()}, received list.")
 
-        if not InputChecker.check_if_input_exists(val):
-            doesnt_exist[inp.id() + suffix] = val
+        if not InputChecker.check_if_input_exists(fs, val):
+            doesnt_exist[inpid] = val
 
         if not isinstance(intype, File):
             return doesnt_exist
 
+        InputChecker.check_extensions(inpid, intype, val)
+
         secs = intype.secondary_files() or []
         for sec in secs:
             sec_filename = apply_secondary_file_format_to_filename(val, sec)
-            if not InputChecker.check_if_input_exists(sec_filename):
+            if not InputChecker.check_if_input_exists(fs, sec_filename):
                 secsuffix = sec.replace("^", "").replace(".", "")
                 doesnt_exist[inp.id() + "_" + secsuffix + suffix] = (
                     "(SECONDARY) " + sec_filename
@@ -101,8 +110,43 @@ class InputChecker(PipelineModifierBase):
         return doesnt_exist
 
     @staticmethod
-    def check_if_input_exists(path):
-        if not FileScheme.is_local_path(path):
-            Logger.warn(f"Skipping as path is not local: '{path}'")
-            return True
-        return exists(path)
+    def check_if_input_exists(fs: FileScheme, path: str):
+        return fs.exists(path)
+
+    @staticmethod
+    def check_extensions(inpid: str, datatype: DataType, path: str):
+        """
+        This method only WARNS about incorrect extension
+        """
+
+        if not isinstance(datatype, File):
+            return
+
+        if not isinstance(path, str):
+            Logger.warn(
+                f"Expecting string type input '{inpid}' of file File, but received '{type(path)}'"
+            )
+
+        # check extension (and in future, secondaries)
+        extensions = {
+            datatype.extension,
+            *list(datatype.alternate_extensions or []),
+        }
+
+        has_extension = False
+        for ext in extensions:
+            if path.endswith(ext):
+                has_extension = True
+                break
+
+        if has_extension:
+            # looks like we're sweet
+            Logger.debug(
+                f"Validated that the input for {inpid} had the expected extension for {datatype.id()}"
+            )
+            return
+
+        Logger.warn(
+            f"The input for '{inpid}' ({datatype.name()}) did not have the expected extension "
+            f"{' OR '.join(extensions)}: {path}. "
+        )

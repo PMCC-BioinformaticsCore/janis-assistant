@@ -84,7 +84,7 @@ class EnvironmentTemplate(ABC):
             if capture_output:
                 out = (
                     subprocess.check_output(
-                        command, close_fds=True, stderr=subprocess.STDOUT
+                        command, close_fds=True, stderr=subprocess.PIPE
                     )
                     .decode()
                     .strip()
@@ -94,6 +94,9 @@ class EnvironmentTemplate(ABC):
                     print(out, file=sys.stdout)
 
             else:
+                # This is important for when Janis submits itself itself in the foreground,
+                # and we don't want the stderr to carry back through.
+                # capture_output should be true when submitting to a slurm cluster or anything.
                 subprocess.Popen(
                     command,
                     close_fds=True,
@@ -101,8 +104,9 @@ class EnvironmentTemplate(ABC):
                     stderr=subprocess.DEVNULL,
                 )
         except subprocess.CalledProcessError as e:
+
             Logger.critical(
-                f"Couldn't submit janis-monitor, non-zero exit code ({e.returncode})"
+                f"Couldn't submit janis-monitor, non-zero exit code ({e.returncode}): {e.stderr}"
             )
             raise e
 

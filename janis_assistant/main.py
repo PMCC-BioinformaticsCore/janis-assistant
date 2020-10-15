@@ -14,6 +14,15 @@ from textwrap import dedent
 from typing import Optional, Dict, Union, Type, List
 
 import janis_core as j
+from janis_assistant.modifiers.base import PipelineModifierBase
+
+from janis_assistant.modifiers.inputchecker import InputChecker
+
+from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
+
+from janis_assistant.modifiers.contigchecker import ContigChecker
+from janis_assistant.modifiers.filefinder import FileFinderModifier
+from janis_assistant.modifiers.inputtransformermodifier import InputTransformerModifier
 from janis_assistant.validation import ValidationRequirements
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
@@ -548,6 +557,7 @@ def prepare_job(
     skip_digest_lookup,
     skip_digest_cache,
     db_type: DatabaseTypeToUse = None,
+    run_prepare_processing=True,
 ):
 
     # organise inputs
@@ -576,6 +586,22 @@ def prepare_job(
     should_run_in_background = (
         run_in_background is True or jc.run_in_background is True
     ) and not (run_in_foreground is True)
+
+    if run_prepare_processing:
+        cache_dir = os.path.join(output_dir, "janis/prepare")
+        os.makedirs(cache_dir, exist_ok=True)
+        processors = [
+            FileFinderModifier(cache_dir),
+            ContigChecker(),
+            InputTransformerModifier(cache_dir=cache_dir),
+            InputFileQualifierModifier(),
+            InputChecker(check_file_existence=True),
+        ]
+
+        tool_to_evaluate, new_inputs = PipelineModifierBase.apply_many(
+            processors, tool, inputsdict, hints=hints
+        )
+        inputsdict = new_inputs
 
     submission = PreparedSubmission(
         # job stuff

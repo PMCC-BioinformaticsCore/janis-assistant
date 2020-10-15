@@ -14,6 +14,9 @@ from textwrap import dedent
 from typing import Optional, Dict, Union, Type, List
 
 import janis_core as j
+from janis_assistant.validation import ValidationRequirements
+
+from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
 
 import janis_assistant.templates as janistemplates
@@ -43,6 +46,46 @@ from janis_assistant.utils import (
     fully_qualify_filename,
 )
 from janis_assistant.utils.inputshelper import cascade_inputs
+
+
+def run_with_outputs(
+    tool: Union[j.CommandTool, j.Workflow],
+    inputs: Dict[str, any],
+    output_dir: str,
+    config: JanisConfiguration = None,
+):
+    job = prepare_job(
+        tool=tool,
+        output_dir=output_dir,
+        required_inputs=inputs,
+        jc=config or JanisConfiguration.initial_configuration(None),
+        # params to be automatically evaluated
+        execution_dir=None,
+        inputs={},
+        allow_empty_container=False,
+        check_files=True,
+        container_override={},
+        skip_digest_cache=False,
+        skip_digest_lookup=False,
+        batchrun_reqs=None,
+        validation_reqs=None,
+        engine=None,
+        hints={},
+        keep_intermediate_files=False,
+        max_cores=None,
+        max_memory=None,
+        max_duration=None,
+        no_store=True,
+        recipes=[],
+        run_in_background=None,
+        run_in_foreground=None,
+        strict_inputs=False,
+        watch=False,
+    )
+
+    wm = fromjanis2(tool, jobfile=job, wait=True)
+    outs = wm.database.outputsDB.get()
+    return {o.id_: o.value or o.new_path for o in outs}
 
 
 def resolve_tool(
@@ -242,7 +285,7 @@ def generate_inputs(
     if not toolref:
         raise Exception("Couldn't find workflow with name: " + str(tool))
 
-    return toolref.generate_inputs_override(
+    d = toolref.generate_inputs_override(
         additional_inputs=inputsdict,
         with_resource_overrides=with_resources,
         include_defaults=all,
@@ -250,6 +293,8 @@ def generate_inputs(
         quality_type=quality_type,
         hints=hints,
     )
+
+    return d
 
 
 import argparse
@@ -476,12 +521,12 @@ def fromjanis2(
 
 
 def prepare_job(
-    workflow: Union[str, j.Tool, Type[j.Tool]],
+    tool: Union[str, j.Tool, Type[j.Tool]],
     # workflow search options
     jc: JanisConfiguration,
-    engine: str,
-    batchrun_reqs,
-    validation_reqs,
+    engine: Optional[str],
+    batchrun_reqs: Optional[BatchRunRequirements],
+    validation_reqs: Optional[ValidationRequirements],
     hints: Optional[Dict[str, str]],
     output_dir: Optional[str],
     execution_dir: Optional[str],
@@ -514,7 +559,7 @@ def prepare_job(
 
     inputsdict.update(
         cascade_inputs(
-            wf=workflow,
+            wf=tool,
             inputs=inputs,
             required_inputs=required_inputs,
             batchrun_options=batchrun_reqs,
@@ -522,11 +567,11 @@ def prepare_job(
         )
     )
 
-    output_dir = generate_output_dir_from(workflow.id(), output_dir, jc.output_dir)
+    output_dir = generate_output_dir_from(tool.id(), output_dir, jc.output_dir)
 
-    if isinstance(workflow, DynamicWorkflow):
-        workflow.constructor(inputsdict, hints)
-        inputsdict = workflow.modify_inputs(inputsdict, hints)
+    if isinstance(tool, DynamicWorkflow):
+        tool.constructor(inputsdict, hints)
+        inputsdict = tool.modify_inputs(inputsdict, hints)
 
     should_run_in_background = (
         run_in_background is True or jc.run_in_background is True

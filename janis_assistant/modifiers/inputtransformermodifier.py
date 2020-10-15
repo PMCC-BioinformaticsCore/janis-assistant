@@ -1,6 +1,15 @@
 import os
 from typing import Dict
-from janis_core import Tool, TInput, File, Array, Logger, JanisShed, JanisTransformation
+from janis_core import (
+    Tool,
+    TInput,
+    File,
+    Array,
+    Logger,
+    JanisShed,
+    JanisTransformation,
+    DataType,
+)
 from janis_core.utils import first_value
 
 from janis_assistant.modifiers.base import PipelineModifierBase
@@ -13,48 +22,55 @@ class InputTransformerModifier(PipelineModifierBase):
 
     def inputs_modifier(self, tool: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
 
+        new_inputs = {}
         for inp in tool.tool_inputs():
-            pass
+            if not isinstance(inp.intype, File):
+                continue
+            value = inputs.get(inp.id())
+            if value is not None:
+                processed_value = self.check_input_for_correctness(
+                    inp.id(), inp.intype, value
+                )
+                if processed_value is not None:
+                    new_inputs[inp.id()] = processed_value
 
-        return inputs
+        return {**inputs, **new_inputs}
 
-    def check_input_for_correctness(self, inp: TInput, value: any):
-        if isinstance(inp.intype, Array):
+    def check_input_for_correctness(self, inpid: str, dt: DataType, value: any):
+        if isinstance(dt, Array):
             if isinstance(value, list):
                 return [
-                    InputTransformerModifier.check_input_for_correctness(
-                        inp.intype.subtype(), v
-                    )
-                    for v in value
+                    self.check_input_for_correctness(f"{inpid}[{idx}]", dt.subtype(), v)
+                    for idx, v in zip(range(len(value)), value)
                 ]
 
-        if not isinstance(inp.intype, File):
+        if not isinstance(dt, File):
             return value
 
         if not isinstance(value, str):
             Logger.warn(
-                f"Expecting string type input '{inp.id()}' for type File, but received '{type(value)}'. Janis won't transform this value, but you should confirm your inputs."
+                f"Expecting string type input '{inpid}' for type File, but received '{type(value)}'. Janis won't transform this value, but you should confirm your inputs."
             )
             return value
 
         guessed_datatype = guess_datatype_by_filename(value)
 
-        if inp.intype.can_receive_from(guessed_datatype):
-            Logger.debug(f"Input '{inp.id()}' had a compatible type")
+        if dt.can_receive_from(guessed_datatype):
+            Logger.debug(f"Input '{inpid}' had a compatible type")
             return value
 
         message_prefix = (
-            f"The value for input '{inp.id()}' did not match the expected type {inp.intype.name()} "
+            f"The value for input '{inpid}' did not match the expected type {dt.name()} "
             f"through the extension and / or existence of secondary files"
         )
         if not guessed_datatype:
             Logger.warn(
                 message_prefix
-                + f"\nand Janis couldn't guess the datatype from the input for {inp.id()} and value '{value}'."
+                + f"\nand Janis couldn't guess the datatype from the input for {inpid} and value '{value}'."
             )
         try:
             transformation = JanisShed.get_transformation_graph().find_connection(
-                guessed_datatype, inp.intype
+                guessed_datatype, dt
             )
             steps = (
                 "".join(t.type1.name() + " -> " for t in transformation)
@@ -62,14 +78,14 @@ class InputTransformerModifier(PipelineModifierBase):
             )
             Logger.warn(
                 message_prefix
-                + f",\nJanis guessed the actual datatype for '{inp.id()}' from data '{value}' to be {guessed_datatype.id()}, \n"
+                + f",\nJanis guessed the actual datatype for '{inpid}' from data '{value}' to be {guessed_datatype.id()}, \n"
                 f"and Janis was able to determine a transformation in {len(transformation)} step(s): {steps}"
             )
             wf = JanisTransformation.convert_transformations_to_workflow(transformation)
 
-            trans = wf.translate("wdl", to_console=False)
+            trans = wf.translate("wdl", to_console=False)[0]
             Logger.debug(
-                f"Transforming {inp.id()} ({guessed_datatype.name()} -> {inp.intype.name()}): {trans}"
+                f"Transforming {inpid} ({guessed_datatype.name()} -> {dt.name()}): {trans}"
             )
 
             from janis_assistant.main import run_with_outputs
@@ -79,20 +95,20 @@ class InputTransformerModifier(PipelineModifierBase):
                 outs = run_with_outputs(
                     wf,
                     {wf.tool_inputs()[0].id(): value},
-                    output_dir=os.path.join(self.cache_dir, inp.id()),
+                    output_dir=os.path.join(self.cache_dir, inpid),
                 )
                 return first_value(outs)
 
             except Exception as e:
                 Logger.critical(
-                    f"An internal error occurred when performing the transformation for {inp.id()} "
-                    f"({guessed_datatype.name()} -> {inp.intype.name()}): {repr(e)}"
+                    f"An internal error occurred when performing the transformation for {inpid} "
+                    f"({guessed_datatype.name()} -> {dt.name()}): {repr(e)}"
                 )
                 return value
 
-        except:
+        except Exception as e:
             Logger.warn(
                 message_prefix
                 + f",\nbut Janis couldn't find a transformation between the guessed and expected type:"
-                f" {guessed_datatype.id()} -> {inp.intype.id()}"
+                f" {guessed_datatype.id()} -> {dt.id()}: {repr(e)}"
             )

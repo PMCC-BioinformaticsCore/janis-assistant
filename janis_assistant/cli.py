@@ -970,7 +970,7 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
     )
 
     job = prepare_job(
-        workflow=wf,
+        tool=wf,
         jc=jc,
         engine=args.engine,
         output_dir=args.output_dir,

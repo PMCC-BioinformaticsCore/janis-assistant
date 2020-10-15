@@ -77,7 +77,11 @@ class EnvironmentTemplate(ABC):
 
         Logger.info(
             "Starting Janis in the background with: "
-            + (" ".join(command) if isinstance(command, list) else str(command))
+            + (
+                " ".join(f"'{c}'" for c in command)
+                if isinstance(command, list)
+                else str(command)
+            )
         )
 
         try:

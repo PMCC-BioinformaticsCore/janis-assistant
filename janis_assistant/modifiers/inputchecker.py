@@ -55,7 +55,7 @@ class InputChecker(PipelineModifierBase):
                     continue
                 raise Exception(f"Expected input '{inp.id()}' was not found or is null")
 
-            fs = FileScheme.get_type_by_prefix(val)
+            fs = FileScheme.get_type_by_prefix(val)()
 
             doesnt_exist.update(InputChecker.check_base_with_type(fs, inp, intype, val))
 

@@ -5,7 +5,7 @@ from janis_core import Tool, WorkflowBase
 from janis_assistant.modifiers.base import PipelineModifierBase
 
 
-class FileFinder(PipelineModifierBase):
+class FileFinderModifier(PipelineModifierBase):
     def __init__(self, cache_dir: str):
         self.cache_dir = cache_dir
 

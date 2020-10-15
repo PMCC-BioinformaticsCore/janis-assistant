@@ -171,7 +171,9 @@ class WorkflowManager:
 
         # let's write out the prepared_submission for
         tm.write_prepared_submission_file(
-            tool_ref=tool_ref, prepared_job=prepared_submission
+            tool_ref=tool_ref,
+            prepared_job=prepared_submission,
+            output_dir=tm.execution_dir,
         )
 
         tm.database.submissions.insert_or_update_many(
@@ -854,8 +856,9 @@ class WorkflowManager:
 
         return retval
 
+    @staticmethod
     def write_prepared_submission_file(
-        self, tool_ref: str, prepared_job: PreparedSubmission
+        tool_ref: str, prepared_job: PreparedSubmission, output_dir: str
     ):
         import ruamel.yaml
 
@@ -866,8 +869,8 @@ class WorkflowManager:
         yaml.dump(d, io)
         s = io.getvalue()
 
-        out_job_path = os.path.join(self.execution_dir, "job.yaml")
-        out_run_path = os.path.join(self.execution_dir, "run.sh")
+        out_job_path = os.path.join(output_dir, "job.yaml")
+        out_run_path = os.path.join(output_dir, "run.sh")
 
         if os.path.exists(out_job_path):
             Logger.warn(

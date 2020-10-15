@@ -5,6 +5,8 @@ from typing import Optional, Tuple
 
 import ruamel.yaml
 import tabulate
+from janis_assistant.management.workflowmanager import WorkflowManager
+
 from janis_assistant.management.envvariables import EnvVariables
 
 from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, Tool
@@ -1010,6 +1012,11 @@ def do_prepare(args):
     job, wf = prepare_from_args(args)
 
     d = job.to_dict()
+
+    WorkflowManager.write_prepared_submission_file(
+        args.workflow, prepared_job=job, output_dir=job.output_dir
+    )
+
     print(dict_to_yaml_string(d))
 
 

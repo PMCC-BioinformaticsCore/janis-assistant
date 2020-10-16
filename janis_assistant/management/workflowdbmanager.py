@@ -87,6 +87,9 @@ class WorkflowDbManager:
             run_id=RunModel.DEFAULT_ID,
         )
 
+    def get_uncached_status(self):
+        return self.submission_metadata.get_uncached_status()
+
     @contextmanager
     def with_cursor(self):
         cursor = None

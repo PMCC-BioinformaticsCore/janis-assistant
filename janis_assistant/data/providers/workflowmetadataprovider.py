@@ -4,7 +4,7 @@ from janis_core import Logger
 
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
-from janis_assistant.data.models.base import KVDatabaseObject
+from janis_assistant.data.models.base import KVDatabaseObject, unpickle_obj
 from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.management.configuration import (
     DatabaseTypeToUse,
@@ -84,6 +84,16 @@ class SubmissionMetadataDbProvider(KvDB):
         )
 
         self.metadata = metadata if metadata is not None else self.get()
+
+    def get_uncached_status(self) -> TaskStatus:
+        scopes_dict = {**self._scopes, "id": "status"}
+        scope_keys = list(scopes_dict.keys())
+        scopes = " AND ".join(f"{k} = ?" for k in scope_keys)
+        scope_values = [scopes_dict[k] for k in scope_keys]
+        query = f"SELECT value FROM {self._tablename} WHERE {scopes}"
+        with self.with_cursor() as cursor:
+            row = cursor.execute(query, scope_values).fetchone()
+            return unpickle_obj(row[0])
 
     def set_metadata(self, obj: SubmissionDbMetadata):
         self.metadata = obj

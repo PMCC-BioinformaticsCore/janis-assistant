@@ -63,6 +63,17 @@ def run_with_outputs(
     output_dir: str,
     config: JanisConfiguration = None,
 ):
+    """
+    Run and WAIT for a Janis workflow to complete. This helper method runs a workflow,
+    and returns a dictionary of output values to their output tag. This method MAY throw,
+    so ensure it's try-catch wrapped.
+    :param tool: An INSTANTIATED tool definition. Seek this from the 'get_janis_workflow_from_searchname' earlier
+    :param inputs: A dictionary of pure input values, not file paths.
+    :param output_dir: Where to run the execution
+    :param config: Optional config, else choose the default at $HOME/.janis/janis.conf
+    :return:
+    """
+
     job = prepare_job(
         tool=tool,
         output_dir=output_dir,
@@ -96,7 +107,7 @@ def run_with_outputs(
 
     wm = fromjanis2(tool, jobfile=job, wait=True)
     outs = wm.database.outputsDB.get()
-    return {o.id_: o.value or o.new_path for o in outs}
+    return {o.id_: o.value or o.new_path for o in outs if o.value or o.new_path}
 
 
 def resolve_tool(

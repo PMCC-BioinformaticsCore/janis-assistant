@@ -90,6 +90,8 @@ def run_with_outputs(
         run_in_foreground=None,
         strict_inputs=False,
         watch=False,
+        # don't do extra preprocessing steps
+        run_prepare_processing=False,
     )
 
     wm = fromjanis2(tool, jobfile=job, wait=True)

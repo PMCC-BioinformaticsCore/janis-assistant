@@ -71,7 +71,7 @@ def run_with_outputs(
     :param inputs: A dictionary of pure input values, not file paths.
     :param output_dir: Where to run the execution
     :param config: Optional config, else choose the default at $HOME/.janis/janis.conf
-    :return:
+    :return: A dictionary of output values by the output tag
     """
 
     job = prepare_job(

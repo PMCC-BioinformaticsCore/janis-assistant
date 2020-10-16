@@ -6,6 +6,7 @@ class TaskStatus(Enum):
     PREPARED = "prepared"
     QUEUED = "queued"
     RUNNING = "running"
+    EXECUTION_ENDED_SUCCESSFULLY = "execution-ended"
     COMPLETED = "completed"
     FAILED = "failed"
     ABORTING = "aborting"
@@ -44,6 +45,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTING.value: "Aborting",
             TaskStatus.SUSPENDED.value: "Suspended",
             TaskStatus.PREPARED.value: "Prepared",
+            TaskStatus.EXECUTION_ENDED_SUCCESSFULLY.value: "Ended execution successfully (finalizing)",
         }
         return __str[self.value]
 
@@ -60,6 +62,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTING.value: "~x",
             TaskStatus.SUSPENDED.value: "II",
             TaskStatus.PREPARED.value: ":",
+            TaskStatus.EXECUTION_ENDED_SUCCESSFULLY: "%%",
         }
         return __str[self.value]
 

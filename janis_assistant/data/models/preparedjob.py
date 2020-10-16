@@ -171,6 +171,7 @@ class PreparedSubmission(Serializable):
             from traceback import format_stack
 
             Logger.critical("Setting prepared job, when already set")
+            PreparedSubmission._instance = self
             Logger.debug("".join(format_stack()))
 
     def get_database_config_helper(self):

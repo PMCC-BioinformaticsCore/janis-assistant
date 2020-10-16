@@ -272,9 +272,7 @@ class WorkflowManager:
 
         if wait:
             Logger.info("WAITING until task finishes before returning")
-            while (
-                not tm.database.submission_metadata.metadata.status.is_in_final_state()
-            ):
+            while not tm.database.get_uncached_status().is_in_final_state():
                 time.sleep(2)
 
         return tm
@@ -295,7 +293,6 @@ class WorkflowManager:
             return self.resume()
 
         # this happens for all workflows no matter what type
-        self.set_status(TaskStatus.QUEUED)
 
         wid = metadb._submission_id
 
@@ -310,11 +307,14 @@ class WorkflowManager:
         ]
         scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
         logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
-        jc.template.template.submit_detatched_resume(
-            wid=wid, command=command, scriptdir=scriptdir, logsdir=logdir, config=jc
-        )
-
-        Logger.info("Submitted detatched engine")
+        try:
+            jc.template.template.submit_detatched_resume(
+                wid=wid, command=command, scriptdir=scriptdir, logsdir=logdir, config=jc
+            )
+            self.set_status(TaskStatus.QUEUED)
+            Logger.info("Submitted detatched engine")
+        except Exception as e:
+            self.set_status(TaskStatus.FAILED)
 
         if watch:
             Logger.log("Watching submitted workflow")
@@ -547,7 +547,7 @@ class WorkflowManager:
         try:
             self.save_metadata_if_required()
         except Exception as e:
-            if status == TaskStatus.COMPLETED:
+            if status == TaskStatus.EXECUTION_ENDED_SUCCESSFULLY:
                 Logger.critical(f"Couldn't persist metadata on exit as {repr(e)}")
             else:
                 Logger.debug(
@@ -558,8 +558,10 @@ class WorkflowManager:
 
         self.stop_engine_and_db()
 
-        if status == TaskStatus.COMPLETED:
+        if status == TaskStatus.EXECUTION_ENDED_SUCCESSFULLY:
             self.cleanup_execution()
+            status = TaskStatus.COMPLETED
+            self.set_status(TaskStatus.COMPLETED)
 
         rc = status.get_exit_code()
         if rc != 0:
@@ -628,6 +630,9 @@ class WorkflowManager:
                 meta.submission_id = self.submission_id
                 meta.id_ = RunModel.DEFAULT_ID
                 meta.apply_ids_to_children()
+
+                if meta.status == TaskStatus.COMPLETED:
+                    meta.status = TaskStatus.EXECUTION_ENDED_SUCCESSFULLY
 
                 self.main_queue.put(lambda: self.save_metadata(meta)),
 
@@ -1167,7 +1172,10 @@ janis run \\
                 f"Workflow '{self.submission_id}' has copied outputs, skipping"
             )
 
-        if self.database.submission_metadata.metadata.status != TaskStatus.COMPLETED:
+        if (
+            self.database.submission_metadata.metadata.status
+            != TaskStatus.EXECUTION_ENDED_SUCCESSFULLY
+        ):
             return Logger.warn(
                 f"Skipping copying outputs as the workflow {self.database.submission_metadata.metadata.status}"
             )
@@ -1438,7 +1446,7 @@ janis run \\
         if (
             not keep_intermediate
             and status is not None
-            and status == TaskStatus.COMPLETED
+            and status == TaskStatus.EXECUTION_ENDED_SUCCESSFULLY
         ):
             execdir = self.get_path_for_component(self.WorkflowManagerPath.execution)
             if execdir and execdir != "None":
@@ -1527,7 +1535,9 @@ janis run \\
             if j.stderr and os.path.exists(j.stderr):
                 self.filescheme.cp_from(j.stderr, on_base + "_stderr", force=True)
 
-    def set_status(self, status: TaskStatus, force_notification=False):
+    def set_status(
+        self, status: TaskStatus, force_notification=False, error: Optional[str] = None
+    ):
         prev = self.database.submission_metadata.metadata.status
 
         if prev == status and not force_notification:
@@ -1536,6 +1546,8 @@ janis run \\
         Logger.info("Status changed to: " + str(status))
         self.database.runevents.update(run_id=RunModel.DEFAULT_ID, status=status)
         self.database.submission_metadata.metadata.status = status
+        if error:
+            self.database.submission_metadata.metadata.error = error
         self.database.submission_metadata.save_changes()
         self.database.commit()
 
@@ -1560,7 +1572,10 @@ janis run \\
 
         self.set_status(meta.status)
 
-        return meta.status in TaskStatus.final_states()
+        return (
+            meta.status in TaskStatus.final_states()
+            or meta.status == TaskStatus.EXECUTION_ENDED_SUCCESSFULLY
+        )
 
     @staticmethod
     def mark_aborted(execution_dir, wid: Optional[str]) -> bool:

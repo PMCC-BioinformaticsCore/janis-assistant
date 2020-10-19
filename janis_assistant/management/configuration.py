@@ -289,16 +289,6 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
 
     _configpath = None
 
-    # _managed = None  # type: JanisConfiguration
-    # @staticmethod
-    # def manager():
-    #     """
-    #     :return: JanisConfiguration
-    #     """
-    #     if not JanisConfiguration._managed:
-    #         JanisConfiguration._managed = JanisConfiguration()
-    #     return JanisConfiguration._managed
-
     @staticmethod
     def initial_configuration(
         path: Optional[str], potential_paths: Optional[Union[str, List[str]]] = None
@@ -329,13 +319,9 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
 
             with open(os.path.expanduser(p)) as cp:
                 y = ruamel.yaml.safe_load(cp)
-                JanisConfiguration._managed = JanisConfiguration(**y)
-                break
+                return JanisConfiguration(**y)
 
-        if not JanisConfiguration._managed:
-            JanisConfiguration._managed = JanisConfiguration()
-
-        return JanisConfiguration._managed
+        return JanisConfiguration()
 
     def __init__(
         self,
@@ -398,8 +384,6 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
                 self.container = container
             else:
                 self.container = get_container_by_name(container)
-
-        JanisConfiguration._managed = self
 
         if self.template and self.template.template:
             self.template.template.post_configuration_hook(self)

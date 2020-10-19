@@ -53,7 +53,7 @@ class BatchPipelineModifier(PipelineModifierBase):
         for i in ins:
             if i.id() in fields:
                 continue
-                
+
             default = i.default
             if isinstance(default, Selector):
                 default = None

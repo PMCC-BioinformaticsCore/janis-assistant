@@ -231,7 +231,10 @@ hsqldb.script_format=3
                             hashing_strategy=None,
                             check_sibling_md5=None,
                         ):
-                            self.duplication_strategy = duplication_strategy or [""]
+                            self.duplication_strategy = (
+                                duplication_strategy
+                                or CromwellConfiguration.DEFAULT_LOCALIZATION_STRATEGY
+                            )
                             self.hashing_strategy = hashing_strategy
                             self.check_sibling_md5 = check_sibling_md5
 

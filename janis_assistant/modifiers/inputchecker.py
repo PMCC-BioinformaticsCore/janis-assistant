@@ -128,10 +128,15 @@ class InputChecker(PipelineModifierBase):
             )
 
         # check extension (and in future, secondaries)
-        extensions = {
+        pre_extensions = [
             datatype.extension,
             *list(datatype.alternate_extensions or []),
-        }
+        ]
+        extensions = {ext for ext in pre_extensions if ext is not None}
+
+        if len(extensions) == 0:
+            # skip because no extension
+            return
 
         has_extension = False
         for ext in extensions:

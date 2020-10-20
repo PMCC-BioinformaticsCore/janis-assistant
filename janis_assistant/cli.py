@@ -1,7 +1,8 @@
 import sys
 import argparse
+import os.path
 import json
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import ruamel.yaml
 import tabulate
@@ -729,6 +730,16 @@ def add_prepare_args(parser, add_workflow_argument=True):
 
     add_args_for_general_wf_prepare(parser)
 
+    # 2020-10-20 mfranklin: PREPARE specific (don't allow users to specify this on RUN)
+
+    parser.add_argument(
+        "--source-hints",
+        nargs="+",
+        help="When trying to find files, the pipeline might offer different options for an input source, "
+        "eg: hg19, hg38, mm10, etc. You can specify multiple hints (space separated), and these are prioritised "
+        "in the order they're received.",
+    )
+
     return parser
 
 
@@ -962,6 +973,11 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
     elif args.mysql:
         db_type = DatabaseTypeToUse.managed
 
+    try:
+        source_hints = args.source_hints
+    except:
+        source_hints = []
+
     wf = resolve_tool(
         tool=args.workflow,
         name=args.name,
@@ -1002,6 +1018,7 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
         allow_empty_container=args.allow_empty_container,
         strict_inputs=args.strict_inputs,
         db_type=db_type,
+        source_hints=source_hints,
     )
 
     return job, wf
@@ -1016,6 +1033,10 @@ def do_prepare(args):
     WorkflowManager.write_prepared_submission_file(
         args.workflow, prepared_job=job, output_dir=job.output_dir
     )
+
+    script_location = os.path.join(job.output_dir, "run.sh")
+    Logger.info("Job prepared successfully, you can run your workflow with:")
+    Logger.info(f"\tsh {script_location}")
 
     print(dict_to_yaml_string(d))
 

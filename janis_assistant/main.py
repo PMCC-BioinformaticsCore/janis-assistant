@@ -571,6 +571,7 @@ def prepare_job(
     skip_digest_cache,
     db_type: DatabaseTypeToUse = None,
     run_prepare_processing=True,
+    source_hints: List[str] = None,
 ):
 
     # organise inputs
@@ -604,7 +605,7 @@ def prepare_job(
         cache_dir = os.path.join(output_dir, "janis/prepare")
         os.makedirs(cache_dir, exist_ok=True)
         processors = [
-            FileFinderModifier(cache_dir),
+            FileFinderModifier(cache_dir=cache_dir, source_hints=source_hints),
             ContigChecker(),
             InputTransformerModifier(cache_dir=cache_dir),
             InputFileQualifierModifier(),

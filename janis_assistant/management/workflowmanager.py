@@ -1155,7 +1155,6 @@ janis run \\
             import json
 
             meta = engine.metadata(self.submission_id)
-            self.set_status(meta.status)
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.outputs, fp)
 

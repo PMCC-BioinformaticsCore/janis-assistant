@@ -225,7 +225,8 @@ def get_janis_from_module_spec(spec, include_commandtools=False, name: str = Non
         Logger.log("Expanded search to commandtools in " + str(spec))
 
     potentials = []
-    for k, ptype in spec.__dict__.items():
+    items = list(spec.__dict__.items())
+    for k, ptype in items:
         if name is not None:
             if name.lower() == k.lower():
                 potentials.append((k, ptype()))

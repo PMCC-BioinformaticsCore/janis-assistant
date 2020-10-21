@@ -1,15 +1,21 @@
 import abc
 import os
 import shutil
-
 import subprocess
 from enum import Enum
 from shutil import copyfile, rmtree
 from typing import Optional, Callable
 
-from janis_assistant.management import Archivable
-from janis_assistant.management.configuration import JanisConfiguration
 from janis_core.utils.logger import Logger
+
+from janis_assistant.management import Archivable
+
+try:
+    from google.cloud import storage
+
+    has_google_cloud = True
+except:
+    has_google_cloud = False
 
 
 class FileScheme(Archivable, abc.ABC):
@@ -346,11 +352,53 @@ class GCSFileScheme(FileScheme):
         super().__init__("gcp", fstype=FileScheme.FileSchemeType.gcs)
 
     @staticmethod
+    def check_if_has_gcp():
+        if has_google_cloud:
+            return True
+        raise ImportError(
+            "You've tried to use the Google Cloud storage (GCS) filesystem, but don't have the 'google-cloud-storage' "
+            "library. This can be installed with 'pip install janis-pipelines.runner[\"gcs\"]'."
+        )
+
+    @staticmethod
     def is_valid_prefix(prefix: str):
         return prefix.lower().startswith("gs://")
 
     def get_file_size(self, path) -> Optional[int]:
         return None
+
+    def get_public_client(self):
+        from google.cloud.storage import Client
+
+        return Client.create_anonymous_client()
+
+    def get_blob_from_link(self, link):
+        bucket, blob = self.parse_gcs_link(link)
+
+        storage_client = self.get_public_client()
+
+        bucket = storage_client.bucket(bucket)
+        return bucket.blob(blob)
+
+    @staticmethod
+    def parse_gcs_link(gcs_link: str):
+        import re
+
+        gcs_locator = re.compile("gs:\/\/([A-z0-9-]+)\/(.*)")
+        match = gcs_locator.match(gcs_link)
+        if match is None:
+            raise Exception(
+                f"Janis was unable to validate your GCS link '{gcs_link}', as it couldn't determine the BUCKET, "
+                f"and FILE COMPONENT. Please raise an issue for more information."
+            )
+
+        bucket, blob = match.groups()
+
+        return bucket, blob
+
+    def exists(self, path):
+        blob = self.get_blob_from_link(path)
+        return blob.exists()
 
     def cp_from(
         self,
@@ -359,7 +407,20 @@ class GCSFileScheme(FileScheme):
         force=False,
         report_progress: Optional[Callable[[float], None]] = None,
     ):
-        pass
+        """
+        Downloads a public blob from the bucket.
+        Source: https://cloud.google.com/storage/docs/access-public-data#code-samples
+        """
+        self.check_if_has_gcp()
+        blob = self.get_blob_from_link(source)
+
+        blob.download_to_filename(dest)
+
+        print(
+            "Downloaded public blob {} from bucket {} to {}.".format(
+                blob.name, blob.bucket.name, dest
+            )
+        )
 
     def cp_to(
         self,
@@ -368,10 +429,14 @@ class GCSFileScheme(FileScheme):
         force=False,
         report_progress: Optional[Callable[[float], None]] = None,
     ):
-        pass
+        raise Exception("Janis doesn't support copying files TO google cloud storage.")
 
     def mkdirs(self, directory):
-        pass
+        raise NotImplementedError("Cannot make directories through GCS filescheme")
+
+    def rm_dir(self, directory):
+
+        raise NotImplementedError("Cannot remove directories through GCS filescheme")
 
 
 class S3FileScheme(FileScheme):

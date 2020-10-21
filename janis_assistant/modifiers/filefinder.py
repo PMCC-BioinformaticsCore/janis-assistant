@@ -2,7 +2,7 @@ import os.path
 from typing import Dict, List, Union, Optional
 
 from janis_assistant.management.filescheme import FileScheme
-from janis_core import Tool, WorkflowBase, Logger, File, Array
+from janis_core import Tool, WorkflowBase, Logger, File, Array, DataType
 
 from janis_assistant.modifiers.base import PipelineModifierBase
 
@@ -43,15 +43,23 @@ class FileFinderModifier(PipelineModifierBase):
             )
             if source:
                 basedir = os.path.join(self.cache_dir, inpnode.id())
+                os.makedirs(basedir, exist_ok=True)
+
                 new_inputs[inpnode.id()] = self.localise_inputs(
-                    inpnode.id(), basedir, source
+                    inpnode.id(), inpnode.datatype, basedir, source
                 )
 
         return {**inputs, **new_inputs}
 
-    def localise_inputs(self, inpid: str, dest_dir: str, source: Union[str, List[str]]):
+    def localise_inputs(
+        self,
+        inpid: str,
+        inptype: DataType,
+        dest_dir: str,
+        source: Union[str, List[str]],
+    ):
         if isinstance(source, list):
-            return [self.localise_inputs(inpid, dest_dir, s) for s in source]
+            return [self.localise_inputs(inpid, inptype, dest_dir, s) for s in source]
 
         fs = FileScheme.get_type_by_prefix(source)()
 
@@ -63,7 +71,7 @@ class FileFinderModifier(PipelineModifierBase):
             )
         try:
             fs.cp_from(source, out_path)
-            return None
+            return out_path
         except Exception as e:
             Logger.critical(
                 f"Couldn't localise source from {source} -> {out_path}: {repr(e)}"

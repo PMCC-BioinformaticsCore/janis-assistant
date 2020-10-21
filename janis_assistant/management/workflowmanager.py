@@ -1448,6 +1448,7 @@ janis run \\
             and status == TaskStatus.EXECUTION_ENDED_SUCCESSFULLY
         ):
             execdir = self.get_path_for_component(self.WorkflowManagerPath.execution)
+            os.chdir(self.execution_dir)
             if execdir and execdir != "None":
                 Logger.info("Cleaning up execution directory")
                 self.filescheme.rm_dir(execdir)

@@ -1455,10 +1455,10 @@ janis run \\
                 self.database.progressDB.set(ProgressKeys.cleanedUp)
 
             dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_configuration
-            dbtype = dbconfig.which_db_to_use()
             if (
-                dbtype == DatabaseTypeToUse.from_script
+                dbconfig is not None
                 and self.engine.engtype == EngineType.cromwell
+                and dbconfig.which_db_to_use() == DatabaseTypeToUse.from_script
             ):
                 dbconfig.run_delete_database_script(self.execution_dir)
 

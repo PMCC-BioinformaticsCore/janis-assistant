@@ -1,5 +1,5 @@
 from enum import Enum
-from os import getenv
+from os import getenv, path, getcwd
 
 
 class HashableEnum(str, Enum):
@@ -12,6 +12,16 @@ class HashableEnum(str, Enum):
     pass
     # def __hash__(self):
     #     return self.value.__hash__()
+
+
+def try_get_home_dir():
+    try:
+        return getenv("HOME")
+    except:
+        try:
+            return path.expanduser("~")
+        except:
+            return getcwd()
 
 
 class EnvVariables(HashableEnum):
@@ -33,12 +43,14 @@ class EnvVariables(HashableEnum):
         return self.value
 
     def default(self):
-        import os
+        import os.path
+
+        HOME = try_get_home_dir()
 
         if self == EnvVariables.config_dir:
-            return os.path.join(os.getenv("HOME"), ".janis/")
+            return os.path.join(HOME, ".janis/")
         if self == EnvVariables.base_dir:
-            return os.path.join(os.getenv("HOME"), "janis")
+            return os.path.join(HOME, "janis")
         if self == EnvVariables.output_dir:
             return None
         elif self == EnvVariables.exec_dir:

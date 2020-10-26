@@ -55,9 +55,7 @@ class InputChecker(PipelineModifierBase):
                     continue
                 raise Exception(f"Expected input '{inp.id()}' was not found or is null")
 
-            fs = FileScheme.get_type_by_prefix(val)()
-
-            doesnt_exist.update(InputChecker.check_base_with_type(fs, inp, intype, val))
+            doesnt_exist.update(InputChecker.check_base_with_type(inp, intype, val))
 
         if len(doesnt_exist) > 0:
             import ruamel.yaml
@@ -66,9 +64,7 @@ class InputChecker(PipelineModifierBase):
             raise Exception("The following inputs were not found:\n" + stringified)
 
     @staticmethod
-    def check_base_with_type(
-        fs: FileScheme, inp: TInput, intype: DataType, val, suffix=""
-    ):
+    def check_base_with_type(inp: TInput, intype: DataType, val, suffix=""):
         doesnt_exist = {}
         if isinstance(intype, Array):
             subtype = intype.subtype()
@@ -80,7 +76,7 @@ class InputChecker(PipelineModifierBase):
                 nsuffix = f"{suffix}[{idx}]"
                 doesnt_exist.update(
                     InputChecker.check_base_with_type(
-                        fs, inp, subtype, innerval, suffix=nsuffix
+                        inp, subtype, innerval, suffix=nsuffix
                     )
                 )
             return doesnt_exist
@@ -90,7 +86,9 @@ class InputChecker(PipelineModifierBase):
         if isinstance(val, list):
             raise Exception(f"Expected singular item for {inp.id()}, received list.")
 
-        if not InputChecker.check_if_input_exists(fs, val):
+        fs = FileScheme.get_filescheme_for_url(val)
+
+        if not fs.exists(val):
             doesnt_exist[inpid] = val
 
         if not isinstance(intype, File):

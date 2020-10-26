@@ -78,7 +78,7 @@ class ContigChecker(PipelineModifierBase):
                             else (", ".join(list(missing_contigs)[:3]) + "...")
                         )
                         Logger.warn(
-                            f"The BED file '{inpname}' contained {len(missing_contigs)} contigs ({contiglist}) that were missing from the reference: {bed}"
+                            f"The BED file '{inpname}' contained {len(missing_contigs)} contigs ({contiglist}) that were missing from the reference: {inp_ref}"
                         )
 
     @staticmethod

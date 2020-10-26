@@ -69,6 +69,7 @@ class FileFinderModifier(PipelineModifierBase):
                 f"A file already exists when localising '{inpid}' at '{out_path}'. If this isn't the right file, "
                 f"you'll need to manually remove this file before proceeding"
             )
+            return out_path
         try:
             fs.cp_from(source, out_path)
             return out_path

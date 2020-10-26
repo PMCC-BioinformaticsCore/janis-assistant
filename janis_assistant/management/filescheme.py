@@ -96,6 +96,10 @@ class FileScheme(Archivable, abc.ABC):
         return None
 
     @staticmethod
+    def get_filescheme_for_url(url: str):
+        return FileScheme.get_type_by_prefix(url)()
+
+    @staticmethod
     def is_local_path(prefix: str):
         return (
             prefix.startswith(".")
@@ -214,8 +218,8 @@ class LocalFileScheme(FileScheme):
 
 
 class HTTPFileScheme(FileScheme):
-    def __init__(self, identifier, credentials: any = None):
-        super().__init__(identifier, FileScheme.FileSchemeType.http)
+    def __init__(self, credentials: any = None):
+        super().__init__("http", FileScheme.FileSchemeType.http)
         self._credentials = credentials
 
     @staticmethod
@@ -413,6 +417,9 @@ class GCSFileScheme(FileScheme):
         """
         self.check_if_has_gcp()
         blob = self.get_blob_from_link(source)
+        Logger.debug(f"Downloading {source} -> {dest}")
+
+        blob.size()
 
         blob.download_to_filename(dest)
 

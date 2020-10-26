@@ -25,19 +25,29 @@ def try_get_home_dir():
 
 
 class EnvVariables(HashableEnum):
-    config_path = "JANIS_CONFIGPATH"
-    config_dir = "JANIS_CONFIGDIR"
-    base_dir = "JANIS_BASEDIR"
-    exec_dir = "JANIS_EXCECUTIONDIR"
-    output_dir = "JANIS_OUTPUTDIR"
-    search_path = "JANIS_SEARCHPATH"
-    recipe_paths = "JANIS_RECIPEPATHS"
-    recipe_directory = "JANIS_RECIPEDIRECTORY"  # secretly comma separated
+    #: Default template to use, NB this template should have NO required arguments.
     default_template = "JANIS_DEFAULTTEMPLATE"
+
+    #: (Default: ~/.janis) Directory of default Janis settings
+    config_dir = "JANIS_CONFIGDIR"
+    #: (Default: ``$JANIS_CONFIGDIR/janis.conf``) Default configuration file for Janis
+    config_path = "JANIS_CONFIGPATH"
+    #: Use this directory as a BASE to generate a new output directory for each Janis run
+    output_dir = "JANIS_OUTPUTDIR"
+    #: Use this directory for intermediate files
+    exec_dir = "JANIS_EXCECUTIONDIR"
+    #: Additional search paths (comma separated) to lookup Janis workflows in
+    search_path = "JANIS_SEARCHPATH"
+    #: List of YAML recipe files (comma separated) for Janis to consume, See the RECIPES section for more information.
+    recipe_paths = "JANIS_RECIPEPATHS"
+    #: Directories for which each file (ending in .yaml | .yml) is a key of input values. See the RECIPES section for more information.
+    recipe_directory = "JANIS_RECIPEDIRECTORY"  # secretly comma separated
+
+    #: Override the Cromwell JAR that Janis uses
+    cromwelljar = "JANIS_CROMWELLJAR"
+
     db_script_generator = "JANIS_DBCREDENTIALSGENERATOR"
     db_script_generator_cleanup = "JANIS_DBCREDENTIALSGENERATORCLEANUP"
-
-    cromwelljar = "JANIS_CROMWELLJAR"
 
     def __str__(self):
         return self.value
@@ -49,14 +59,10 @@ class EnvVariables(HashableEnum):
 
         if self == EnvVariables.config_dir:
             return os.path.join(HOME, ".janis/")
-        if self == EnvVariables.base_dir:
-            return os.path.join(HOME, "janis")
         if self == EnvVariables.output_dir:
             return None
         elif self == EnvVariables.exec_dir:
-            return os.path.join(
-                EnvVariables.base_dir.resolve(include_default=True), "execution/"
-            )
+            return os.path.join(HOME, "janis", "execution/")
         elif self == EnvVariables.config_path:
             return os.path.join(EnvVariables.config_dir.resolve(True), "janis.conf")
         elif self == EnvVariables.recipe_paths:

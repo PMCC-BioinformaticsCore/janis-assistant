@@ -329,16 +329,36 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         execution_dir: str = EnvVariables.exec_dir.resolve(False),
         call_caching_enabled: bool = True,
         engine: str = EngineType.cromwell.value,
-        cromwell: JanisConfigurationCromwell = None,
-        template: JanisConfigurationTemplate = None,
-        recipes: JanisConfigurationRecipes = None,
-        notifications: JanisConfigurationNotifications = None,
-        environment: JanisConfigurationEnvironment = None,
+        cromwell: Union[JanisConfigurationCromwell, dict] = None,
+        template: Union[JanisConfigurationTemplate, dict] = None,
+        recipes: Union[JanisConfigurationRecipes, dict] = None,
+        notifications: Union[JanisConfigurationNotifications, dict] = None,
+        environment: Union[JanisConfigurationEnvironment, dict] = None,
         run_in_background: bool = None,
         digest_cache_location: str = None,
         container: Union[str, Container] = None,
         search_paths: List[str] = None,
     ):
+        """
+        :param engine: Default engine to use
+        :param template: Specify options for a Janis template for configuring an execution environment
+        :type template: JanisConfigurationTemplate
+        :param cromwell: A dictionary for how to configure Cromwell for Janis
+        :type cromwell: JanisConfigurationCromwell
+        :param recipes: Configure recipes in Janis
+        :type recipes: JanisConfigurationRecipes
+        :param notifications: Configure Janis notifications
+        :type notifications: JanisConfigurationNotifications
+        :param environment: Additional ways to configure the execution environment for Janis
+        :type environment: JanisConfigurationNotifications
+        :param output_dir: A directory that Janis will use to generate a new output directory for each janis-run
+        :param execution_dir: Move all execution to a static directory outside the regular output directory.
+        :param call_caching_enabled: (default: true) call-caching is enabled for subsequent runs, on the SAME output directory
+        :param run_in_background:
+        :param digest_cache_location:
+        :param container:
+        :param search_paths:
+        """
 
         self.config_dir = EnvVariables.config_dir.resolve(True)
         self.db_path = fully_qualify_filename(os.path.join(self.config_dir, "janis.db"))
@@ -355,7 +375,10 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         self.run_in_background = run_in_background
 
         self.recipes = parse_if_dict(
-            JanisConfigurationRecipes, recipes or {}, "recipes", skip_if_empty=False,
+            JanisConfigurationRecipes,
+            recipes or {},
+            "recipes",
+            skip_if_empty=False,
         )
 
         self.template = parse_if_dict(

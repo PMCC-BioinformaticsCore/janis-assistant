@@ -97,6 +97,10 @@ class InputTransformerModifier(PipelineModifierBase):
                     {wf.tool_inputs()[0].id(): value},
                     output_dir=os.path.join(self.cache_dir, inpid),
                 )
+                if not outs or len(outs) < 1:
+                    Logger.critical(
+                        f"Couldn't get outputs from transformation for '{inpid}'"
+                    )
                 return first_value(outs)
 
             except Exception as e:

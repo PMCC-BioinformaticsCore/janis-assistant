@@ -106,6 +106,9 @@ def run_with_outputs(
     )
 
     wm = fromjanis2(tool, jobfile=job, wait=True)
+    if not wm:
+        Logger.critical(f"An error occurred when running workflow {tool.id()}")
+        return None
     outs = wm.database.outputsDB.get()
     return {o.id_: o.value or o.new_path for o in outs if o.value or o.new_path}
 

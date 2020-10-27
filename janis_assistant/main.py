@@ -200,7 +200,13 @@ def translate(
         valuesfromrecipe = config.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
+    inputsdict.update(
+        cascade_inputs(
+            wf=None,
+            inputs=inputs,
+            required_inputs=None,
+        )
+    )
 
     if isinstance(toolref, DynamicWorkflow):
         if not inputsdict:
@@ -483,7 +489,10 @@ def fromjanis2(
     if not workflow:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    row = cm.create_task_base(wf=workflow, job=jobfile,)
+    row = cm.create_task_base(
+        wf=workflow,
+        job=jobfile,
+    )
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir
@@ -606,10 +615,10 @@ def prepare_job(
         os.makedirs(cache_dir, exist_ok=True)
         processors = [
             FileFinderModifier(cache_dir=cache_dir, source_hints=source_hints),
-            ContigChecker(),
             InputTransformerModifier(cache_dir=cache_dir),
             InputFileQualifierModifier(),
             InputChecker(check_file_existence=True),
+            ContigChecker(),
         ]
 
         tool_to_evaluate, new_inputs = PipelineModifierBase.apply_many(

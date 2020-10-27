@@ -233,7 +233,9 @@ def add_spider_args(parser):
         help="Adds statements to help find why a tool isn't appearing in the toolbox",
     )
     parser.add_argument(
-        "--all", action="store_true", help="Print all tools in alphabetical order",
+        "--all",
+        action="store_true",
+        help="Print all tools in alphabetical order",
     )
 
 
@@ -733,11 +735,11 @@ def add_prepare_args(parser, add_workflow_argument=True):
     # 2020-10-20 mfranklin: PREPARE specific (don't allow users to specify this on RUN)
 
     parser.add_argument(
-        "--source-hints",
-        nargs="+",
+        "--source-hint",
+        action="append",
         help="When trying to find files, the pipeline might offer different options for an input source, "
-        "eg: hg19, hg38, mm10, etc. You can specify multiple hints (space separated), and these are prioritised "
-        "in the order they're received.",
+        "eg: hg19, hg38, mm10, etc. You can specify this argument multiple time, and these are prioritised "
+        "in the order they're received (eg: --source-hint hg38 --source-hint h19)",
     )
 
     return parser
@@ -974,7 +976,7 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
         db_type = DatabaseTypeToUse.managed
 
     try:
-        source_hints = args.source_hints
+        source_hints = args.source_hint
     except:
         source_hints = []
 

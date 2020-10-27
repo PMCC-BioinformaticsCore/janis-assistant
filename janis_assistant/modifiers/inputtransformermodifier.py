@@ -1,4 +1,5 @@
 import os
+from traceback import format_stack
 from typing import Dict
 from janis_core import (
     Tool,
@@ -55,6 +56,12 @@ class InputTransformerModifier(PipelineModifierBase):
 
         guessed_datatype = guess_datatype_by_filename(value)
 
+        if not guessed_datatype:
+            Logger.info(
+                f"Couldn't guess datatype for {value}. Returning the value instead."
+            )
+            return value
+
         if dt.can_receive_from(guessed_datatype):
             Logger.debug(f"Input '{inpid}' had a compatible type")
             return value
@@ -68,6 +75,7 @@ class InputTransformerModifier(PipelineModifierBase):
                 message_prefix
                 + f"\nand Janis couldn't guess the datatype from the input for {inpid} and value '{value}'."
             )
+            return value
         try:
             transformation = JanisShed.get_transformation_graph().find_connection(
                 guessed_datatype, dt
@@ -108,11 +116,13 @@ class InputTransformerModifier(PipelineModifierBase):
                     f"An internal error occurred when performing the transformation for {inpid} "
                     f"({guessed_datatype.name()} -> {dt.name()}): {repr(e)}"
                 )
+                Logger.debug("".join(format_stack()))
+
                 return value
 
         except Exception as e:
             Logger.warn(
                 message_prefix
                 + f",\nbut Janis couldn't find a transformation between the guessed and expected type:"
-                f" {guessed_datatype.id()} -> {dt.id()}: {repr(e)}"
+                f" {guessed_datatype.name()} -> {dt.name()}: {repr(e)}"
             )

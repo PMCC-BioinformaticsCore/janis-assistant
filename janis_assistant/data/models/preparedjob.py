@@ -168,11 +168,8 @@ class PreparedSubmission(Serializable):
             Logger.debug("Setting prepared job")
             PreparedSubmission._instance = self
         else:
-            from traceback import format_stack
-
-            Logger.critical("Setting prepared job, when already set")
+            Logger.debug("Setting prepared job, when already set")
             PreparedSubmission._instance = self
-            Logger.debug("".join(format_stack()))
 
     def get_database_config_helper(self):
         if self.cromwell and self.cromwell.db_type:

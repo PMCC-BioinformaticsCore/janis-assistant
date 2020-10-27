@@ -37,6 +37,10 @@ class FileFinderModifier(PipelineModifierBase):
             elif inpnode.doc is None or inpnode.doc.source is None:
                 continue
 
+            Logger.info(
+                f"An input to '{wf.id()}.{inpnode.id()}' was not found, and the workflow specifies a source to potentially locate from."
+            )
+
             # use the source hints to find
             source = self.determine_appropriate_source_from_hints(
                 tool, inpnode.id(), inpnode.doc.source
@@ -95,13 +99,20 @@ class FileFinderModifier(PipelineModifierBase):
                 f"expected Union[str, List[str], Dict[str, Union[str, List[str]]]], received '{type(source)}'"
             )
 
+        tishj = ", ".join(source.keys())
+        if not self.source_hints or len(self.source_hints) == 0:
+            Logger.warn(
+                f"There were no source hints specified to find an input for {tool.id()}.{inpid}, expected one "
+                f"or more of {tishj}. You can specify source hints with --source-hints (in janis prepare)."
+            )
+            return None
+
         for hint in self.source_hints:
             if hint in source:
                 return source[hint]
 
         shj = ", ".join(self.source_hints)
-        tishj = ", ".join(source.keys())
         Logger.warn(
-            f"Couldn't find any of the source_hints ({shj}) in the tool input {tool.id()}.{inpid}'s source fields ({tishj})"
+            f"Couldn't find any of the specified source_hints ({shj}) in the tool input {tool.id()}.{inpid}'s source fields ({tishj})"
         )
         return None

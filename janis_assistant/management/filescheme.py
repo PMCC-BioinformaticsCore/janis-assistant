@@ -382,7 +382,11 @@ class GCSFileScheme(FileScheme):
         storage_client = self.get_public_client()
 
         bucket = storage_client.bucket(bucket)
-        return bucket.blob(blob)
+        blob = bucket.get_blob(blob)
+        if not blob:
+            raise Exception(f"Couldn't find GCS link: {link}")
+
+        return blob
 
     @staticmethod
     def parse_gcs_link(gcs_link: str):
@@ -417,9 +421,8 @@ class GCSFileScheme(FileScheme):
         """
         self.check_if_has_gcp()
         blob = self.get_blob_from_link(source)
-        Logger.debug(f"Downloading {source} -> {dest}")
-
-        blob.size()
+        size_mb = blob.size // (1024 * 1024)
+        Logger.debug(f"Downloading {source} -> {dest} ({size_mb} MB)")
 
         blob.download_to_filename(dest)
 

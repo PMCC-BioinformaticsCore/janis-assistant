@@ -1,4 +1,5 @@
 import os
+import traceback
 from traceback import format_stack
 from typing import Dict
 from janis_core import (
@@ -95,34 +96,36 @@ class InputTransformerModifier(PipelineModifierBase):
             Logger.debug(
                 f"Transforming {inpid} ({guessed_datatype.name()} -> {dt.name()}): {trans}"
             )
-
-            from janis_assistant.main import run_with_outputs
-
-            # maybe do some other things with respect to the path
-            try:
-                outs = run_with_outputs(
-                    wf,
-                    {wf.tool_inputs()[0].id(): value},
-                    output_dir=os.path.join(self.cache_dir, inpid),
-                )
-                if not outs or len(outs) < 1:
-                    Logger.critical(
-                        f"Couldn't get outputs from transformation for '{inpid}'"
-                    )
-                return first_value(outs)
-
-            except Exception as e:
-                Logger.critical(
-                    f"An internal error occurred when performing the transformation for {inpid} "
-                    f"({guessed_datatype.name()} -> {dt.name()}): {repr(e)}"
-                )
-                Logger.debug("".join(format_stack()))
-
-                return value
-
         except Exception as e:
             Logger.warn(
                 message_prefix
                 + f",\nbut Janis couldn't find a transformation between the guessed and expected type:"
                 f" {guessed_datatype.name()} -> {dt.name()}: {repr(e)}"
             )
+
+        # maybe do some other things with respect to the path
+        try:
+            from janis_assistant.main import run_with_outputs
+
+            outs = run_with_outputs(
+                wf,
+                {wf.tool_inputs()[0].id(): value},
+                output_dir=os.path.join(self.cache_dir, inpid),
+            )
+            if not outs or len(outs) < 1:
+                Logger.critical(
+                    f"Couldn't get outputs from transformation for '{inpid}'"
+                )
+            return first_value(outs)
+
+        except Exception as e:
+            Logger.critical(
+                f"An internal error occurred when performing the transformation for {inpid} "
+                f"({guessed_datatype.name()} -> {dt.name()}): {repr(e)}"
+            )
+            Logger.debug(traceback.format_exc())
+
+            # temporarily
+            raise
+
+            return value

@@ -361,7 +361,7 @@ class GCSFileScheme(FileScheme):
             return True
         raise ImportError(
             "You've tried to use the Google Cloud storage (GCS) filesystem, but don't have the 'google-cloud-storage' "
-            "library. This can be installed with 'pip install janis-pipelines.runner[\"gcs\"]'."
+            "library. This can be installed with 'pip install janis-pipelines.runner[gcs]'."
         )
 
     @staticmethod

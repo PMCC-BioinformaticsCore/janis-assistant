@@ -758,7 +758,9 @@ class WorkflowManager:
         if not engine.config:
             Logger.info("Skipping start database as Janis is not managing the config")
         else:
-            db_config: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_configuration
+            db_config: JanisDatabaseConfigurationHelper = (
+                self.database.submission_metadata.metadata.db_configuration
+            )
             dbtype = db_config.db_type
             if dbtype == DatabaseTypeToUse.existing:
                 engine.config.database = db_config.get_config_for_existing_config()
@@ -774,7 +776,7 @@ class WorkflowManager:
                 )
                 engine.config.database = cromwelldb_config
             elif dbtype == DatabaseTypeToUse.from_script:
-                engine.config.database = db_config.get_config_for_template_supplied(
+                engine.config.database = db_config.get_config_from_script(
                     self.execution_dir
                 )
             else:
@@ -1454,7 +1456,9 @@ janis run \\
                 self.filescheme.rm_dir(execdir)
                 self.database.progressDB.set(ProgressKeys.cleanedUp)
 
-            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_configuration
+            dbconfig: JanisDatabaseConfigurationHelper = (
+                self.database.submission_metadata.metadata.db_configuration
+            )
             if (
                 dbconfig is not None
                 and self.engine.engtype == EngineType.cromwell

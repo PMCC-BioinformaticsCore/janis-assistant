@@ -57,6 +57,10 @@ class NoAttributeErrors:
 
 class JanisConfigurationTemplate(Serializable):
     def __init__(self, id: str = None, **d):
+        """
+        :param id:
+        :type id: The identifier of the template
+        """
         from janis_assistant.templates import from_template
 
         self.id = (
@@ -76,6 +80,17 @@ class JanisConfigurationEnvironment(NoAttributeErrors, Serializable):
     def __init__(
         self, max_cores: int = None, max_memory: int = None, max_duration: int = None
     ):
+        """
+        Additional settings to configure a Janis environment. Currently, it mostly involves restricing resources (like cores, memory, duration) to fit within specific compute requirements.
+        Notable, these values limit the requested values if they're a number. It doesn't currently limit this value if it's determined via an operator.
+
+        :param max_cores: Limit the number of CPUs a job can request
+        :type max_cores: int
+        :param max_memory: Limit the amount of memory (in GB) a job can request
+        :type max_memory: int
+        :param max_duration: (Default: 86400) Limit the amount of time (in seconds) a job can request.
+        :type max_duration: int
+        """
         self.max_cores = max_cores
         self.max_memory = max_memory
         self.max_duration = max_duration
@@ -83,6 +98,14 @@ class JanisConfigurationEnvironment(NoAttributeErrors, Serializable):
 
 class MySqlInstanceConfig(Serializable):
     def __init__(self, url, username, password, dbname="cromwell"):
+        """
+        Configuration options for a MySQL instance
+
+        :param url: URL of the mysql instance (including port if not 3036)
+        :param username: Username
+        :param password: Password, not this is embedded into the Cromwell configuration (<output-dir>/janis/configuration/cromwell.conf)
+        :param dbname: Database name to use, default 'cromwell'
+        """
         self.url = url
         self.username = username
         self.password = password
@@ -103,6 +126,22 @@ class JanisConfigurationCromwell(Serializable):
         mysql_credentials: Union[dict, MySqlInstanceConfig] = None,
         additional_config_lines: str = None,
     ):
+        """
+        :param url: Use an existing Cromwell instance with this URL (with port). Use the BASE url, do NOT include http.
+        :type url: str
+        :param jar: Specific Cromwell JAR to use (prioritised over ``$JANIS_CROMWELLJAR``)
+        :param config_path: Use a supplied Config path when running a Cromwell instance. Also see ``additional_config_lines`` for including specific cromwell options.
+        :param memory_mb: Amount of memory to give Cromwell instance through ``java -xmx <max-memory>M -jar <jar>``
+        :param call_caching_method: (Default: "fingerprint") Cromwell caching strategy to use, see `Call cache strategy options for local filesystem <https://cromwell.readthedocs.io/en/stable/Configuring/#call-cache-strategy-options-for-local-filesystem>`_ for more information.
+        :param timeout: Suspend a Janis workflow if unable to contact cromwell for <timeout> MINTUES.
+        :param polling_interval: How often to poll Cromwell, by default this starts at 5 seconds, and gradually falls to 60 seconds over 30 minutes. For more information, see the ``janis_assistant.Cromwell.get_poll_interval`` `method <https://github.com/PMCC-BioinformaticsCore/janis-assistant/blob/master/janis_assistant/engines/cromwell/main.py#L179>`_
+        :param db_type: (Default: filebased) DB type to use for Janis. "none" -> no database; "existing" -> use mysql credentials from ``cromwell.mysql_credentials``; "managed" -> Janis will start and manage a containerised MySQL instance; "filebased": Use the HSQLDB filebased db through Cromwell for SMALL workflows only (NB: this can produce large files, and timeout for large workflows); "from_script": Call the script ``$JANIS_DBCREDENTIALSGENERATOR`` for credentials. See `get_config_from_script <https://github.com/PMCC-BioinformaticsCore/janis-assistant/blob/master/janis_assistant/management/configuration.py#L621>`_ for more information.
+        :type db_type: "none" | "existing" | "managed" | "filebased" | "from_script"
+        :param mysql_credentials: A dictionary of MySQL credentials
+        :type mysql_credentials: MySqlInstanceConfig
+        :param additional_config_lines: A string to add to the bottom of a generated Cromwell configuration. This is NOT used for an existing cromwell instance, or a config is supplied.
+        :type additional_config_lines: str
+        """
         self.jar = jar
         self.config_path = config_path
         self.url = url
@@ -140,6 +179,14 @@ class JanisConfigurationRecipes(Serializable):
         paths: Union[str, List[str]] = None,
         directories: Union[str, List[str]] = None,
     ):
+        """
+        :param recipes: A dictionary of input values, keyed by the recipe name.
+        :type recipes: dict
+        :param paths: a list of ``*.yaml`` files, where each path contains a dictionary of input values, keyed by the recipe name, similar to the previous recipes name.
+        :type paths: List[str]
+        :param directories: a directory of ``*.yaml`` files, where the ``*`` is the recipe name.
+        :type directories: List[str]
+        """
         self.recipes = recipes or {}
         self.paths: Optional[List[str]] = None
         self.directories: Optional[List[str]] = None
@@ -279,6 +326,11 @@ class JanisConfigurationNotifications(Serializable):
         from_email: str = "janis-noreply@petermac.org",
         mail_program: str = None,
     ):
+        """
+        :param email: Email address to send status updates to
+        :param from_email: (Default: janis-noreply@petermac.org)
+        :param mail_program: Which mail program to use to send emails. A fully formatted email will be directed as stdin (eg: sendmail -t)
+        """
 
         self.email = email
         self.from_email = from_email
@@ -341,6 +393,7 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
     ):
         """
         :param engine: Default engine to use
+        :type engine: "cromwell" | "cwltool"
         :param template: Specify options for a Janis template for configuring an execution environment
         :type template: JanisConfigurationTemplate
         :param cromwell: A dictionary for how to configure Cromwell for Janis
@@ -350,14 +403,18 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         :param notifications: Configure Janis notifications
         :type notifications: JanisConfigurationNotifications
         :param environment: Additional ways to configure the execution environment for Janis
-        :type environment: JanisConfigurationNotifications
+        :type environment: JanisConfigurationEnvironment
         :param output_dir: A directory that Janis will use to generate a new output directory for each janis-run
         :param execution_dir: Move all execution to a static directory outside the regular output directory.
         :param call_caching_enabled: (default: true) call-caching is enabled for subsequent runs, on the SAME output directory
-        :param run_in_background:
-        :param digest_cache_location:
-        :param container:
-        :param search_paths:
+        :param run_in_background: By default, run workflows as a background process. In a SLURM environment, this might submit Janis as a SLURM job.
+        :type run_in_background: bool
+        :param digest_cache_location: A cache of docker tags to its digest that Janis uses replaces your docker tag with it's `digest <https://docs.docker.com/engine/reference/commandline/pull/#pull-an-image-by-digest-immutable-identifier>`_.
+        :type digest_cache_location: str
+        :param container: Container technology to use, important for checking if container environment is available and running mysql instance.
+        :type container: "docker" | "singularity"
+        :param search_paths: A list of paths to check when looking for python files and input files
+        :type search_paths: List[str]
         """
 
         self.config_dir = EnvVariables.config_dir.resolve(True)
@@ -510,7 +567,7 @@ class JanisDatabaseConfigurationHelper(Serializable):
             username=None, password=None, url=url
         )
 
-    def get_config_for_template_supplied(self, output_dir: str):
+    def get_config_from_script(self, output_dir: str):
         try:
             import subprocess, os, json
             from janis_assistant.management.envvariables import EnvVariables

@@ -103,7 +103,7 @@ class FileFinderModifier(PipelineModifierBase):
         if not self.source_hints or len(self.source_hints) == 0:
             Logger.warn(
                 f"There were no source hints specified to find an input for {tool.id()}.{inpid}, expected one "
-                f"or more of {tishj}. You can specify source hints with --source-hints (in janis prepare)."
+                f"or more of {tishj}. You can specify source hints with --source-hint (in janis prepare)."
             )
             return None
 

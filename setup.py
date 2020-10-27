@@ -37,6 +37,9 @@ setup(
         "cwltool",
         "blessed",
     ],
+    extras_require={
+        "gcs": ["google-cloud-storage"],
+    },
     packages=["janis_assistant"] + modules,
     classifiers=[
         "Development Status :: 4 - Beta",

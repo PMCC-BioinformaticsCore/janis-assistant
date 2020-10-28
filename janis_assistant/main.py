@@ -14,6 +14,8 @@ from textwrap import dedent
 from typing import Optional, Dict, Union, Type, List
 
 import janis_core as j
+from janis_assistant.data.enums import TaskStatus
+
 from janis_assistant.modifiers.base import PipelineModifierBase
 
 from janis_assistant.modifiers.inputchecker import InputChecker
@@ -109,6 +111,23 @@ def run_with_outputs(
     if not wm:
         Logger.critical(f"An error occurred when running workflow {tool.id()}")
         return None
+
+    if not wm.database:
+        Logger.critical(
+            f"An error occurred when getting the outputs for workflow {tool.id()}"
+        )
+        return None
+
+    status = wm.database.get_uncached_status()
+    if status != TaskStatus.COMPLETED:
+        error = ""
+        if wm.database.submission_metadata and wm.database.submission_metadata.metadata:
+            error = wm.database.submission_metadata.metadata.error or ""
+        Logger.critical(
+            f"The workflow {tool.id()} ended with status {status}, and hence won't return outputs. Error: {error}"
+        )
+        return None
+
     outs = wm.database.outputsDB.get()
     return {o.id_: o.value or o.new_path for o in outs if o.value or o.new_path}
 
@@ -546,12 +565,18 @@ def fromjanis2(
 
     except KeyboardInterrupt:
         Logger.info("Exiting...")
+        try:
+            wm.abort()
+        except:
+            pass
 
     except Exception as e:
         # Have to make sure we stop the engine if something happens when creating the task that causes
         # janis to exit early
         eng.stop_engine()
         raise e
+
+    return wm
 
 
 def prepare_job(

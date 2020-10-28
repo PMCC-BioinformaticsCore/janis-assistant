@@ -100,7 +100,7 @@ class InputTransformerModifier(PipelineModifierBase):
             Logger.warn(
                 message_prefix
                 + f",\nbut Janis couldn't find a transformation between the guessed and expected type:"
-                f" {guessed_datatype.name()} -> {dt.name()}: {repr(e)}"
+                f" {guessed_datatype.name()} -> {dt.name()}: {str(e)}"
             )
 
         # maybe do some other things with respect to the path
@@ -116,16 +116,14 @@ class InputTransformerModifier(PipelineModifierBase):
                 Logger.critical(
                     f"Couldn't get outputs from transformation for '{inpid}'"
                 )
+                return None
             return first_value(outs)
 
         except Exception as e:
             Logger.critical(
                 f"An internal error occurred when performing the transformation for {inpid} "
-                f"({guessed_datatype.name()} -> {dt.name()}): {repr(e)}"
+                f"({guessed_datatype.name()} -> {dt.name()}): {str(e)}"
             )
             Logger.debug(traceback.format_exc())
-
-            # temporarily
-            raise
 
             return value

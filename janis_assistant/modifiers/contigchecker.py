@@ -58,6 +58,12 @@ class ContigChecker(PipelineModifierBase):
                 value_ref + ".fai"
             )
 
+            if not ref_contigs:
+                Logger.debug(
+                    f"Didn't get any contigs from ref {value_ref}.fai, skipping..."
+                )
+                continue
+
             for inp_bed in beds_inputs:
                 value_bed = inputs[inp_bed.id()]
                 is_array = isinstance(value_bed, list)
@@ -84,19 +90,29 @@ class ContigChecker(PipelineModifierBase):
     @staticmethod
     def get_list_of_contigs_from_fastafai(fai_idx: str) -> Set[str]:
         # Structure contig, size, location, basesPerLine and bytesPerLine
-        contigs = set()
-        with open_potentially_compressed_file(fai_idx) as f:
-            for l in f:
-                contigs.add(l.split("\t")[0])
+        try:
+            contigs = set()
+            with open_potentially_compressed_file(fai_idx) as f:
+                for l in f:
+                    contigs.add(l.split("\t")[0])
 
-        return contigs
+            return contigs
+
+        except Exception as e:
+            Logger.critical(f"Couldn't get contigs from reference {fai_idx}: {str(e)}")
+            return set()
 
     @staticmethod
     def get_list_of_contigs_from_bed(bedfile: str) -> Set[str]:
-        contigs = set()
-        with open_potentially_compressed_file(bedfile) as fp:
-            for l in fp:
-                contig: str = l.split("\t")[0]
-                if contig:
-                    contigs.add(contig.strip())
-        return contigs
+        try:
+            contigs = set()
+            with open_potentially_compressed_file(bedfile) as fp:
+                for l in fp:
+                    contig: str = l.split("\t")[0]
+                    if contig:
+                        contigs.add(contig.strip())
+            return contigs
+
+        except Exception as e:
+            Logger.critical(f"Couldn't get contigs from bedfile {bedfile}: {str(e)}")
+            return set()

@@ -2,7 +2,15 @@ import os.path
 from typing import Dict, List, Union, Optional
 
 from janis_assistant.management.filescheme import FileScheme
-from janis_core import Tool, WorkflowBase, Logger, File, Array, DataType
+from janis_core import (
+    Tool,
+    WorkflowBase,
+    Logger,
+    File,
+    Array,
+    DataType,
+    apply_secondary_file_format_to_filename,
+)
 
 from janis_assistant.modifiers.base import PipelineModifierBase
 
@@ -73,15 +81,36 @@ class FileFinderModifier(PipelineModifierBase):
                 f"A file already exists when localising '{inpid}' at '{out_path}'. If this isn't the right file, "
                 f"you'll need to manually remove this file before proceeding"
             )
-            return out_path
+        else:
+            try:
+                fs.cp_from(source, out_path)
+            except Exception as e:
+                Logger.critical(
+                    f"Couldn't localise source from {source} -> {out_path}: {repr(e)}"
+                )
+                raise
+
         try:
-            fs.cp_from(source, out_path)
-            return out_path
+            for sec in inptype.secondary_files() or []:
+                sec_source = apply_secondary_file_format_to_filename(source, sec)
+                out_sec_path = apply_secondary_file_format_to_filename(out_path, sec)
+
+                if os.path.exists(out_sec_path):
+                    Logger.info(
+                        f"The secondary file for {inpid} ({sec}) already exists when localising '{inpid}' at '{out_sec_path}'. If this isn't the right file, "
+                        f"you'll need to manually remove this file before proceeding"
+                    )
+                elif not fs.exists(sec_source):
+                    Logger.warn(
+                        f"Couldn't find the secondary file for {inpid}, expected at {sec_source}, skipping for now"
+                    )
+                else:
+                    fs.cp_from(sec_source, out_sec_path)
+
         except Exception as e:
-            Logger.critical(
-                f"Couldn't localise source from {source} -> {out_path}: {repr(e)}"
-            )
-            raise
+            Logger.critical(f"Couldn't localise secondary file due to: {e}")
+
+        return out_path
 
     def determine_appropriate_source_from_hints(
         self,

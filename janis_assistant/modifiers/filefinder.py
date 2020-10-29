@@ -10,6 +10,7 @@ from janis_core import (
     Array,
     DataType,
     apply_secondary_file_format_to_filename,
+    InputDocumentation,
 )
 
 from janis_assistant.modifiers.base import PipelineModifierBase
@@ -49,16 +50,22 @@ class FileFinderModifier(PipelineModifierBase):
                 f"An input to '{wf.id()}.{inpnode.id()}' was not found, and the workflow specifies a source to potentially locate from."
             )
 
+            doc: InputDocumentation = inpnode.doc
+
             # use the source hints to find
             source = self.determine_appropriate_source_from_hints(
-                tool, inpnode.id(), inpnode.doc.source
+                tool, inpnode.id(), doc.source
             )
             if source:
                 basedir = os.path.join(self.cache_dir, inpnode.id())
                 os.makedirs(basedir, exist_ok=True)
 
                 new_inputs[inpnode.id()] = self.localise_inputs(
-                    inpnode.id(), inpnode.datatype, basedir, source
+                    inpnode.id(),
+                    inpnode.datatype,
+                    basedir,
+                    source,
+                    localise_secondary_files=not doc.skip_sourcing_secondary_files,
                 )
 
         return {**inputs, **new_inputs}
@@ -69,6 +76,7 @@ class FileFinderModifier(PipelineModifierBase):
         inptype: DataType,
         dest_dir: str,
         source: Union[str, List[str]],
+        localise_secondary_files: bool = True,
     ):
         if isinstance(source, list):
             return [self.localise_inputs(inpid, inptype, dest_dir, s) for s in source]
@@ -90,25 +98,28 @@ class FileFinderModifier(PipelineModifierBase):
                 )
                 raise
 
-        try:
-            for sec in inptype.secondary_files() or []:
-                sec_source = apply_secondary_file_format_to_filename(source, sec)
-                out_sec_path = apply_secondary_file_format_to_filename(out_path, sec)
-
-                if os.path.exists(out_sec_path):
-                    Logger.info(
-                        f"The secondary file for {inpid} ({sec}) already exists when localising '{inpid}' at '{out_sec_path}'. If this isn't the right file, "
-                        f"you'll need to manually remove this file before proceeding"
+        if localise_secondary_files:
+            try:
+                for sec in inptype.secondary_files() or []:
+                    sec_source = apply_secondary_file_format_to_filename(source, sec)
+                    out_sec_path = apply_secondary_file_format_to_filename(
+                        out_path, sec
                     )
-                elif not fs.exists(sec_source):
-                    Logger.warn(
-                        f"Couldn't find the secondary file for {inpid}, expected at {sec_source}, skipping for now"
-                    )
-                else:
-                    fs.cp_from(sec_source, out_sec_path)
 
-        except Exception as e:
-            Logger.critical(f"Couldn't localise secondary file due to: {e}")
+                    if os.path.exists(out_sec_path):
+                        Logger.info(
+                            f"The secondary file for {inpid} ({sec}) already exists when localising '{inpid}' at '{out_sec_path}'. If this isn't the right file, "
+                            f"you'll need to manually remove this file before proceeding"
+                        )
+                    elif not fs.exists(sec_source):
+                        Logger.warn(
+                            f"Couldn't find the secondary file for {inpid}, expected at {sec_source}, skipping for now"
+                        )
+                    else:
+                        fs.cp_from(sec_source, out_sec_path)
+
+            except Exception as e:
+                Logger.critical(f"Couldn't localise secondary file due to: {e}")
 
         return out_path
 

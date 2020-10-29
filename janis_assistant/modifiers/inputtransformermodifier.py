@@ -102,22 +102,18 @@ class InputTransformerModifier(PipelineModifierBase):
                 + f",\nbut Janis couldn't find a transformation between the guessed and expected type:"
                 f" {guessed_datatype.name()} -> {dt.name()}: {str(e)}"
             )
+            return value
 
         # maybe do some other things with respect to the path
-        try:
-            from janis_assistant.main import run_with_outputs
 
-            outs = run_with_outputs(
-                wf,
-                {wf.tool_inputs()[0].id(): value},
+        try:
+            return self.try_get_outputs_for(
+                inpid=inpid,
+                wf=wf,
+                inputs={wf.tool_inputs()[0].id(): value},
                 output_dir=os.path.join(self.cache_dir, inpid),
+                description=f"{guessed_datatype.name()} -> {dt.name()}",
             )
-            if not outs or len(outs) < 1:
-                Logger.critical(
-                    f"Couldn't get outputs from transformation for '{inpid}'"
-                )
-                return None
-            return first_value(outs)
 
         except Exception as e:
             Logger.critical(
@@ -127,3 +123,41 @@ class InputTransformerModifier(PipelineModifierBase):
             Logger.debug(traceback.format_exc())
 
             return value
+
+    def try_get_outputs_for(self, inpid, wf, inputs, output_dir, description):
+
+        from janis_assistant.main import WorkflowManager, run_with_outputs
+
+        if os.path.exists(output_dir):
+            try:
+                wm = WorkflowManager.from_path_get_latest_manager(
+                    output_dir, readonly=True
+                )
+                outs_raw = wm.database.outputsDB.get()
+                outs = {
+                    o.id_: o.value or o.new_path
+                    for o in outs_raw
+                    if o.value or o.new_path
+                }
+                if len(outs) > 0:
+                    out_val = first_value(outs)
+                    Logger.info(
+                        f"Using cached value of transformation ({description}) for {inpid}: {out_val}"
+                    )
+                    return out_val
+                Logger.log(
+                    f"Didn't get any outputs from previous workflow manager when deriving input {inpid} ({description})"
+                )
+            except Exception as e:
+                Logger.debug(
+                    f"Couldn't get outputs from existing output_path for {inpid}, '{output_dir}' ({description}): {e}"
+                )
+
+        outs = run_with_outputs(wf, inputs=inputs, output_dir=output_dir)
+        if not outs or len(outs) < 1:
+            Logger.critical(
+                f"Couldn't get outputs from transformation ({description}) for '{inpid}'"
+            )
+            return None
+
+        return first_value(outs)

@@ -1033,7 +1033,7 @@ def do_prepare(args):
     d = job.to_dict()
 
     WorkflowManager.write_prepared_submission_file(
-        args.workflow, prepared_job=job, output_dir=job.output_dir
+        args.workflow, prepared_job=job, output_dir=job.output_dir, force_write=True
     )
 
     script_location = os.path.join(job.output_dir, "run.sh")

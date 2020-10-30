@@ -87,7 +87,7 @@ class InputTransformerModifier(PipelineModifierBase):
             )
             Logger.warn(
                 message_prefix
-                + f",\nJanis guessed the actual datatype for '{inpid}' from data '{value}' to be {guessed_datatype.id()}, \n"
+                + f",\nJanis guessed the actual datatype for '{inpid}' from data '{value}' to be {guessed_datatype.id()}, "
                 f"and Janis was able to determine a transformation in {len(transformation)} step(s): {steps}"
             )
             wf = JanisTransformation.convert_transformations_to_workflow(transformation)

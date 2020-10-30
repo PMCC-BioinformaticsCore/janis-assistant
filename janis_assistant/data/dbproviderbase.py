@@ -16,7 +16,7 @@ from contextlib import contextmanager
 
 from janis_assistant.utils import second_formatter
 
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_core import Logger
 
 from janis_assistant.data.models.base import (
@@ -190,7 +190,8 @@ class DbProviderBase(DbBase, Generic[T]):
         prep_el_idkey = lambda job: tuple(
             [
                 prep_object_for_db(
-                    getattr(job, dbalias_map[_k].name), encode=dbalias_map[_k].encode,
+                    getattr(job, dbalias_map[_k].name),
+                    encode=dbalias_map[_k].encode,
                 )
                 for _k in idkeys_ordered
             ]

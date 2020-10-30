@@ -4,7 +4,7 @@ from typing import List
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 from janis_assistant.data.models.outputs import WorkflowOutputModel
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 
 class OutputDbProvider(DbProviderBase[WorkflowOutputModel]):

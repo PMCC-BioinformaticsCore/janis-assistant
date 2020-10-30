@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict
 
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 

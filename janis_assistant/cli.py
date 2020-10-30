@@ -46,7 +46,7 @@ from janis_assistant.utils import (
 )
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_assistant.validation import ValidationRequirements
 
 

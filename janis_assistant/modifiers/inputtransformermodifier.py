@@ -161,3 +161,8 @@ class InputTransformerModifier(PipelineModifierBase):
             return None
 
         return first_value(outs)
+
+
+if __name__ == "__main__":
+    ft = guess_datatype_by_filename("janis/prepare/gridss_blacklist/ENCFF356LFX.bed.gz")
+    print(ft)

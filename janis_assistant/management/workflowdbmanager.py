@@ -21,7 +21,7 @@ from janis_assistant.data.providers.submissiondbprovider import SubmissionDbProv
 from janis_assistant.data.providers.workflowmetadataprovider import (
     SubmissionMetadataDbProvider,
 )
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_core.utils.logger import Logger
 
 

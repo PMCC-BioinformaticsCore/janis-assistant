@@ -76,7 +76,7 @@ from janis_assistant.utils import (
     convert_value_or_list_to_string,
 )
 from janis_assistant.utils.batchrun import BatchRunRequirements
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_assistant.utils.getuser import lookup_username
 from janis_assistant.validation import ValidationRequirements
 

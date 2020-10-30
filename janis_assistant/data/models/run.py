@@ -3,7 +3,7 @@ from datetime import datetime
 
 from janis_assistant.utils import second_formatter
 
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.data.enums.taskstatus import TaskStatus

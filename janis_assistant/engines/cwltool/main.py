@@ -14,7 +14,7 @@ from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfigura
 from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 
 class CWLToolLogger(ProcessLogger):

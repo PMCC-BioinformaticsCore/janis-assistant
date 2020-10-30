@@ -29,7 +29,7 @@ from janis_assistant.utils import (
     ProcessLogger,
     find_free_port,
 )
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_assistant.utils.fileutil import tail
 from .cromwellconfiguration import CromwellConfiguration
 from janis_assistant.data.enums.dbtype import DatabaseTypeToUse
@@ -675,9 +675,10 @@ class Cromwell(Engine):
             shutil.copyfile(job.cromwell.config_path, self.config_path)
 
         else:
-            self.config: CromwellConfiguration = job.template.template.engine_config(
-                EngineType.cromwell, job
-            ) or CromwellConfiguration()
+            self.config: CromwellConfiguration = (
+                job.template.template.engine_config(EngineType.cromwell, job)
+                or CromwellConfiguration()
+            )
             if not self.config.system:
                 self.config.system = CromwellConfiguration.System()
             self.config.system.cromwell_id = identifier
@@ -694,8 +695,10 @@ class Cromwell(Engine):
                     if not cnf.config.root:
                         cnf.config.root = self.execution_dir
             else:
-                self.config.backend = CromwellConfiguration.Backend.with_new_local_exec_dir(
-                    self.execution_dir
+                self.config.backend = (
+                    CromwellConfiguration.Backend.with_new_local_exec_dir(
+                        self.execution_dir
+                    )
                 )
 
     def raw_metadata(

@@ -67,8 +67,8 @@ def guess_datatype_by_filename(filename: str):
 
         # we got here, we're G
 
-        if filename.endswith(datatype.extension) and secondaries_match:
-            extension_reward = len(datatype.extension) * EXTENSION_REWARD_MULTIPLER
+        if matching_extension is not None and secondaries_match:
+            extension_reward = len(matching_extension) * EXTENSION_REWARD_MULTIPLER
             secondaries_reward = (
                 len(datatype.secondary_files() or []) * SECONDARIES_REWARD_MULTIPLER
             )
@@ -88,4 +88,4 @@ def guess_datatype_by_filename(filename: str):
             f"There were {len(matches)} for matching datatypes. Using {matched_dt.name()} ({matches[0][0]}) "
             f"as it was the best match from: {ranked}"
         )
-        return matches[0][1]
+        return matched_dt

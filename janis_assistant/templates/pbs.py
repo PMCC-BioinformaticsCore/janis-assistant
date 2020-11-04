@@ -90,9 +90,9 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
             ),
         )
 
-        beconfig: CromwellConfiguration.Backend.Provider.Config = config.backend.providers[
-            config.backend.default
-        ].config
+        beconfig: CromwellConfiguration.Backend.Provider.Config = (
+            config.backend.providers[config.backend.default].config
+        )
         if self.intermediate_execution_dir:
             beconfig.root = self.intermediate_execution_dir
 

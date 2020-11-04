@@ -786,7 +786,7 @@ JOBID=$({sbatch} \\
                 db_flush_rate: Optional[int] = None,
             ):
                 """
-                
+
                 :param summary_refresh_interval: Set this value to "Inf" to turn off metadata summary refresh.  The default value is currently "1 second"
                 :param summary_refresh_limit: maximum number of metadata rows to be considered per summarization cycle
                 :param db_batch_size:

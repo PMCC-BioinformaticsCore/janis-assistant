@@ -107,7 +107,7 @@ def run_with_outputs(
         run_prepare_processing=False,
     )
 
-    wm = fromjanis2(tool, jobfile=job, wait=True)
+    wm = run_from_jobfile(tool, jobfile=job, wait=True)
     if not wm:
         Logger.critical(f"An error occurred when running workflow {tool.id()}")
         return None
@@ -497,7 +497,7 @@ def init_template(
         ruamel.yaml.dump(get_config(), sys.stdout, default_flow_style=False)
 
 
-def fromjanis2(
+def run_from_jobfile(
     workflow: Union[str, j.Tool, Type[j.Tool]],
     jobfile: PreparedSubmission,
     engine: Union[str, Engine, None] = None,

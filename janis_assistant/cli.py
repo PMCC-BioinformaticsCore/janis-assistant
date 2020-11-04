@@ -32,7 +32,7 @@ from janis_assistant.main import (
     init_template,
     abort_wids,
     spider_tool,
-    fromjanis2,
+    run_from_jobfile,
     prepare_job,
     resolve_tool,
 )
@@ -1063,7 +1063,7 @@ def do_run(args):
     else:
         job, workflow = prepare_from_args(args)
 
-    jobfile = fromjanis2(workflow, jobfile=job, wait=args.wait)
+    jobfile = run_from_jobfile(workflow, jobfile=job, wait=args.wait)
 
     Logger.info("Exiting")
     raise SystemExit

@@ -12,8 +12,10 @@ class NotificationManager:
     @staticmethod
     def notify_status_change(status, metadata: SubmissionModel):
 
-        body = PreparedSubmission.instance().template.template.prepare_status_update_email(
-            status=status, metadata=metadata
+        body = (
+            PreparedSubmission.instance().template.template.prepare_status_update_email(
+                status=status, metadata=metadata
+            )
         )
 
         NotificationManager.send_email(
@@ -36,9 +38,9 @@ class NotificationManager:
             Logger.log("Skipping notify status change as no email")
             return
 
-        emails: List[str] = nots.email if isinstance(
-            nots.email, list
-        ) else nots.email.split(",")
+        emails: List[str] = (
+            nots.email if isinstance(nots.email, list) else nots.email.split(",")
+        )
 
         email_template = f"""\
 Content-Type: text/html

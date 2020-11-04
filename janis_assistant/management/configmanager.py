@@ -50,7 +50,9 @@ class ConfigManager:
 
     @staticmethod
     def get_from_path_or_submission_lazy(
-        submission_id, readonly: bool, db_path: Optional[str] = None,
+        submission_id,
+        readonly: bool,
+        db_path: Optional[str] = None,
     ):
         """
         2020-10-01 mfranklin:

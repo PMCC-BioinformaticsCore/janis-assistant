@@ -669,9 +669,10 @@ class Cromwell(Engine):
             shutil.copyfile(jc.cromwell.configpath, self.config_path)
 
         else:
-            self.config: CromwellConfiguration = jc.template.template.engine_config(
-                EngineType.cromwell, jc
-            ) or CromwellConfiguration()
+            self.config: CromwellConfiguration = (
+                jc.template.template.engine_config(EngineType.cromwell, jc)
+                or CromwellConfiguration()
+            )
             if not self.config.system:
                 self.config.system = CromwellConfiguration.System()
             self.config.system.cromwell_id = identifier
@@ -688,8 +689,10 @@ class Cromwell(Engine):
                     if not cnf.config.root:
                         cnf.config.root = self.execution_dir
             else:
-                self.config.backend = CromwellConfiguration.Backend.with_new_local_exec_dir(
-                    self.execution_dir
+                self.config.backend = (
+                    CromwellConfiguration.Backend.with_new_local_exec_dir(
+                        self.execution_dir
+                    )
                 )
 
     def raw_metadata(

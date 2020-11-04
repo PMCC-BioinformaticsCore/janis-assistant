@@ -216,7 +216,9 @@ def add_spider_args(parser):
         help="Adds statements to help find why a tool isn't appearing in the toolbox",
     )
     parser.add_argument(
-        "--all", action="store_true", help="Print all tools in alphabetical order",
+        "--all",
+        action="store_true",
+        help="Print all tools in alphabetical order",
     )
 
 
@@ -942,7 +944,9 @@ def do_spider(args):
 def do_inputs(args):
 
     if args.config or args.recipe:
-        JanisConfiguration.initial_configuration(path=args.config,)
+        JanisConfiguration.initial_configuration(
+            path=args.config,
+        )
 
     quality_type = None
 

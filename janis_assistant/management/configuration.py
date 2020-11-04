@@ -193,8 +193,10 @@ class JanisConfiguration(NoAttributeErrors):
             self.use_database = JanisConfiguration.get_value_for_key(
                 d, self.Keys.UseDatabase, default
             )
-            self.generated_db_credentials_from_script = JanisConfiguration.get_value_for_key(
-                d, self.Keys.GeneratedDbCredentials, default
+            self.generated_db_credentials_from_script = (
+                JanisConfiguration.get_value_for_key(
+                    d, self.Keys.GeneratedDbCredentials, default
+                )
             )
 
             self.additional_params = JanisConfiguration.get_value_for_key(
@@ -424,9 +426,11 @@ class JanisConfiguration(NoAttributeErrors):
             default.get(JanisConfiguration.Keys.Cromwell),
         )
 
-        self.template: JanisConfiguration.JanisConfigurationTemplate = JanisConfiguration.JanisConfigurationTemplate(
-            d.get(JanisConfiguration.Keys.Template),
-            default.get(JanisConfiguration.Keys.Template),
+        self.template: JanisConfiguration.JanisConfigurationTemplate = (
+            JanisConfiguration.JanisConfigurationTemplate(
+                d.get(JanisConfiguration.Keys.Template),
+                default.get(JanisConfiguration.Keys.Template),
+            )
         )
 
         self.recipes = JanisConfiguration.JanisConfigurationRecipes(

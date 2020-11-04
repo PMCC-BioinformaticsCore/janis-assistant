@@ -126,7 +126,13 @@ def translate(
         valuesfromrecipe = jc.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
+    inputsdict.update(
+        cascade_inputs(
+            wf=None,
+            inputs=inputs,
+            required_inputs=None,
+        )
+    )
 
     if isinstance(toolref, DynamicWorkflow):
         if not inputsdict:

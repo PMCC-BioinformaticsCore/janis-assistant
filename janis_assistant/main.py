@@ -64,6 +64,7 @@ def run_with_outputs(
     inputs: Dict[str, any],
     output_dir: str,
     config: JanisConfiguration = None,
+    engine: Optional[str] = None,
 ):
     """
     Run and WAIT for a Janis workflow to complete. This helper method runs a workflow,
@@ -91,7 +92,7 @@ def run_with_outputs(
         skip_digest_lookup=False,
         batchrun_reqs=None,
         validation_reqs=None,
-        engine=None,
+        engine=engine,
         hints={},
         keep_intermediate_files=False,
         max_cores=None,

@@ -179,7 +179,9 @@ class WorkflowManager:
         # output directory has been created
 
         tm = WorkflowManager(
-            submission_id=submission_id, execution_dir=execution_dir, engine=engine,
+            submission_id=submission_id,
+            execution_dir=execution_dir,
+            engine=engine,
         )
 
         tm.database.submissions.insert_or_update_many(
@@ -737,7 +739,9 @@ class WorkflowManager:
         if not engine.config:
             Logger.info("Skipping start database as Janis is not managing the config")
         else:
-            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
+            dbconfig: JanisDatabaseConfigurationHelper = (
+                self.database.submission_metadata.metadata.db_config
+            )
             dbtype = dbconfig.which_db_to_use()
             engine.db_type = dbtype
             if dbtype == DatabaseTypeToUse.existing:
@@ -1374,7 +1378,9 @@ class WorkflowManager:
                 self.filescheme.rm_dir(execdir)
                 self.database.progressDB.set(ProgressKeys.cleanedUp)
 
-            dbconfig: JanisDatabaseConfigurationHelper = self.database.submission_metadata.metadata.db_config
+            dbconfig: JanisDatabaseConfigurationHelper = (
+                self.database.submission_metadata.metadata.db_config
+            )
             dbtype = dbconfig.which_db_to_use()
             if dbtype == DatabaseTypeToUse.from_script:
                 dbconfig.run_delete_database_script(self.execution_dir)

@@ -1,9 +1,9 @@
 import subprocess
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Union
 
 
 def collect_output_from_command(
-    command: List[str],
+    command: Union[List[str], str],
     stdout: Optional[Callable[[str], None]] = None,
     stderr: Optional[Callable[[str], None]] = None,
     shell=False,

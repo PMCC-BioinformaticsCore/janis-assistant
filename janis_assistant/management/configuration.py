@@ -622,7 +622,7 @@ class JanisDatabaseConfigurationHelper:
             username=None, password=None, url=url
         )
 
-    def get_config_for_template_supplied(self, output_dir: str):
+    def get_config_for_template_supplied(self, execution_dir: str):
         try:
             import subprocess, os, json
             from janis_assistant.management.envvariables import EnvVariables
@@ -643,7 +643,7 @@ class JanisDatabaseConfigurationHelper:
 
             try:
                 val = collect_output_from_command(
-                    [file_path, output_dir], stderr=Logger.guess_log, shell=True
+                    f"{file_path} {execution_dir}", stderr=Logger.guess_log, shell=True
                 )
             except Exception as e:
                 Logger.critical(f"Failed to generate database credentials ({repr(e)})")
@@ -691,7 +691,7 @@ class JanisDatabaseConfigurationHelper:
             #     raise Exception(f"Couldn't locate script '{file_path}' to execute")
 
             val = collect_output_from_command(
-                [file_path, execution_dir], stderr=Logger.guess_log, shell=True
+                f"{file_path} {execution_dir}", stderr=Logger.guess_log, shell=True
             )
             if val is not None and len(val) > 0:
                 Logger.info(

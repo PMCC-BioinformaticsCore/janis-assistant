@@ -638,8 +638,8 @@ class JanisDatabaseConfigurationHelper:
                 raise Exception(
                     f"Couldn't get database credentials as couldn't find value in env var '{EnvVariables.db_script_generator}'"
                 )
-            if not os.path.exists(file_path):
-                raise Exception(f"Couldn't locate script '{file_path}' to execute")
+            # if not os.path.exists(file_path):
+            #     raise Exception(f"Couldn't locate script '{file_path}' to execute")
 
             try:
                 val = collect_output_from_command(
@@ -687,8 +687,8 @@ class JanisDatabaseConfigurationHelper:
             Logger.debug(
                 f"Found path '{EnvVariables.db_script_generator_cleanup}' to delete database credentials"
             )
-            if not os.path.exists(file_path):
-                raise Exception(f"Couldn't locate script '{file_path}' to execute")
+            # if not os.path.exists(file_path):
+            #     raise Exception(f"Couldn't locate script '{file_path}' to execute")
 
             val = collect_output_from_command(
                 [file_path, execution_dir], stderr=Logger.guess_log

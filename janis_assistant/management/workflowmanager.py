@@ -293,7 +293,14 @@ class WorkflowManager:
             return self.resume()
 
         loglevel = LogLevel.get_str(Logger.CONSOLE_LEVEL)
-        command = ["janis", "--logLevel", loglevel, "resume", "--foreground", wid]
+        command = [
+            "janis",
+            "--logLevel",
+            loglevel,
+            "resume",
+            "--foreground",
+            self.execution_dir,
+        ]
         scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
         logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
         jc.template.template.submit_detatched_resume(

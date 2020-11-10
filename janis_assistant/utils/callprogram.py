@@ -1,13 +1,16 @@
 import subprocess
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Union
 
 
 def collect_output_from_command(
-    command: List[str],
+    command: Union[List[str], str],
     stdout: Optional[Callable[[str], None]] = None,
     stderr: Optional[Callable[[str], None]] = None,
+    shell=False,
 ) -> str:
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=shell
+    )
 
     outs, errs = p.communicate(timeout=15)
     outs, errs = outs.decode(), errs.decode()

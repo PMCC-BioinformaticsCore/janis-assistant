@@ -9,6 +9,8 @@ from janis_assistant.data.container.parse_pattern import (
 from janis_assistant.data.container.info import *
 from janis_assistant.data.container.registries import *
 
+in_memory_cache = {}
+
 
 def get_digests_from_containers(
     containers: List[str], skip_cache=False
@@ -30,7 +32,8 @@ def get_digest_from_container(container: str, skip_cache=False):
                 return from_cache
 
         ci = ContainerInfo.parse(container)
-        if not ci.has_hash:
+
+        if not ci.chash:
             registry = ContainerRegistry.from_host(ci.host).to_registry()
             digest = registry.get_digest(ci)
             new_container = ci.to_string(chash=digest)
@@ -57,6 +60,10 @@ def get_cache_path_from_container(container: str) -> str:
 
 
 def try_lookup_in_cache(container: str) -> Optional[str]:
+
+    if container in in_memory_cache:
+        return in_memory_cache[container]
+
     container_cache_path = get_cache_path_from_container(container)
     if not os.path.exists(container_cache_path):
         return None
@@ -64,6 +71,7 @@ def try_lookup_in_cache(container: str) -> Optional[str]:
         with open(container_cache_path, "r") as f:
             cached_container = f.read().strip()
             Logger.log(f"Found cached digest of {container} at {container_cache_path}")
+            in_memory_cache[container] = cached_container
             return cached_container
 
     except Exception as e:
@@ -75,6 +83,7 @@ def try_lookup_in_cache(container: str) -> Optional[str]:
 
 def try_write_digest_to_cache(container: str, container_with_contents):
     container_cache_path = get_cache_path_from_container(container)
+    in_memory_cache[container] = container_with_contents
     if os.path.exists(container_cache_path):
         return Logger.log(
             f"Went to write digest to cache path, but this file already existed: {container_cache_path}"
@@ -87,3 +96,17 @@ def try_write_digest_to_cache(container: str, container_with_contents):
         Logger.debug(
             f"Couldn't cache digest to path ({container_cache_path}) for reason: {str(e)}"
         )
+
+
+if __name__ == "__main__":
+    container1 = "ubuntu:latest"
+    container2 = (
+        "ubuntu@sha256:1d7b639619bdca2d008eca2d5293e3c43ff84cbee597ff76de3b7a7de3e84956"
+    )
+
+    # test that the in-memory cache works
+    digest = get_digest_from_container(container1)
+    digest_cached = get_digest_from_container(container1)
+
+    # ensure get_digest returns None
+    digest2 = get_digest_from_container(container2)

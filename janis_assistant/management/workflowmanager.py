@@ -1297,6 +1297,8 @@ class WorkflowManager:
             ext = extension
             if ext is None and has_original_path:
                 ext = get_extension(engine_output.value)
+                if ext is not None:
+                    ext = "." + ext
             if ext:
                 # mfranklin: require user to correctly specific "." in extension
                 outfn += ext

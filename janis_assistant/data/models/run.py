@@ -278,6 +278,7 @@ EngId:      {engine_ids}
 Engine:     {self.engine_type}
 
 Task Dir:   {self.output_dir}
+Exec Dir:   {self.execution_dir}
 
 Name:       {self.get_names() or 'N/A'} 
 Status:     {statuses}

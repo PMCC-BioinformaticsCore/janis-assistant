@@ -136,7 +136,10 @@ class ConfigManager:
                     move(config.dbpath, np)
                     self._taskDB = None
                     return self.create_task_base(
-                        wf, outdir=outdir, store_in_centraldb=store_in_centraldb
+                        wf,
+                        outdir=outdir,
+                        execution_dir=execution_dir,
+                        store_in_centraldb=store_in_centraldb,
                     )
                 raise
         if outdir:
@@ -160,6 +163,9 @@ class ConfigManager:
 
         if not execution_dir:
             execution_dir = os.path.join(output_dir, "janis")
+            Logger.debug(
+                f"No execution-dir was provided, constructed one from the output-dir: {execution_dir}"
+            )
         execution_dir = fully_qualify_filename(execution_dir)
 
         Logger.info(

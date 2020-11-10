@@ -1,4 +1,4 @@
-__version__ = "v0.10.9"
+__version__ = "v0.10.10"
 DOCS_URL = "https://janis.readthedocs.io"
 GITHUB_URL = "https://github.com/PMCC-BioinformaticsCore/janis-assistant"
 ISSUE_URL = "https://github.com/PMCC-BioinformaticsCore/janis-assistant/issues/new"

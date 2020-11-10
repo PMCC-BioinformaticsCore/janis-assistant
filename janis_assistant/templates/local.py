@@ -13,7 +13,6 @@ class LocalTemplate(EnvironmentTemplate):
     ignore_init_keys = []
 
     def __init__(self):
-        """"""
         super().__init__()
 
     def cromwell(self, job: PreparedSubmission):

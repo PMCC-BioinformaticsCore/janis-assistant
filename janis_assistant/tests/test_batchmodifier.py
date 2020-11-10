@@ -1,6 +1,5 @@
 import unittest
 
-from janis_assistant.main import fromjanis
 from janis_core import WorkflowBuilder
 
 from janis_assistant.utils.batchrun import BatchRunRequirements

@@ -11,12 +11,12 @@ from janis_assistant.data.container.parse_pattern import (
 class ContainerInfo:
     CONTAINER_INVALID_CHARS = compile("[^A-Za-z0-9._-]+")
 
-    def __init__(self, host, repository, image, tag, has_hash):
+    def __init__(self, host, repository, image, tag, chash: str):
         self.host = host
         self.repository = repository
         self.image = image
         self.tag = tag
-        self.has_hash = has_hash
+        self.chash = chash
         if image is None:
             Logger.warn(f"{str(self)} didn't have an image, so setting to None")
             self.image = "ubuntu"
@@ -29,8 +29,11 @@ class ContainerInfo:
                 raise Exception(f"Invalid docker container '{container}'")
             name, tag, chash = matched.groups()
         else:
-            if ":" in container:
-                parts = container.split(":")
+            if "@" in container or ":" in container:
+                if "@" in container:
+                    parts = container.split("@")
+                else:
+                    parts = container.split(":")
                 if len(parts) != 2:
                     # This might happen if you use a library container with a tag AND a hash on dockerhub
                     # raise an issue if this happens
@@ -38,6 +41,7 @@ class ContainerInfo:
                         f"Unexpected format for container: {str(container)}. If you're using a library container with a tag AND a hash, please raise an issue on GitHub"
                     )
                 name, tagorhash = parts
+
                 if ContainerInfo.validate_docker_digest(tagorhash) is False:
                     tag, chash = tagorhash, None
                 else:
@@ -48,6 +52,7 @@ class ContainerInfo:
         host, repo, image = ContainerInfo.deconstruct_image_name(name)
 
         has_hash = chash is not None
+        final_tag = None
         if not has_hash:
             final_tag = "latest" if tag is None else tag
         else:
@@ -56,10 +61,10 @@ class ContainerInfo:
                     "Invalid format for docker hash ({hash}) in container {container}"
                 )
                 return False
-            final_tag = chash if tag is None else f"{tag}@{chash}"
+            # final_tag = chash if tag is None else f"{tag}@{chash}"
 
         return ContainerInfo(
-            host=host, repository=repo, image=image, tag=final_tag, has_hash=has_hash
+            host=host, repository=repo, image=image, tag=final_tag, chash=chash
         )
 
     @staticmethod
@@ -113,8 +118,8 @@ class ContainerInfo:
         parts = [host or self.host, repository or self.repository, image or self.image]
 
         end = ""
-        if chash:
-            end = "@" + chash
+        if chash or self.chash:
+            end = "@" + (chash or self.chash)
         elif tag or self.tag:
             tag = tag or self.tag
             end = (":" + tag) if tag is not None else ""

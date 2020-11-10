@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Tuple, Optional, List, Union
 
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 

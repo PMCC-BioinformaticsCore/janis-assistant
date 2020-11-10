@@ -14,7 +14,7 @@ from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfigura
 from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 
 class CWLToolLogger(ProcessLogger):
@@ -218,15 +218,15 @@ class CWLTool(Engine):
         self.find_or_generate_config(config)
 
     def find_or_generate_config(self, config: CWLToolConfiguration):
-        from janis_assistant.management.configuration import JanisConfiguration
+        from janis_assistant.data.models.preparedjob import PreparedSubmission
 
-        jc = JanisConfiguration.manager()
+        job = PreparedSubmission.instance()
 
         if config:
             self.config = config
         else:
             self.config = (
-                jc.template.template.engine_config(EngineType.cwltool, jc)
+                job.template.template.engine_config(EngineType.cwltool, job)
                 or CWLToolConfiguration()
             )
 
@@ -381,9 +381,9 @@ class CWLTool(Engine):
 
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
 
-        from janis_assistant.management.configuration import JanisConfiguration
+        from janis_assistant.data.models.preparedjob import PreparedSubmission
 
-        jc = JanisConfiguration.manager()
+        jobfile = PreparedSubmission.instance()
 
         self.taskmeta = {
             "start": DateUtil.now(),
@@ -403,7 +403,7 @@ class CWLTool(Engine):
             config.tmpdir_prefix = self.execution_dir + "/"
             config.leave_tmpdir = True
 
-        if jc.call_caching_enabled:
+        if jobfile.call_caching_enabled:
             config.cachedir = os.path.join(self.execution_dir, "cached/")
 
         cmd = config.build_command_line(source_path, input_path)

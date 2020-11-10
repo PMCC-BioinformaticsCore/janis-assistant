@@ -3,6 +3,7 @@ import subprocess
 
 from janis_core import Logger
 
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.management.configuration import JanisConfiguration
 
@@ -12,7 +13,7 @@ class NotificationManager:
     def notify_status_change(status, metadata: SubmissionModel):
 
         body = (
-            JanisConfiguration.manager().template.template.prepare_status_update_email(
+            PreparedSubmission.instance().template.template.prepare_status_update_email(
                 status=status, metadata=metadata
             )
         )
@@ -26,7 +27,7 @@ class NotificationManager:
     def send_email(subject: str, body: str):
         import tempfile, os
 
-        nots = JanisConfiguration.manager().notifications
+        nots = PreparedSubmission.instance().notifications
 
         mail_program = nots.mail_program
 

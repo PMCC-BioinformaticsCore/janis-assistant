@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Set
 from janis_assistant.data.enums import TaskStatus
 
 from janis_assistant.data.models.run import RunModel, SubmissionModel, RunStatusUpdate
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 from janis_assistant.data.dbproviderbase import DbProviderBase
 

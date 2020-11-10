@@ -2,7 +2,10 @@ import os
 import tempfile
 from shutil import rmtree
 import unittest
-from janis_assistant.management.filescheme import SSHFileScheme
+
+from janis_unix import Echo
+
+from janis_assistant.management.filescheme import SSHFileScheme, GCSFileScheme
 
 
 @unittest.skipUnless(
@@ -25,7 +28,7 @@ class TestSSHFileScheme(unittest.TestCase):
             rmtree(self.path)
         os.makedirs(self.path)
 
-        self.fs = SSHFileScheme("ssh-filscheme", os.getenv("unittest_ssh_location"))
+        self.fs = SSHFileScheme("ssh-filescheme", os.getenv("unittest_ssh_location"))
         self.fs.makedir("~/shepherd-ssh-tests")
 
     def test_copy_ssh_to_and_from(self):
@@ -43,3 +46,14 @@ class TestSSHFileScheme(unittest.TestCase):
         self.assertTrue(os.path.exists(local2_path))
         with open(local2_path) as f:
             self.assertEqual(contents, f.readline())
+
+
+class TestGCSFileScheme(unittest.TestCase):
+    def test_parsing_1(self):
+        uri = "gs://genomics-public-data/references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi"
+        bucket, blob = GCSFileScheme.parse_gcs_link(uri)
+
+        self.assertEqual("genomics-public-data", bucket)
+        self.assertEqual(
+            "references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi", blob
+        )

@@ -1,3 +1,4 @@
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
 from janis_assistant.engines.enginetypes import EngineType
@@ -12,13 +13,10 @@ class LocalTemplate(EnvironmentTemplate):
     ignore_init_keys = []
 
     def __init__(self):
-        """"""
         super().__init__()
 
-    def cromwell(self, janis_configuration):
-        hashing_strategy = (
-            janis_configuration.cromwell.call_caching_method or "cached-copy"
-        )
+    def cromwell(self, job: PreparedSubmission):
+        hashing_strategy = job.cromwell.call_caching_method or "cached-copy"
 
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(),
@@ -40,23 +38,23 @@ class LocalTemplate(EnvironmentTemplate):
             ),
         )
 
-        if janis_configuration.call_caching_enabled:
+        if job.call_caching_enabled:
             config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
 
         return config
 
-    def cwltool(self, janis_configuration):
+    def cwltool(self, job):
         config = CWLToolConfiguration()
 
         return config
 
-    def engine_config(self, engine: EngineType, janis_configuration):
+    def engine_config(self, engine: EngineType, job: PreparedSubmission):
 
         if engine == EngineType.cromwell:
-            return self.cromwell(janis_configuration=janis_configuration)
+            return self.cromwell(job=job)
 
         elif engine == EngineType.cwltool:
-            return self.cwltool(janis_configuration=janis_configuration)
+            return self.cwltool(job=job)
 
         # Returning none will allow the engine to run with no config
         return None

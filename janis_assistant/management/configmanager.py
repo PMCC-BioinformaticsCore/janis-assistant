@@ -5,6 +5,9 @@ from shutil import rmtree
 from typing import Dict, Optional, Union, List
 from contextlib import contextmanager
 
+from janis_assistant.management.envvariables import EnvVariables
+
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines import Engine
 from janis_core import Workflow, Logger, Tool
 
@@ -19,30 +22,77 @@ from janis_assistant.validation import ValidationRequirements
 
 class ConfigManager:
 
-    _manager = None
+    # _manager = None
 
-    @staticmethod
-    def manager():
-        if not ConfigManager._manager:
-            ConfigManager._manager = ConfigManager()
-        return ConfigManager._manager
+    # @staticmethod
+    # def manager():
+    #     if not ConfigManager._manager:
+    #         ConfigManager._manager = ConfigManager()
+    #     return ConfigManager._manager
 
-    def __init__(self, readonly=False):
+    def __init__(self, db_path: Optional[str], readonly=False):
 
-        # Before the manager() is called, someone (the CLI definitely) MUST call
-        # JanisConfiguration.inital_configuration(potential_config_paths), this
-        # will search os.env for potential configs
-        config = JanisConfiguration.manager()
         self.readonly = readonly
-        self.is_new = not os.path.exists(config.dbpath)
+        if not db_path:
+            config_dir = EnvVariables.config_dir.resolve(True)
+            Logger.log(
+                f"db_path wasn't provided to config manager, using config_dir: '{config_dir}/janis.db'"
+            )
+            db_path = fully_qualify_filename(os.path.join(config_dir, "janis.db"))
+        self.db_path = db_path
+        self.is_new = not os.path.exists(db_path)
 
-        cp = os.path.dirname(config.dbpath)
+        cp = os.path.dirname(db_path)
         os.makedirs(cp, exist_ok=True)
-        if config.outputdir:
-            os.makedirs(config.outputdir, exist_ok=True)
 
         self._connection: Optional[sqlite3.Connection] = None
         self._taskDB: Optional[TasksDbProvider] = None
+
+    @staticmethod
+    def get_from_path_or_submission_lazy(
+        submission_id,
+        readonly: bool,
+        db_path: Optional[str] = None,
+    ):
+        """
+        2020-10-01 mfranklin:
+            Probably the method you want to get a WorkflowManager from submissionID:
+
+        :return: WorkflowManager of the submission_id (or THROWS)
+        """
+        expanded_path = fully_qualify_filename(submission_id)
+        if os.path.exists(expanded_path):
+            return WorkflowManager.from_path_get_latest_manager(
+                expanded_path, readonly=readonly
+            )
+
+        return ConfigManager(
+            db_path=db_path, readonly=True
+        ).get_from_path_or_submission(
+            submission_id=submission_id, readonly=readonly, perform_path_check=False
+        )
+
+    def get_from_path_or_submission(
+        self, submission_id, readonly: bool, perform_path_check=True
+    ):
+        if perform_path_check:
+            expanded_path = fully_qualify_filename(submission_id)
+            if os.path.exists(expanded_path):
+                return WorkflowManager.from_path_get_latest_manager(
+                    expanded_path, readonly=readonly
+                )
+
+        potential_submission = self.get_lazy_db_connection().get_by_id(submission_id)
+        if potential_submission:
+            return WorkflowManager.from_path_with_submission_id(
+                potential_submission.execution_dir,
+                submission_id=submission_id,
+                readonly=readonly,
+            )
+
+        raise Exception(
+            f"Couldn't find task with id='{submission_id}', and no directory was found "
+        )
 
     def get_lazy_db_connection(self):
         if self._taskDB is None:
@@ -54,21 +104,22 @@ class ConfigManager:
 
     @contextmanager
     def with_cursor(self):
-        yield self.get_lazy_db_connection()._db.cursor()
+        cursor = self.get_lazy_db_connection()._db.cursor()
+        yield cursor
+        cursor.close()
 
     def db_connection(self):
-        config = JanisConfiguration.manager()
         try:
             if self.readonly:
                 Logger.debug(
-                    "Opening database connection to in READONLY mode: " + config.dbpath
+                    "Opening database connection to in READONLY mode: " + self.db_path
                 )
-                return sqlite3.connect(f"file:{config.dbpath}?mode=ro", uri=True)
+                return sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
 
-            Logger.debug("Opening database connection: " + config.dbpath)
-            return sqlite3.connect(config.dbpath)
+            Logger.debug("Opening database connection: " + self.db_path)
+            return sqlite3.connect(self.db_path)
         except:
-            Logger.critical("Error when opening DB connection to: " + config.dbpath)
+            Logger.critical("Error when opening DB connection to: " + self.db_path)
             raise
 
     def commit(self):
@@ -97,29 +148,28 @@ class ConfigManager:
         self.get_lazy_db_connection().remove_by_id(task.submission_id)
         Logger.info("Deleted task: " + task.submission_id)
 
-    def create_task_base(
-        self, wf: Workflow, outdir=None, execution_dir=None, store_in_centraldb=True
-    ):
-        config = JanisConfiguration.manager()
+    def get_ids(self, db_path):
+        try:
+            with self.with_cursor() as cursor:
+                return set(
+                    t[0] for t in cursor.execute("SELECT id FROM tasks").fetchall()
+                )
+        except sqlite3.OperationalError as e:
+            if "no such column: id" in repr(e):
+                from shutil import move
 
-        """
-        If you don't spec
-        
-        """
+                dt = datetime.utcnow()
+                np = f"{db_path}.original-{dt.strftime('%Y%m%d')}"
+                Logger.warn(f"Moving old janis-db to '{np}'")
+                move(db_path, np)
+                self._taskDB = None
+                return self.get_ids(db_path)
+            raise
 
-        if not outdir and not config.outputdir:
-            raise Exception(
-                f"You must specify an output directory (or specify an '{JanisConfiguration.Keys.OutputDir.value}' "
-                f"in your configuration)"
-            )
-
-        default_outdir = None
-
-        if config.outputdir:
-            default_outdir = os.path.join(config.outputdir, wf.id())
+    def create_task_base(self, wf: Workflow, job: PreparedSubmission):
 
         forbiddenids = set()
-        if store_in_centraldb:
+        if job.store_in_central_db:
             try:
                 with self.with_cursor() as cursor:
                     forbiddenids = set(
@@ -129,47 +179,32 @@ class ConfigManager:
                 if "no such column: id" in repr(e):
                     from shutil import move
 
-                    config = JanisConfiguration.manager()
                     dt = datetime.utcnow()
-                    np = f"{config.dbpath}.original-{dt.strftime('%Y%m%d')}"
+                    np = f"{job.db_path}.original-{dt.strftime('%Y%m%d')}"
                     Logger.warn(f"Moving old janis-db to '{np}'")
-                    move(config.dbpath, np)
+                    move(job.db_path, np)
                     self._taskDB = None
-                    return self.create_task_base(
-                        wf, outdir=outdir, store_in_centraldb=store_in_centraldb
-                    )
+                    return self.create_task_base(wf=wf, job=job)
                 raise
-        if outdir:
-            if os.path.exists(outdir):
-                # this should theoretically scoop through all the ones in the taskDB and
-                # add them to the forbidden ones, though this might cause more issues for now.
-                forbiddenids = forbiddenids.union(set(os.listdir(outdir)))
-        else:
-            if os.path.exists(default_outdir):
-                forbiddenids = forbiddenids.union(set(os.listdir(default_outdir)))
 
         submission_id = generate_new_id(forbiddenids)
 
-        output_dir = outdir
-        if not output_dir:
-            od = default_outdir
-            dt = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_dir = os.path.join(od, f"{dt}_{submission_id}/")
+        output_dir = fully_qualify_filename(job.output_dir)
 
-        output_dir = fully_qualify_filename(output_dir)
-
-        if not execution_dir:
-            execution_dir = os.path.join(output_dir, "janis")
-        execution_dir = fully_qualify_filename(execution_dir)
+        if not job.execution_dir:
+            job.execution_dir = os.path.join(output_dir, "janis")
+        job.execution_dir = fully_qualify_filename(job.execution_dir)
 
         Logger.info(
-            f"Starting task with id = '{submission_id}' | output dir: {output_dir} | execution dir: {execution_dir}"
+            f"Starting task with id = '{submission_id}' | output dir: {job.output_dir} | execution dir: {job.execution_dir}"
         )
 
-        row = TaskRow(submission_id, execution_dir=execution_dir, output_dir=output_dir)
-        WorkflowManager.create_dir_structure(execution_dir)
+        row = TaskRow(
+            submission_id, execution_dir=job.execution_dir, output_dir=output_dir
+        )
+        WorkflowManager.create_dir_structure(job.execution_dir)
 
-        if store_in_centraldb:
+        if job.store_in_central_db:
             self.get_lazy_db_connection().insert_task(row)
         else:
             Logger.info(
@@ -182,55 +217,6 @@ class ConfigManager:
             self._taskDB = None
             self._connection = None
         return row
-
-    def start_task(
-        self,
-        submission_id: str,
-        tool: Tool,
-        output_dir: str,
-        execution_dir: str,
-        engine: Engine,
-        hints: Dict[str, str],
-        validation_requirements: Optional[ValidationRequirements],
-        batchrun_requirements: Optional[BatchRunRequirements],
-        inputs_dict: dict = None,
-        dryrun=False,
-        watch=True,
-        max_cores=None,
-        max_memory=None,
-        max_duration=None,
-        keep_intermediate_files=False,
-        run_in_background=True,
-        dbconfig=None,
-        allow_empty_container=False,
-        container_override: dict = None,
-        check_files=True,
-        **kwargs,
-    ) -> WorkflowManager:
-
-        return WorkflowManager.from_janis(
-            submission_id,
-            tool=tool,
-            output_dir=output_dir,
-            execution_dir=execution_dir,
-            engine=engine,
-            hints=hints,
-            inputs_dict=inputs_dict,
-            validation_requirements=validation_requirements,
-            batchrun_requirements=batchrun_requirements,
-            dryrun=dryrun,
-            watch=watch,
-            max_cores=max_cores,
-            max_memory=max_memory,
-            max_duration=max_duration,
-            keep_intermediate_files=keep_intermediate_files,
-            run_in_background=run_in_background,
-            dbconfig=dbconfig,
-            allow_empty_container=allow_empty_container,
-            container_override=container_override,
-            check_files=check_files,
-            **kwargs,
-        )
 
     def get_row_for_submission_id_or_path(self, submission_id) -> TaskRow:
 
@@ -254,29 +240,27 @@ class ConfigManager:
             f"Couldn't find task with id='{submission_id}', and no directory was found."
         )
 
-    def from_submission_id_or_path(self, submission_id, readonly=False):
-
-        self.readonly = readonly
-
-        # Get from central database (may run into lock errors though)
-        potential_submission = self.get_lazy_db_connection().get_by_id(submission_id)
-        if potential_submission:
-
-            return WorkflowManager.from_path_with_submission_id(
-                potential_submission.execution_dir,
-                submission_id=submission_id,
-                readonly=readonly,
-            )
-
-        expanded_path = fully_qualify_filename(submission_id)
-        if os.path.exists(expanded_path):
-            return WorkflowManager.from_path_get_latest_manager(
-                expanded_path, readonly=readonly
-            )
-
-        raise Exception(
-            f"Couldn't find task with id='{submission_id}', and no directory was found "
-        )
+    # def from_submission_id_or_path(self, submission_id, readonly: bool):
+    #
+    #     expanded_path = fully_qualify_filename(submission_id)
+    #     if os.path.exists(expanded_path):
+    #         return WorkflowManager.from_path_get_latest_manager(
+    #             expanded_path, readonly=readonly
+    #         )
+    #
+    #     # Get from central database (may run into lock errors though)
+    #     potential_submission = self.get_lazy_db_connection().get_by_id(submission_id)
+    #     if potential_submission:
+    #
+    #         return WorkflowManager.from_path_with_submission_id(
+    #             potential_submission.execution_dir,
+    #             submission_id=submission_id,
+    #             readonly=readonly,
+    #         )
+    #
+    #     raise Exception(
+    #         f"Couldn't find task with id='{submission_id}', and no directory was found "
+    #     )
 
     def query_tasks(self, status, name) -> Dict[str, RunModel]:
 

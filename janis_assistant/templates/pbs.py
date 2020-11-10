@@ -1,5 +1,6 @@
 from typing import List, Union
 
+from janis_assistant.data.models.preparedjob import PreparedSubmission
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -20,7 +21,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
 
     def __init__(
         self,
-        container_dir: str,
+        container_dir: str = None,
         intermediate_execution_dir: str = None,
         queues: Union[str, List[str]] = None,
         mail_program=None,
@@ -36,7 +37,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
     ):
         """
         :param intermediate_execution_dir: A location where the execution should take place
-        :param container_dir: Location where to save and execute containers from
+        :param container_dir: Location where to save and execute containers to, this will also look at the env variables 'CWL_SINGULARITY_CACHE', 'SINGULARITY_TMPDIR'
         :param queues: A queue that work should be submitted to
         :param mail_program: Mail program to pipe email to, eg: 'sendmail -t'
         :param send_job_emails: (requires JanisConfiguration.notifications.email to be set) Send emails for mail types END
@@ -63,11 +64,11 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         self.send_job_emails = send_job_emails
         self.catch_pbs_errors = catch_pbs_errors
 
-    def cromwell(self, janis_configuration):
+    def cromwell(self, job: PreparedSubmission):
 
         job_email = None
         if self.send_job_emails:
-            job_email = janis_configuration.notifications.email
+            job_email = job.notifications.email
 
         config = CromwellConfiguration(
             system=CromwellConfiguration.System(
@@ -83,7 +84,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
                         jobemail=job_email,
                         queues=self.queues,
                         afternotokaycatch=self.catch_pbs_errors,
-                        call_caching_method=janis_configuration.cromwell.call_caching_method,
+                        call_caching_method=job.cromwell.call_caching_method,
                     )
                 },
             ),
@@ -95,14 +96,14 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         if self.intermediate_execution_dir:
             beconfig.root = self.intermediate_execution_dir
 
-        if janis_configuration.call_caching_enabled:
+        if job.call_caching_enabled:
             config.call_caching = CromwellConfiguration.CallCaching(enabled=True)
 
         return config
 
-    def engine_config(self, engine: EngineType, janis_configuration):
+    def engine_config(self, engine: EngineType, job: PreparedSubmission):
         if engine == EngineType.cromwell:
-            return self.cromwell(janis_configuration=janis_configuration)
+            return self.cromwell(job=job)
 
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"

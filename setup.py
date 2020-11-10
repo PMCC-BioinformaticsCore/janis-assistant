@@ -26,7 +26,7 @@ setup(
         "janis.extension": ["assistant=janis_assistant"],
     },
     install_requires=[
-        "janis-pipelines.core>=0.10.7",
+        "janis-pipelines.core>=0.10.8",
         "janis-pipelines.templates>=0.10.3",
         "requests",
         "path",
@@ -37,6 +37,9 @@ setup(
         "cwltool",
         "blessed",
     ],
+    extras_require={
+        "gcs": ["google-cloud-storage"],
+    },
     packages=["janis_assistant"] + modules,
     classifiers=[
         "Development Status :: 4 - Beta",

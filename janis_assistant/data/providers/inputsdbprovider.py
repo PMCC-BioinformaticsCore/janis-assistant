@@ -6,7 +6,7 @@ from janis_core.utils.logger import Logger
 from janis_assistant.data.dbproviderbase import DbProviderBase
 from janis_assistant.data.models.inputs import WorkflowInputModel
 from janis_assistant.data.models.run import RunModel
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 
 class InputDbProvider(DbProviderBase[WorkflowInputModel]):

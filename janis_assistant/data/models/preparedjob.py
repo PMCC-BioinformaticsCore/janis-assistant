@@ -22,18 +22,6 @@ from janis_assistant.engines.cromwell.cromwellconfiguration import Serializable
 
 
 class PreparedSubmission(Serializable):
-    input_categories = [
-        (None, ["inputs", "output_dir", "execution_dir", "foreground"]),
-        ("input manipulation", ["max_cores", "max_memory", "max_duration"]),
-        ("container related args", ["allow_empty_container", "container_override"]),
-    ]
-    input_aliases = {
-        "inputs": "i",
-        "output_dir": "o",
-        "execution_dir": "E",
-        "background": "B",
-        "foreground": "F",
-    }
 
     _instance = None  # type: PreparedSubmission
 

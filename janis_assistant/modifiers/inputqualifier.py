@@ -25,7 +25,6 @@ class InputFileQualifierModifier(PipelineModifierBase):
         """
         super().__init__()
         self.cwd = cwd or getcwd()
-        self.original_cwd = getcwd()
 
     def inputs_modifier(self, wf: Tool, inputs: Dict, hints: Dict[str, str]):
         nin = {**inputs}

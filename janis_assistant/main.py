@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 from inspect import isclass
 from textwrap import dedent
-from typing import Optional, Dict, Union, Type, List
+from typing import Optional, Dict, Union, Type, List, Tuple
 
 import janis_core as j
 from janis_assistant.data.enums import TaskStatus
@@ -65,6 +65,7 @@ def run_with_outputs(
     output_dir: str,
     config: JanisConfiguration = None,
     engine: Optional[str] = None,
+    workflow_reference: Optional[str] = None,
 ):
     """
     Run and WAIT for a Janis workflow to complete. This helper method runs a workflow,
@@ -74,6 +75,7 @@ def run_with_outputs(
     :param inputs: A dictionary of pure input values, not file paths.
     :param output_dir: Where to run the execution
     :param config: Optional config, else choose the default at $HOME/.janis/janis.conf
+    :param workflow_reference: A reference to the workflow being run, this gets used to write a run.sh file
     :return: A dictionary of output values by the output tag
     """
 
@@ -104,6 +106,7 @@ def run_with_outputs(
         run_in_foreground=None,
         strict_inputs=False,
         watch=False,
+        workflow_reference=workflow_reference,
         # don't do extra preprocessing steps
         run_prepare_processing=False,
     )
@@ -140,11 +143,12 @@ def resolve_tool(
     force=False,
     only_toolbox=False,
     raises=True,
-):
+) -> Tuple[j.Tool, str]:
     if isinstance(tool, j.Tool):
-        return tool
+        return tool, tool.id()
     elif isclass(tool) and issubclass(tool, (j.Workflow, j.Tool)):
-        return tool()
+        t = tool()
+        return t, t.id()
 
     if not isinstance(tool, str):
         raise TypeError(
@@ -176,22 +180,22 @@ def resolve_tool(
             )
             tool = dest
 
-        wf = get_janis_workflow_from_searchname(
+        potential_workflow_ref = get_janis_workflow_from_searchname(
             tool, ".", name=name, include_commandtools=True
         )
 
-        if wf:
-            return wf
+        if potential_workflow_ref:
+            return potential_workflow_ref
 
     if from_toolshed:
-        v = None
+        toolname, version = tool, None
         if ":" in tool:
             ps = tool.split(":")
-            tool, v = ps[0], ps[1]
+            toolname, version = ps[0], ps[1]
 
-        wf = j.JanisShed.get_tool(tool, v)
+        wf = j.JanisShed.get_tool(toolname, version)
         if wf:
-            return wf
+            return wf, tool
 
     if raises:
         raise Exception("Couldn't find tool with name: " + str(tool))
@@ -213,7 +217,7 @@ def translate(
     **kwargs,
 ):
 
-    toolref = resolve_tool(tool, name, from_toolshed=True)
+    toolref, _ = resolve_tool(tool, name, from_toolshed=True)
 
     if not toolref:
         raise Exception(f"Couldn't find tool: '{tool}'")
@@ -285,7 +289,7 @@ def spider_tool(
     print_all_tools=False,
 ):
     j.JanisShed.should_trace = trace
-    toolref = resolve_tool(
+    toolref, _ = resolve_tool(
         tool, name, from_toolshed=True, force=force, only_toolbox=only_toolbox
     )
 
@@ -317,7 +321,7 @@ def generate_inputs(
     recipes: List[str] = None,
     hints: dict = None,
 ):
-    toolref = resolve_tool(tool, name, from_toolshed=True, force=force)
+    toolref, _ = resolve_tool(tool, name, from_toolshed=True, force=force)
     inputsdict = None
     if additional_inputs:
         inputsfile = get_file_from_searchname(additional_inputs, ".")
@@ -507,6 +511,7 @@ def run_from_jobfile(
     cromwell_jar: Optional[str] = None,
     cromwell_url: Optional[str] = None,
 ):
+
     cm = ConfigManager(db_path=jobfile.db_path)
 
     if not workflow:
@@ -558,7 +563,6 @@ def run_from_jobfile(
             tool=workflow,
             engine=eng,
             prepared_submission=jobfile,
-            tool_ref=workflow.id(),
             wait=wait,
         )
         Logger.log("Finished starting task")
@@ -583,6 +587,7 @@ def run_from_jobfile(
 def prepare_job(
     tool: Union[str, j.Tool, Type[j.Tool]],
     # workflow search options
+    workflow_reference: Optional[str],  # if this is None, no jobfile will be written
     jc: JanisConfiguration,
     engine: Optional[str],
     batchrun_reqs: Optional[BatchRunRequirements],
@@ -657,6 +662,7 @@ def prepare_job(
 
     submission = PreparedSubmission(
         # job stuff
+        workflow_reference=workflow_reference,
         config_dir=jc.config_dir,
         db_path=jc.db_path,
         execution_dir=execution_dir,

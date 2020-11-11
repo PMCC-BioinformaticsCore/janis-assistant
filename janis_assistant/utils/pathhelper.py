@@ -1,9 +1,9 @@
 import os
 import tempfile
 from inspect import isclass, isabstract
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
-from janis_core import WorkflowBase, Workflow, CommandTool, Logger, CodeTool
+from janis_core import WorkflowBase, Workflow, CommandTool, Logger, CodeTool, Tool
 from path import Path
 
 
@@ -112,11 +112,14 @@ def parse_dict(file: str):
 
 def get_janis_workflow_from_searchname(
     searchpath, cwd, name: str = None, include_commandtools=False
-):
+) -> Optional[Tuple[Tool, str]]:
     file = get_file_from_searchname(searchpath, cwd)
     if not file:
         return None
-    return get_workflow_from_file(file, name, include_commandtools=include_commandtools)
+    return (
+        get_workflow_from_file(file, name, include_commandtools=include_commandtools),
+        file,
+    )
 
 
 def get_workflow_from_file(file, name, include_commandtools=False):

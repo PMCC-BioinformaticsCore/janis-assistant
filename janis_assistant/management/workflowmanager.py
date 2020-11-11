@@ -154,7 +154,6 @@ class WorkflowManager:
     @staticmethod
     def from_janis(
         submission_id: str,
-        tool_ref: str,
         tool: Tool,
         prepared_submission: PreparedSubmission,
         engine: Engine,
@@ -171,7 +170,6 @@ class WorkflowManager:
 
         # let's write out the prepared_submission for
         tm.write_prepared_submission_file(
-            tool_ref=tool_ref,
             prepared_job=prepared_submission,
             output_dir=tm.execution_dir,
         )
@@ -865,7 +863,6 @@ class WorkflowManager:
 
     @staticmethod
     def write_prepared_submission_file(
-        tool_ref: str,
         prepared_job: PreparedSubmission,
         output_dir: str,
         force_write=False,
@@ -890,11 +887,9 @@ class WorkflowManager:
             with open(out_job_path, "w+") as f:
                 f.write(s)
 
-        if not isinstance(tool_ref, str):
-            Logger.info(
-                "The workflow name / path wasn't provided, skipping writing a 'run.sh' file"
-            )
-        else:
+        if prepared_job._workflow_reference and isinstance(
+            prepared_job._workflow_reference, str
+        ):
             if os.path.exists(out_run_path) and not force_write:
                 Logger.warn(
                     f"There was already a 'run.sh' script at '{out_run_path}', skipping write"
@@ -907,9 +902,13 @@ class WorkflowManager:
 
 janis run \\
     -j {out_job_path} \\
-    {tool_ref}
+    {prepared_job._workflow_reference}
 """
                     )
+        else:
+            Logger.info(
+                "The workflow name / path wasn't provided, skipping writing a 'run.sh' file"
+            )
 
         return io.getvalue()
 

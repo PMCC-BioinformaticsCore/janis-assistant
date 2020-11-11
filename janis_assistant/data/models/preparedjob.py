@@ -64,6 +64,7 @@ class PreparedSubmission(Serializable):
         should_watch_if_background: bool = False,
         call_caching_enabled: bool = None,
         container_type: str = None,
+        workflow_reference: str = None,
     ):
         """
 
@@ -123,7 +124,7 @@ class PreparedSubmission(Serializable):
             "notifications",
             skip_if_empty=False,
         )
-
+        self._workflow_reference = workflow_reference
         self.inputs = inputs
         self.hints = hints
         self.output_dir = output_dir

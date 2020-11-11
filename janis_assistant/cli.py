@@ -980,7 +980,7 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
     except:
         source_hints = []
 
-    wf = resolve_tool(
+    wf, wf_reference = resolve_tool(
         tool=args.workflow,
         name=args.name,
         from_toolshed=True,
@@ -990,6 +990,7 @@ def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
 
     job = prepare_job(
         tool=wf,
+        workflow_reference=wf_reference,
         jc=jc,
         engine=args.engine,
         output_dir=args.output_dir,
@@ -1033,7 +1034,7 @@ def do_prepare(args):
     d = job.to_dict()
 
     WorkflowManager.write_prepared_submission_file(
-        args.workflow, prepared_job=job, output_dir=job.output_dir, force_write=True
+        prepared_job=job, output_dir=job.output_dir, force_write=True
     )
 
     script_location = os.path.join(job.output_dir, "run.sh")
@@ -1048,7 +1049,7 @@ def do_run(args):
     if args.job:
         from os import getcwd
 
-        workflow = resolve_tool(
+        workflow, workflow_ref = resolve_tool(
             tool=args.workflow,
             name=args.name,
             from_toolshed=True,
@@ -1058,7 +1059,7 @@ def do_run(args):
         # parse and load the job file
         Logger.info("Specified job file, ignoring all other parameters")
         d = parse_dict(get_file_from_searchname(args.job, getcwd()))
-        job = PreparedSubmission(**d)
+        job = PreparedSubmission(**d, workflow_reference=workflow_ref)
 
     else:
         job, workflow = prepare_from_args(args)

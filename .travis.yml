@@ -4,6 +4,7 @@ python:
 install:
 - pip install -r requirements.txt
 - pip install codecov coverage requests_mock nose_parameterized
+- pip install keyring==21.4.0
 script: nosetests -w janis_assistant --with-coverage --cover-package=janis_assistant
 deploy:
   provider: pypi

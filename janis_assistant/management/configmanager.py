@@ -193,6 +193,9 @@ class ConfigManager:
 
         if not job.execution_dir:
             job.execution_dir = os.path.join(output_dir, "janis")
+            Logger.debug(
+                f"No execution-dir was provided, constructed one from the output-dir: {job.execution_dir}"
+            )
         job.execution_dir = fully_qualify_filename(job.execution_dir)
 
         Logger.info(

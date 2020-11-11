@@ -38,7 +38,11 @@ class ContigChecker(PipelineModifierBase):
             ):
                 beds_inputs.append(i)
 
-            if isinstance(i.intype, Fasta) and ".fai" in i.intype.secondary_files():
+            if (
+                isinstance(i.intype, Fasta)
+                and i.intype.secondary_files()
+                and ".fai" in i.intype.secondary_files()
+            ):
                 refs.append(i)
 
         if len(refs) == 0:

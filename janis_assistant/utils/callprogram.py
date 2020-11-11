@@ -26,8 +26,9 @@ def collect_output_from_command(
     if rc is not None and rc > 0:
         # failed :(
         jc = " ".join(f"'{c}'" for c in command)
-        errs = errs or ""
         lastlines = errs[: min(len(errs) - 1, 100)]
+        if isinstance(lastlines, list):
+            lastlines = "".join(lastlines)
         raise Exception(
             f'Failed to call command (rc={rc}) {jc}, first 100 characters of stderr:\n "{lastlines}"'
         )

@@ -567,7 +567,7 @@ class JanisDatabaseConfigurationHelper(Serializable):
             username=None, password=None, url=url
         )
 
-    def get_config_for_template_supplied(self, execution_dir: str):
+    def get_config_from_script(self, execution_dir: str):
         try:
             import subprocess, os, json
             from janis_assistant.management.envvariables import EnvVariables

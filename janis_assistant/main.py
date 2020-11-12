@@ -31,7 +31,7 @@ from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
 
 import janis_assistant.templates as janistemplates
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines import Engine, get_engine_type, Cromwell, EngineType
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.management.configuration import (
@@ -165,7 +165,7 @@ def resolve_tool(
             import hashlib
 
             fn = hashlib.md5(tool.lower().encode()).hexdigest() + ".py"
-            outdir = os.path.join(PreparedSubmission.instance().configdir, "cached")
+            outdir = os.path.join(PreparedJob.instance().configdir, "cached")
             os.makedirs(outdir, exist_ok=True)
             dest = os.path.join(outdir, fn)
             Logger.log(f"Localising '{tool}' to '{dest}'")
@@ -504,7 +504,7 @@ def init_template(
 
 def run_from_jobfile(
     workflow: Union[str, j.Tool, Type[j.Tool]],
-    jobfile: PreparedSubmission,
+    jobfile: PreparedJob,
     engine: Union[str, Engine, None] = None,
     wait: bool = False,
     # specific engine args
@@ -660,7 +660,7 @@ def prepare_job(
         )
         inputsdict = new_inputs
 
-    submission = PreparedSubmission(
+    submission = PreparedJob(
         # job stuff
         workflow_reference=workflow_reference,
         config_dir=jc.config_dir,
@@ -739,7 +739,7 @@ def get_engine_from_eng(
 
     engid = str(eng)
     if engid == EngineType.cromwell.value:
-        url = cromwell_url or PreparedSubmission.instance().cromwell.url
+        url = cromwell_url or PreparedJob.instance().cromwell.url
         if url:
             Logger.info("Found cromwell_url: " + url)
         return Cromwell(

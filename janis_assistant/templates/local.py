@@ -1,4 +1,4 @@
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
 from janis_assistant.engines.enginetypes import EngineType
@@ -15,7 +15,7 @@ class LocalTemplate(EnvironmentTemplate):
     def __init__(self):
         super().__init__()
 
-    def cromwell(self, job: PreparedSubmission):
+    def cromwell(self, job: PreparedJob):
         hashing_strategy = job.cromwell.call_caching_method or "cached-copy"
 
         config = CromwellConfiguration(
@@ -48,7 +48,7 @@ class LocalTemplate(EnvironmentTemplate):
 
         return config
 
-    def engine_config(self, engine: EngineType, job: PreparedSubmission):
+    def engine_config(self, engine: EngineType, job: PreparedJob):
 
         if engine == EngineType.cromwell:
             return self.cromwell(job=job)

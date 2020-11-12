@@ -14,7 +14,7 @@ from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, 
 from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
@@ -878,7 +878,7 @@ def do_resume(args):
     #     # parse and load the job file
     #     Logger.info("Specified job file, ignoring all other parameters")
     #     d = parse_dict(get_file_from_searchname(args.job, getcwd()))
-    #     job = PreparedSubmission(**d)
+    #     job = PreparedJob(**d)
     #     wm = ConfigManager.get_from_path_or_submission_lazy(
     #         job.execution_dir, readonly=False
     #     )
@@ -934,7 +934,7 @@ def do_rm(args):
             Logger.critical(f"Can't remove {wid}: " + str(e))
 
 
-def prepare_from_args(args) -> Tuple[PreparedSubmission, Tool]:
+def prepare_from_args(args) -> Tuple[PreparedJob, Tool]:
     jc = JanisConfiguration.initial_configuration(path=args.config)
 
     # the args.extra_inputs parameter are inputs that we MUST match
@@ -1059,7 +1059,7 @@ def do_run(args):
         # parse and load the job file
         Logger.info("Specified job file, ignoring all other parameters")
         d = parse_dict(get_file_from_searchname(args.job, getcwd()))
-        job = PreparedSubmission(**d, workflow_reference=workflow_ref)
+        job = PreparedJob(**d, workflow_reference=workflow_ref)
 
     else:
         job, workflow = prepare_from_args(args)

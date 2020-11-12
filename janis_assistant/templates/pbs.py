@@ -1,6 +1,6 @@
 from typing import List, Union
 
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -64,7 +64,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
         self.send_job_emails = send_job_emails
         self.catch_pbs_errors = catch_pbs_errors
 
-    def cromwell(self, job: PreparedSubmission):
+    def cromwell(self, job: PreparedJob):
 
         job_email = None
         if self.send_job_emails:
@@ -101,7 +101,7 @@ class PbsSingularityTemplate(SingularityEnvironmentTemplate):
 
         return config
 
-    def engine_config(self, engine: EngineType, job: PreparedSubmission):
+    def engine_config(self, engine: EngineType, job: PreparedJob):
         if engine == EngineType.cromwell:
             return self.cromwell(job=job)
 

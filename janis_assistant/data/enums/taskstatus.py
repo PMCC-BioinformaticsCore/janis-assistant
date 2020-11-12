@@ -20,6 +20,21 @@ class TaskStatus(Enum):
         return [t for t in TaskStatus]
 
     @staticmethod
+    def notification_states():
+        return [
+            TaskStatus.QUEUED,
+            TaskStatus.RUNNING,
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.ABORTED,
+            TaskStatus.ON_HOLD,
+            TaskStatus.SUSPENDED,
+        ]
+
+    def should_notify(self):
+        return self in self.notification_states()
+
+    @staticmethod
     def final_states():
         return [
             TaskStatus.COMPLETED,

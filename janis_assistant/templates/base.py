@@ -10,7 +10,7 @@ from janis_assistant.containers.singularity import Singularity
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.data.models.workflowjob import RunJobModel
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import fully_qualify_filename
 
@@ -52,7 +52,7 @@ class EnvironmentTemplate(ABC):
         )
 
     @abstractmethod
-    def engine_config(self, engine: EngineType, job: PreparedSubmission):
+    def engine_config(self, engine: EngineType, job: PreparedJob):
         pass
 
     def get_job_analysis_from(self, job: RunJobModel) -> Optional[str]:
@@ -97,6 +97,7 @@ class EnvironmentTemplate(ABC):
                 Logger.info(out)
                 if log_output_to_stdout:
                     print(out, file=sys.stdout)
+                    return out
 
             else:
                 # This is important for when Janis submits itself itself in the foreground,
@@ -164,43 +165,47 @@ class EnvironmentTemplate(ABC):
         pass
 
     def prepare_status_update_email(
-        self, status: TaskStatus, metadata: SubmissionModel
+        self, status: TaskStatus, metadata: SubmissionModel, additional_information: str
     ):
 
         _status_change_template = """\
-        <h1>Status change: {status}</h1>
+    <h1>Status change: {status}</h1>
 
-        <p>
-            The workflow '{wfname}' ({wid}) moved to the '{status}' status.
-        </p>
-        <ul>
-            <li>Task directory: <code>{tdir}</code></li>
-            <li>Execution directory: <code>{exdir}</code></li>
-        </ul>
-        
-        {progress_and_header}
-        
-        Kind regards,
-        - Janis
+    <p>
+        The workflow '{wfname}' ({wid}) moved to the '{status}' status.
+    </p>
+    <ul>
+        <li>Task directory: <code>{tdir}</code></li>
+        <li>Execution directory: <code>{exdir}</code></li>
+    </ul>
+    
+    {additional_information}
+    
+    {progress_and_header}
+    
+    Kind regards,
+    
+    - Janis
         """
 
         progress_and_header = ""
         if status.is_in_final_state():
             progress_and_header = f"""\
-        <hr />
-        <h3>Progress</h3>        
-        <pre>
-        {metadata.format(monochrome=True, brief=True)}
-        </pre>
+<hr />
+<h3>Progress</h3>        
+<pre>
+{metadata.format(monochrome=True, brief=True)}
+</pre>
         """
 
         return _status_change_template.format(
             wid=metadata.id_,
             wfname=metadata.id_,
-            status=status,
-            exdir="<execution-dir>",
+            status=status.to_string(),
+            exdir=metadata.execution_dir,
             tdir=metadata.output_dir,
             progress_and_header=progress_and_header,
+            additional_information=additional_information,
         )
 
 

@@ -42,7 +42,7 @@ from janis_core.translations.wdl import apply_secondary_file_format_to_filename
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
 from janis_assistant.data.models.joblabel import JobLabelModel
 from janis_assistant.data.models.outputs import WorkflowOutputModel
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.data.models.run import SubmissionModel, RunModel
 from janis_assistant.data.providers.workflowmetadataprovider import SubmissionDbMetadata
 from janis_assistant.engines import (
@@ -155,7 +155,7 @@ class WorkflowManager:
     def from_janis(
         submission_id: str,
         tool: Tool,
-        prepared_submission: PreparedSubmission,
+        prepared_submission: PreparedJob,
         engine: Engine,
         wait=False,
     ):
@@ -280,7 +280,7 @@ class WorkflowManager:
         metadb = self.database.submission_metadata.metadata
 
         jc = metadb.prepared_job
-        PreparedSubmission._instance = jc
+        PreparedJob._instance = jc
         metadb.containertype = jc._container.__name__
         metadb.containerversion = jc._container.test_available_by_getting_version()
 
@@ -305,11 +305,19 @@ class WorkflowManager:
         ]
         scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
         logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
+
+        # prepare recently running information
+        logpath = os.path.join(logdir, f"janis-monitor.{self.submission_id}.debug.log")
+        Logger.debug("Logging DEBUG to " + logpath)
         try:
-            jc.template.template.submit_detatched_resume(
+            additional_information = jc.template.template.submit_detatched_resume(
                 wid=wid, command=command, scriptdir=scriptdir, logsdir=logdir, config=jc
             )
-            self.set_status(TaskStatus.QUEUED)
+            if additional_information:
+                additional_information = f"Received response: {additional_information}"
+            self.set_status(
+                TaskStatus.QUEUED, additional_information=additional_information
+            )
             Logger.info("Submitted detatched engine")
         except Exception as e:
             self.set_status(TaskStatus.FAILED)
@@ -794,7 +802,7 @@ class WorkflowManager:
         scriptsdir = self.get_path_for_component(self.WorkflowManagerPath.mysql)
 
         containerdir = self.get_path_for_component(self.WorkflowManagerPath.database)
-        conf = PreparedSubmission.instance()
+        conf = PreparedJob.instance()
         if (
             conf
             and conf.template
@@ -863,7 +871,7 @@ class WorkflowManager:
 
     @staticmethod
     def write_prepared_submission_file(
-        prepared_job: PreparedSubmission,
+        prepared_job: PreparedJob,
         output_dir: str,
         force_write=False,
     ):
@@ -1545,7 +1553,11 @@ janis run \\
                 self.filescheme.cp_from(j.stderr, on_base + "_stderr", force=True)
 
     def set_status(
-        self, status: TaskStatus, force_notification=False, error: Optional[str] = None
+        self,
+        status: TaskStatus,
+        force_notification=False,
+        error: Optional[str] = None,
+        additional_information: Optional[str] = None,
     ):
         prev = self.database.submission_metadata.metadata.status
 
@@ -1571,7 +1583,23 @@ janis run \\
             time.sleep(1)
             meta = self.database.get_metadata()
 
-        NotificationManager.notify_status_change(status, meta)
+        if status.should_notify():
+
+            # prepare recently running information
+            logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
+            logpath = os.path.join(
+                logsdir, f"janis-monitor.{self.submission_id}.debug.log"
+            )
+
+            additional_information = f"""
+{additional_information or ""}
+
+Log path: {logpath}
+"""
+
+            NotificationManager.notify_status_change(
+                status, meta, additional_information=additional_information
+            )
 
     def save_metadata(self, meta: RunModel) -> Optional[bool]:
         if not meta:

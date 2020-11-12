@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from janis_assistant.management.envvariables import EnvVariables
 
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines import Engine
 from janis_core import Workflow, Logger, Tool
 
@@ -166,7 +166,7 @@ class ConfigManager:
                 return self.get_ids(db_path)
             raise
 
-    def create_task_base(self, wf: Workflow, job: PreparedSubmission):
+    def create_task_base(self, wf: Workflow, job: PreparedJob):
 
         forbiddenids = set()
         if job.store_in_central_db:

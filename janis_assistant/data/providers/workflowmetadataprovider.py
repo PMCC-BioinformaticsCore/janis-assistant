@@ -5,7 +5,7 @@ from janis_core import Logger
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
 from janis_assistant.data.models.base import KVDatabaseObject, unpickle_obj
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.management.configuration import (
     DatabaseTypeToUse,
     JanisDatabaseConfigurationHelper,
@@ -17,7 +17,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self,
         submission_id: str = None,
         run_id: str = None,
-        prepared_job: PreparedSubmission = None,
+        prepared_job: PreparedJob = None,
         name: str = None,
         status: TaskStatus = None,
         last_updated=None,

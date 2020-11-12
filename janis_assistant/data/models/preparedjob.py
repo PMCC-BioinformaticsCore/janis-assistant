@@ -21,18 +21,18 @@ from janis_assistant.engines import EngineType
 from janis_assistant.engines.cromwell.cromwellconfiguration import Serializable
 
 
-class PreparedSubmission(Serializable):
+class PreparedJob(Serializable):
 
-    _instance = None  # type: PreparedSubmission
+    _instance = None  # type: PreparedJob
 
     @staticmethod
     def instance():
         """
         :return: JanisConfiguration
         """
-        if PreparedSubmission._instance is None:
+        if PreparedJob._instance is None:
             raise Exception("Couldn't find instance of prepared submission")
-        return PreparedSubmission._instance
+        return PreparedJob._instance
 
     def __init__(
         self,
@@ -155,10 +155,10 @@ class PreparedSubmission(Serializable):
 
         if not self._instance:
             Logger.debug("Setting prepared job")
-            PreparedSubmission._instance = self
+            PreparedJob._instance = self
         else:
             Logger.debug("Setting prepared job, when already set")
-            PreparedSubmission._instance = self
+            PreparedJob._instance = self
 
     def get_database_config_helper(self):
         if self.cromwell and self.cromwell.db_type:

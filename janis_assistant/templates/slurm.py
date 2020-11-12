@@ -1,6 +1,6 @@
 from typing import Union, List
 
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.templates.base import SingularityEnvironmentTemplate
@@ -69,7 +69,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         self.catch_slurm_errors = catch_slurm_errors
         self.sbatch = sbatch or "sbatch"
 
-    def cromwell(self, job: PreparedSubmission):
+    def cromwell(self, job: PreparedJob):
 
         job_email = None
         if self.send_job_emails:

@@ -1,7 +1,7 @@
 from typing import List, Dict
 import os
 
-from janis_assistant.data.models.preparedjob import PreparedSubmission
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.management.configuration import JanisConfiguration
 
 from janis_assistant.data.container.parse_pattern import (

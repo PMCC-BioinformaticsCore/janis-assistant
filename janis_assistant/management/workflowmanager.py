@@ -1546,11 +1546,14 @@ janis run \\
                 base += "shard-" + str(j.shard)
             on_base = os.path.join(od, base)
 
-            if j.stdout and os.path.exists(j.stdout):
+            if j.stdout and self.filescheme.exists(j.stdout):
                 self.filescheme.cp_from(j.stdout, on_base + "_stdout", force=True)
 
-            if j.stderr and os.path.exists(j.stderr):
+            if j.stderr and self.filescheme.exists(j.stderr):
                 self.filescheme.cp_from(j.stderr, on_base + "_stderr", force=True)
+
+            if j.script and self.filescheme.exists(j.script):
+                self.filescheme.cp_from(j.script, on_base + "_script", force=True)
 
     def set_status(
         self,

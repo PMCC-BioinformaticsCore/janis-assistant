@@ -202,9 +202,9 @@ class Cromwell(Engine):
         ) + min_poll
 
     def start_engine(self, additional_cromwell_options: List[str] = None):
-        from ...data.models.preparedjob import PreparedSubmission
+        from ...data.models.preparedjob import PreparedJob
 
-        job = PreparedSubmission.instance()
+        job = PreparedJob.instance()
 
         self._start_time = DateUtil.now()
         self.timeout = job.cromwell.timeout or 10
@@ -661,9 +661,9 @@ class Cromwell(Engine):
     def find_or_generate_config(
         self, identifier, config: CromwellConfiguration, config_path
     ):
-        from ...data.models.preparedjob import PreparedSubmission
+        from ...data.models.preparedjob import PreparedJob
 
-        job = PreparedSubmission.instance()
+        job = PreparedJob.instance()
 
         if config:
             self.config = config

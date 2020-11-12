@@ -165,16 +165,22 @@ class LocalFileScheme(FileScheme):
             return None
 
     @staticmethod
-    def link_copy_or_fail(source, dest, force=False):
+    def link_copy_or_fail(source: str, dest: str, force=False):
         """
         Eventually move this to some generic util class
-        :param s: Source to link from
-        :param d: Place to link to
+        :param source: Source to link from
+        :param dest: Place to link to
+        :param force: Overwrite destination if it exists
         :return:
         """
         try:
 
-            to_copy = [(source, dest)]
+            to_copy = [
+                (
+                    LocalFileScheme.prepare_path(source),
+                    LocalFileScheme.prepare_path(dest),
+                )
+            ]
 
             while len(to_copy) > 0:
                 s, d = to_copy.pop(0)
@@ -210,11 +216,17 @@ class LocalFileScheme(FileScheme):
             )
 
     @staticmethod
+    def prepare_path(path):
+        if path.startswith("file://"):
+            return path[6:]
+        return path
+
+    @staticmethod
     def is_valid_prefix(prefix: str):
         return True
 
     def exists(self, path):
-        return os.path.exists(path)
+        return os.path.exists(LocalFileScheme.prepare_path(path))
 
 
 class HTTPFileScheme(FileScheme):

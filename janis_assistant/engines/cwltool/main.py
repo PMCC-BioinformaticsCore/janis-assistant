@@ -218,9 +218,9 @@ class CWLTool(Engine):
         self.find_or_generate_config(config)
 
     def find_or_generate_config(self, config: CWLToolConfiguration):
-        from janis_assistant.data.models.preparedjob import PreparedSubmission
+        from janis_assistant.data.models.preparedjob import PreparedJob
 
-        job = PreparedSubmission.instance()
+        job = PreparedJob.instance()
 
         if config:
             self.config = config
@@ -381,9 +381,9 @@ class CWLTool(Engine):
 
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
 
-        from janis_assistant.data.models.preparedjob import PreparedSubmission
+        from janis_assistant.data.models.preparedjob import PreparedJob
 
-        jobfile = PreparedSubmission.instance()
+        jobfile = PreparedJob.instance()
 
         self.taskmeta = {
             "start": DateUtil.now(),

@@ -14,12 +14,10 @@ class NotificationManager:
         status, metadata: SubmissionModel, additional_information: Optional[str]
     ):
 
-        body = (
-            PreparedJob.instance().template.template.prepare_status_update_email(
-                status=status,
-                metadata=metadata,
-                additional_information=additional_information,
-            )
+        body = PreparedJob.instance().template.template.prepare_status_update_email(
+            status=status,
+            metadata=metadata,
+            additional_information=additional_information,
         )
 
         NotificationManager.send_email(

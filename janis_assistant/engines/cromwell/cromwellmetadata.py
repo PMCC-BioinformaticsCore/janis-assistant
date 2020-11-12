@@ -1,4 +1,5 @@
 import json
+import os.path
 from typing import Union, List, Dict
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
@@ -196,6 +197,8 @@ class CromwellMetadata:
             start = start or min(s.start for s in subjobs)
             finish = finish
 
+        callroot = call.get("callRoot")
+
         return RunJobModel(
             id_=jid,
             submission_id=None,
@@ -221,7 +224,9 @@ class CromwellMetadata:
             analysis=None,
             memory=None,
             cpu=None,
-            script=None,
+            script=("file:/" + os.path.join(callroot, "execution/script"))
+            if callroot
+            else None,
         )
 
     @classmethod

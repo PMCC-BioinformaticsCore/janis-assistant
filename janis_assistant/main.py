@@ -8,6 +8,7 @@
 """
 import os
 import sys
+import time
 from datetime import datetime
 from inspect import isclass
 from textwrap import dedent
@@ -781,7 +782,7 @@ def get_filescheme_from_fs(fs, **kwargs):
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
 
 
-def abort_wids(sids: List[str]):
+def abort_wids(sids: List[str], wait=True):
     cm = ConfigManager(db_path=None)
     for sid in sids:
         try:
@@ -790,6 +791,23 @@ def abort_wids(sids: List[str]):
         except Exception as e:
             Logger.critical(f"Couldn't abort '{sid}': " + str(e))
             raise e
+
+    if wait:
+        Logger.info(
+            "Waiting until completely aborted. This can take up to a few minutes to complete."
+        )
+        for sid in sids:
+            try:
+                wm = ConfigManager.get_from_path_or_submission_lazy(sid, readonly=True)
+                check_attempts = 0
+                while not wm.database.get_uncached_status().is_in_final_state():
+                    time.sleep(1)
+                    check_attempts += 1
+                    if check_attempts % 5 == 0:
+                        Logger.info(f"Still waiting for '{sid}' to move to final state")
+            except Exception as e:
+                Logger.critical(f"Couldn't watch '{sid}' until aborted: {str(e)}")
+        Logger.info(f"Jobs {' '.join(sids)} should be completely aborted now")
 
 
 def cleanup():

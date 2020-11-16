@@ -263,6 +263,7 @@ def add_metadata_args(parser):
 
 def add_abort_args(parser):
     parser.add_argument("wid", help="Task id", nargs="+")
+    parser.add_argument("--wait", action="store_true")
     return parser
 
 
@@ -925,7 +926,7 @@ def do_metadata(args):
 
 def do_abort(args):
     wids = args.wid
-    abort_wids(wids)
+    abort_wids(wids, wait=args.wait)
 
 
 def do_rm(args):

@@ -756,7 +756,7 @@ class WorkflowManager:
                 WorkflowManager.get_path_for_component_and_dir(
                     execution_dir, WorkflowManager.WorkflowManagerPath.semaphore
                 ),
-                "abort",
+                "pause",
             )
             with open(path, "w+") as f:
                 f.write(f"Requesting pause {DateUtil.now()}")
@@ -1666,7 +1666,7 @@ Log path: {logpath}
             rmtree(path)
 
     def abort(self) -> bool:
-        self.set_status(TaskStatus.ABORTED, force_notification=True)
+        self.set_status(TaskStatus.ABORTING, force_notification=False)
         status = False
 
         engine = self.engine
@@ -1680,16 +1680,18 @@ Log path: {logpath}
         except Exception as e:
             Logger.critical("Couldn't stop engine: " + str(e))
 
+        self.set_status(TaskStatus.ABORTED, force_notification=False)
+
         return status
 
     def suspend_workflow(self):
         try:
-            self.set_status(TaskStatus.SUSPENDED)
             # reset pause flag
             self.database.commit()
             self.database.submission_metadata.save_changes()
 
             self.stop_engine_and_db()
+            self.set_status(TaskStatus.SUSPENDED)
 
             self.database.close()
 

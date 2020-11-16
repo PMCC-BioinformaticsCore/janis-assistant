@@ -25,7 +25,10 @@ def collect_output_from_command(
     rc = p.poll()
     if rc is not None and rc > 0:
         # failed :(
-        jc = " ".join(f"'{c}'" for c in command)
+        jc = command
+        if shell and isinstance(jc, list):
+            jc = " ".join(f"'{c}'" for c in command)
+
         lastlines = errs[: min(len(errs) - 1, 100)]
         if isinstance(lastlines, list):
             lastlines = "".join(lastlines)

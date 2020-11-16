@@ -24,6 +24,7 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any, Tuple
 
+from janis_assistant.utils.callprogram import collect_output_from_command
 from janis_core import (
     Logger,
     File,
@@ -548,6 +549,8 @@ class WorkflowManager:
                 Logger.info("Exiting")
 
     def process_completed_task(self):
+        # doesn't necessarily have to be successful to run this block
+
         status: TaskStatus = self.database.submission_metadata.metadata.status
         Logger.info(f"Task has finished with status: {status}")
         try:
@@ -569,6 +572,8 @@ class WorkflowManager:
             status = TaskStatus.COMPLETED
             self.set_status(TaskStatus.COMPLETED)
 
+        self.run_post_run_script()
+
         rc = status.get_exit_code()
         if rc != 0:
             # Fail the Janis job with the return code, probably 3
@@ -578,6 +583,27 @@ class WorkflowManager:
             sys.exit(rc)
         else:
             Logger.info(f"Finished managing task '{self.submission_id}'.")
+
+    def run_post_run_script(self):
+        pj = PreparedJob.instance()
+        if pj and pj.post_run_script:
+            try:
+                command = " ".join(
+                    [
+                        pj.post_run_script,
+                        self.submission_id,
+                        self.execution_dir,
+                        self.database.submission_metadata.metadata.status.to_string(),
+                    ]
+                )
+                collect_output_from_command(
+                    command=command,
+                    stdout=Logger.guess_log,
+                    stderr=Logger.guess_log,
+                    shell=True,
+                )
+            except Exception as e:
+                Logger.critical(f"Failed to execute post-run-script with: {repr(e)}")
 
     def resume(self):
         """

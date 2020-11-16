@@ -652,6 +652,11 @@ def add_args_for_general_wf_prepare(parser):
         help="Setup the workflow, but don't actually run the workflow",
     )
 
+    beta_args.add_argument(
+        "--post-run-script",
+        help="Location of script that Janis will execute with args: <wid> <output-dir> <status>",
+    )
+
     parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
 
 
@@ -1022,6 +1027,7 @@ def prepare_from_args(args) -> Tuple[PreparedJob, Tool]:
         strict_inputs=args.strict_inputs,
         db_type=db_type,
         source_hints=source_hints,
+        post_run_script=args.post_run_script,
     )
 
     return job, wf

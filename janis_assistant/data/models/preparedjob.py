@@ -65,6 +65,7 @@ class PreparedJob(Serializable):
         call_caching_enabled: bool = None,
         container_type: str = None,
         workflow_reference: str = None,
+        post_run_script: str = None,
     ):
         """
 
@@ -79,7 +80,6 @@ class PreparedJob(Serializable):
         :param digest_cache_location:
         :param inputs: YAML or JSON inputs file to provide values for the workflow (can specify multiple times)
         :param keep_intermediate_files: Do not remove execution directory on successful complete
-        :param development: Apply common settings (--keep-execution-dir) to support incremental development of a pipeline
         :param recipes:
         :param hints:
         :param allow_empty_container:
@@ -93,6 +93,7 @@ class PreparedJob(Serializable):
         :param validation:
         :param should_watch_if_background:
         :param cromwell_db_type:
+        :param post_run_script:
         """
         self.config_dir = config_dir
         self.db_path = db_path
@@ -149,6 +150,8 @@ class PreparedJob(Serializable):
         self.run_in_background = run_in_background
         self.digest_cache_location = digest_cache_location
         self.call_caching_enabled = call_caching_enabled
+
+        self.post_run_script = post_run_script
 
         self.container_type = ContainerType(container_type)
         self._container = get_container_by_name(container_type)

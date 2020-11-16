@@ -615,6 +615,7 @@ def prepare_job(
     db_type: DatabaseTypeToUse = None,
     run_prepare_processing=True,
     source_hints: List[str] = None,
+    post_run_script: str = None,
 ):
 
     # organise inputs
@@ -643,6 +644,14 @@ def prepare_job(
     should_run_in_background = (
         run_in_background is True or jc.run_in_background is True
     ) and not (run_in_foreground is True)
+
+    if post_run_script:
+        intermediate_prs = get_file_from_searchname(post_run_script, cwd=".")
+        if not intermediate_prs or not os.path.exists(intermediate_prs):
+            raise Exception(
+                f"Couldn't find file for post_run_script '{post_run_script}'"
+            )
+        post_run_script = intermediate_prs
 
     if run_prepare_processing:
         cache_dir = os.path.join(output_dir, "janis/prepare")
@@ -696,6 +705,7 @@ def prepare_job(
         should_watch_if_background=watch,
         call_caching_enabled=jc.call_caching_enabled,
         container_type=jc.container.get_container_type(),
+        post_run_script=post_run_script,
     )
 
     if db_type:

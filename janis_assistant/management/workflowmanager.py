@@ -594,8 +594,6 @@ class WorkflowManager:
             infopath = os.path.join(logsdir, f"janis-monitor.{wid}.info.log")
             warnpath = os.path.join(logsdir, f"janis-monitor.{wid}.warn.log")
 
-            Logger.info("Logging debug information to: " + str(debugpath))
-
             Logger.WRITE_LEVELS = {
                 LogLevel.VERBOSE: (verbosepath, open(verbosepath, "a")),
                 LogLevel.DEBUG: (debugpath, open(debugpath, "a")),
@@ -603,6 +601,12 @@ class WorkflowManager:
                 LogLevel.WARNING: (warnpath, open(warnpath, "a")),
             }
             Logger.log("Set write levels to: " + logsdir)
+            Logger.info("Logging debug information to: " + str(debugpath))
+
+            if True:
+                from janis_assistant.__meta__ import __version__
+
+                Logger.debug(f"Using janis-assistant: {__version__}")
 
             # in case anything relies on CD, we'll throw it into janis/execution
             os.chdir(self.get_path_for_component(self.WorkflowManagerPath.execution))

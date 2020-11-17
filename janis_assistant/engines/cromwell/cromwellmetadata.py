@@ -1,5 +1,5 @@
 import json
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.run import RunModel
@@ -138,7 +138,9 @@ class CromwellMetadata:
         return CromwellMetadata.unwrap_caused_by(self.meta["failures"])
 
     @staticmethod
-    def unwrap_caused_by(d) -> str:
+    def unwrap_caused_by(d: Union[List, Dict]) -> Optional[str]:
+        if d is None:
+            return None
         if isinstance(d, list):
             return ", ".join(CromwellMetadata.unwrap_caused_by(x) for x in d)
 
@@ -222,6 +224,8 @@ class CromwellMetadata:
             memory=None,
             cpu=None,
             script=None,
+            error=CromwellMetadata.unwrap_caused_by(call.get("failures")),
+            returncode=call.get("returnCode"),
         )
 
     @classmethod

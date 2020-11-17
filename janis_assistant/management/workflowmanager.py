@@ -589,6 +589,7 @@ class WorkflowManager:
 
             logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
             wid = self.submission_id
+            verbosepath = os.path.join(logsdir, f"janis-monitor.{wid}.verbose.log")
             debugpath = os.path.join(logsdir, f"janis-monitor.{wid}.debug.log")
             infopath = os.path.join(logsdir, f"janis-monitor.{wid}.info.log")
             warnpath = os.path.join(logsdir, f"janis-monitor.{wid}.warn.log")
@@ -596,10 +597,12 @@ class WorkflowManager:
             Logger.info("Logging debug information to: " + str(debugpath))
 
             Logger.WRITE_LEVELS = {
+                LogLevel.VERBOSE: (verbosepath, open(verbosepath, "a")),
                 LogLevel.DEBUG: (debugpath, open(debugpath, "a")),
                 LogLevel.INFO: (infopath, open(infopath, "a")),
                 LogLevel.WARNING: (warnpath, open(warnpath, "a")),
             }
+            Logger.log("Set write levels to: " + logsdir)
 
             # in case anything relies on CD, we'll throw it into janis/execution
             os.chdir(self.get_path_for_component(self.WorkflowManagerPath.execution))

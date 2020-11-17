@@ -63,6 +63,7 @@ Subject: {subject}
             )
             try:
                 subprocess.call(command, shell=True)
+                Logger.debug("Sent email successfully")
             except Exception as e:
                 Logger.critical(f"Couldn't send email '{subject}' to {emails}: {e}")
         finally:

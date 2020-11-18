@@ -80,7 +80,7 @@ from janis_assistant.validation import ValidationRequirements
 class WorkflowManager:
 
     MAX_ENGINE_ATTEMPTS = 5
-    HEALTH_CHECK_INTERVAL_SECONDS = 60
+    HEALTH_CHECK_INTERVAL_SECONDS = 10
 
     class WorkflowManagerPath(Enum):
         execution = "execution"
@@ -767,7 +767,7 @@ class WorkflowManager:
         return True
 
     def check_cromwell_stuck_running_jobs(self):
-        checked_jobs = 0
+        total_running_jobs = 0
         # We've seen this scenario where
         jobs_stuck_in_running_state = []
 
@@ -785,21 +785,25 @@ class WorkflowManager:
             f"Checking {len(jobs)} jobs for stuck cromwell jobs during health check"
         )
 
+        good_jobs = []
+
         for job in jobs:
 
             if job.workdir is None or job.status != TaskStatus.RUNNING:
                 continue
 
-            checked_jobs += 1
+            total_running_jobs += 1
             script_location = os.path.join(job.workdir, "execution/script")
             if not os.path.exists(script_location):
                 jobs_stuck_in_running_state.append(job.id_)
+            else:
+                good_jobs.append(job.id_)
 
         if not jobs_stuck_in_running_state:
             return None
 
         Logger.warn(
-            f"Detected {len(jobs_stuck_in_running_state)} stuck cromwell jobs: {', '.join(jobs_stuck_in_running_state)}"
+            f"Detected {len(jobs_stuck_in_running_state)}(out of {total_running_jobs} checked) stuck cromwell jobs: {', '.join(jobs_stuck_in_running_state)}"
         )
         NotificationManager.send_email(
             subject=f"[WARN] Workflow {self.submission_id} had {len(jobs_stuck_in_running_state)} stuck running jobs",
@@ -832,14 +836,23 @@ Kind regards,
 """,
         )
 
-        if checked_jobs != len(jobs_stuck_in_running_state):
+        if total_running_jobs != len(jobs_stuck_in_running_state):
             # We want to return None (no health problem) until
             # all the non-stuck running jobs have finished
+            Logger.debug(
+                f"Health check technically passed because Janis believes there are jobs still running "
+                f"({jobs_stuck_in_running_state}: {', '.join(good_jobs)}) that aren't "
+                f"failures ({len(jobs_stuck_in_running_state)}: {', '.join(jobs_stuck_in_running_state)})"
+            )
             return None
+
+        Logger.debug(
+            "Janis FAILED the stuck running cromwell jobs during the health check"
+        )
 
         return {
             "stuck_jobs": jobs_stuck_in_running_state,
-            "total_jobs": checked_jobs,
+            "total_jobs": total_running_jobs,
         }
 
     @staticmethod

@@ -1,5 +1,6 @@
 import sys
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Type, Optional, List, Dict
 
 from janis_assistant.utils.dateutil import DateUtil
@@ -203,7 +204,7 @@ class EnvironmentTemplate(ABC):
             exdir="<execution-dir>",
             tdir=metadata.output_dir,
             progress_and_header=progress_and_header,
-            timestamp=DateUtil.now(),
+            timestamp=datetime.now(),
         )
 
 

@@ -17,6 +17,7 @@ import os
 import queue
 import sys
 import time
+from datetime import datetime
 from shutil import rmtree
 from enum import Enum
 from subprocess import call
@@ -81,6 +82,7 @@ class WorkflowManager:
 
     MAX_ENGINE_ATTEMPTS = 5
     HEALTH_CHECK_INTERVAL_SECONDS = 10
+    HEALTH_CHECK_STUCK_CROMWELL_MIN_RUNNING_TIME_SECONDS = 10 * 60
 
     class WorkflowManagerPath(Enum):
         execution = "execution"
@@ -789,10 +791,22 @@ class WorkflowManager:
 
         for job in jobs:
 
+            # Janis can't really tell what's a placeholder job (like a subworkflow / scatter parent),
+            # and what's a real job, so we'll rely on the job setting the workdir for this to work.
+
             if job.workdir is None or job.status != TaskStatus.RUNNING:
                 continue
 
             total_running_jobs += 1
+
+            # Anecdotally, cromwell moves a job into the running state sometimes _just_ before it's
+            job_last_updated = (DateUtil().now() - job.lastupdated).total_seconds()
+            if (
+                job_last_updated
+                < self.HEALTH_CHECK_STUCK_CROMWELL_MIN_RUNNING_TIME_SECONDS
+            ):
+                continue
+
             script_location = os.path.join(job.workdir, "execution/script")
             if not os.path.exists(script_location):
                 jobs_stuck_in_running_state.append(job.id_)
@@ -815,7 +829,7 @@ class WorkflowManager:
     </tr><tr>
         <td>Execution Dir</td>  <td>{self.execution_dir}</td>
     </tr><tr>
-        <td>Timestamp</td>      <td>{DateUtil.now()}</td>
+        <td>Timestamp</td>      <td>{datetime.now()}</td>
     </tr>
 </table>
     
@@ -830,7 +844,10 @@ Janis will suspend the job once all other tasks have completed or failed.
 
 You may receive this email multiple times.
 
+<br />
+
 Kind regards,
+<br />
 
 - Janis
 """,

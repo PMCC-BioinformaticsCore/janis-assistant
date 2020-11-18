@@ -2,6 +2,7 @@ import sys
 from abc import ABC, abstractmethod
 from typing import Type, Optional, List, Dict
 
+from janis_assistant.utils.dateutil import DateUtil
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
@@ -179,6 +180,8 @@ class EnvironmentTemplate(ABC):
         
         {progress_and_header}
         
+        <em>Sent at {timestamp}</em>
+        
         Kind regards,
         - Janis
         """
@@ -200,6 +203,7 @@ class EnvironmentTemplate(ABC):
             exdir="<execution-dir>",
             tdir=metadata.output_dir,
             progress_and_header=progress_and_header,
+            timestamp=DateUtil.now(),
         )
 
 

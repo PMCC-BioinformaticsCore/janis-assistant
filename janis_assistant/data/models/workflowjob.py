@@ -34,6 +34,7 @@ class RunJobModel(DatabaseObject):
             DatabaseObjectField("analysis"),
             DatabaseObjectField("error"),
             DatabaseObjectField("returncode"),
+            DatabaseObjectField("lastupdated"),
         ]
 
     @classmethod
@@ -59,6 +60,7 @@ stderr          STRING,
 script          STRING,
 error           STRING,
 returncode      STRING,
+lastupdated     STRING,
 
 memory          STRING,
 cpu             STRING,
@@ -91,6 +93,8 @@ analysis        STRING,
         analysis: Optional[str] = None,
         # Optional
         jobs: Optional[list] = None,
+        lastupdated: Union[str, datetime] = None,
+        workdir: Optional[str] = None,
     ):
         self.id_ = id_
         self.submission_id = submission_id
@@ -124,6 +128,11 @@ analysis        STRING,
         self.stdout = stdout
         self.error = error
         self.returncode = returncode
+        self.workdir = workdir
+
+        self.lastupdated = lastupdated or DateUtil.now()
+        if isinstance(lastupdated, str):
+            self.lastupdated = DateUtil.parse_iso(lastupdated)
 
         self.start = start
         self.finish = finish

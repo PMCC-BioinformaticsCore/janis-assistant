@@ -226,6 +226,7 @@ class CromwellMetadata:
             script=None,
             error=CromwellMetadata.unwrap_caused_by(call.get("failures")),
             returncode=call.get("returnCode"),
+            workdir=call.get("callRoot"),
         )
 
     @classmethod

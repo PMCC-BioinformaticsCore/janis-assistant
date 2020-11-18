@@ -35,6 +35,7 @@ class RunJobModel(DatabaseObject):
             DatabaseObjectField("error"),
             DatabaseObjectField("returncode"),
             DatabaseObjectField("lastupdated"),
+            DatabaseObjectField("workdir"),
         ]
 
     @classmethod
@@ -61,6 +62,7 @@ script          STRING,
 error           STRING,
 returncode      STRING,
 lastupdated     STRING,
+workdir         STRING,
 
 memory          STRING,
 cpu             STRING,

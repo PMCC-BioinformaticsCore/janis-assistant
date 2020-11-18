@@ -775,6 +775,12 @@ class WorkflowManager:
             additional_where=("status = ?", [TaskStatus.RUNNING.value])
         )
 
+        if not jobs:
+            Logger.debug(
+                "No running jobs were returned when checking stuck running jobs during health check"
+            )
+            return None
+
         Logger.log(
             f"Checking {len(jobs)} jobs for stuck cromwell jobs during health check"
         )

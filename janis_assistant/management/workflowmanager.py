@@ -762,7 +762,7 @@ class WorkflowManager:
                 f"Janis failed the health check for the first time with metadata '{filtered_new_meta}'"
             )
 
-        self.health_check_meta = previous_meta
+        self.health_check_meta = new_health_meta
 
         return True
 

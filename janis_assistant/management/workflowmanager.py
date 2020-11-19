@@ -81,7 +81,7 @@ from janis_assistant.validation import ValidationRequirements
 class WorkflowManager:
 
     MAX_ENGINE_ATTEMPTS = 5
-    HEALTH_CHECK_INTERVAL_SECONDS = 10
+    HEALTH_CHECK_INTERVAL_SECONDS = 15 * 60
     HEALTH_CHECK_STUCK_CROMWELL_MIN_RUNNING_TIME_SECONDS = 10 * 60
 
     class WorkflowManagerPath(Enum):

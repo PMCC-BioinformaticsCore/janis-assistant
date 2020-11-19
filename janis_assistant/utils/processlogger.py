@@ -1,5 +1,6 @@
 import threading
 import os
+from datetime import datetime
 from typing import IO
 
 from janis_core.utils.logger import Logger
@@ -23,6 +24,8 @@ class ProcessLogger(threading.Thread):
         self.rc = None
         self.error_keyword = error_keyword
         self.exit_function = exit_function
+
+        self.last_write = datetime.now()
 
         self.start()
 
@@ -60,12 +63,17 @@ class ProcessLogger(threading.Thread):
                 if not line:
                     continue
                 has_error = self.error_keyword and self.error_keyword in line
+                # log to debug / critical the self.prefix + line
                 (Logger.critical if has_error else Logger.debug)(self.prefix + line)
+
+                should_write = (datetime.now() - self.last_write).total_seconds() > 5
 
                 if self.logfp and not self.logfp.closed:
                     self.logfp.write(line + "\n")
-                    self.logfp.flush()
-                    os.fsync(self.logfp.fileno())
+                    if should_write:
+                        self.last_write = datetime.now()
+                        self.logfp.flush()
+                        os.fsync(self.logfp.fileno())
 
                 if has_error:
                     # process has terminated

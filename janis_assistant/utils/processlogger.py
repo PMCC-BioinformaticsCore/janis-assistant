@@ -78,6 +78,9 @@ class ProcessLogger(threading.Thread):
                 if has_error:
                     # process has terminated
                     self.rc = rc
+                    self.logfp.flush()
+                    os.fsync(self.logfp.fileno())
+
                     print("Process has ended")
                     if self.exit_function:
                         self.exit_function(rc)

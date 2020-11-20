@@ -672,12 +672,12 @@ class WorkflowManager:
                             self.suspend_workflow()
                             break
 
-                    # TODO: make this interval be a config option
-                    if (
-                        DateUtil.now() - last_health_check
-                    ).total_seconds() > self.HEALTH_CHECK_INTERVAL_SECONDS:
-                        self.do_health_check()
-                        last_health_check = DateUtil.now()
+                    # # TODO: make this interval be a config option
+                    # if (
+                    #     DateUtil.now() - last_health_check
+                    # ).total_seconds() > self.HEALTH_CHECK_INTERVAL_SECONDS:
+                    #     self.do_health_check()
+                    #     last_health_check = DateUtil.now()
 
                     continue
                 except Exception as e:

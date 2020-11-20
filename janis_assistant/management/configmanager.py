@@ -250,7 +250,7 @@ class ConfigManager:
                 expanded_path
             )
             return TaskRow(
-                execution_dir=expanded_path,
+                execution_dir=execpath,
                 submission_id=sid,
                 output_dir=None,
                 timestamp=None,

@@ -233,9 +233,7 @@ def add_spider_args(parser):
         help="Adds statements to help find why a tool isn't appearing in the toolbox",
     )
     parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Print all tools in alphabetical order",
+        "--all", action="store_true", help="Print all tools in alphabetical order",
     )
 
 
@@ -940,7 +938,7 @@ def do_rm(args):
             Logger.critical(f"Can't remove {wid}: " + str(e))
 
 
-def prepare_from_args(args) -> Tuple[PreparedJob, Tool]:
+def prepare_from_args(args, run_prepare_processing: bool) -> Tuple[PreparedJob, Tool]:
     jc = JanisConfiguration.initial_configuration(path=args.config)
 
     # the args.extra_inputs parameter are inputs that we MUST match
@@ -995,6 +993,7 @@ def prepare_from_args(args) -> Tuple[PreparedJob, Tool]:
     )
 
     job = prepare_job(
+        run_prepare_processing=run_prepare_processing,
         tool=wf,
         workflow_reference=wf_reference,
         jc=jc,
@@ -1036,7 +1035,7 @@ def prepare_from_args(args) -> Tuple[PreparedJob, Tool]:
 
 def do_prepare(args):
 
-    job, wf = prepare_from_args(args)
+    job, wf = prepare_from_args(args, run_prepare_processing=True)
 
     d = job.to_dict()
 
@@ -1069,7 +1068,7 @@ def do_run(args):
         job = PreparedJob(**d, workflow_reference=workflow_ref)
 
     else:
-        job, workflow = prepare_from_args(args)
+        job, workflow = prepare_from_args(args, run_prepare_processing=False)
 
     jobfile = run_from_jobfile(workflow, jobfile=job, wait=args.wait)
 

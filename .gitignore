@@ -8,3 +8,5 @@ __pycache__/
 *.egg-info/
 pip-wheel-metadata/
 .coverage
+.mypy_cache/
+dist/

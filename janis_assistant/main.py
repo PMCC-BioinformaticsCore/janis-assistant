@@ -228,13 +228,7 @@ def translate(
         valuesfromrecipe = config.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    inputsdict.update(
-        cascade_inputs(
-            wf=None,
-            inputs=inputs,
-            required_inputs=None,
-        )
-    )
+    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
 
     if isinstance(toolref, DynamicWorkflow):
         if not inputsdict:
@@ -518,10 +512,7 @@ def run_from_jobfile(
     if not workflow:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    row = cm.create_task_base(
-        wf=workflow,
-        job=jobfile,
-    )
+    row = cm.create_task_base(wf=workflow, job=jobfile,)
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir
@@ -613,8 +604,8 @@ def prepare_job(
     strict_inputs,
     skip_digest_lookup,
     skip_digest_cache,
+    run_prepare_processing,
     db_type: DatabaseTypeToUse = None,
-    run_prepare_processing=True,
     source_hints: List[str] = None,
     post_run_script: str = None,
 ):
@@ -656,11 +647,14 @@ def prepare_job(
 
     if run_prepare_processing:
         cache_dir = os.path.join(output_dir, "janis/prepare")
+
+        Logger.debug(f"Running janis prepare steps at {cache_dir}")
+
         os.makedirs(cache_dir, exist_ok=True)
         processors = [
             FileFinderModifier(cache_dir=cache_dir, source_hints=source_hints),
-            InputTransformerModifier(cache_dir=cache_dir),
             InputFileQualifierModifier(),
+            InputTransformerModifier(cache_dir=cache_dir),
             InputChecker(check_file_existence=True),
             ContigChecker(),
         ]

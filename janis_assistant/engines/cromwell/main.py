@@ -115,6 +115,8 @@ class Cromwell(Engine):
         self._start_time = None
 
         self.connectionerrorcount = 0
+        self.metadataerrorcount = 0
+
         self.should_stop = False
 
         if not self.connect_to_instance:
@@ -695,10 +697,8 @@ class Cromwell(Engine):
                     if not cnf.config.root:
                         cnf.config.root = self.execution_dir
             else:
-                self.config.backend = (
-                    CromwellConfiguration.Backend.with_new_local_exec_dir(
-                        self.execution_dir
-                    )
+                self.config.backend = CromwellConfiguration.Backend.with_new_local_exec_dir(
+                    self.execution_dir
                 )
 
     def raw_metadata(

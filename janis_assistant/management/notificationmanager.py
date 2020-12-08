@@ -20,9 +20,9 @@ class NotificationManager:
             additional_information=additional_information,
         )
 
-        NotificationManager.send_email(
-            subject=f"{metadata.id_} status to {status}", body=body
-        )
+        subject = "" f"{metadata.id_} status to {status}"
+
+        NotificationManager.send_email(subject=subject, body=body)
         return body
 
     @staticmethod
@@ -34,15 +34,16 @@ class NotificationManager:
         mail_program = nots.mail_program
 
         if not mail_program:
-            return Logger.log("Skipping email send as no mail program is configured")
+            return Logger.debug("Skipping email send as no mail program is configured")
 
         if not nots.email or nots.email.lower() == "none":
-            Logger.log("Skipping notify status change as no email")
+            Logger.debug("Skipping notify status change as no email")
             return
 
         emails: List[str] = (
             nots.email if isinstance(nots.email, list) else nots.email.split(",")
         )
+        Logger.debug(f"Sending email with subject {subject} to {emails}")
 
         email_template = f"""\
 Content-Type: text/html
@@ -65,6 +66,7 @@ Subject: {subject}
             )
             try:
                 subprocess.call(command, shell=True)
+                Logger.debug("Sent email successfully")
             except Exception as e:
                 Logger.critical(f"Couldn't send email '{subject}' to {emails}: {e}")
         finally:

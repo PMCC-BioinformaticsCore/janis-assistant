@@ -50,6 +50,27 @@ class JobDbProvider(DbProviderBase):
         """
         self._cache_completed_ids: Dict[Tuple, str] = {}
 
+    def number_of_jobs(self):
+        query = "SELECT COUNT(*) FROM jobs WHERE submission_id = ?"
+        values = [self.submission_id]
+        with self.with_cursor() as cursor:
+            try:
+                row = cursor.execute(query, values).fetchone()
+                return row[0]
+            except OperationalError as e:
+                if "readonly database" in str(e):
+                    # mfranklin: idk, this sometimes happens. We're doing a select query, idk sqlite3 driver...
+                    Logger.debug(
+                        f"Got readonly error when running query: '{query}', skipping for now"
+                    )
+                    return None
+                elif "locked" in str(e):
+                    Logger.debug(
+                        f"We hit the janis database.{self._tablename} at the same time the janis process wrote to it, we'll skip for now "
+                    )
+                    return None
+                raise
+
     def get_single(
         self, id_: str, run_id: str = RunModel.DEFAULT_ID
     ) -> Optional[RunJobModel]:
@@ -76,26 +97,36 @@ class JobDbProvider(DbProviderBase):
 
         return parsed
 
-    def get_all(self, run_id=None) -> Optional[List[RunJobModel]]:
-        where = None
+    def get_all(
+        self, run_id=None, additional_where: Tuple[str, List[any]] = None
+    ) -> Optional[List[RunJobModel]]:
+        where_clauses = [[], []]
         if run_id:
-            where = ("run_id = ?", (run_id,))
+            where_clauses[0].append("run_id = ?")
+            where_clauses[1].append(run_id)
+        if additional_where:
+            where_clauses[0].append(additional_where[0])
+            where_clauses[1].extend(additional_where[1])
+
+        where = None
+        if where_clauses[0]:
+            where = " AND ".join(where_clauses[0]), where_clauses[1]
         els: List[RunJobModel] = self.get(where=where)
         if not els:
             return els
 
         # I know there are duplicates, I don't know why yet so we'll mask it for now
 
-        seen = set()
-        rets = []
-        for e in els:
-            k = (e.submission_id, e.run_id, e.id_)
-            if k in seen:
-                continue
-            seen.add(k)
-            rets.append(e)
+        # seen = set()
+        # rets = []
+        # for e in els:
+        #     k = (e.submission_id, e.run_id, e.id_)
+        #     if k in seen:
+        #         continue
+        #     seen.add(k)
+        #     rets.append(e)
 
-        return rets
+        return els
 
     def get_all_mapped(self) -> Optional[List[RunJobModel]]:
 

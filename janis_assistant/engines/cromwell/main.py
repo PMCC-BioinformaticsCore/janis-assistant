@@ -702,7 +702,10 @@ class Cromwell(Engine):
                 )
 
     def raw_metadata(
-        self, identifier, expand_subworkflows=True
+        self,
+        identifier,
+        expand_subworkflows=True,
+        metadata_export_file_path: Optional[str] = None,
     ) -> Optional[CromwellMetadata]:
         url = self.url_metadata(
             identifier=identifier, expand_subworkflows=expand_subworkflows
@@ -721,6 +724,15 @@ class Cromwell(Engine):
 
             data = r.read()
             jsonobj = json.loads(data.decode(r.info().get_content_charset("utf-8")))
+
+            if metadata_export_file_path:
+                try:
+                    with open(metadata_export_file_path, "w+") as f:
+                        json.dump(jsonobj, f)
+                except Exception as e:
+                    Logger.warn(
+                        f"Couldn't persist Cromwell metadata json to '{metadata_export_file_path}': {repr(e)}"
+                    )
 
             return CromwellMetadata(jsonobj)
 
@@ -781,7 +793,12 @@ class Cromwell(Engine):
                 Logger.warn("Error connecting to cromwell instance: " + repr(e))
             return None
 
-    def metadata(self, identifier, expand_subworkflows=True) -> Optional[RunModel]:
+    def metadata(
+        self,
+        identifier,
+        expand_subworkflows=True,
+        metadata_export_file_path: Optional[str] = None,
+    ) -> Optional[RunModel]:
         if self.error_message:
             return RunModel(
                 id_=RunModel.DEFAULT_ID,
@@ -793,7 +810,11 @@ class Cromwell(Engine):
                 name=None,
             )
 
-        raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
+        raw = self.raw_metadata(
+            identifier,
+            expand_subworkflows=expand_subworkflows,
+            metadata_export_file_path=metadata_export_file_path,
+        )
         return raw.standard() if raw else raw
 
     def terminate_task(self, identifier) -> TaskStatus:

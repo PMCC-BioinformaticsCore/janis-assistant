@@ -85,6 +85,8 @@ from janis_assistant.validation import ValidationRequirements
 class WorkflowManager:
 
     MAX_ENGINE_ATTEMPTS = 5
+    HEALTH_CHECK_INTERVAL_SECONDS = 15 * 60
+    HEALTH_CHECK_STUCK_CROMWELL_MIN_RUNNING_TIME_SECONDS = 10 * 60
 
     class WorkflowManagerPath(Enum):
         execution = "execution"
@@ -126,6 +128,8 @@ class WorkflowManager:
         # I removed the ability for you to specify non-local
         #  fileschemes that janis could copy from / to.
         self.filescheme = LocalFileScheme()
+
+        self.health_check_meta = None
 
         if not self._engine_id:
             self._engine_id = self.get_engine_id()
@@ -171,8 +175,7 @@ class WorkflowManager:
 
         # let's write out the prepared_submission for
         tm.write_prepared_submission_file(
-            prepared_job=prepared_submission,
-            output_dir=tm.execution_dir,
+            prepared_job=prepared_submission, output_dir=tm.execution_dir,
         )
 
         tm.database.submissions.insert_or_update_many(
@@ -626,19 +629,27 @@ class WorkflowManager:
             # remove semaphores
             self.remove_semaphores()
 
-            logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
-            wid = self.submission_id
-            debugpath = os.path.join(logsdir, f"janis-monitor.{wid}.debug.log")
-            infopath = os.path.join(logsdir, f"janis-monitor.{wid}.info.log")
-            warnpath = os.path.join(logsdir, f"janis-monitor.{wid}.warn.log")
-
-            Logger.info("Logging debug information to: " + str(debugpath))
+            verbosepath = self.get_log_path_for_level(level=LogLevel.VERBOSE)
+            debugpath = self.get_log_path_for_level(level=LogLevel.DEBUG)
+            infopath = self.get_log_path_for_level(level=LogLevel.INFO)
+            warnpath = self.get_log_path_for_level(level=LogLevel.WARNING)
 
             Logger.WRITE_LEVELS = {
+                LogLevel.VERBOSE: (verbosepath, open(verbosepath, "a")),
                 LogLevel.DEBUG: (debugpath, open(debugpath, "a")),
                 LogLevel.INFO: (infopath, open(infopath, "a")),
                 LogLevel.WARNING: (warnpath, open(warnpath, "a")),
             }
+            Logger.log(
+                "Set write levels to: "
+                + self.get_path_for_component(self.WorkflowManagerPath.logs)
+            )
+            Logger.info("Logging debug information to: " + str(debugpath))
+
+            if True:
+                from janis_assistant.__meta__ import __version__
+
+                Logger.debug(f"Using janis-assistant: {__version__}")
 
             # in case anything relies on CD, we'll throw it into janis/execution
             os.chdir(self.get_path_for_component(self.WorkflowManagerPath.execution))
@@ -677,6 +688,8 @@ class WorkflowManager:
                 return self.process_completed_task()
 
             last_semaphore_check = None
+            last_health_check = DateUtil.now()
+
             while True:
                 try:
                     cb = self.main_queue.get(False)
@@ -698,11 +711,18 @@ class WorkflowManager:
                             self.suspend_workflow()
                             break
 
+                    # # TODO: make this interval be a config option
+                    # if (
+                    #     DateUtil.now() - last_health_check
+                    # ).total_seconds() > self.HEALTH_CHECK_INTERVAL_SECONDS:
+                    #     self.do_health_check()
+                    #     last_health_check = DateUtil.now()
+
                     time.sleep(0.5)
 
                     continue
                 except Exception as e:
-                    Logger.warn("Something has gone TERRIBLY wrong" + repr(e))
+                    Logger.warn(f"Something has gone TERRIBLY wrong: {repr(e)}")
                     raise e
 
             self.process_completed_task()
@@ -729,10 +749,8 @@ class WorkflowManager:
                 self.database.close()
             except Exception as e:
                 Logger.critical(
-                    "An additional fatal error occurred while trying to store Janis state: "
-                    + str(e)
-                    + "\n\nSee the logfile for more information: "
-                    + str(Logger.WRITE_LOCATION)
+                    f"An additional fatal error occurred while trying to store Janis state: {str(e)}\n\n"
+                    f"See the logfile for more information: {self.get_log_path_for_level(level=LogLevel.DEBUG)}"
                 )
 
         Logger.close_file()
@@ -748,6 +766,153 @@ class WorkflowManager:
 
         if self.dbcontainer:
             self.dbcontainer.stop()
+
+    def do_health_check(self):
+
+        # Checks to run:
+        #   - Check that all in-progress jobs have files we expect
+        #   - Ask the template to validate the metadata as well
+
+        # If all the runnings jobs have warnings, and these warnings are
+        # identical between health checks, then we'll abort the workflow
+
+        # loop through to get all in-progress jobs with a
+        Logger.debug("Performing health check")
+
+        is_cromwell = isinstance(self.engine, Cromwell)
+
+        previous_meta = self.health_check_meta or {}
+        new_health_meta = {}
+
+        if is_cromwell:
+            new_health_meta[
+                "STUCK_CROMWELL_JOBS"
+            ] = self.check_cromwell_stuck_running_jobs()
+
+        # check the two metas, if they're both non-empty and equal, then we fail
+        filtered_previous_meta = {
+            k: v for k, v in previous_meta.items() if v is not None
+        }
+        filtered_new_meta = {k: v for k, v in new_health_meta.items() if v is not None}
+        if filtered_new_meta and filtered_previous_meta:
+
+            if filtered_new_meta == previous_meta:
+                Logger.critical(
+                    f"This submission {self.submission_id} failed the health check with metadata '{filtered_new_meta}' for the second time an will now abort."
+                )
+                self.abort()
+                return False
+            Logger.warn(
+                f"Janis failed the health check for the first time with metadata '{filtered_new_meta}'"
+            )
+
+        self.health_check_meta = new_health_meta
+
+        return True
+
+    def check_cromwell_stuck_running_jobs(self):
+        total_running_jobs = 0
+        # We've seen this scenario where
+        jobs_stuck_in_running_state = []
+
+        jobs = self.database.jobsDB.get_all(
+            additional_where=("status = ?", [TaskStatus.RUNNING.value])
+        )
+
+        if not jobs:
+            Logger.debug(
+                "No running jobs were returned when checking stuck running jobs during health check"
+            )
+            return None
+
+        Logger.log(
+            f"Checking {len(jobs)} jobs for stuck cromwell jobs during health check"
+        )
+
+        good_jobs = []
+
+        for job in jobs:
+
+            # Janis can't really tell what's a placeholder job (like a subworkflow / scatter parent),
+            # and what's a real job, so we'll rely on the job setting the workdir for this to work.
+
+            if job.workdir is None or job.status != TaskStatus.RUNNING:
+                continue
+
+            total_running_jobs += 1
+
+            # Anecdotally, cromwell moves a job into the running state sometimes _just_ before it's
+            job_last_updated = (DateUtil().now() - job.lastupdated).total_seconds()
+            if (
+                job_last_updated
+                < self.HEALTH_CHECK_STUCK_CROMWELL_MIN_RUNNING_TIME_SECONDS
+            ):
+                continue
+
+            script_location = os.path.join(job.workdir, "execution/script")
+            if not os.path.exists(script_location):
+                jobs_stuck_in_running_state.append(job.id_)
+            else:
+                good_jobs.append(job.id_)
+
+        if not jobs_stuck_in_running_state:
+            return None
+
+        Logger.warn(
+            f"Detected {len(jobs_stuck_in_running_state)}(out of {total_running_jobs} checked) stuck cromwell jobs: {', '.join(jobs_stuck_in_running_state)}"
+        )
+        NotificationManager.send_email(
+            subject=f"[WARN] Workflow {self.submission_id} had {len(jobs_stuck_in_running_state)} stuck running jobs",
+            body=f"""
+
+<table>
+    <tr>
+        <td>Submission ID</td>  <td>{self.submission_id}</td>
+    </tr><tr>
+        <td>Execution Dir</td>  <td>{self.execution_dir}</td>
+    </tr><tr>
+        <td>Timestamp</td>      <td>{datetime.now()}</td>
+    </tr>
+</table>
+    
+Janis has detected that an error has occurred when preparing the following jobs:
+
+<ul>
+    <li>{", ".join(jobs_stuck_in_running_state)}</li>
+</ul>
+
+Janis suspects this might be due to a disk error when Cromwell was preparing the job. 
+Janis will suspend the job once all other tasks have completed or failed.
+
+You may receive this email multiple times.
+
+<br />
+
+Kind regards,
+<br />
+
+- Janis
+""",
+        )
+
+        if total_running_jobs != len(jobs_stuck_in_running_state):
+            # We want to return None (no health problem) until
+            # all the non-stuck running jobs have finished
+            Logger.debug(
+                f"Health check technically passed because Janis believes there are jobs still running "
+                f"({jobs_stuck_in_running_state}: {', '.join(good_jobs)}) that aren't "
+                f"failures ({len(jobs_stuck_in_running_state)}: {', '.join(jobs_stuck_in_running_state)})"
+            )
+            return None
+
+        Logger.debug(
+            "Janis FAILED the stuck running cromwell jobs during the health check"
+        )
+
+        return {
+            "stuck_jobs": jobs_stuck_in_running_state,
+            "total_jobs": total_running_jobs,
+        }
 
     @staticmethod
     def mark_paused(execution_dir):
@@ -897,9 +1062,7 @@ class WorkflowManager:
 
     @staticmethod
     def write_prepared_submission_file(
-        prepared_job: PreparedJob,
-        output_dir: str,
-        force_write=False,
+        prepared_job: PreparedJob, output_dir: str, force_write=False,
     ):
         import ruamel.yaml
 
@@ -1530,6 +1693,13 @@ janis run \\
 
     def get_path_for_component(self, component: WorkflowManagerPath):
         return self.get_path_for_component_and_dir(self.get_task_path_safe(), component)
+
+    def get_log_path_for_level(self, level: int = LogLevel.DEBUG):
+        logsdir = self.get_path_for_component(self.WorkflowManagerPath.logs)
+        return os.path.join(
+            logsdir,
+            f"janis-monitor.{self.submission_id}.{LogLevel.get_str(level).lower()}.log",
+        )
 
     @staticmethod
     def get_path_for_component_and_dir(path, component: WorkflowManagerPath):

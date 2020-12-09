@@ -103,6 +103,8 @@ class TaskStatus(Enum):
     @classmethod
     def collapse_states(cls, states: list):
 
+        states = list(map(TaskStatus, states))
+
         if len(states) == 0:
             return cls.PROCESSING
 

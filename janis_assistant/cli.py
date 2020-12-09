@@ -149,7 +149,8 @@ def process_args(sysargs=None):
 
     add_wait_args(
         subparsers.add_parser(
-            "wait", help="Wait for all workflows to finish before returning"
+            "wait",
+            help="Wait for all workflows to finish before returning, exiting with rc=3 if any of the workflows have failed.",
         )
     )
 

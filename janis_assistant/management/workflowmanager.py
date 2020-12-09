@@ -456,10 +456,16 @@ class WorkflowManager:
         if meta is None:
             return None, False
 
+        is_finished = (
+            meta is not None
+            and meta.runs
+            and all(m.status in TaskStatus.final_states() for m in meta.runs)
+            and meta.status.is_in_final_state()
+        )
+
         return (
             meta,
-            meta is not None
-            and all(m.status in TaskStatus.final_states() for m in meta.runs),
+            is_finished,
         )
 
     def poll_stored_metadata_with_clear(self, seconds=3, **kwargs):
@@ -482,8 +488,11 @@ class WorkflowManager:
                     )
                     ignore_has_updated = metadata_skips > 20
                     is_running = not is_finished
-                    if not has_printed or (
-                        is_running and (has_updated or ignore_has_updated)
+                    if (
+                        not has_printed
+                        or has_updated
+                        or ignore_has_updated
+                        or is_finished
                     ):
                         metadata_skips = 0
                         if meta.runs:
@@ -513,6 +522,7 @@ class WorkflowManager:
                     time.sleep(seconds)
         except KeyboardInterrupt:
             pass
+        Logger.log("Finish watch")
 
     def poll_stored_metadata_with_blessed(self, blessed, seconds=1):
 

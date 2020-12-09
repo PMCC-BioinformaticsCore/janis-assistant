@@ -2,6 +2,7 @@ import sys
 import argparse
 import os.path
 import json
+from time import sleep
 from typing import Optional, Tuple, List
 
 import ruamel.yaml
@@ -76,6 +77,7 @@ def process_args(sysargs=None):
         "pause": do_pause,
         "spider": do_spider,
         "rawquery": do_rawquery,
+        "wait": do_wait,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -142,6 +144,12 @@ def process_args(sysargs=None):
     add_rawquery_args(
         subparsers.add_parser(
             "rawquery", help="Perform a raw SQL query on the sqlite database of a task"
+        )
+    )
+
+    add_wait_args(
+        subparsers.add_parser(
+            "wait", help="Wait for all workflows to finish before returning"
         )
     )
 
@@ -764,6 +772,12 @@ def add_rawquery_args(parser):
     return parser
 
 
+def add_wait_args(parser):
+    parser.add_argument("wid", nargs="+", help="Workflows to wait for")
+
+    return parser
+
+
 def check_logger_args(args):
     level = LogLevel.INFO
     if args.verbose:
@@ -1167,6 +1181,30 @@ def do_rawquery(args):
     with wm.database.with_cursor() as cursor:
         result = cursor.execute(args.query).fetchall()
     return print(tabulate.tabulate(result))
+
+
+def do_wait(args):
+    wids = args.wid
+
+    statuses = {}
+    for wid in wids:
+        wm = ConfigManager.get_from_path_or_submission_lazy(wid, readonly=True)
+        Logger.info(f"Waiting for '{wid}' to finish")
+        status = wm.database.get_uncached_status()
+        while not status.is_in_final_state():
+            sleep(2)
+            status = wm.database.get_uncached_status()
+
+        statuses[wid] = (wm.submission_id, status)
+        Logger.info(f"Workflow {wid} finished with status: {status.to_string()}")
+
+    collapsed_status = TaskStatus.collapse_states([s[1] for s in statuses.values()])
+
+    rc = collapsed_status.get_exit_code()
+    Logger.info(
+        f"All workflows finished with collapsed status {collapsed_status.to_string()}, exiting with rc={rc}"
+    )
+    sys.exit(rc)
 
 
 def parse_container_override_format(container_override):

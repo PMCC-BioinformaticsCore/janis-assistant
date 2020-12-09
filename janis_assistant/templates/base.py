@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Type, Optional, List, Dict
 
-from janis_assistant.utils.dateutil import DateUtil
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container

@@ -25,6 +25,7 @@ from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 
 from janis_assistant.modifiers.contigchecker import ContigChecker
 from janis_assistant.modifiers.filefinder import FileFinderModifier
+from janis_assistant.modifiers.remotefilemodifier import RemoteFileModifier
 from janis_assistant.modifiers.inputtransformermodifier import InputTransformerModifier
 from janis_assistant.validation import ValidationRequirements
 
@@ -228,7 +229,13 @@ def translate(
         valuesfromrecipe = config.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
+    inputsdict.update(
+        cascade_inputs(
+            wf=None,
+            inputs=inputs,
+            required_inputs=None,
+        )
+    )
 
     if isinstance(toolref, DynamicWorkflow):
         if not inputsdict:
@@ -512,7 +519,10 @@ def run_from_jobfile(
     if not workflow:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    row = cm.create_task_base(wf=workflow, job=jobfile,)
+    row = cm.create_task_base(
+        wf=workflow,
+        job=jobfile,
+    )
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir
@@ -644,6 +654,14 @@ def prepare_job(
                 f"Couldn't find file for post_run_script '{post_run_script}'"
             )
         post_run_script = intermediate_prs
+
+    ### TODO: we need to move this somewhere proper
+    cache_dir = os.path.join(output_dir, "janis/prepare")
+    # m = FileFinderModifier(cache_dir=cache_dir, localise_remote_files=True)
+    # inputsdict = m.inputs_modifier(tool, inputsdict, hints)
+
+    m = RemoteFileModifier(cache_dir=cache_dir)
+    inputsdict = m.inputs_modifier(tool, inputsdict, hints)
 
     if run_prepare_processing:
         cache_dir = os.path.join(output_dir, "janis/prepare")

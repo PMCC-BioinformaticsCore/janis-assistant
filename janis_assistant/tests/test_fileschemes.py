@@ -3,8 +3,6 @@ import tempfile
 from shutil import rmtree
 import unittest
 
-from janis_unix import Echo
-
 from janis_assistant.management.filescheme import SSHFileScheme, GCSFileScheme
 
 

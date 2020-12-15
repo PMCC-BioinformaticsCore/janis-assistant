@@ -63,6 +63,7 @@ class FileModifierBase(PipelineModifierBase):
             )
         else:
             try:
+                Logger.info(f"Downloading file from {source} -> {out_path}")
                 fs.cp_from(source, out_path)
             except Exception as e:
                 Logger.critical(

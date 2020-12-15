@@ -17,10 +17,26 @@ from janis_assistant.modifiers.base import FileModifierBase
 
 
 class RemoteFileModifier(FileModifierBase):
+    """
+    Find and download remote files
+    """
+
     def __init__(self, cache_dir: str):
         self.cache_dir = cache_dir
 
     def inputs_modifier(self, tool: Tool, inputs: Dict, hints: Dict[str, str]) -> Dict:
+        """
+        Download remote files and reploce input with the local files
+
+        :param tool: an instance of janis tool
+        :type tool: janis_core.Tool
+        :param inputs: a dictionary of tool inputs
+        :type inputs: dict
+        :param hints:
+        :type hints: dict
+        :return: modified input
+        :rtype: dict
+        """
         if not isinstance(tool, WorkflowBase):
             return inputs
 
@@ -40,7 +56,7 @@ class RemoteFileModifier(FileModifierBase):
             if modification_required:
                 doc: InputDocumentation = inpnode.doc
                 source = inputs[inpnode.id()]
-                basedir = os.path.join(self.cache_dir, inpnode.id())
+                basedir = self.cache_dir
                 os.makedirs(basedir, exist_ok=True)
 
                 new_inputs[inpnode.id()] = self.localise_inputs(

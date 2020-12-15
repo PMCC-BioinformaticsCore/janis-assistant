@@ -655,11 +655,9 @@ def prepare_job(
             )
         post_run_script = intermediate_prs
 
-    ### TODO: we need to move this somewhere proper
-    cache_dir = os.path.join(output_dir, "janis/prepare")
-    # m = FileFinderModifier(cache_dir=cache_dir, localise_remote_files=True)
-    # inputsdict = m.inputs_modifier(tool, inputsdict, hints)
-
+    # Download remote files to cache directory
+    # cache_dir = os.path.join(output_dir, "janis/prepare")
+    cache_dir = os.path.join(jc.config_dir, "remote_file_cache")
     m = RemoteFileModifier(cache_dir=cache_dir)
     inputsdict = m.inputs_modifier(tool, inputsdict, hints)
 

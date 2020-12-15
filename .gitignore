@@ -10,3 +10,5 @@ pip-wheel-metadata/
 .coverage
 .mypy_cache/
 dist/
+venv/
+.python-version

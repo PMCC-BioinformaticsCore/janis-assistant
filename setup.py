@@ -27,7 +27,7 @@ setup(
     },
     install_requires=[
         # "janis-pipelines.core>=0.11.0",
-        "janis-core @ git+https://github.com/PMCC-BioinformaticsCore/janis-core.git@v0.11.x",
+        "janis-pipelines.core @ git+https://github.com/PMCC-BioinformaticsCore/janis-core.git@v0.11.x",
         "janis-pipelines.templates>=0.10.3",
         "requests",
         "path",

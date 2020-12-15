@@ -1,7 +1,8 @@
 import os
+import hashlib
 from abc import ABC
 from inspect import isclass
-from typing import Dict, List, Tuple, Union, Type
+from typing import Dict, List, Tuple, Union, Type, Optional
 
 from janis_assistant.management.filescheme import FileScheme, LocalFileScheme
 from janis_core import Tool, Logger, DataType, apply_secondary_file_format_to_filename
@@ -54,9 +55,7 @@ class FileModifierBase(PipelineModifierBase):
         if isinstance(fs, LocalFileScheme):
             return source
 
-        fs = FileScheme.get_type_by_prefix(source)()
-
-        out_path = os.path.join(dest_dir, os.path.basename(source))
+        out_path = self.generate_file_path(source, dest_dir)
         if os.path.exists(out_path):
             Logger.info(
                 f"A file already exists when localising '{inpid}' at '{out_path}'. If this isn't the right file, "
@@ -95,3 +94,21 @@ class FileModifierBase(PipelineModifierBase):
                 Logger.critical(f"Couldn't localise secondary file due to: {e}")
 
         return out_path
+
+    @classmethod
+    def generate_file_path(cls, source: str, dest_dir: str):
+        fs = FileScheme.get_type_by_prefix(source)()
+        date_modified = fs.last_modified(source)
+        local_filename = (
+            f"{cls.hash_filename(source, date_modified)}_{os.path.basename(source)}"
+        )
+
+        return os.path.join(dest_dir, local_filename)
+
+    @classmethod
+    def hash_filename(cls, source: str, date_modified: Optional[str] = None):
+        components = source + (date_modified or "")
+        hash_md5 = hashlib.md5(str.encode(components))
+        hashed_filename = hash_md5.hexdigest()
+
+        return hashed_filename

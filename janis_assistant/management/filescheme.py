@@ -120,6 +120,10 @@ class FileScheme(Archivable, abc.ABC):
 
         raise Exception(f"Couldn't find filescheme with id '{identifier}'")
 
+    @staticmethod
+    def last_modified(path: str) -> Optional[str]:
+        return None
+
 
 class LocalFileScheme(FileScheme):
     def __init__(self):
@@ -287,6 +291,21 @@ class HTTPFileScheme(FileScheme):
             return response.getcode() == 200
         except:
             return False
+
+    @staticmethod
+    def last_modified(path: str) -> Optional[str]:
+        import urllib.request
+
+        try:
+            req = urllib.request.Request(path, method="HEAD")
+            response = urllib.request.urlopen(req)
+            if response.getheader("Last-Modified"):
+                return response.getheader("Last-Modified")
+            else:
+                return None
+
+        except:
+            return None
 
 
 class SSHFileScheme(FileScheme):

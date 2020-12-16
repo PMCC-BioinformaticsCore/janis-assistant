@@ -111,6 +111,7 @@ def run_with_outputs(
         workflow_reference=workflow_reference,
         # don't do extra preprocessing steps
         run_prepare_processing=False,
+        localise_all_files=True,
     )
 
     wm = run_from_jobfile(tool, jobfile=job, wait=True)
@@ -618,6 +619,7 @@ def prepare_job(
     db_type: DatabaseTypeToUse = None,
     source_hints: List[str] = None,
     post_run_script: str = None,
+    localise_all_files: bool = False,
 ):
 
     # organise inputs
@@ -656,10 +658,10 @@ def prepare_job(
         post_run_script = intermediate_prs
 
     # Download remote files to cache directory
-    # cache_dir = os.path.join(output_dir, "janis/prepare")
-    cache_dir = os.path.join(jc.config_dir, "remote_file_cache")
-    m = RemoteFileLocatorModifier(cache_dir=cache_dir)
-    inputsdict = m.inputs_modifier(tool, inputsdict, hints)
+    if localise_all_files:
+        cache_dir = os.path.join(jc.config_dir, "remote_file_cache")
+        m = RemoteFileLocatorModifier(cache_dir=cache_dir)
+        inputsdict = m.inputs_modifier(tool, inputsdict, hints)
 
     if run_prepare_processing:
         cache_dir = os.path.join(output_dir, "janis/prepare")

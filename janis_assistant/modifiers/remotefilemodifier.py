@@ -13,10 +13,10 @@ from janis_core import (
     InputDocumentation,
 )
 
-from janis_assistant.modifiers.base import FileModifierBase
+from janis_assistant.modifiers.base import FileLocatorModifierBase
 
 
-class RemoteFileModifier(FileModifierBase):
+class RemoteFileLocatorModifier(FileLocatorModifierBase):
     """
     Find and download remote files
     """

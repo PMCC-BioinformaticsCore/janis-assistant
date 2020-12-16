@@ -39,7 +39,7 @@ class PipelineModifierBase(ABC):
         return wf, inputs
 
 
-class FileModifierBase(PipelineModifierBase):
+class FileLocatorModifierBase(PipelineModifierBase):
     def localise_inputs(
         self,
         inpid: str,

@@ -24,8 +24,8 @@ from janis_assistant.modifiers.inputchecker import InputChecker
 from janis_assistant.modifiers.inputqualifier import InputFileQualifierModifier
 
 from janis_assistant.modifiers.contigchecker import ContigChecker
-from janis_assistant.modifiers.filefinder import FileFinderModifier
-from janis_assistant.modifiers.remotefilemodifier import RemoteFileModifier
+from janis_assistant.modifiers.filefinder import FileFinderLocatorModifier
+from janis_assistant.modifiers.remotefilemodifier import RemoteFileLocatorModifier
 from janis_assistant.modifiers.inputtransformermodifier import InputTransformerModifier
 from janis_assistant.validation import ValidationRequirements
 
@@ -658,7 +658,7 @@ def prepare_job(
     # Download remote files to cache directory
     # cache_dir = os.path.join(output_dir, "janis/prepare")
     cache_dir = os.path.join(jc.config_dir, "remote_file_cache")
-    m = RemoteFileModifier(cache_dir=cache_dir)
+    m = RemoteFileLocatorModifier(cache_dir=cache_dir)
     inputsdict = m.inputs_modifier(tool, inputsdict, hints)
 
     if run_prepare_processing:
@@ -668,7 +668,7 @@ def prepare_job(
 
         os.makedirs(cache_dir, exist_ok=True)
         processors = [
-            FileFinderModifier(cache_dir=cache_dir, source_hints=source_hints),
+            FileFinderLocatorModifier(cache_dir=cache_dir, source_hints=source_hints),
             InputFileQualifierModifier(),
             InputTransformerModifier(cache_dir=cache_dir),
             InputChecker(check_file_existence=True),

@@ -13,10 +13,10 @@ from janis_core import (
     InputDocumentation,
 )
 
-from janis_assistant.modifiers.base import FileModifierBase
+from janis_assistant.modifiers.base import FileLocatorModifierBase
 
 
-class FileFinderModifier(FileModifierBase):
+class FileFinderLocatorModifier(FileLocatorModifierBase):
     def __init__(self, cache_dir: str, source_hints: List[str] = None):
         self.cache_dir = cache_dir
         self.source_hints: List[str] = source_hints or []

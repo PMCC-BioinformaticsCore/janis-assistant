@@ -39,6 +39,13 @@ setup(
     ],
     extras_require={
         "gcs": ["google-cloud-storage"],
+        "ci": [
+            "codecov",
+            "coverage",
+            "requests_mock",
+            "nose_parameterized",
+            "keyring==21.4.0",
+        ],
     },
     packages=["janis_assistant"] + modules,
     classifiers=[

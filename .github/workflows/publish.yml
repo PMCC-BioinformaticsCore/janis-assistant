@@ -13,12 +13,12 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.x'
+        python-version: '3.8'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements/tests.txt
-        pip install -r requirements/publish.txt
+        pip install .
+        pip install -e .[ci]
     - name: Test with nosetests
       run: |
         nosetests -w janis_assistant --with-coverage --cover-package=janis_assistant

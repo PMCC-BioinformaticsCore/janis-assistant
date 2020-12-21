@@ -242,7 +242,9 @@ def add_spider_args(parser):
         help="Adds statements to help find why a tool isn't appearing in the toolbox",
     )
     parser.add_argument(
-        "--all", action="store_true", help="Print all tools in alphabetical order",
+        "--all",
+        action="store_true",
+        help="Print all tools in alphabetical order",
     )
 
 
@@ -492,6 +494,12 @@ def add_args_for_general_wf_prepare(parser):
         "--skip-file-check",
         action="store_true",
         help="Skip checking if files exist before the start of a workflow.",
+    )
+
+    parser.add_argument(
+        "--localise-all-files",
+        action="store_true",
+        help="Download remote files and store in a local cache directory",
     )
 
     # development settings
@@ -1043,6 +1051,7 @@ def prepare_from_args(args, run_prepare_processing: bool) -> Tuple[PreparedJob, 
         db_type=db_type,
         source_hints=source_hints,
         post_run_script=args.post_run_script,
+        localise_all_files=args.localise_all_files,
     )
 
     return job, wf

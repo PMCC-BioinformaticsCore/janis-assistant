@@ -175,7 +175,8 @@ class WorkflowManager:
 
         # let's write out the prepared_submission for
         tm.write_prepared_submission_file(
-            prepared_job=prepared_submission, output_dir=tm.execution_dir,
+            prepared_job=prepared_submission,
+            output_dir=tm.execution_dir,
         )
 
         tm.database.submissions.insert_or_update_many(
@@ -1074,7 +1075,9 @@ Kind regards,
 
     @staticmethod
     def write_prepared_submission_file(
-        prepared_job: PreparedJob, output_dir: str, force_write=False,
+        prepared_job: PreparedJob,
+        output_dir: str,
+        force_write=False,
     ):
         import ruamel.yaml
 

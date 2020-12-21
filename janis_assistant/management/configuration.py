@@ -432,17 +432,14 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         self.run_in_background = run_in_background
 
         self.recipes = parse_if_dict(
-            JanisConfigurationRecipes,
-            recipes or {},
-            "recipes",
-            skip_if_empty=False,
+            JanisConfigurationRecipes, recipes or {}, "recipes", skip_if_empty=False,
         )
 
         self.template = parse_if_dict(
             JanisConfigurationTemplate, template or {}, "template", skip_if_empty=False
         )
         self.cromwell: JanisConfigurationCromwell = parse_if_dict(
-            JanisConfigurationCromwell, cromwell, "cromwell"
+            JanisConfigurationCromwell, cromwell or {}, "cromwell", skip_if_empty=False
         )
         self.notifications: JanisConfigurationNotifications = parse_if_dict(
             JanisConfigurationNotifications,

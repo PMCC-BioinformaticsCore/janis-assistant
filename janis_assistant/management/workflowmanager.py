@@ -679,6 +679,8 @@ class WorkflowManager:
 
             self.database.commit()
 
+            # Now the workflow is running, get status every so often, save it and just wait
+
             def callb(meta: RunModel):
                 meta.submission_id = self.submission_id
                 meta.id_ = RunModel.DEFAULT_ID

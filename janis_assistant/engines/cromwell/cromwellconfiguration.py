@@ -733,10 +733,19 @@ JOBID=$({sbatch} \\
 
     class Docker(Serializable):
         class HashLookup(Serializable):
-            def __init__(self, enabled=True):
+            def __init__(
+                self, enabled=True, perform_registry_lookup_if_digest_is_provided=False
+            ):
                 self.enabled = enabled
+                self.perform_registry_lookup_if_digest_is_provided = (
+                    perform_registry_lookup_if_digest_is_provided
+                )
 
-        def __init__(self, hash_lookup=None):
+            key_map = {
+                "perform_registry_lookup_if_digest_is_provided": "perform-registry-lookup-if-digest-is-provided",
+            }
+
+        def __init__(self, hash_lookup=HashLookup()):
             if hash_lookup is not None and not isinstance(hash_lookup, self.HashLookup):
                 raise Exception(
                     "hash-lookup is not of type CromwellConfiguration.Docker.HashLookup"
@@ -745,7 +754,7 @@ JOBID=$({sbatch} \\
 
         @classmethod
         def default(cls):
-            return None
+            return cls()
             # return cls(hash_lookup=cls.HashLookup(enabled=False))
 
         key_map = {"hash_lookup": "hash-lookup"}

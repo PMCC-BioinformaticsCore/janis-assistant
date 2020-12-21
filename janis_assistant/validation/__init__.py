@@ -3,8 +3,10 @@ from typing import List, Dict, Optional
 from janis_core import Tool, DataType
 from janis_core.tool.tool import TOutput
 
+from janis_assistant.data.models.util import Serializable
 
-class ValidationRequirements:
+
+class ValidationRequirements(Serializable):
     def __init__(
         self,
         truthVCF: str,

@@ -1,9 +1,9 @@
 import os
 import tempfile
 from inspect import isclass, isabstract
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
-from janis_core import WorkflowBase, Workflow, CommandTool, Logger, CodeTool
+from janis_core import WorkflowBase, Workflow, CommandTool, Logger, CodeTool, Tool
 from path import Path
 
 
@@ -54,7 +54,7 @@ def get_file_from_searchname(name, cwd):
     with Path(cwd):
         if os.path.exists(name) and os.path.isfile(resolved):
             Logger.log(f"Found file in '{cwd}' called '{name}'")
-            return name
+            return os.path.join(cwd, name)
 
     Logger.log(
         f"Attempting to get search path $JANIS_SEARCHPATH from environment variables"
@@ -68,7 +68,7 @@ def get_file_from_searchname(name, cwd):
             with Path(search_path):
                 if os.path.exists(name) and os.path.isfile(resolved):
                     Logger.log(f"Found file in '{search_path}' called '{name}'")
-                    return search_path + name
+                    return os.path.join(search_path, name)
         else:
             Logger.warn(
                 f"Search path '{search_path}' (obtained from $JANIS_SEARCHPATH) does not exist "
@@ -112,11 +112,14 @@ def parse_dict(file: str):
 
 def get_janis_workflow_from_searchname(
     searchpath, cwd, name: str = None, include_commandtools=False
-):
+) -> Optional[Tuple[Tool, str]]:
     file = get_file_from_searchname(searchpath, cwd)
     if not file:
         return None
-    return get_workflow_from_file(file, name, include_commandtools=include_commandtools)
+    return (
+        get_workflow_from_file(file, name, include_commandtools=include_commandtools),
+        file,
+    )
 
 
 def get_workflow_from_file(file, name, include_commandtools=False):
@@ -225,7 +228,8 @@ def get_janis_from_module_spec(spec, include_commandtools=False, name: str = Non
         Logger.log("Expanded search to commandtools in " + str(spec))
 
     potentials = []
-    for k, ptype in spec.__dict__.items():
+    items = list(spec.__dict__.items())
+    for k, ptype in items:
         if name is not None:
             if name.lower() == k.lower():
                 potentials.append((k, ptype()))

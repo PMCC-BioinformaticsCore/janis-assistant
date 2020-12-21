@@ -1,5 +1,7 @@
 from typing import List, Dict
 import os
+
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.management.configuration import JanisConfiguration
 
 from janis_assistant.data.container.parse_pattern import (
@@ -13,21 +15,23 @@ in_memory_cache = {}
 
 
 def get_digests_from_containers(
-    containers: List[str], skip_cache=False
+    containers: List[str], cache_location: str, skip_cache=False
 ) -> Dict[str, str]:
     retval = {}
     for container in containers:
-        digest = get_digest_from_container(container, skip_cache=skip_cache)
+        digest = get_digest_from_container(
+            container, cache_location=cache_location, skip_cache=skip_cache
+        )
         if digest:
             retval[container] = digest
 
     return retval
 
 
-def get_digest_from_container(container: str, skip_cache=False):
+def get_digest_from_container(container: str, cache_location: str, skip_cache=False):
     try:
         if not skip_cache:
-            from_cache = try_lookup_in_cache(container)
+            from_cache = try_lookup_in_cache(container, cache_location=cache_location)
             if from_cache:
                 return from_cache
 
@@ -38,7 +42,11 @@ def get_digest_from_container(container: str, skip_cache=False):
             digest = registry.get_digest(ci)
             new_container = ci.to_string(chash=digest)
             if not skip_cache:
-                try_write_digest_to_cache(container, new_container)
+                try_write_digest_to_cache(
+                    cache_location=cache_location,
+                    container=container,
+                    container_with_contents=new_container,
+                )
             return new_container
         else:
             Logger.debug(
@@ -49,22 +57,22 @@ def get_digest_from_container(container: str, skip_cache=False):
         Logger.critical(f"Couldn't get digest for {str(container)}: {str(e)}")
 
 
-def get_cache_path_from_container(container: str) -> str:
-    cache_path = JanisConfiguration.manager().digest_cache_location
+def get_cache_path_from_container(cache_location: str, container: str) -> str:
 
-    os.makedirs(cache_path, exist_ok=True)
+    os.makedirs(cache_location, exist_ok=True)
     container_cache_path = os.path.join(
-        cache_path, ContainerInfo.convert_to_filename(container)
+        cache_location, ContainerInfo.convert_to_filename(container)
     )
     return container_cache_path
 
 
-def try_lookup_in_cache(container: str) -> Optional[str]:
-
+def try_lookup_in_cache(container: str, cache_location: str) -> Optional[str]:
     if container in in_memory_cache:
         return in_memory_cache[container]
 
-    container_cache_path = get_cache_path_from_container(container)
+    container_cache_path = get_cache_path_from_container(
+        cache_location=cache_location, container=container
+    )
     if not os.path.exists(container_cache_path):
         return None
     try:
@@ -81,9 +89,13 @@ def try_lookup_in_cache(container: str) -> Optional[str]:
         return None
 
 
-def try_write_digest_to_cache(container: str, container_with_contents):
-    container_cache_path = get_cache_path_from_container(container)
+def try_write_digest_to_cache(
+    cache_location: str, container: str, container_with_contents
+):
     in_memory_cache[container] = container_with_contents
+    container_cache_path = get_cache_path_from_container(
+        cache_location=cache_location, container=container
+    )
     if os.path.exists(container_cache_path):
         return Logger.log(
             f"Went to write digest to cache path, but this file already existed: {container_cache_path}"

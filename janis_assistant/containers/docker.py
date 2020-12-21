@@ -3,7 +3,7 @@ from typing import Dict
 
 from janis_core import Logger
 
-from janis_assistant.containers.base import Container
+from janis_assistant.containers.base import Container, ContainerType
 
 
 class Docker(Container):
@@ -25,6 +25,10 @@ class Docker(Container):
         )
 
         self.dockerid = None
+
+    @staticmethod
+    def get_container_type():
+        return ContainerType.docker
 
     @staticmethod
     def test_available_by_getting_version() -> str:

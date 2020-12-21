@@ -1,5 +1,6 @@
 import os
 import sys
+from contextlib import contextmanager
 
 
 def tail(f, n):
@@ -31,3 +32,15 @@ def tail(f, n):
         pos *= 2
 
     return lines[-n:]
+
+
+@contextmanager
+def open_potentially_compressed_file(f: str, mode: str = "r"):
+    opfunc = open
+    if f.endswith(".gz"):
+        import gzip
+
+        opfunc = gzip.open
+
+    with opfunc(f, mode=mode) as fp:
+        yield fp

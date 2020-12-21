@@ -1,20 +1,23 @@
-from typing import List
+from typing import List, Optional
 import subprocess
 
 from janis_core import Logger
 
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.management.configuration import JanisConfiguration
 
 
 class NotificationManager:
     @staticmethod
-    def notify_status_change(status, metadata: SubmissionModel):
+    def notify_status_change(
+        status, metadata: SubmissionModel, additional_information: Optional[str]
+    ):
 
-        body = (
-            JanisConfiguration.manager().template.template.prepare_status_update_email(
-                status=status, metadata=metadata
-            )
+        body = PreparedJob.instance().template.template.prepare_status_update_email(
+            status=status,
+            metadata=metadata,
+            additional_information=additional_information,
         )
 
         subject = "" f"{metadata.id_} status to {status}"
@@ -26,7 +29,7 @@ class NotificationManager:
     def send_email(subject: str, body: str):
         import tempfile, os
 
-        nots = JanisConfiguration.manager().notifications
+        nots = PreparedJob.instance().notifications
 
         mail_program = nots.mail_program
 
@@ -68,16 +71,3 @@ Subject: {subject}
                 Logger.critical(f"Couldn't send email '{subject}' to {emails}: {e}")
         finally:
             os.remove(path)
-
-    _status_change_template = """\
-<h1>Status change: {status}</h1>
-    
-<p>
-    The workflow '{wfname}' ({wid}) moved to the '{status}' status.
-</p>
-<ul>
-    <li>Task directory: <code>{tdir}</code></li>
-    <li>Execution directory: <code>{exdir}</code></li>
-</ul>
-    
-<p>Kind regards, <br />Janis</p>"""

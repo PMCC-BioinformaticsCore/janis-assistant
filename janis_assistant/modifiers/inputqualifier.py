@@ -1,9 +1,10 @@
+from contextlib import contextmanager
 from typing import Dict, Union, List
 
-from os import getcwd
+from os import getcwd, chdir
 from path import Path
 
-from janis_core import Tool, File, Array, Directory
+from janis_core import Tool, File, Array, Directory, Logger
 from janis_assistant.modifiers.base import PipelineModifierBase
 from janis_assistant.utils import fully_qualify_filename
 

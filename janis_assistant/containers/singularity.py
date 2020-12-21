@@ -5,7 +5,7 @@ from typing import Dict
 
 from janis_core import Logger
 
-from janis_assistant.containers.base import Container
+from janis_assistant.containers.base import Container, ContainerType
 from janis_assistant.utils import generate_new_id, ProcessLogger
 
 
@@ -31,6 +31,10 @@ class Singularity(Container):
         self.containerdir = containerdir
         self.dockerid = None
         self.run_logger = None
+
+    @staticmethod
+    def get_container_type():
+        return ContainerType.singularity
 
     @staticmethod
     def get_build_instructions_for(containerlocation: str, docker: str):

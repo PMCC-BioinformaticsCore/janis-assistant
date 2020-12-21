@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Type, Optional, List, Dict
 
-from janis_assistant.utils.dateutil import DateUtil
 from janis_core import Logger
 
 from janis_assistant.containers.base import Container
@@ -12,6 +11,7 @@ from janis_assistant.containers.singularity import Singularity
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.models.run import SubmissionModel
 from janis_assistant.data.models.workflowjob import RunJobModel
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import fully_qualify_filename
 
@@ -53,7 +53,7 @@ class EnvironmentTemplate(ABC):
         )
 
     @abstractmethod
-    def engine_config(self, engine: EngineType, janis_configuration):
+    def engine_config(self, engine: EngineType, job: PreparedJob):
         pass
 
     def get_job_analysis_from(self, job: RunJobModel) -> Optional[str]:
@@ -98,6 +98,7 @@ class EnvironmentTemplate(ABC):
                 Logger.info(out)
                 if log_output_to_stdout:
                     print(out, file=sys.stdout)
+                    return out
 
             else:
                 # This is important for when Janis submits itself itself in the foreground,
@@ -165,12 +166,30 @@ class EnvironmentTemplate(ABC):
         pass
 
     def prepare_status_update_email(
-        self, status: TaskStatus, metadata: SubmissionModel
+        self, status: TaskStatus, metadata: SubmissionModel, additional_information: str
     ):
 
         _status_change_template = """\
-        <h1>Status change: {status}</h1>
+    <h1>Status change: {status}</h1>
 
+    <p>
+        The workflow '{wfname}' ({wid}) moved to the '{status}' status.
+    </p>
+    <ul>
+        <li>Task directory: <code>{tdir}</code></li>
+        <li>Execution directory: <code>{exdir}</code></li>
+    </ul>
+    
+    {additional_information}
+    
+    {progress_and_header}
+    
+    <em>Sent at {timestamp}</em>
+
+    
+    Kind regards,
+    
+    - Janis
         <p>
             The workflow '{wfname}' ({wid}) moved to the '{status}' status.
         </p>
@@ -190,20 +209,21 @@ class EnvironmentTemplate(ABC):
         progress_and_header = ""
         if status.is_in_final_state():
             progress_and_header = f"""\
-        <hr />
-        <h3>Progress</h3>        
-        <pre>
-        {metadata.format(monochrome=True, brief=True)}
-        </pre>
+<hr />
+<h3>Progress</h3>        
+<pre>
+{metadata.format(monochrome=True, brief=True)}
+</pre>
         """
 
         return _status_change_template.format(
             wid=metadata.id_,
             wfname=metadata.id_,
-            status=status,
-            exdir="<execution-dir>",
+            status=status.to_string(),
+            exdir=metadata.execution_dir,
             tdir=metadata.output_dir,
             progress_and_header=progress_and_header,
+            additional_information=additional_information,
             timestamp=datetime.now(),
         )
 
@@ -211,8 +231,8 @@ class EnvironmentTemplate(ABC):
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(
         self,
-        mail_program: str,
-        container_dir: str,
+        mail_program: str = None,
+        container_dir: str = None,
         load_instructions=None,
         build_instructions=f"singularity pull $image docker://${{docker}}",
         max_cores=None,
@@ -247,7 +267,25 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
                 f"Expected an absolute paths for {', '.join(invalid_paths)}"
             )
 
-        # little bit hacky
+        # if container_dir isn't specified
+
+        if container_dir is None:
+            from os import getenv
+
+            envs_to_search = ["CWL_SINGULARITY_CACHE", "SINGULARITY_TMPDIR"]
+            for env in envs_to_search:
+                e = getenv(env)
+                if e:
+                    container_dir = e
+                    break
+
+            if container_dir is None:
+                raise Exception(
+                    "Couldn't find a directory to cache singularity containers, please provide a "
+                    "'container_dir', or set one of the following env variables: "
+                    + ", ".join(envs_to_search)
+                )
+
         Singularity.containerdir = container_dir
         Singularity.loadinstructions = load_instructions
         Singularity.buildinstructions = build_instructions

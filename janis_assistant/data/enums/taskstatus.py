@@ -6,6 +6,7 @@ class TaskStatus(Enum):
     PREPARED = "prepared"
     QUEUED = "queued"
     RUNNING = "running"
+    EXECUTION_ENDED_SUCCESSFULLY = "execution-ended"
     COMPLETED = "completed"
     FAILED = "failed"
     ABORTING = "aborting"
@@ -17,6 +18,21 @@ class TaskStatus(Enum):
     @staticmethod
     def all():
         return [t for t in TaskStatus]
+
+    @staticmethod
+    def notification_states():
+        return [
+            TaskStatus.QUEUED,
+            TaskStatus.RUNNING,
+            TaskStatus.COMPLETED,
+            TaskStatus.FAILED,
+            TaskStatus.ABORTED,
+            TaskStatus.ON_HOLD,
+            TaskStatus.SUSPENDED,
+        ]
+
+    def should_notify(self):
+        return self in self.notification_states()
 
     @staticmethod
     def final_states():
@@ -31,7 +47,7 @@ class TaskStatus(Enum):
     def is_in_final_state(self):
         return self in self.final_states()
 
-    def __str__(self):
+    def to_string(self):
         __str = {
             TaskStatus.PROCESSING.value: "Processing",
             TaskStatus.QUEUED.value: "Queued",
@@ -44,6 +60,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTING.value: "Aborting",
             TaskStatus.SUSPENDED.value: "Suspended",
             TaskStatus.PREPARED.value: "Prepared",
+            TaskStatus.EXECUTION_ENDED_SUCCESSFULLY.value: "Ended execution successfully (finalizing)",
         }
         return __str[self.value]
 
@@ -60,6 +77,7 @@ class TaskStatus(Enum):
             TaskStatus.ABORTING.value: "~x",
             TaskStatus.SUSPENDED.value: "II",
             TaskStatus.PREPARED.value: ":",
+            TaskStatus.EXECUTION_ENDED_SUCCESSFULLY: "%%",
         }
         return __str[self.value]
 
@@ -84,6 +102,8 @@ class TaskStatus(Enum):
 
     @classmethod
     def collapse_states(cls, states: list):
+
+        states = list(map(TaskStatus, states))
 
         if len(states) == 0:
             return cls.PROCESSING

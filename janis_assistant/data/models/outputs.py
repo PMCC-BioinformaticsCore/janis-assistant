@@ -8,7 +8,7 @@ from janis_core.utils.logger import Logger
 
 from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.utils import stringify_value_or_array
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 
 class WorkflowOutputModel(DatabaseObject):

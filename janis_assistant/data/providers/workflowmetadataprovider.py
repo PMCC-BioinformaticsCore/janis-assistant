@@ -4,7 +4,12 @@ from janis_core import Logger
 
 from janis_assistant.data.enums import TaskStatus
 from janis_assistant.data.keyvaluedbproviderbase import KvDB
-from janis_assistant.data.models.base import KVDatabaseObject
+from janis_assistant.data.models.base import KVDatabaseObject, unpickle_obj
+from janis_assistant.data.models.preparedjob import PreparedJob
+from janis_assistant.management.configuration import (
+    DatabaseTypeToUse,
+    JanisDatabaseConfigurationHelper,
+)
 
 
 class SubmissionDbMetadata(KVDatabaseObject):
@@ -12,6 +17,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self,
         submission_id: str = None,
         run_id: str = None,
+        prepared_job: PreparedJob = None,
         name: str = None,
         status: TaskStatus = None,
         last_updated=None,
@@ -20,12 +26,11 @@ class SubmissionDbMetadata(KVDatabaseObject):
         container_type=None,
         engine=None,
         engine_id: str = None,
-        configuration=None,
-        db_config=None,
         submission_workflow=None,
         submission_inputs=None,
         submission_resources=None,
         error=None,
+        db_configuration: JanisDatabaseConfigurationHelper = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -34,14 +39,15 @@ class SubmissionDbMetadata(KVDatabaseObject):
         self._run_id = run_id
         self.status = TaskStatus(status) if status is not None else None
 
+        self.prepared_job = prepared_job
+
         self.last_updated = last_updated
         self.keep_execution_dir = keep_execution_dir
         self.container_version = container_version
         self.container_type = container_type
         self.engine = engine
         self.engine_id = engine_id
-        self.configuration = configuration
-        self.db_config = db_config
+        self.db_configuration = db_configuration
         self.name = name
         self.error = error
 
@@ -55,7 +61,7 @@ class SubmissionDbMetadata(KVDatabaseObject):
             "engine",
             "configuration",
             "container_type",
-            "db_config",
+            "db_type",
             "start",
             "status",
         }
@@ -78,6 +84,16 @@ class SubmissionMetadataDbProvider(KvDB):
         )
 
         self.metadata = metadata if metadata is not None else self.get()
+
+    def get_uncached_status(self) -> TaskStatus:
+        scopes_dict = {**self._scopes, "id": "status"}
+        scope_keys = list(scopes_dict.keys())
+        scopes = " AND ".join(f"{k} = ?" for k in scope_keys)
+        scope_values = [scopes_dict[k] for k in scope_keys]
+        query = f"SELECT value FROM {self._tablename} WHERE {scopes}"
+        with self.with_cursor() as cursor:
+            row = cursor.execute(query, scope_values).fetchone()
+            return unpickle_obj(row[0])
 
     def set_metadata(self, obj: SubmissionDbMetadata):
         self.metadata = obj

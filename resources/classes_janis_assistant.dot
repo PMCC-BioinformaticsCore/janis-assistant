@@ -97,7 +97,7 @@ rankdir=BT
 "102" [label="{RunStatusUpdate|date : datetime, NoneType\lrun_id\lstatus\lsubmission_id\l|keymap(cls)\ltable_schema(cls)\l}", shape="record"];
 "103" [label="{S3FileScheme|\l|get_file_size(path)\lis_valid_prefix(prefix)\lmkdirs(directory)\l}", shape="record"];
 "104" [label="{SSHFileScheme|connectionstring\l|cp_from(source, dest, force, report_progress)\lcp_to(source, dest, force, report_progress)\lget_file_size(path)\lis_valid_prefix(prefix)\lmakedir(location)\lmkdirs(directory)\lrm_dir(directory)\l}", shape="record"];
-"105" [label="{Serializable|key_map : dict\lparse_types : dict\l|from_dict(cls, d)\loutput()\lserialize(key, value)\lserialize_dict(d, km)\lto_dict()\l}", shape="record"];
+# "105" [label="{Serializable|key_map : dict\lparse_types : dict\l|from_dict(cls, d)\loutput()\lserialize(key, value)\lserialize_dict(d, km)\lto_dict()\l}", shape="record"];
 "106" [label="{Services|\l|to_dict()\l}", shape="record"];
 "110" [label="{Singularity|containerdir : NoneType\ldockerid : NoneType\linstancename\lrun_logger : NoneType, ProcessLogger\l|container_path()\lensure_downloaded()\lexec_command(command)\lget_build_instructions_for(containerlocation, docker)\lget_container_type()\lrunlogger_didexit(rc)\lstart_container()\lstop_container()\ltest_available_by_getting_version()\l}", shape="record"];
 "111" [label="{SingularityEnvironmentTemplate|singularity_build_instructions\lsingularity_container_dir : str, NoneType, bytes\lsingularity_load_instructions : NoneType\l|}", shape="record"];
@@ -122,7 +122,6 @@ rankdir=BT
 "152" [label="{WorkflowManagerPath|\l|}", shape="record"];
 "153" [label="{WorkflowOutputModel|extension\lid_\lis_copyable\lnew_path\loriginal_path\loutput_folder : str, NoneType\loutput_name : str, NoneType\lrun_id\lsecondaries\lsubmission_id\ltimestamp : datetime, NoneType\lvalue : NoneType\l|format()\lkeymap(cls)\ltable_schema(cls)\l}", shape="record"];
 
-"14" -> "13" [arrowhead="empty", arrowtail="none"];
 "30" -> "22" [arrowhead="empty", arrowtail="none"];
 "22" -> "21" [arrowhead="empty", arrowtail="none"];
 "20" -> "21" [arrowhead="empty", arrowtail="none"];
@@ -165,7 +164,7 @@ rankdir=BT
 "23" -> "18" [arrowhead="empty", arrowtail="none"];
 "110" -> "18" [arrowhead="empty", arrowtail="none"];
 # JanisConfiguration
-"46" -> "68"
+"46" -> "68" [arrowhead="empty", arrowtail="none"];
 "69" -> "68" [arrowhead="empty", arrowtail="none"];
 "70" -> "68" [arrowhead="empty", arrowtail="none"];
 "71" -> "68" [arrowhead="empty", arrowtail="none"];
@@ -194,6 +193,7 @@ rankdir=BT
 "65" -> "91" [arrowhead="empty", arrowtail="none"];
 "48" -> "49" [arrowhead="empty", arrowtail="none"];
 "97" -> "49" [arrowhead="empty", arrowtail="none"];
+"144" -> "145" [arrowhead="empty", arrowtail="none"];
 
 # CromwellConfiguration
 "0" -> "26" [arrowhead="empty", arrowtail="none"];
@@ -221,6 +221,7 @@ rankdir=BT
 # Workflow manager
 "84" -> "151" [arrowhead="empty", arrowtail="none"];
 "87" -> "151" [arrowhead="empty", arrowtail="none"];
+"152" -> "151" [arrowhead="empty", arrowtail="none"];
 # Database models
 "33" -> "32" [arrowhead="empty", arrowtail="none"];
 "77"  -> "32" [arrowhead="empty", arrowtail="none"];
@@ -231,6 +232,16 @@ rankdir=BT
 "150" -> "32" [arrowhead="empty", arrowtail="none"];
 "153" -> "32" [arrowhead="empty", arrowtail="none"];
 "118" -> "32" [arrowhead="empty", arrowtail="none"];
+"102" -> "32" [arrowhead="empty", arrowtail="none"];
+"149" -> "63" [arrowhead="empty", arrowtail="none"];
+"150" -> "76" [arrowhead="empty", arrowtail="none"];
+"77" -> "76" [arrowhead="empty", arrowtail="none"];
+"153" -> "89" [arrowhead="empty", arrowtail="none"];
+"99" -> "75" [arrowhead="empty", arrowtail="none"];
+"100" -> "98" [arrowhead="empty", arrowtail="none"];
+"102" -> "101" [arrowhead="empty", arrowtail="none"];
+"118" -> "120" [arrowhead="empty", arrowtail="none"];
+"116" -> "114" [arrowhead="empty", arrowtail="none"];
 
 # Database providers
 "79" -> "37" [arrowhead="empty", arrowtail="none"];
@@ -242,19 +253,21 @@ rankdir=BT
 "98" -> "38" [arrowhead="empty", arrowtail="none"];
 "101" -> "38" [arrowhead="empty", arrowtail="none"];
 "114" -> "38" [arrowhead="empty", arrowtail="none"];
+"66" -> "38" [arrowhead="empty", arrowtail="none"];
 "115" -> "79" [arrowhead="empty", arrowtail="none"];
 "120" -> "38" [arrowhead="empty", arrowtail="none"];
-"63" -> "148" [arrowhead="empty", arrowtail="none"];
-"75" -> "148" [arrowhead="empty", arrowtail="none"];
-"76" -> "148" [arrowhead="empty", arrowtail="none"];
-"89" -> "148" [arrowhead="empty", arrowtail="none"];
-"98" -> "148" [arrowhead="empty", arrowtail="none"];
-"101" -> "148" [arrowhead="empty", arrowtail="none"];
-"114" -> "148" [arrowhead="empty", arrowtail="none"];
-"115" -> "148" [arrowhead="empty", arrowtail="none"];
-"120" -> "148" [arrowhead="empty", arrowtail="none"];
+"148" -> "63" [arrowhead="empty", arrowtail="none"];
+"148" -> "75" [arrowhead="empty", arrowtail="none"];
+"148" -> "76" [arrowhead="empty", arrowtail="none"];
+"148" -> "89" [arrowhead="empty", arrowtail="none"];
+"148" -> "98" [arrowhead="empty", arrowtail="none"];
+"148" -> "101" [arrowhead="empty", arrowtail="none"];
+"148" -> "114" [arrowhead="empty", arrowtail="none"];
+"148" -> "115" [arrowhead="empty", arrowtail="none"];
+"148" -> "120" [arrowhead="empty", arrowtail="none"];
+"148" -> "66" [arrowhead="empty", arrowtail="none"];
 "118" -> "17" [arrowhead="empty", arrowtail="none"];
-
+"113" -> "78" [arrowhead="empty", arrowtail="none"];
 
 # Task Status
 "151" -> "119" [arrowhead="empty", arrowtail="none"];
@@ -263,5 +276,9 @@ rankdir=BT
 "92" -> "119" [arrowhead="empty", arrowtail="none"];
 
 "66" -> "94" [arrowhead="empty", arrowtail="none"];
+
+# Batch run requirements
+"7" -> "6" [arrowhead="empty", arrowtail="none"];
+
 
 }

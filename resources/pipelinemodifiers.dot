@@ -1,0 +1,33 @@
+digraph "classes_janis_assistant_pipelinemodifiers" {
+charset="utf-8"
+rankdir=BT
+
+"6" [label="{BatchPipelineModifier|GROUPBY_FIELDNAME : str\lbatch\l|inputs_modifier(wf, inputs, hints)\ltool_modifier(tool, inputs, hints)\lvalidate_inputs(inputs, batch_inputs)\l}", shape="record"];
+"7" [label="{BatchRunRequirements|fields\lgroupby\l|}", shape="record"];
+"24" [label="{ContigChecker|check_file_existence : bool\l|do_bed_fasta_contig_check(tool, inputs)\lget_list_of_contigs_from_bed(bedfile)\lget_list_of_contigs_from_fastafai(fai_idx)\linputs_modifier(wf, inputs, hints)\l}", shape="record"];
+"48" [label="{FileFinderLocatorModifier|cache_dir\lsource_hints : list\l|determine_appropriate_source_from_hints(tool, inpid, source)\linputs_modifier(tool, inputs, hints)\l}", shape="record"];
+"49" [label="{FileLocatorModifierBase|\l|generate_file_path(cls, source, dest_dir)\lhash_filename(cls, source, date_modified)\llocalise_inputs(inpid, inptype, dest_dir, source, localise_secondary_files)\l}", shape="record"];
+"62" [label="{InputChecker|check_file_existence : bool\l|check_base_with_type(inp, intype, val, suffix)\lcheck_existence_of_files(wf, inputs)\lcheck_extensions(inpid, datatype, path)\lcheck_if_input_exists(fs, path)\linputs_modifier(wf, inputs, hints)\l}", shape="record"];
+"64" [label="{InputFileQualifierModifier|cwd\l|fully_qualify_filename_array_or_single(value)\linputs_modifier(wf, inputs, hints)\l}", shape="record"];
+"65" [label="{InputTransformerModifier|cache_dir\l|check_input_for_correctness(inpid, dt, value)\linputs_modifier(tool, inputs, hints)\ltry_get_outputs_for(inpid, wf, inputs, output_dir, description)\l}", shape="record"];
+"91" [label="{PipelineModifierBase|\l|apply(tool, inputs, hints)\lapply_many(modifiers, wf, inputs, hints)\linputs_modifier(tool, inputs, hints)\ltool_modifier(tool, inputs, hints)\l}", shape="record"];
+"97" [label="{RemoteFileLocatorModifier|cache_dir\l|inputs_modifier(tool, inputs, hints)\l}", shape="record"];
+"144" [label="{ValidationRequirements|fields\lintervals : NoneType\lreference\ltruthVCF\l|}", shape="record"];
+"145" [label="{ValidatorPipelineModifier|validation\l|tool_modifier(tool, inputs, hints)\l}", shape="record"];
+
+# Pipeline Modifiers
+"6" -> "91" [arrowhead="empty", arrowtail="none"];
+"24" -> "91" [arrowhead="empty", arrowtail="none"];
+"62" -> "91" [arrowhead="empty", arrowtail="none"];
+"64" -> "91" [arrowhead="empty", arrowtail="none"];
+"145" -> "91" [arrowhead="empty", arrowtail="none"];
+"65" -> "91" [arrowhead="empty", arrowtail="none"];
+"48" -> "49" [arrowhead="empty", arrowtail="none"];
+"97" -> "49" [arrowhead="empty", arrowtail="none"];
+"49" -> "91" [arrowhead="empty", arrowtail="none"];
+
+# Run requirements
+"7" -> "6" [arrowhead="empty", arrowtail="none"];
+"144" -> "145" [arrowhead="empty", arrowtail="none"];
+
+}

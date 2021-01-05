@@ -1,0 +1,112 @@
+digraph "classes_janis_assistant_dbmodels" {
+charset="utf-8"
+rankdir=BT
+// "3" [label="{Archivable|\l|id()\l}", shape="record"];
+"17" [label="{ConfigManager|db_path : NoneType\lis_new : bool\lreadonly : bool\l|cleanup_missing_tasks()\lcommit()\lcreate_task_base(wf, job)\ldb_connection()\lget_from_path_or_submission(submission_id, readonly, perform_path_check)\lget_from_path_or_submission_lazy(submission_id, readonly, db_path)\lget_ids(db_path)\lget_lazy_db_connection()\lget_row_for_submission_id_or_path(submission_id)\lquery_tasks(status, name)\lremove_task(task, keep_output)\lwith_cursor()\l}", shape="record"];
+"32" [label="{DatabaseObject|\l|deserialize(cls, keys, row)\lkeymap(cls)\lprepare_insert()\ltable_schema(cls)\l}", shape="record"];
+"33" [label="{DatabaseObjectField|dbalias\lencode : bool\lis_id_key : bool\lis_primary : bool\lname\l|}", shape="record"];
+"35" [label="{DateUtil|\l|as_utc(d)\lmax()\lnow()\lparse_iso(d)\lsecs_difference(a, b)\l}", shape="record"];
+"37" [label="{DbBase|\l|commit()\lwith_cursor()\l}", shape="record"];
+"38" [label="{DbProviderBase|\l|filter_updates(jobs, add_inserts_to_cache)\lget(keys, where, allow_operational_errors)\lget_id_keys()\lget_primary_keys()\linsert_or_update_many(els)\lpopulate_cache()\lpopulate_cache_if_required()\ltable_schema()\l}", shape="record"];
+"39" [label="{DefaultHelpArgParser|\l|error(message)\l}", shape="record"];
+"63" [label="{InputDbProvider|CURRENT_SCHEMA_VERSION : int\lsubmission_id\l|get_single(id_, run_id)\linsert_inputs_from_dict(inputs, run_id, file_input_ids)\lupgrade_schema(from_version)\l}", shape="record"];
+"66" [label="{InternalProgressDb|CURRENT_SCHEMA_VERSION : int\lsubmission_id\l|get_all()\lhas(key)\lset(key)\ltable_schema()\lupgrade_schema(from_version)\l}", shape="record"];
+"75" [label="{JobDbProvider|job_cache_last_idx : int\ljob_cache_warnings : list\lsubmission_id\l|filter_updates(jobs, add_inserts_to_cache)\lget_all(run_id, additional_where)\lget_all_children(jids)\lget_all_mapped()\lget_single(id_, run_id)\lget_with_children(jid)\lnumber_of_jobs()\lpopulate_cache()\lpopulate_cache_if_required()\lupgrade_schema(from_version)\l}", shape="record"];
+"76" [label="{JobLabelDbProvider|CURRENT_SCHEMA_VERSION : int\lsubmission_id\l|get_by_run_id(run_id)\l}", shape="record"];
+"77" [label="{JobLabelModel|job_id\llabels : list\lrun_id\lsubmission_id\l|keymap(cls)\ltable_schema(cls)\l}", shape="record"];
+"78" [label="{KVDatabaseObject|\l|decode_rows_to_dict(cls, rows)\ldiscard_changes()\lencode_field_dict(cls, d)\lfields_to_encode(cls)\lfields_to_ignore(cls)\lget_encoded_changes()\lget_encoded_rows()\lupdate_from_rows(rows)\l}", shape="record"];
+"79" [label="{KvDB|attributes_to_persist : dict\l|get_rows()\lsave_encoded_rows(rows)\lschema()\l}", shape="record"];
+"84" [label="{MySql|MYSQL_CONF : str\lMYSQL_CONTAINERNAME : str\lSTARTUP_SCRIPT : str\lconfdir\lcontainer\ldatadirectory\lforwardedport\lmysqldoverride\lsqlconfdir\lstartupscriptsdir\l|prepare_mysql_dirs()\lstart()\lstop()\l}", shape="record"];
+"87" [label="{NotificationManager|\l|notify_status_change(status, metadata, additional_information)\lsend_email(subject, body)\l}", shape="record"];
+"89" [label="{OutputDbProvider|CURRENT_SCHEMA_VERSION : int\lsubmission_id\l|insert_many(outputs)\lupdate_paths(run_id, tag, original_path, new_path, value)\lupgrade_schema(from_version)\l}", shape="record"];
+"92" [label="{PreparedJob|allow_empty_container : NoneType\lbatchrun : BatchRunRequirements, NoneType\lcall_caching_enabled : NoneType\lconfig_dir : NoneType\lcontainer_override : NoneType\lcontainer_type\lcromwell : NoneType, JanisConfigurationCromwell, dict\ldb_path : NoneType\ldigest_cache_location : NoneType\lengine : NoneType\lenvironment : dict, NoneType, JanisConfigurationEnvironment\lexecution_dir : NoneType\lhints : NoneType\linputs : NoneType\lkeep_intermediate_files : NoneType\lnotifications : NoneType, JanisConfigurationNotifications, dict\loutput_dir : NoneType\lpost_run_script : NoneType\lrecipes : NoneType\lrun_in_background : NoneType\lshould_watch_if_background : bool\lskip_digest_cache : NoneType\lskip_digest_lookup : NoneType\lskip_file_check : NoneType\lstore_in_central_db : NoneType\lstrict_inputs : bool\ltemplate : NoneType, JanisConfigurationTemplate, dict\lvalidation : NoneType, ValidationRequirements\l|get_database_config_helper()\linstance()\l}", shape="record"];
+"94" [label="{ProgressKeys|\l|}", shape="record"];
+"98" [label="{RunDbProvider|\l|insert_or_update_many(els)\l}", shape="record"];
+"99" [label="{RunJobModel|analysis : NoneType\lattempt : NoneType, int\lbackend : NoneType\lbatchid : NoneType\lcached : NoneType\lcontainer : NoneType\lcpu : NoneType\lerror : NoneType\levents : NoneType\lfinish : datetime, NoneType\lid_\ljobs : NoneType\llastupdated : datetime, NoneType\lmemory : NoneType\lname\lparent\lreturncode : NoneType\lrun_id\lscript : NoneType\lshard : int, NoneType\lstart : NoneType, datetime\lstatus\lstderr : NoneType\lstdout : NoneType\lsubmission_id\lworkdir : NoneType\l|format(pre, monochrome, brief, layer, njobs_in_parent)\lfrom_row(row)\lkeymap(cls)\lset_ids(submission_id, run_id)\ltable_schema(cls)\l}", shape="record"];
+"100" [label="{RunModel|DEFAULT_ID : str\lengine_id\lerror : NoneType\levents : NoneType\lexecution_dir\lfinish : NoneType\lid_\linputs : NoneType\ljobs : NoneType\llabels : NoneType\llast_updated : NoneType, datetime\lname\loutputs : NoneType\lstart : NoneType\lstatus\lsubmission_id\ltags : NoneType\l|apply_ids_to_children()\lformat(tb)\lkeymap(cls)\lset_events(events)\ltable_schema(cls)\l}", shape="record"];
+"101" [label="{RunStatusDbProvider|submission_id\l|update(run_id, status)\l}", shape="record"];
+"102" [label="{RunStatusUpdate|date : datetime, NoneType\lrun_id\lstatus\lsubmission_id\l|keymap(cls)\ltable_schema(cls)\l}", shape="record"];
+# "105" [label="{Serializable|key_map : dict\lparse_types : dict\l|from_dict(cls, d)\loutput()\lserialize(key, value)\lserialize_dict(d, km)\lto_dict()\l}", shape="record"];
+"113" [label="{SubmissionDbMetadata|container_type : NoneType\lcontainer_version : NoneType\ldb_configuration : NoneType\lengine : NoneType\lengine_id : NoneType\lerror : NoneType\lkeep_execution_dir : bool\llast_updated : NoneType\lname : NoneType\lprepared_job : NoneType\lstatus : NoneType\lsubmission_inputs : NoneType\lsubmission_resources : NoneType\lsubmission_workflow : NoneType\l|fields_to_encode(cls)\l}", shape="record"];
+"114" [label="{SubmissionDbProvider|CURRENT_SCHEMA_VERSION : int\l|get_all()\lget_by_id(submission_id, allow_operational_errors)\lget_existing_ids()\lget_latest()\lget_single(id_)\linsert(submission_id)\l}", shape="record"];
+"115" [label="{SubmissionMetadataDbProvider|metadata : NoneType\l|get()\lget_uncached_status()\lsave()\lsave_changes()\lset_metadata(obj)\lupdate()\l}", shape="record"];
+"116" [label="{SubmissionModel|author\lengine_type\lengine_url : NoneType\lerror : NoneType\lexecution_dir\lid_\llabels\lname : NoneType\loutput_dir\lruns : list\lstatus : NoneType\ltags\ltimestamp : NoneType, datetime\l|format()\lget_names()\lkeymap(cls)\ltable_schema(cls)\l}", shape="record"];
+"118" [label="{TaskRow|execution_dir\loutput_dir\lsubmission_id\ltimestamp : datetime, NoneType\l|keymap(cls)\ltable_schema(cls)\l}", shape="record"];
+"119" [label="{TaskStatus|\l|all()\lcollapse_states(cls, states)\lfinal_states()\lget_exit_code()\lis_in_final_state()\lnotification_states()\lshould_notify()\lsymbol()\lto_hexcolor()\lto_string()\l}", shape="record"];
+"120" [label="{TasksDbProvider|table_name : str\l|get_all_tasks()\lget_by_id(id_)\linsert_task(task)\lremove_by_id(id_)\lremove_by_ids(ids)\l}", shape="record"];
+"148" [label="{WorkflowDbManager|connection : NoneType\lexec_path\linputsDB : InputDbProvider\ljoblabelsDB : JobLabelDbProvider\ljobsDB : JobDbProvider\loutputsDB : OutputDbProvider\lprogressDB : InternalProgressDb\lreadonly : bool\lrunevents : RunStatusDbProvider\lruns : RunDbProvider\lsubmission_id\lsubmission_metadata : SubmissionMetadataDbProvider\lsubmissions : SubmissionDbProvider\l|close()\lcommit()\ldb_connection()\lflatten_jobs(jobs)\lget_latest_submission_id(path)\lget_metadata()\lget_sql_path()\lget_sql_path_base(exec_path)\lget_uncached_status()\lget_workflow_metadatadb(execpath, wid, readonly)\lsave_metadata(metadata)\lwith_cursor()\l}", shape="record"];
+"149" [label="{WorkflowInputModel|id_\lrun_id\lsize : NoneType\lsubmission_id\lvalue\l|keymap(cls)\ltable_schema(cls)\l}", shape="record"];
+"150" [label="{WorkflowJobEventModel|jid\lstatus\ltimestamp : NoneType, datetime\l|from_row(row)\l}", shape="record"];
+"151" [label="{WorkflowManager|HEALTH_CHECK_INTERVAL_SECONDS : int\lHEALTH_CHECK_STUCK_CROMWELL_MIN_RUNNING_TIME_SECONDS : int\lMAX_ENGINE_ATTEMPTS : int\ldatabase : WorkflowDbManager\ldbcontainer : NoneType, MySql\lengine : NoneType\lexecution_dir : NoneType, bytes, str\lfilescheme : LocalFileScheme\lhealth_check_meta : dict, NoneType\lmain_queue : Queue\lsubmission_id\l|abort()\lcheck_cromwell_stuck_running_jobs()\lcleanup_execution()\lcopy_logs_if_required()\lcopy_output(fs, output_dir, outputid, output_name_prefix, output_folders, secondaries, extension, iscopyable, engine_output, shard)\lcopy_outputs_if_required()\lcreate_dir_structure(path)\ldo_health_check()\levaluate_and_save_output_params(wf, inputs, run_id)\levaluate_job_labels(tool, inputs, run_id)\levaluate_output_params(wf, inputs, submission_id, run_id)\levaluate_output_selector(selector, inputs)\lfrom_janis(submission_id, tool, prepared_submission, engine, wait)\lfrom_path_get_latest_manager(path, readonly)\lfrom_path_get_latest_submission_id(path)\lfrom_path_with_submission_id(path, submission_id, readonly)\lget_abort_semaphore_path()\lget_engine_id()\lget_log_path_for_level(level)\lget_meta_call()\lget_path_for_component(component)\lget_path_for_component_and_dir(path, component)\lget_pause_semaphore_path()\lget_task_path()\lget_task_path_safe()\lhas(outdir, submission_id, status, name)\llog_dbtaskinfo()\lmark_aborted(execution_dir, wid)\lmark_paused(execution_dir)\lpoll_stored_metadata_with_blessed(blessed, seconds)\lpoll_stored_metadata_with_clear(seconds)\lprepare_and_output_workflow_to_evaluate_if_required(run_id, tool, translator, validation, batchrun, hints, additional_inputs, cache_location, max_cores, max_memory, max_duration, allow_empty_container, container_override, check_files, skip_digest_lookup, skip_digest_cache)\lprepare_container_override(tool, container_override, cache_location, skip_digest_cache)\lprocess_completed_task()\lremove_semaphores()\lresume()\lrun_post_run_script()\lsave_metadata(meta)\lsave_metadata_if_required()\lset_status(status, force_notification, error, additional_information)\lshow_status_screen()\lstart_engine_if_required()\lstart_mysql_and_prepare_cromwell_config()\lstart_or_submit(run_in_background, watch)\lstop_engine_and_db()\lsubmit_workflow_if_required()\lsuspend_workflow()\lwatch()\lwrite_prepared_submission_file(prepared_job, output_dir, force_write)\l}", shape="record"];
+"152" [label="{WorkflowManagerPath|\l|}", shape="record"];
+"153" [label="{WorkflowOutputModel|extension\lid_\lis_copyable\lnew_path\loriginal_path\loutput_folder : str, NoneType\loutput_name : str, NoneType\lrun_id\lsecondaries\lsubmission_id\ltimestamp : datetime, NoneType\lvalue : NoneType\l|format()\lkeymap(cls)\ltable_schema(cls)\l}", shape="record"];
+
+"38" -> "37" [arrowhead="empty", arrowtail="none"];
+"113" -> "115" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="metadata", style="solid"];
+
+
+
+
+# Workflow manager
+"84" -> "151" [arrowhead="empty", arrowtail="none"];
+"87" -> "151" [arrowhead="empty", arrowtail="none"];
+"152" -> "151" [arrowhead="empty", arrowtail="none"];
+# Database models
+"33" -> "32" [arrowhead="empty", arrowtail="none"];
+"77"  -> "32" [arrowhead="empty", arrowtail="none"];
+"99"  -> "32" [arrowhead="empty", arrowtail="none"];
+"100" -> "32" [arrowhead="empty", arrowtail="none"];
+"116" -> "32" [arrowhead="empty", arrowtail="none"];
+"149" -> "32" [arrowhead="empty", arrowtail="none"];
+"150" -> "32" [arrowhead="empty", arrowtail="none"];
+"153" -> "32" [arrowhead="empty", arrowtail="none"];
+"118" -> "32" [arrowhead="empty", arrowtail="none"];
+"102" -> "32" [arrowhead="empty", arrowtail="none"];
+"149" -> "63" [arrowhead="empty", arrowtail="none"];
+"150" -> "76" [arrowhead="empty", arrowtail="none"];
+"77" -> "76" [arrowhead="empty", arrowtail="none"];
+"153" -> "89" [arrowhead="empty", arrowtail="none"];
+"99" -> "75" [arrowhead="empty", arrowtail="none"];
+"100" -> "98" [arrowhead="empty", arrowtail="none"];
+"102" -> "101" [arrowhead="empty", arrowtail="none"];
+"118" -> "120" [arrowhead="empty", arrowtail="none"];
+"116" -> "114" [arrowhead="empty", arrowtail="none"];
+
+# Database providers
+"79" -> "37" [arrowhead="empty", arrowtail="none"];
+
+"63" -> "38" [arrowhead="empty", arrowtail="none"];
+"75" -> "38" [arrowhead="empty", arrowtail="none"];
+"76" -> "38" [arrowhead="empty", arrowtail="none"];
+"89" -> "38" [arrowhead="empty", arrowtail="none"];
+"98" -> "38" [arrowhead="empty", arrowtail="none"];
+"101" -> "38" [arrowhead="empty", arrowtail="none"];
+"114" -> "38" [arrowhead="empty", arrowtail="none"];
+"66" -> "38" [arrowhead="empty", arrowtail="none"];
+"115" -> "79" [arrowhead="empty", arrowtail="none"];
+"120" -> "38" [arrowhead="empty", arrowtail="none"];
+"148" -> "63" [arrowhead="empty", arrowtail="none"];
+"148" -> "75" [arrowhead="empty", arrowtail="none"];
+"148" -> "76" [arrowhead="empty", arrowtail="none"];
+"148" -> "89" [arrowhead="empty", arrowtail="none"];
+"148" -> "98" [arrowhead="empty", arrowtail="none"];
+"148" -> "101" [arrowhead="empty", arrowtail="none"];
+"148" -> "114" [arrowhead="empty", arrowtail="none"];
+"148" -> "115" [arrowhead="empty", arrowtail="none"];
+"148" -> "120" [arrowhead="empty", arrowtail="none"];
+"148" -> "66" [arrowhead="empty", arrowtail="none"];
+"118" -> "17" [arrowhead="empty", arrowtail="none"];
+"113" -> "78" [arrowhead="empty", arrowtail="none"];
+
+# Task Status
+"151" -> "119" [arrowhead="empty", arrowtail="none"];
+"99" -> "119" [arrowhead="empty", arrowtail="none"];
+"116" -> "119" [arrowhead="empty", arrowtail="none"];
+"92" -> "119" [arrowhead="empty", arrowtail="none"];
+
+"66" -> "94" [arrowhead="empty", arrowtail="none"];
+
+
+
+
+}

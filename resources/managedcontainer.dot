@@ -1,0 +1,15 @@
+digraph "classes_janis_assistant_container" {
+charset="utf-8"
+rankdir=BT
+
+"18" [label="{Container|bindpoints : dict\lcontainer\lenvironment_variables : dict\lexposedports : dict\linstancename : NoneType\lrunning : bool\l|ensure_downloaded()\lexec_command(command)\lget_container_type()\lstart_container()\lstop_container()\ltest_available_by_getting_version()\l}", shape="record"];
+"23" [label="{ContainerType|\l|}", shape="record"];
+"41" [label="{Docker|dockerid : str, NoneType\lrunning : bool\l|ensure_downloaded()\lexec_command(command)\lget_container_type()\lstart_container()\lstop_container()\ltest_available_by_getting_version()\l}", shape="record"];
+"110" [label="{Singularity|containerdir : NoneType\ldockerid : NoneType\linstancename\lrun_logger : NoneType, ProcessLogger\l|container_path()\lensure_downloaded()\lexec_command(command)\lget_build_instructions_for(containerlocation, docker)\lget_container_type()\lrunlogger_didexit(rc)\lstart_container()\lstop_container()\ltest_available_by_getting_version()\l}", shape="record"];
+
+# Containers
+"41" -> "18" [arrowhead="empty", arrowtail="none"];
+"23" -> "18" [arrowhead="empty", arrowtail="none"];
+"110" -> "18" [arrowhead="empty", arrowtail="none"];
+
+}

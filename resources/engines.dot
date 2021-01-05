@@ -1,0 +1,79 @@
+digraph "classes_janis_assistant_engines" {
+charset="utf-8"
+rankdir=BT
+"0" [label="{AWS|application_name : str\lauths : list\lkey_map : dict\lregion\l|}", shape="record"];
+"2" [label="{Akka|\l|default(cls)\lto_dict()\l}", shape="record"];
+"4" [label="{Auth|access_key : NoneType\lkey_map : dict\lname : str\lscheme : str\lsecret_key : NoneType\l|}", shape="record"];
+"5" [label="{Backend|default : str\lproviders : _GenericAlias\l|with_new_local_exec_dir(execution_directory)\l}", shape="record"];
+"8" [label="{BlacklistCache|concurrency : NoneType\lenabled : NoneType\lsize : NoneType\lttl : NoneType\l|}", shape="record"];
+"9" [label="{CWLTool|config : NoneType\lprocess : NoneType\lprocess_id : int\ltaskmeta : dict\l|find_or_generate_config(config)\lmetadata(identifier)\loutputs_task(identifier)\lpoll_task(identifier)\lprocess_potential_out(run_id, key, out)\lstart_engine()\lstart_from_paths(wid, source_path, input_path, deps_path)\lstop_engine()\ltask_did_exit(logger, status)\ltask_did_update(logger, job)\lterminate_task(identifier)\ltest_connection()\l}", shape="record"];
+"10" [label="{CWLToolConfiguration|add_ga4gh_tool_registry : NoneType\lcachedir : NoneType\lcidfile_dir : NoneType\lcidfile_prefix : NoneType\lcompute_checksum : NoneType\lcopy_outputs : NoneType\lcustom_net : NoneType\ldebug : NoneType\ldefault_container : NoneType\ldisable_color : NoneType\ldisable_pull : NoneType\lenable_color : NoneType\lenable_dev : NoneType\lenable_ext : NoneType\lenable_pull : NoneType\leval_timeout : NoneType\lforce_docker_pull : NoneType\lfull_name : NoneType\ljs_console : NoneType\ljs_hint_options_file : NoneType\lleave_container : NoneType\lleave_outputs : NoneType\lleave_tmpdir : NoneType\lmake_template : NoneType\lmove_outputs : NoneType\lno_container : NoneType\lno_match_user : NoneType\lno_read_only : NoneType\lnon_strict : NoneType\lon_error : NoneType\lorcid : NoneType\loutdir : NoneType\loverrides : NoneType\lpack : NoneType\lparallel : NoneType\lprefix_map : dict\lpreserve_environment : NoneType\lprint_deps : NoneType\lprint_dot : NoneType\lprint_input_deps : NoneType\lprint_pre : NoneType\lprint_rdf : NoneType\lprint_subgraph : NoneType\lprint_targets : NoneType\lprovenance : NoneType\lquiet : NoneType\lrdf_serializer : NoneType\lrelative_deps : NoneType\lrelax_path_checks : NoneType\lrm_container : NoneType\lrm_tmpdir : NoneType\lsingularity : NoneType\lskip_schemas : NoneType\lstrict : NoneType\ltarget : NoneType\ltimestamps : NoneType\ltmp_outdir_prefix : NoneType\ltmpdir_prefix : NoneType\ltool_help : NoneType\luser_space_docker_cmd : NoneType\lvalidate : NoneType\lverbose : NoneType\lversion : NoneType\l|build_command_line(workflow, inputs, inlineInputs)\l}", shape="record"];
+"11" [label="{CWLToolLogger|error : NoneType\lmetadata_callback\loutputs : NoneType\lshould_terminate : bool\lsid\lstatusupdateregex\lworkflow_scope : list\l|process_metadataupdate_if_match(line)\lrun()\l}", shape="record"];
+"12" [label="{Caching|check_sibling_md5 : NoneType\lduplication_strategy : list\lhashing_strategy : NoneType\lkey_map : dict\l|}", shape="record"];
+"15" [label="{CallCaching|enabled : bool\linvalidate_bad_cache_results : NoneType\lkey_map : dict\l|}", shape="record"];
+"16" [label="{Config|check_alive : NoneType\lconcurrent_job_limit : NoneType\ldefault_runtime_attributes : NoneType\lfilesystems : NoneType\ljob_id_regex : NoneType\lkey_map : dict\lkill : NoneType\lkill_docker : NoneType\lroot : NoneType\lrun_in_background : NoneType\lruntime_attributes : str\lsubmit : NoneType\lsubmit_docker : NoneType\l|}", shape="record"];
+"25" [label="{Cromwell|config : NoneType\lconfig_path : NoneType\lconnect_to_instance : bool\lconnectionerrorcount : int\lcromwelljar : NoneType\ldb_type : NoneType\lerror_message : str, NoneType\lhost : NoneType\lis_managing_cromwell\lis_started : bool\llast_contacted : datetime, NoneType\lmetadataerrorcount : int\lpolling_interval : NoneType, int\lport : NoneType\lprocess_id : int, NoneType\lprogress_callbacks : dict\lshould_stop : bool\lstdout : list\ltimeout : int\lversion : str\l|add_callback()\lcreate_task(wid, source, inputs, dependencies, workflow_type)\ldescription()\ldid_fail(rc)\lfind_or_generate_config(identifier, config, config_path)\lfrom_url(identifier, url)\lget_latest_cromwell_url()\lget_poll_interval()\lmetadata(identifier, expand_subworkflows, metadata_export_file_path)\loutputs_task(identifier)\lparse_output(key, value)\lpoll_metadata()\lpoll_task(identifier)\lraw_metadata(identifier, expand_subworkflows, metadata_export_file_path)\lresolve_jar(cromwelljar, janiscromwellconf, configdir)\lsomething_has_happened_to_cromwell(rc)\lstart_engine(additional_cromwell_options)\lstart_from_paths(wid, source_path, input_path, deps_path)\lstop_engine()\lterminate_task(identifier)\ltest_connection()\lurl_abort(identifier)\lurl_base()\lurl_create()\lurl_metadata(identifier, expand_subworkflows)\lurl_outputs(identifier)\lurl_poll(identifier)\lurl_test()\l}", shape="record"];
+"26" [label="{CromwellConfiguration|CATCH_ERROR_COMMAND : str\lDEFAULT_LOCALIZATION_STRATEGY : list\lJOBNAME_TRANSFORM : str\ladditional_params : NoneType, str\lakka\laws : NoneType\lbackend : NoneType\lcall_caching : NoneType\ldatabase : NoneType\ldocker\lengine : NoneType\lkey_map : dict\lsystem : NoneType\lwebservice : NoneType\l|output()\l}", shape="record"];
+"27" [label="{CromwellFile|checksum : NoneType\lcontents : NoneType\lformat : NoneType\llocation\lsecondary_files : NoneType\lsize\ltype : str\l|parse(d)\l}", shape="record"];
+"28" [label="{CromwellFilesystem|\l|}", shape="record"];
+"29" [label="{CromwellMetadata|meta\l|generate_call_times()\lget_caused_by_text()\lparse(json_meta)\lparse_standard_call(cls, parentid, stepname, call)\lparse_standard_calls(cls, parentid, name, calls)\lstandard()\lunwrap_caused_by(d)\l}", shape="record"];
+"31" [label="{Database|MYSQL_URL : str\ldb : NoneType\linsert_batch_size : NoneType\lkey_map : dict\lprofile : NoneType\l|filebased_db(cls, location, connection_timeout, num_threads)\lmysql(cls, username, password, connection_timeout, database, url, maxConnections)\l}", shape="record"];
+"36" [label="{Db|connectionTimeout\ldriver\lmaxConnections : NoneType\lnumThreads : int\lnum_threads : NoneType\lpassword : NoneType\lurl\luser : NoneType\l|}", shape="record"];
+"40" [label="{Docker|hash_lookup\lkey_map : dict\l|default(cls)\l}", shape="record"];
+"43" [label="{Engine|engtype\lexecution_dir\lidentifier\lis_started : bool\lkeys_to_ignore : set\llogfile : NoneType\lprocess_id : NoneType\lprogress_callbacks : dict\l|add_callback(engine_identifier, callback)\ldescription()\lid()\lmetadata(identifier)\loutputs_task(identifier)\lpoll_task(identifier)\lstart_engine()\lstart_from_paths(wid, source_path, input_path, deps_path)\lstop_engine()\lterminate_task(identifier)\ltest_connection()\l}", shape="record"];
+"44" [label="{Engine|filesystems : dict\l|}", shape="record"];
+"45" [label="{EngineType|\l|engines()\l}", shape="record"];
+"52" [label="{Filesystem|caching : NoneType\lenabled : bool\llocalization : list, NoneType\l|default_filesystem(cache_method)\l}", shape="record"];
+"59" [label="{HashLookup|enabled : bool\lkey_map : dict\lperform_registry_lookup_if_digest_is_provided : bool\l|}", shape="record"];
+"67" [label="{Io|key_map : dict\lnumber_of_attempts : NoneType\lnumber_of_requests : NoneType\lper : NoneType\l|}", shape="record"];
+"83" [label="{MetadataService|db_batch_size : NoneType\ldb_flush_rate : NoneType\lkey_map : dict\lread_row_number_safety_threshold : NoneType\lsummary_refesh_interval : NoneType\lsummary_refresh_limit : NoneType\l|to_dict()\l}", shape="record"];
+"93" [label="{ProcessLogger|error_keyword : NoneType\lexit_function : NoneType\llast_write : datetime\llogfp\lprefix\lprocess\lrc : NoneType\lshould_terminate : bool\l|run()\lterminate()\l}", shape="record"];
+"95" [label="{Provider|actor_factory : str\lconfig : NoneType\lkey_map : dict\l|aws(cls, s3_bucket, queue_arn)\lsingularity(cls, singularityloadinstructions, singularitycontainerdir, buildinstructions, execution_directory, call_caching_method)\lslurm(cls, jobqueues, jobemail, afternotokaycatch, call_caching_method, sbatch)\lslurm_singularity(cls, singularitycontainerdir, jobqueues, buildinstructions, jobemail, singularityloadinstructions, afternotokaycatch, call_caching_method, sbatch)\ltorque(cls, queues, call_caching_method, afternotokaycatch, jobemail)\ltorque_singularity(cls, queues, singularityloadinstructions, singularitycontainerdir, buildinstructions, jobemail, afternotokaycatch, call_caching_method)\l}", shape="record"];
+"106" [label="{Services|\l|to_dict()\l}", shape="record"];
+"117" [label="{System|abort_jobs_on_terminate : NoneType\lcromwell_id : NoneType\lcromwell_id_random_suffix : NoneType\lfile_hash_cache : NoneType\lgraceful_server_shutdown : NoneType\lio : NoneType\ljob_shell : NoneType\lkey_map : dict\lmax_concurrent_workflows : NoneType\lmax_workflow_launch_count : NoneType\lnew_workflow_poll_rate : NoneType\lnumber_of_cache_read_workers : NoneType\lnumber_of_workflow_log_copy_workers : NoneType\lworkflow_restart : NoneType\l|}", shape="record"];
+"139" [label="{Toil|loglevel : NoneType\lscale : NoneType\lwid\l|metadata(identifier)\loutputs_task(identifier)\lpoll_task(identifier)\lstart_engine()\lstart_from_paths(wid, source_path, input_path, deps_path)\lstart_from_task(task)\lstop_engine()\lterminate_task(identifier)\l}", shape="record"];
+"146" [label="{Webservice|binding_timeout : NoneType\linstance_name : NoneType\linterface : NoneType\lkey_map : dict\lport : NoneType\l|}", shape="record"];
+
+
+"45" -> "44" [arrowhead="empty", arrowtail="none"];
+# Process Logger
+"11" -> "93" [arrowhead="empty", arrowtail="none"];
+"25" -> "93" [arrowhead="empty", arrowtail="none"];
+# CWLTool
+"9" -> "43"  [arrowhead="empty", arrowtail="none"];
+"10" -> "9" [arrowhead="empty", arrowtail="none"];
+"9" -> "11" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="_logger", style="solid"];
+
+# Toil
+"139" -> "43" [arrowhead="empty", arrowtail="none"];
+# Cromwell
+"25" -> "43" [arrowhead="empty", arrowtail="none"];
+"26" -> "25" [arrowhead="empty", arrowtail="none"];
+"29" -> "25" [arrowhead="empty", arrowtail="none"];
+"27" -> "29" [arrowhead="empty", arrowtail="none"];
+
+
+
+# CromwellConfiguration
+"0" -> "26" [arrowhead="empty", arrowtail="none"];
+"2" -> "26" [arrowhead="empty", arrowtail="none"];
+"5" -> "26" [arrowhead="empty", arrowtail="none"];
+"31" -> "26" [arrowhead="empty", arrowtail="none"];
+"44" -> "26" [arrowhead="empty", arrowtail="none"];
+"40" -> "26" [arrowhead="empty", arrowtail="none"];
+"15" -> "26" [arrowhead="empty", arrowtail="none"];
+"106" -> "26" [arrowhead="empty", arrowtail="none"];
+"117" -> "26" [arrowhead="empty", arrowtail="none"];
+"146" -> "26" [arrowhead="empty", arrowtail="none"];
+"28" -> "26" [arrowhead="empty", arrowtail="none"];
+"4"  -> "0" [arrowhead="empty", arrowtail="none"];
+"95" -> "5" [arrowhead="empty", arrowtail="none"];
+"16" -> "95" [arrowhead="empty", arrowtail="none"];
+"52" -> "16" [arrowhead="empty", arrowtail="none"];
+"12" -> "52" [arrowhead="empty", arrowtail="none"];
+"36" -> "31" [arrowhead="empty", arrowtail="none"];
+"59" -> "40" [arrowhead="empty", arrowtail="none"];
+"8" -> "15" [arrowhead="empty", arrowtail="none"];
+"83" -> "106" [arrowhead="empty", arrowtail="none"];
+"67" -> "117" [arrowhead="empty", arrowtail="none"];
+}

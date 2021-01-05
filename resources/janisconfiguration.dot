@@ -1,0 +1,32 @@
+digraph "classes_janis_assistant_janis_config" {
+charset="utf-8"
+rankdir=BT
+
+"34" [label="{DatabaseTypeToUse|\l|}", shape="record"];
+"46" [label="{EnvVariables|config_dir : str\lconfig_path : str\lcromwelljar : str\ldb_script_generator : str\ldb_script_generator_cleanup : str\ldefault_template : str\lexec_dir : str\loutput_dir : str\lrecipe_directory : str\lrecipe_paths : str\lsearch_path : str\l|default()\lresolve(include_default)\l}", shape="record"];
+"60" [label="{HashableEnum|\l|to_yaml()\l}", shape="record"];
+"68" [label="{JanisConfiguration|call_caching_enabled : bool\lconfig_dir\lcontainer : NoneType, Docker, Singularity\lcromwell : NoneType, dict\ldb_path : NoneType\ldigest_cache_location : NoneType\lengine : str\lenvironment : NoneType, dict\lexecution_dir\lnotifications : NoneType, dict\loutput_dir\lrecipes : NoneType, dict\lrun_in_background : NoneType\lsearch_paths : list\ltemplate : dict, NoneType\l|default()\lfrom_path(path)\lget_value_for_key(d, key, default)\linitial_configuration(path, potential_paths)\l}", shape="record"];
+"69" [label="{JanisConfigurationCromwell|additional_params : NoneType\lcall_caching_method : str\lconfig_path : NoneType\ldb_type\ljar : NoneType\lmemory_mb : NoneType\lmysql_credentials : NoneType\lpolling_interval : NoneType\ltimeout : int\lurl : NoneType\l|get_database_config_helper()\l}", shape="record"];
+"70" [label="{JanisConfigurationEnvironment|max_cores : NoneType\lmax_duration : NoneType\lmax_memory : NoneType\l|}", shape="record"];
+"71" [label="{JanisConfigurationNotifications|email : NoneType\lfrom_email : str\lmail_program : NoneType\l|}", shape="record"];
+"72" [label="{JanisConfigurationRecipes|VALID_YAML_EXTENSIONS : set\ldirectories : str, NoneType, bytes\lpaths : str, NoneType, bytes\lrecipes : dict\l|get_cascaded_dict_from_yamls(files)\lget_recipe_for_keys(keys)\lload_recipes(force)\lparseable_yaml_filename_if_valid(path)\l}", shape="record"];
+"73" [label="{JanisConfigurationTemplate|id\ltemplate\ltemplateconfig\l|to_dict()\l}", shape="record"];
+"74" [label="{JanisDatabaseConfigurationHelper|db_type\lmysql_config : NoneType\l|get_config_for_existing_config()\lget_config_for_filebased_db(path)\lget_config_for_managed_mysql(url)\lget_config_from_script(execution_dir)\lrun_delete_database_script(execution_dir)\lwhich_db_to_use()\l}", shape="record"];
+"85" [label="{MySqlInstanceConfig|dbname : str\lpassword\lurl\lusername\l|}", shape="record"];
+
+# JanisConfiguration
+"46" -> "68" [arrowhead="empty", arrowtail="none"];
+"69" -> "68" [arrowhead="empty", arrowtail="none"];
+"70" -> "68" [arrowhead="empty", arrowtail="none"];
+"71" -> "68" [arrowhead="empty", arrowtail="none"];
+"72" -> "68" [arrowhead="empty", arrowtail="none"];
+"73" -> "68" [arrowhead="empty", arrowtail="none"];
+"74" -> "68" [arrowhead="empty", arrowtail="none"];
+"34" -> "74" [arrowhead="empty", arrowtail="none"];
+
+
+"85" -> "69" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="mysql_credentials", style="solid"];
+"85" -> "74" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="mysql_config", style="solid"];
+"46" -> "60" [arrowhead="empty", arrowtail="none"];
+
+}

@@ -230,13 +230,7 @@ def translate(
         valuesfromrecipe = config.recipes.get_recipe_for_keys(recipes)
         inputsdict.update(valuesfromrecipe)
 
-    inputsdict.update(
-        cascade_inputs(
-            wf=None,
-            inputs=inputs,
-            required_inputs=None,
-        )
-    )
+    inputsdict.update(cascade_inputs(wf=None, inputs=inputs, required_inputs=None,))
 
     if isinstance(toolref, DynamicWorkflow):
         if not inputsdict:
@@ -520,10 +514,7 @@ def run_from_jobfile(
     if not workflow:
         raise Exception("Couldn't find workflow with name: " + str(workflow))
 
-    row = cm.create_task_base(
-        wf=workflow,
-        job=jobfile,
-    )
+    row = cm.create_task_base(wf=workflow, job=jobfile,)
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir

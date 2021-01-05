@@ -190,8 +190,7 @@ class DbProviderBase(DbBase, Generic[T]):
         prep_el_idkey = lambda job: tuple(
             [
                 prep_object_for_db(
-                    getattr(job, dbalias_map[_k].name),
-                    encode=dbalias_map[_k].encode,
+                    getattr(job, dbalias_map[_k].name), encode=dbalias_map[_k].encode,
                 )
                 for _k in idkeys_ordered
             ]

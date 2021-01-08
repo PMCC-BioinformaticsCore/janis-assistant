@@ -64,7 +64,9 @@ class RemoteFileLocatorModifier(FileLocatorModifierBase):
                     inpnode.datatype,
                     basedir,
                     source,
-                    localise_secondary_files=not doc.skip_sourcing_secondary_files,
+                    # mfranklin 2021-01-08:
+                    # if we specify a remote input, and we're localising files, we should localise secondary files
+                    localise_secondary_files=True,
                 )
 
         return {**inputs, **new_inputs}

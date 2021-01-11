@@ -227,6 +227,9 @@ class EnvironmentTemplate(ABC):
             timestamp=datetime.now(),
         )
 
+    def run_test_command_prefix(self) -> Optional[List]:
+        return None
+
 
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(

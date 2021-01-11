@@ -228,6 +228,13 @@ class EnvironmentTemplate(ABC):
         )
 
     def run_test_command_prefix(self) -> Optional[List]:
+        """
+        Command to wrap the test command `janisdk run-test ...` depending on
+        the environment where we run the test
+
+        :return: a list of string of commnds or None
+        :rtype: Optional[List]
+        """
         return None
 
 

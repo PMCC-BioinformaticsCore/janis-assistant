@@ -227,7 +227,7 @@ class EnvironmentTemplate(ABC):
             timestamp=datetime.now(),
         )
 
-    def run_test_command_prefix(self) -> Optional[List]:
+    def prepare_run_test_command(self, test_command: List[str]) -> Optional[List]:
         """
         Command to wrap the test command `janisdk run-test ...` depending on
         the environment where we run the test
@@ -235,7 +235,7 @@ class EnvironmentTemplate(ABC):
         :return: a list of string of commnds or None
         :rtype: Optional[List]
         """
-        return None
+        return test_command
 
 
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):

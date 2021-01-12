@@ -232,7 +232,7 @@ class EnvironmentTemplate(ABC):
         Command to wrap the test command `janisdk run-test ...` depending on
         the environment where we run the test
 
-        :return: a list of string of commnds or None
+        :return: a list of string of commnads or None
         :rtype: Optional[List]
         """
         return test_command

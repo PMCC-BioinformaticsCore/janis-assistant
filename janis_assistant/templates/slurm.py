@@ -1,5 +1,7 @@
 from typing import Union, List, Optional
 
+from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
+
 from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
 from janis_assistant.engines.enginetypes import EngineType
@@ -22,20 +24,29 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
 
     def __init__(
         self,
-        container_dir: str = None,
-        intermediate_execution_dir: str = None,
+        # General slurm
+        sbatch: str = "sbatch",
         queues: Union[str, List[str]] = None,
-        mail_program=None,
-        send_job_emails=False,
-        catch_slurm_errors=True,
-        build_instructions=f"singularity pull $image docker://${{docker}}",
-        singularity_load_instructions=None,
         max_cores=None,
         max_ram=None,
         max_duration=None,
+        send_job_emails=False,
+        catch_slurm_errors=True,
+        # for submission
+        submission_queue: Union[str, List[str]] = None,
+        submission_cpus=None,
+        submission_memory=None,
+        submission_node=None,
+        max_workflow_time: int = 20100,  # almost 14 days
+        # Singularity
+        container_dir: str = None,
+        build_instructions=f"singularity pull $image docker://${{docker}}",
+        singularity_load_instructions=None,
+        # Janis specific
+        mail_program=None,
+        intermediate_execution_dir: str = None,
         can_run_in_foreground=True,
         run_in_background=False,
-        sbatch: str = "sbatch",
     ):
         """
         :param intermediate_execution_dir: A location where the execution should take place, this overrides the regular <output-dir>/execution directory
@@ -50,6 +61,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         :param max_ram: Maximum amount of ram (GB) that a task can request
         :param max_duration: Maximum amount of time in seconds (s) that a task can request
         :param sbatch: Override the sbatch command
+        :param submission_queue: Partition to submit Janis to, defaults to 'queues' argument
         """
 
         super().__init__(
@@ -64,10 +76,17 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             run_in_background=run_in_background,
         )
         self.intermediate_execution_dir = intermediate_execution_dir
-        self.queues = queues or []
         self.send_job_emails = send_job_emails
         self.catch_slurm_errors = catch_slurm_errors
         self.sbatch = sbatch or "sbatch"
+
+        self.queues = queues or []
+
+        self.submission_queue = submission_queue
+        self.submission_time = max_workflow_time
+        self.submission_memory = submission_memory
+        self.submission_cpus = submission_cpus
+        self.submission_node = submission_node
 
     def cromwell(self, job: PreparedJob):
 
@@ -113,6 +132,13 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
 
         return config
 
+    def cwltool(self, job):
+
+        config = CWLToolConfiguration()
+        config.singularity = True
+
+        return config
+
     def engine_config(self, engine: EngineType, job):
         if engine == EngineType.cromwell:
             return self.cromwell(job)
@@ -129,7 +155,65 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         :return: a list of string of commands or None
         :rtype: Optional[List]
         """
-        q = self.submission_queue or self.queues or "physical"
-        jq = ", ".join(q) if isinstance(q, list) else q
+        return self.prepare_janis_submit_sbatch(test_command)
 
-        return ["sbatch", "-p", jq, "--wrap"] + [" ".join(test_command)]
+    def prepare_janis_submit_sbatch(self, command, extra_params=None):
+
+        joined_command = " ".join(command) if isinstance(command, list) else command
+        newcommand = [
+            self.sbatch,
+            *["--time", str(self.submission_time or 20100)],
+        ]
+
+        if self.submission_queue or self.queues:
+            q = self.submission_queue or self.queues
+            jq = ", ".join(q) if isinstance(q, list) else q
+            newcommand.extend(["-p", jq])
+
+        if self.submission_memory:
+            newcommand.extend(["--mem", str(self.submission_memory)])
+
+        if self.submission_cpus:
+            newcommand.extend(["--cpus-per-task", str(self.submission_cpus)])
+
+        if self.submission_node:
+            newcommand.extend(["--nodelist", self.submission_node])
+
+        if extra_params:
+            newcommand.extend(extra_params)
+
+        newcommand.extend(["--wrap", joined_command])
+
+        return newcommand
+
+    def submit_detatched_resume(self, wid, command, config, logsdir, **kwargs):
+        import os.path
+
+        more_params = [
+            *["-J", f"janis-{wid}"],
+            *["-o", os.path.join(logsdir, "slurm.stdout")],
+            *["-e", os.path.join(logsdir, "slurm.stderr")],
+        ]
+
+        if (
+            self.send_job_emails
+            and config
+            and config.notifications
+            and config.notifications.email
+        ):
+            more_params.extend(
+                ["--mail-user", config.notifications.email, "--mail-type", "END"]
+            )
+
+        prepared_command = self.prepare_janis_submit_sbatch(
+            command, extra_params=more_params
+        )
+
+        super().submit_detatched_resume(
+            wid=wid,
+            command=prepared_command,
+            capture_output=True,
+            config=config,
+            logsdir=logsdir,
+            **kwargs,
+        )

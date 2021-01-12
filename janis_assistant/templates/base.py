@@ -261,43 +261,44 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
             run_in_background=run_in_background,
         )
         self.singularity_load_instructions = load_instructions
-        self.singularity_container_dir = fully_qualify_filename(container_dir)
         self.singularity_build_instructions = build_instructions
+        self.singularity_container_dir = self.process_container_dir(container_dir)
 
-        Logger.log(
-            f"Setting Singularity: containerdir={container_dir}, loadinstructions={load_instructions}"
-        )
+        # if container_dir isn't specified
 
         invalid_paths = self.validate_paths(
-            {"Container Dir": self.singularity_container_dir}
+            {"Singularity Container Directory": self.singularity_container_dir}
         )
-
         if len(invalid_paths) > 0:
             raise Exception(
                 f"Expected an absolute paths for {', '.join(invalid_paths)}"
             )
 
-        # if container_dir isn't specified
-
-        if container_dir is None:
-            from os import getenv
-
-            envs_to_search = ["CWL_SINGULARITY_CACHE", "SINGULARITY_TMPDIR"]
-            for env in envs_to_search:
-                e = getenv(env)
-                if e:
-                    container_dir = e
-                    break
-
-            if container_dir is None:
-                raise Exception(
-                    "Couldn't find a directory to cache singularity containers, please provide a "
-                    "'container_dir', or set one of the following env variables: "
-                    + ", ".join(envs_to_search)
-                )
+        Logger.log(
+            f"Setting Singularity: containerdir={container_dir}, loadinstructions={load_instructions}"
+        )
 
         Singularity.containerdir = container_dir
         Singularity.loadinstructions = load_instructions
         Singularity.buildinstructions = build_instructions
 
         pass
+
+    @staticmethod
+    def process_container_dir(container_dir):
+        if container_dir is not None:
+            return fully_qualify_filename(container_dir)
+
+        from os import getenv
+
+        envs_to_search = ["CWL_SINGULARITY_CACHE", "SINGULARITY_TMPDIR"]
+        for env in envs_to_search:
+            e = getenv(env)
+            if e:
+                return fully_qualify_filename(e)
+
+        raise Exception(
+            "Couldn't find a directory to cache singularity containers, please provide a "
+            "'container_dir' to your template, or set one of the following env variables: "
+            + ", ".join(envs_to_search)
+        )

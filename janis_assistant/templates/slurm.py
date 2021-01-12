@@ -186,7 +186,9 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
 
         return newcommand
 
-    def submit_detatched_resume(self, wid, command, config, logsdir, **kwargs):
+    def submit_detatched_resume(
+        self, wid, command, config, logsdir, capture_output=True, **kwargs
+    ):
         import os.path
 
         more_params = [

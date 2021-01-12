@@ -324,7 +324,9 @@ class WorkflowManager:
             )
             Logger.info("Submitted detatched engine")
         except Exception as e:
-            self.set_status(TaskStatus.FAILED)
+            m = f"There was an error submitting the janis workflow, {e}"
+            Logger.critical(m)
+            self.set_status(TaskStatus.FAILED, error=m)
 
         if watch:
             Logger.log("Watching submitted workflow")

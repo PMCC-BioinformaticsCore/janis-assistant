@@ -143,6 +143,9 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         if engine == EngineType.cromwell:
             return self.cromwell(job)
 
+        elif engine == EngineType.cwltool:
+            return self.cwltool(job)
+
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"
         )

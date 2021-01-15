@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import shutil
@@ -6,20 +7,18 @@ import signal
 import subprocess
 import sys
 import threading
-import math
 from datetime import datetime
-from urllib import request, parse
-
 from glob import glob
 from typing import Optional, List, Tuple, Union
+from urllib import request, parse
 
 from janis_assistant.data.models.run import RunModel
-from janis_core import LogLevel
 from janis_core.utils import first_value
 from janis_core.utils.logger import Logger
 
-from janis_assistant.__meta__ import ISSUE_URL
+from janis_assistant.__meta__ import ISSUE_URL, GITHUB_URL
 from janis_assistant.data.models.outputs import WorkflowOutputModel
+from janis_assistant.data.models.run import RunModel
 from janis_assistant.engines.cromwell.cromwellmetadata import (
     cromwell_status_to_status,
     CromwellMetadata,
@@ -28,12 +27,13 @@ from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.management.envvariables import EnvVariables
 from janis_assistant.utils import (
     ProcessLogger,
-    write_files_into_buffered_zip,
     find_free_port,
 )
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_assistant.utils.fileutil import tail
 from .cromwellconfiguration import CromwellConfiguration
+from janis_assistant.data.enums.dbtype import DatabaseTypeToUse
+
 from ..engine import Engine, TaskStatus
 
 CROMWELL_RELEASES = (
@@ -68,6 +68,7 @@ class Cromwell(Engine):
         config_path=None,
         execution_dir: str = None,
         polling_interval: Optional[int] = None,
+        db_type: DatabaseTypeToUse = None,
     ):
 
         super().__init__(
@@ -99,6 +100,8 @@ class Cromwell(Engine):
         # Last contacted is used to determine
         self.last_contacted = None
         self.timeout = 10  # minutes
+        self.db_type: Optional[DatabaseTypeToUse] = db_type
+        self.is_managing_cromwell = host is None
         if polling_interval is not None:
             polling_interval = int(polling_interval)
             if polling_interval < 3:
@@ -112,6 +115,8 @@ class Cromwell(Engine):
         self._start_time = None
 
         self.connectionerrorcount = 0
+        self.metadataerrorcount = 0
+
         self.should_stop = False
 
         if not self.connect_to_instance:
@@ -146,8 +151,7 @@ class Cromwell(Engine):
 
         try:
             r = request.urlopen(self.url_test())
-            r.raise_for_status()
-            return True
+            return r.code == 200
 
         except Exception as e:
             Logger.warn(f"Couldn't connect to Cromwell ({self.host}): {repr(e)}")
@@ -200,13 +204,12 @@ class Cromwell(Engine):
         ) + min_poll
 
     def start_engine(self, additional_cromwell_options: List[str] = None):
+        from ...data.models.preparedjob import PreparedJob
 
-        from janis_assistant.management.configuration import JanisConfiguration
-
-        jc = JanisConfiguration.manager()
+        job = PreparedJob.instance()
 
         self._start_time = DateUtil.now()
-        self.timeout = jc.cromwell.timeout or 10
+        self.timeout = job.cromwell.timeout or 10
 
         if self.test_connection():
             Logger.info("Engine has already been started")
@@ -230,14 +233,17 @@ class Cromwell(Engine):
                 f.writelines(self.config.output())
 
         Logger.log("Finding cromwell jar")
-        cromwell_loc = self.resolve_jar(self.cromwelljar)
+        cromwell_loc = self.resolve_jar(self.cromwelljar, job.cromwell, job.config_dir)
 
         Logger.info(f"Starting cromwell ({cromwell_loc})...")
         cmd = ["java", "-DLOG_MODE=standard"]
 
-        if jc.cromwell and jc.cromwell.memory:
+        if job.cromwell and job.cromwell.memory_mb:
             cmd.extend(
-                [f"-Xmx{jc.cromwell.memory}M", f"-Xms{max(jc.cromwell.memory//2, 1)}M"]
+                [
+                    f"-Xmx{job.cromwell.memory_mb}M",
+                    f"-Xms{max(job.cromwell.memory_mb//2, 1)}M",
+                ]
             )
 
         # if Logger.CONSOLE_LEVEL == LogLevel.VERBOSE:
@@ -336,20 +342,23 @@ class Cromwell(Engine):
         self._process = None
 
     def stop_engine(self):
+
+        if not self.is_started:
+            return Logger.debug(
+                "Cromwell has already shut down, skipping shut down request"
+            )
+
         if self._logger:
             self._logger.terminate()
 
         self.should_stop = True
+
         if self._timer_thread:
             self._timer_thread.set()
 
-        if self._logfp:
-            self._logfp.flush()
-            os.fsync(self._logfp.fileno())
-            self._logfp.close()
-
         if not self.process_id:
-            Logger.warn("Could not find a cromwell process to end, SKIPPING")
+            self.is_started = False
+            Logger.info("Janis isn't managing Cromwell, skipping the shutdown")
             return
         Logger.info("Stopping cromwell")
         if self.process_id:
@@ -482,26 +491,27 @@ class Cromwell(Engine):
         threading.Timer(time, self.poll_metadata).start()
 
     @staticmethod
-    def resolve_jar(cromwelljar):
-        from janis_assistant.management.configuration import JanisConfiguration
+    def resolve_jar(cromwelljar, janiscromwellconf, configdir):
 
-        man = JanisConfiguration.manager()
-        if not man:
-            raise Exception(
-                f"No configuration was initialised. This is "
-                f"likely an error, and you should raise an issue at {ISSUE_URL}"
-            )
-
-        if cromwelljar and os.path.exists(cromwelljar):
+        if cromwelljar:
+            if not os.path.exists(cromwelljar):
+                raise Exception(
+                    f"Specified cromwell jar '{cromwelljar}' but this didn't exist"
+                )
             return cromwelljar
-        if man.cromwell.jarpath and os.path.exists(man.cromwell.jarpath):
-            return man.cromwell.jarpath
+
+        if (
+            janiscromwellconf
+            and janiscromwellconf.jar
+            and os.path.exists(janiscromwellconf.jar)
+        ):
+            return janiscromwellconf.jar
         fromenv = EnvVariables.cromwelljar.resolve(False)
         if fromenv and os.path.exists(fromenv):
             return fromenv
 
         potentials = list(
-            reversed(sorted(glob(os.path.join(man.configdir, "cromwell-*.jar"))))
+            reversed(sorted(glob(os.path.join(configdir, "cromwell-*.jar"))))
         )
 
         valid_paths = [p for p in potentials if os.path.exists(p)]
@@ -551,7 +561,7 @@ class Cromwell(Engine):
             Logger.info(
                 f"Couldn't find cromwell at any of the usual spots, downloading '{cromwellfilename}' now"
             )
-            cromwelljar = os.path.join(man.configdir, cromwellfilename)
+            cromwelljar = os.path.join(configdir, cromwellfilename)
             request.urlretrieve(cromwellurl, cromwelljar, show_progress)
             Logger.info(f"Downloaded {cromwellfilename}")
 
@@ -653,9 +663,9 @@ class Cromwell(Engine):
     def find_or_generate_config(
         self, identifier, config: CromwellConfiguration, config_path
     ):
-        from janis_assistant.management.configuration import JanisConfiguration
+        from ...data.models.preparedjob import PreparedJob
 
-        jc = JanisConfiguration.manager()
+        job = PreparedJob.instance()
 
         if config:
             self.config = config
@@ -663,13 +673,14 @@ class Cromwell(Engine):
         elif config_path:
             shutil.copyfile(config_path, self.config_path)
 
-        elif jc.cromwell.configpath:
-            shutil.copyfile(jc.cromwell.configpath, self.config_path)
+        elif job and job.cromwell.config_path:
+            shutil.copyfile(job.cromwell.config_path, self.config_path)
 
         else:
-            self.config: CromwellConfiguration = jc.template.template.engine_config(
-                EngineType.cromwell, jc
-            ) or CromwellConfiguration()
+            self.config: CromwellConfiguration = (
+                job.template.template.engine_config(EngineType.cromwell, job)
+                or CromwellConfiguration()
+            )
             if not self.config.system:
                 self.config.system = CromwellConfiguration.System()
             self.config.system.cromwell_id = identifier
@@ -691,7 +702,10 @@ class Cromwell(Engine):
                 )
 
     def raw_metadata(
-        self, identifier, expand_subworkflows=True
+        self,
+        identifier,
+        expand_subworkflows=True,
+        metadata_export_file_path: Optional[str] = None,
     ) -> Optional[CromwellMetadata]:
         url = self.url_metadata(
             identifier=identifier, expand_subworkflows=expand_subworkflows
@@ -710,6 +724,15 @@ class Cromwell(Engine):
 
             data = r.read()
             jsonobj = json.loads(data.decode(r.info().get_content_charset("utf-8")))
+
+            if metadata_export_file_path:
+                try:
+                    with open(metadata_export_file_path, "w+") as f:
+                        json.dump(jsonobj, f)
+                except Exception as e:
+                    Logger.warn(
+                        f"Couldn't persist Cromwell metadata json to '{metadata_export_file_path}': {repr(e)}"
+                    )
 
             return CromwellMetadata(jsonobj)
 
@@ -742,9 +765,24 @@ class Cromwell(Engine):
 
         except (request.URLError, ConnectionResetError) as e:
             self.connectionerrorcount += 1
-            if (
+            minutes_not_able_to_contact_cromwell = (
                 datetime.now() - self.last_contacted
-            ).total_seconds() / 60 > self.timeout:
+            ).total_seconds() / 60
+            if minutes_not_able_to_contact_cromwell > self.timeout:
+                message = (
+                    f"Janis is receiving a ConnectionResetError when contacting the Cromwell instance "
+                    f"({self.host}) {self.connectionerrorcount} times, and has been unable to connect to "
+                    f"Cromwell for {minutes_not_able_to_contact_cromwell} minutes. "
+                )
+                if self.db_type and self.db_type == DatabaseTypeToUse.filebased:
+                    ja_config_url = "https://janis.readthedocs.io/en/latest/references/configuration.html#cromwell"
+                    message += (
+                        "We've seen this issue more frequently when Janis is configuring Cromwell to use the "
+                        "file-based database. We recommend configuring Janis to use a MySQL database through the "
+                        f"`--mysql` flag, visitng '{ja_config_url}', or raising an issue on GitHub ({GITHUB_URL}) "
+                        f"for more information."
+                    )
+                Logger.warn(message)
                 self.something_has_happened_to_cromwell(
                     "last_updated_threshold"
                 )  # idk, pick a number
@@ -755,7 +793,12 @@ class Cromwell(Engine):
                 Logger.warn("Error connecting to cromwell instance: " + repr(e))
             return None
 
-    def metadata(self, identifier, expand_subworkflows=True) -> Optional[RunModel]:
+    def metadata(
+        self,
+        identifier,
+        expand_subworkflows=True,
+        metadata_export_file_path: Optional[str] = None,
+    ) -> Optional[RunModel]:
         if self.error_message:
             return RunModel(
                 id_=RunModel.DEFAULT_ID,
@@ -767,7 +810,11 @@ class Cromwell(Engine):
                 name=None,
             )
 
-        raw = self.raw_metadata(identifier, expand_subworkflows=expand_subworkflows)
+        raw = self.raw_metadata(
+            identifier,
+            expand_subworkflows=expand_subworkflows,
+            metadata_export_file_path=metadata_export_file_path,
+        )
         return raw.standard() if raw else raw
 
     def terminate_task(self, identifier) -> TaskStatus:

@@ -1,0 +1,25 @@
+digraph "classes_janis_assistant_templates" {
+charset="utf-8"
+rankdir=BT
+
+"47" [label="{EnvironmentTemplate|can_run_in_foreground : bool\lcontainertype : Docker\lignore_init_keys : list\lmax_cores : NoneType\lmax_duration : NoneType\lmax_ram : NoneType\lrun_in_background : NoneType\l|engine_config(engine, job)\lget_job_analysis_from(job)\lpath_is_valid(path)\lpost_configuration_hook(configuration)\lpostjanis_failure_hook()\lpostjanis_success_hook()\lprejanis_hook()\lprepare_status_update_email(status, metadata, additional_information)\lsubmit_detatched_resume(wid, command, scriptdir, logsdir, config, capture_output, log_output_to_stdout)\lvalidate_paths(obj)\l}", shape="record"];
+"61" [label="{InitArgParser|required_args : set\ltemplatename\l|error(message)\lparse_args(args, namespace)\l}", shape="record"];
+"81" [label="{LocalSingularityTemplate|ignore_init_keys : list\l|cromwell(janis_configuration)\lcwltool(janis_configuration)\lengine_config(engine, janis_configuration)\l}", shape="record"];
+"82" [label="{LocalTemplate|ignore_init_keys : list\l|cromwell(job)\lcwltool(job)\lengine_config(engine, job)\l}", shape="record"];
+"90" [label="{PbsSingularityTemplate|catch_pbs_errors : bool\lignore_init_keys : list\lintermediate_execution_dir : NoneType\lqueues : NoneType\lsend_job_emails : bool\l|cromwell(job)\lengine_config(engine, job)\l}", shape="record"];
+"111" [label="{SingularityEnvironmentTemplate|singularity_build_instructions\lsingularity_container_dir : str, NoneType, bytes\lsingularity_load_instructions : NoneType\l|}", shape="record"];
+"112" [label="{SlurmSingularityTemplate|catch_slurm_errors : bool\lignore_init_keys : list\lintermediate_execution_dir : NoneType\lqueues : list\lsbatch : str\lsend_job_emails : bool\l|cromwell(job)\lengine_config(engine, job)\l}", shape="record"];
+"121" [label="{TemplateInput|default : NoneType\ldoc : NoneType\lidentifier\loptional\ltype\l|id()\l}", shape="record"];
+
+# EnvironmentTemplate
+"82" -> "47" [arrowhead="empty", arrowtail="none"];
+"111" -> "47" [arrowhead="empty", arrowtail="none"];
+"81" -> "111" [arrowhead="empty", arrowtail="none"];
+"112" -> "111" [arrowhead="empty", arrowtail="none"];
+"90" -> "111" [arrowhead="empty", arrowtail="none"];
+
+# template parsing
+"121" -> "47" [arrowhead="empty", arrowtail="none"];
+"61" -> "121" [arrowhead="empty", arrowtail="none"];
+
+}

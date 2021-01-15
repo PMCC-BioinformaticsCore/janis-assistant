@@ -15,6 +15,17 @@ from .pathhelper import (
 from .processlogger import ProcessLogger
 
 
+def dict_to_yaml_string(d: dict):
+    import ruamel.yaml
+    from io import StringIO
+
+    yaml = ruamel.yaml.YAML()
+
+    io = StringIO()
+    yaml.dump(d, io)
+    return io.getvalue()
+
+
 def generate_new_id(forbiddenids: Set[str]):
     import uuid
     import random
@@ -41,7 +52,7 @@ def get_extension(fn):
     idx = last_path_component[::-1].index(".")
     if idx <= 0:
         return None
-    return "." + last_path_component[-idx:]
+    return last_path_component[-idx:]
 
 
 uri_prefix = re.compile("^[A-z0-9]{2,}:\/\/")

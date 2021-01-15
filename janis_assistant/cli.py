@@ -1,37 +1,53 @@
 import sys
 import argparse
+import os.path
 import json
+from time import sleep
+from typing import Optional, Tuple, List
 
 import ruamel.yaml
 import tabulate
+from janis_assistant.management.workflowmanager import WorkflowManager
 
-from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation
+from janis_assistant.management.envvariables import EnvVariables
+
+from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, Tool
 from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
+from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.templates.templates import get_template_names
 from janis_assistant.engines import Cromwell
 from janis_assistant.engines.enginetypes import EngineType
-from janis_assistant.management.configuration import JanisConfiguration
+from janis_assistant.management.configuration import (
+    JanisConfiguration,
+    DatabaseTypeToUse,
+)
 
 from janis_assistant.data.enums.taskstatus import TaskStatus
 
 from janis_assistant.main import (
-    fromjanis,
     translate,
     generate_inputs,
     cleanup,
     init_template,
-    resume,
     abort_wids,
     spider_tool,
-    pause,
+    run_from_jobfile,
+    prepare_job,
+    resolve_tool,
 )
 from janis_assistant.management.configmanager import ConfigManager
-from janis_assistant.utils import parse_additional_arguments
+from janis_assistant.utils import (
+    parse_additional_arguments,
+    parse_dict,
+    get_file_from_searchname,
+    fully_qualify_filename,
+    dict_to_yaml_string,
+)
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_assistant.validation import ValidationRequirements
 
 
@@ -51,6 +67,7 @@ def process_args(sysargs=None):
         "inputs": do_inputs,
         "watch": do_watch,
         "abort": do_abort,
+        "prepare": do_prepare,
         "metadata": do_metadata,
         "query": do_query,
         "rm": do_rm,
@@ -60,6 +77,7 @@ def process_args(sysargs=None):
         "pause": do_pause,
         "spider": do_spider,
         "rawquery": do_rawquery,
+        "wait": do_wait,
     }
 
     parser = DefaultHelpArgParser(description="Execute a workflow")
@@ -70,6 +88,7 @@ def process_args(sysargs=None):
     subparsers = parser.add_subparsers(dest="command")
 
     add_run_args(subparsers.add_parser("run", help="Run a Janis workflow"))
+    add_prepare_args(subparsers.add_parser("prepare", help="Prepare a Janis workflow"))
     add_init_args(
         subparsers.add_parser("init", help="Initialise a Janis configuration")
     )
@@ -125,6 +144,13 @@ def process_args(sysargs=None):
     add_rawquery_args(
         subparsers.add_parser(
             "rawquery", help="Perform a raw SQL query on the sqlite database of a task"
+        )
+    )
+
+    add_wait_args(
+        subparsers.add_parser(
+            "wait",
+            help="Wait for all workflows to finish before returning, exiting with rc=3 if any of the workflows have failed.",
         )
     )
 
@@ -221,13 +247,15 @@ def add_spider_args(parser):
 
 
 def add_resume_args(parser):
-    parser.add_argument("wid", help="WID to resume")
     parser.add_argument(
         "--foreground",
         action="store_true",
         help="By default, the workflow will be resubmitted per your template's recommendation. "
         "(This is often in the background). Use this option to force running in the foreground.",
     )
+    parser.add_argument("-j", help="job file")
+    parser.add_argument("wid", nargs="?", help="WID to resume")
+
     return parser
 
 
@@ -242,6 +270,7 @@ def add_metadata_args(parser):
 
 def add_abort_args(parser):
     parser.add_argument("wid", help="Task id", nargs="+")
+    parser.add_argument("--wait", action="store_true")
     return parser
 
 
@@ -413,14 +442,7 @@ def add_inputs_args(parser):
     return parser
 
 
-def add_run_args(parser, add_workflow_argument=True):
-
-    if add_workflow_argument:
-        parser.add_argument(
-            "workflow",
-            help="Run the workflow defined in this file or available within the toolbox",
-        )
-
+def add_args_for_general_wf_prepare(parser):
     parser.add_argument("-c", "--config", help="Path to config file")
 
     parser.add_argument(
@@ -472,6 +494,12 @@ def add_run_args(parser, add_workflow_argument=True):
         help="Skip checking if files exist before the start of a workflow.",
     )
 
+    parser.add_argument(
+        "--localise-all-files",
+        action="store_true",
+        help="Download remote files and store in a local cache directory",
+    )
+
     # development settings
 
     parser.add_argument(
@@ -521,27 +549,6 @@ def add_run_args(parser, add_workflow_argument=True):
             hint_args.add_argument(
                 "--hint-" + HintType.key(), choices=HintType.symbols()
             )
-
-    # workflow collection
-
-    wfcol_group = parser.add_argument_group("workflow collection arguments")
-
-    wfcol_group.add_argument(
-        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
-    )
-
-    wfcol_group.add_argument(
-        "-n",
-        "--name",
-        help="If you have multiple workflows in your file, you may want to "
-        "help Janis out to select the right workflow to run",
-    )
-
-    wfcol_group.add_argument(
-        "--no-cache",
-        help="Force re-download of workflow if remote",
-        action="store_true",
-    )
 
     # container lookups
 
@@ -659,13 +666,101 @@ def add_run_args(parser, add_workflow_argument=True):
         help="Setup the workflow, but don't actually run the workflow",
     )
 
+    beta_args.add_argument(
+        "--post-run-script",
+        help="Location of script that Janis will execute with args: <wid> <output-dir> <status>",
+    )
+
     parser.add_argument("extra_inputs", nargs=argparse.REMAINDER, default=[])
+
+
+def add_run_args(parser, add_workflow_argument=True):
+
+    parser.add_argument(
+        "-j",
+        "--job",
+        help="Job file which contains all arguments. Specifying this option "
+        "will ignore ALL other fields except the workflow",
+    )
+
+    # workflow collection
+
+    wfcol_group = parser.add_argument_group("workflow collection arguments")
+
+    wfcol_group.add_argument(
+        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
+    )
+
+    wfcol_group.add_argument(
+        "-n",
+        "--name",
+        help="If you have multiple workflows in your file, you may want to "
+        "help Janis out to select the right workflow to run",
+    )
+
+    wfcol_group.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
+
+    if add_workflow_argument:
+        parser.add_argument(
+            "workflow",
+            help="Run the workflow defined in this file or available within the toolbox",
+        )
+
+    parser.add_argument(
+        "--wait",
+        action="store_true",
+        help="If the workflow is run in the background, don't exit until the workflow has moved to a terminal status.",
+    )
+
+    add_args_for_general_wf_prepare(parser)
 
     return parser
 
 
-def add_reconnect_args(parser):
-    parser.add_argument("wid", help="task-id to reconnect to")
+def add_prepare_args(parser, add_workflow_argument=True):
+    # workflow collection
+
+    wfcol_group = parser.add_argument_group("workflow collection arguments")
+
+    wfcol_group.add_argument(
+        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
+    )
+
+    wfcol_group.add_argument(
+        "-n",
+        "--name",
+        help="If you have multiple workflows in your file, you may want to "
+        "help Janis out to select the right workflow to run",
+    )
+
+    wfcol_group.add_argument(
+        "--no-cache",
+        help="Force re-download of workflow if remote",
+        action="store_true",
+    )
+
+    if add_workflow_argument:
+        parser.add_argument(
+            "workflow",
+            help="Run the workflow defined in this file or available within the toolbox",
+        )
+
+    add_args_for_general_wf_prepare(parser)
+
+    # 2020-10-20 mfranklin: PREPARE specific (don't allow users to specify this on RUN)
+
+    parser.add_argument(
+        "--source-hint",
+        action="append",
+        help="When trying to find files, the pipeline might offer different options for an input source, "
+        "eg: hg19, hg38, mm10, etc. You can specify this argument multiple time, and these are prioritised "
+        "in the order they're received (eg: --source-hint hg38 --source-hint h19)",
+    )
+
     return parser
 
 
@@ -680,6 +775,12 @@ def add_query_args(parser):
 def add_rawquery_args(parser):
     parser.add_argument("wid", help="Workflow ID or task directory")
     parser.add_argument("query", help="RAW SQL query")
+
+    return parser
+
+
+def add_wait_args(parser):
+    parser.add_argument("wid", nargs="+", help="Workflows to wait for")
 
     return parser
 
@@ -707,7 +808,6 @@ def check_logger_args(args):
 
 
 def add_init_args(args):
-    args.add_argument("-r", "--recipe", help="Recipes from template", action="append")
     args.add_argument("--stdout", action="store_true", help="Write to standard out")
     args.add_argument(
         "-f", "--force", help="Overwrite the template if it exits", action="store_true"
@@ -738,7 +838,11 @@ def do_init(args):
         force=args.force,
     )
     if args.ensure_cromwell:
-        cromwell_loc = Cromwell.resolve_jar(None)
+        cromwell_loc = Cromwell.resolve_jar(
+            cromwelljar=None,
+            janiscromwellconf=None,
+            configdir=EnvVariables.config_dir.resolve(),
+        )
         Logger.info("Located Cromwell at: " + str(cromwell_loc))
 
 
@@ -787,76 +891,76 @@ def do_watch(args):
     brief = args.brief
     monochrome = args.monochrome
 
-    tm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
-    tm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
+    wm = ConfigManager.get_from_path_or_submission_lazy(wid, readonly=False)
+    wm.watch(seconds=refresh, brief=brief, monochrome=monochrome)
 
 
 def do_resume(args):
-    resume(args.wid, foreground=args.foreground)
+
+    # if args.job:
+    #     from os import getcwd
+    #
+    #     # parse and load the job file
+    #     Logger.info("Specified job file, ignoring all other parameters")
+    #     d = parse_dict(get_file_from_searchname(args.job, getcwd()))
+    #     job = PreparedJob(**d)
+    #     wm = ConfigManager.get_from_path_or_submission_lazy(
+    #         job.execution_dir, readonly=False
+    #     )
+    #
+    # else:
+    wm = ConfigManager.get_from_path_or_submission_lazy(args.wid, readonly=False)
+
+    run_in_background = False
+    if args.foreground:
+        run_in_background = False
+    elif wm.database.workflowmetadata.configuration.run_in_background:
+        run_in_background = True
+
+    wm.start_or_submit(run_in_background=run_in_background)
 
 
 def do_pause(args):
-    pause(args.wid)
+    wm = ConfigManager.get_from_path_or_submission_lazy(args.wid, readonly=True)
+    wm.mark_paused(wm.execution_dir)
 
 
 def do_metadata(args):
     wid = args.wid
     Logger.mute()
+    cm = ConfigManager(db_path=None)
     if wid == "*":
-        tasks = ConfigManager.manager().taskDB.get_all_tasks()
+        tasks = cm._taskDB.get_all_tasks()
         for t in tasks:
             try:
                 print("--- TASKID = " + t.wid + " ---")
-                ConfigManager.manager().from_submission_id_or_path(
-                    t.wid, readonly=True
-                ).log_dbtaskinfo()
+                cm.get_from_path_or_submission(t.wid, readonly=True).log_dbtaskinfo()
             except Exception as e:
                 print("\tAn error occurred: " + str(e))
     else:
-        tm = ConfigManager.manager().from_submission_id_or_path(wid)
+        tm = cm.get_from_path_or_submission(wid, readonly=True)
         tm.log_dbtaskinfo()
     Logger.unmute()
 
 
 def do_abort(args):
     wids = args.wid
-    abort_wids(wids)
+    abort_wids(wids, wait=args.wait)
 
 
 def do_rm(args):
     wids = args.wid
     for wid in wids:
         try:
-            ConfigManager.manager().remove_task(wid, keep_output=args.keep)
+            ConfigManager.get_from_path_or_submission_lazy(
+                wid, readonly=True
+            ).remove_task(wid, keep_output=args.keep)
         except Exception as e:
             Logger.critical(f"Can't remove {wid}: " + str(e))
 
 
-def do_run(args):
+def prepare_from_args(args, run_prepare_processing: bool) -> Tuple[PreparedJob, Tool]:
     jc = JanisConfiguration.initial_configuration(path=args.config)
-
-    validation_reqs, batchrun_reqs = None, None
-
-    if args.validation_fields:
-        Logger.info("Will prepare validation")
-        validation_reqs = ValidationRequirements(
-            truthVCF=args.validation_truth_vcf,
-            reference=args.validation_reference,
-            fields=args.validation_fields,
-            intervals=args.validation_intervals,
-        )
-
-    if args.batchrun:
-        Logger.info("Will prepare batch run")
-        batchrun_reqs = BatchRunRequirements(
-            fields=args.batchrun_fields, groupby=args.batchrun_groupby
-        )
-
-    hints = {
-        k[5:]: v
-        for k, v in vars(args).items()
-        if k.startswith("hint_") and v is not None
-    }
 
     # the args.extra_inputs parameter are inputs that we MUST match
     # we'll need to parse them manually and then pass them to fromjanis as requiring a match
@@ -874,55 +978,121 @@ def do_run(args):
         ins = required_inputs.pop("i")
         inputs.extend(ins if isinstance(ins, list) else [ins])
 
-    keep_intermediate_files = args.keep_intermediate_files is True
+    validation, batchrun = None, None
+    if args.validation_fields:
+        Logger.info("Will prepare validation")
+        validation = ValidationRequirements(
+            truthVCF=args.validation_truth_vcf,
+            reference=args.validation_reference,
+            fields=args.validation_fields,
+            intervals=args.validation_intervals,
+        )
 
-    db_config = jc.cromwell.get_database_config_helper()
+    if args.batchrun:
+        Logger.info("Will prepare batch run")
+        batchrun = BatchRunRequirements(
+            fields=args.batchrun_fields, groupby=args.batchrun_groupby
+        )
 
-    if args.mysql:
-        db_config.should_manage_mysql = True
-
+    db_type: Optional[DatabaseTypeToUse] = None
     if args.no_database:
-        db_config.skip_database = True
+        db_type = DatabaseTypeToUse.none
+    elif args.mysql:
+        db_type = DatabaseTypeToUse.managed
 
-    if args.development:
-        # no change for using mysql, as a database is the default
-        keep_intermediate_files = True
-        JanisConfiguration.manager().cromwell.call_caching_enabled = True
+    try:
+        source_hints = args.source_hint
+    except:
+        source_hints = []
 
-    wid = fromjanis(
-        args.workflow,
+    wf, wf_reference = resolve_tool(
+        tool=args.workflow,
         name=args.name,
-        validation_reqs=validation_reqs,
-        batchrun_reqs=batchrun_reqs,
+        from_toolshed=True,
+        only_toolbox=args.toolbox,
+        force=args.no_cache,
+    )
+
+    job = prepare_job(
+        run_prepare_processing=run_prepare_processing,
+        tool=wf,
+        workflow_reference=wf_reference,
+        jc=jc,
         engine=args.engine,
-        # filescheme=args.filescheme,
-        hints=hints,
         output_dir=args.output_dir,
         execution_dir=args.execution_dir,
-        inputs=inputs,
-        required_inputs=required_inputs,
-        # filescheme_ssh_binding=args.filescheme_ssh_binding,
-        cromwell_url=args.cromwell_url,
-        watch=args.progress,
         max_cores=args.max_cores,
-        max_mem=args.max_memory,
+        max_memory=args.max_memory,
         max_duration=args.max_duration,
-        force=args.no_cache,
-        recipes=args.recipe,
-        keep_intermediate_files=keep_intermediate_files,
-        run_in_background=(args.background is True),
-        run_in_foreground=(args.foreground is True),
-        dbconfig=db_config,
-        only_toolbox=args.toolbox,
-        no_store=args.no_store,
-        allow_empty_container=args.allow_empty_container,
+        run_in_foreground=args.foreground is True,
+        run_in_background=args.background is True,
         check_files=not args.skip_file_check,
         container_override=parse_container_override_format(args.container_override),
         skip_digest_lookup=args.skip_digest_lookup,
         skip_digest_cache=args.skip_digest_cache,
-        dryrun=args.dry_run,
+        hints={
+            k[5:]: v
+            for k, v in vars(args).items()
+            if k.startswith("hint_") and v is not None
+        },
+        validation_reqs=validation,
+        batchrun_reqs=batchrun,
+        # inputs
+        inputs=inputs,
+        required_inputs=required_inputs,
+        watch=args.progress,
+        recipes=args.recipe,
+        keep_intermediate_files=args.keep_intermediate_files is True,
+        no_store=args.no_store,
+        allow_empty_container=args.allow_empty_container,
         strict_inputs=args.strict_inputs,
+        db_type=db_type,
+        source_hints=source_hints,
+        post_run_script=args.post_run_script,
+        localise_all_files=args.localise_all_files,
     )
+
+    return job, wf
+
+
+def do_prepare(args):
+
+    job, wf = prepare_from_args(args, run_prepare_processing=True)
+
+    d = job.to_dict()
+
+    WorkflowManager.write_prepared_submission_file(
+        prepared_job=job, output_dir=job.output_dir, force_write=True
+    )
+
+    script_location = os.path.join(job.output_dir, "run.sh")
+    Logger.info("Job prepared successfully, you can run your workflow with:")
+    Logger.info(f"\tsh {script_location}")
+
+    print(dict_to_yaml_string(d))
+
+
+def do_run(args):
+
+    if args.job:
+        from os import getcwd
+
+        workflow, workflow_ref = resolve_tool(
+            tool=args.workflow,
+            name=args.name,
+            from_toolshed=True,
+            only_toolbox=args.toolbox,
+            force=args.no_cache,
+        )
+        # parse and load the job file
+        Logger.info("Specified job file, ignoring all other parameters")
+        d = parse_dict(get_file_from_searchname(args.job, getcwd()))
+        job = PreparedJob(**d, workflow_reference=workflow_ref)
+
+    else:
+        job, workflow = prepare_from_args(args, run_prepare_processing=False)
+
+    jobfile = run_from_jobfile(workflow, jobfile=job, wait=args.wait)
 
     Logger.info("Exiting")
     raise SystemExit
@@ -941,8 +1111,9 @@ def do_spider(args):
 
 def do_inputs(args):
 
+    jc = None
     if args.config or args.recipe:
-        JanisConfiguration.initial_configuration(path=args.config,)
+        jc = JanisConfiguration.initial_configuration(path=args.config)
 
     quality_type = None
 
@@ -958,7 +1129,8 @@ def do_inputs(args):
     }
 
     outd = generate_inputs(
-        args.workflow,
+        jc=jc,
+        tool=args.workflow,
         all=args.all,
         name=args.name,
         force=args.no_cache,
@@ -987,7 +1159,7 @@ def do_query(args):
         status = TaskStatus(args.status.lower())
 
     name = args.name
-    tasks = ConfigManager.manager().query_tasks(status=status, name=name)
+    tasks = ConfigManager(db_path=None).query_tasks(status=status, name=name)
 
     prepared = [
         (
@@ -996,7 +1168,7 @@ def do_query(args):
             t.name,
             t.start,
             (", ".join(t.labels) if t.labels else ""),
-            t.outdir,
+            t.execution_dir,
         )
         for wid, t in tasks.items()
     ]
@@ -1013,10 +1185,34 @@ def do_query(args):
 
 def do_rawquery(args):
     wid = args.wid
-    wm = ConfigManager.manager().from_submission_id_or_path(wid, readonly=True)
+    wm = ConfigManager.get_from_path_or_submission_lazy(wid, readonly=True)
     with wm.database.with_cursor() as cursor:
         result = cursor.execute(args.query).fetchall()
     return print(tabulate.tabulate(result))
+
+
+def do_wait(args):
+    wids = args.wid
+
+    statuses = {}
+    for wid in wids:
+        wm = ConfigManager.get_from_path_or_submission_lazy(wid, readonly=True)
+        Logger.info(f"Waiting for '{wid}' to finish")
+        status = wm.database.get_uncached_status()
+        while not status.is_in_final_state():
+            sleep(2)
+            status = wm.database.get_uncached_status()
+
+        statuses[wid] = (wm.submission_id, status)
+        Logger.info(f"Workflow {wid} finished with status: {status.to_string()}")
+
+    collapsed_status = TaskStatus.collapse_states([s[1] for s in statuses.values()])
+
+    rc = collapsed_status.get_exit_code()
+    Logger.info(
+        f"All workflows finished with collapsed status {collapsed_status.to_string()}, exiting with rc={rc}"
+    )
+    sys.exit(rc)
 
 
 def parse_container_override_format(container_override):
@@ -1056,6 +1252,7 @@ def do_translate(args):
     # required_inputs = parse_additional_arguments(args.extra_inputs)
 
     translate(
+        config=jc,
         tool=args.workflow,
         translation=args.translation,
         name=args.name,

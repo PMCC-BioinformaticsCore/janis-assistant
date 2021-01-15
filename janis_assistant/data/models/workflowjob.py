@@ -4,7 +4,7 @@ from typing import Optional, Union, List, Tuple
 from janis_assistant.data.enums.taskstatus import TaskStatus
 from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.utils import second_formatter
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_core.utils.logger import _bcolors
 
 
@@ -32,6 +32,10 @@ class RunJobModel(DatabaseObject):
             DatabaseObjectField("memory"),
             DatabaseObjectField("cpu"),
             DatabaseObjectField("analysis"),
+            DatabaseObjectField("error"),
+            DatabaseObjectField("returncode"),
+            DatabaseObjectField("lastupdated"),
+            DatabaseObjectField("workdir"),
         ]
 
     @classmethod
@@ -55,6 +59,10 @@ cached          BOOLEAN,
 stdout          STRING,
 stderr          STRING,
 script          STRING,
+error           STRING,
+returncode      STRING,
+lastupdated     STRING,
+workdir         STRING,
 
 memory          STRING,
 cpu             STRING,
@@ -80,11 +88,15 @@ analysis        STRING,
         stdout: Optional[str] = None,
         stderr: Optional[str] = None,
         script: Optional[str] = None,
+        error: Optional[str] = None,
+        returncode: Optional[str] = None,
         memory: Optional[str] = None,
         cpu: Optional[str] = None,
         analysis: Optional[str] = None,
         # Optional
         jobs: Optional[list] = None,
+        lastupdated: Union[str, datetime] = None,
+        workdir: Optional[str] = None,
     ):
         self.id_ = id_
         self.submission_id = submission_id
@@ -116,6 +128,13 @@ analysis        STRING,
 
         self.stderr = stderr
         self.stdout = stdout
+        self.error = error
+        self.returncode = returncode
+        self.workdir = workdir
+
+        self.lastupdated = lastupdated or DateUtil.now()
+        if isinstance(lastupdated, str):
+            self.lastupdated = DateUtil.parse_iso(lastupdated)
 
         self.start = start
         self.finish = finish
@@ -234,7 +253,12 @@ analysis        STRING,
             fields.extend([("batchid", self.batchid), ("backend", self.backend)])
 
         elif status == TaskStatus.FAILED:
-            fields.extend([("stdout", self.stdout), ("stderr", self.stderr)])
+            if str(self.returncode) != "0":
+                fields.append(["rc", str(self.returncode)])
+            if self.stderr is not None:
+                fields.append(("stderr", self.stderr))
+            if self.error:
+                fields.append(("error", self.error))
         elif status == TaskStatus.PROCESSING:
             pass
         elif status == TaskStatus.QUEUED:
@@ -247,7 +271,16 @@ analysis        STRING,
             )
 
         ppre = "\n" + " " * len(pre) + 2 * tb
-        retval = standard + "".join(f"{ppre}{f[0]}: {f[1]}" for f in fields if f[1])
+
+        max_row_header_length = 0
+        if len(fields) > 0:
+            max_row_header_length = max(len(t[0]) for t in fields) + 0
+
+        retval = standard + "".join(
+            f"{ppre}{f[0]}:{' ' * (max_row_header_length - len(f[0]))} {f[1]}"
+            for f in fields
+            if f[1]
+        )
 
         return col + retval + uncol
 

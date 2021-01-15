@@ -3,71 +3,8 @@ from enum import Enum
 from typing import Tuple, Any, Dict, Union, List, Optional
 
 from janis_assistant.utils import stringify_value_or_array
+from janis_assistant.data.models.util import Serializable
 from janis_core.utils.logger import Logger
-
-
-class Serializable:
-    parse_types = {}
-    key_map = {}
-
-    def output(self):
-        d = self.to_dict()
-        tl = [(k + ": " + json.dumps(d[k], indent=2)) for k in d]
-        return "\n".join(tl)
-
-    @staticmethod
-    def serialize(key, value) -> Tuple[str, Any]:
-        if value is None:
-            return key, None
-        if isinstance(value, int) or isinstance(value, str) or isinstance(value, float):
-            return key, value
-        elif isinstance(value, dict):
-            return key, Serializable.serialize_dict(value, {})
-        elif isinstance(value, list):
-            return key, [Serializable.serialize(None, t)[1] for t in value]
-        elif isinstance(value, Serializable):
-            return key, value.to_dict()
-
-        raise Exception(
-            "Unable to serialize '{key}' of type '{value}".format(
-                key=key, value=type(value)
-            )
-        )
-
-    @staticmethod
-    def serialize_dict(d, km: Dict[str, str]):
-        retval = {}
-        for k, v in d.items():
-            if v is None:
-                continue
-            if k.startswith("__"):
-                continue
-            k, v = Serializable.serialize(km.get(k, k), v)
-            if not isinstance(v, bool) and not v:
-                continue
-            retval[k] = v
-        return retval
-
-    def to_dict(self):
-        return self.serialize_dict(vars(self), self.key_map or {})
-
-    @classmethod
-    def from_dict(cls, d):
-        import inspect
-
-        kwargs = {}
-        argspec = inspect.getfullargspec(cls.__init__)
-        ptypes = cls.parse_types or {}
-
-        for k in argspec.args:
-            if k not in d:
-                continue
-            if k in ptypes:
-                kwargs[k] = ptypes[k].from_dict(d[k])
-            else:
-                kwargs[k] = d[k]
-
-        return cls.__init__(**kwargs)
 
 
 class CromwellConfiguration(Serializable):
@@ -89,7 +26,9 @@ class CromwellConfiguration(Serializable):
     ]
 
     def output(self):
-        s = super().output()
+
+        d = self.to_dict()
+        s = "\n".join((k + ": " + json.dumps(d[k], indent=2)) for k in d)
 
         els = [
             'include required(classpath("application"))',
@@ -292,7 +231,10 @@ hsqldb.script_format=3
                             hashing_strategy=None,
                             check_sibling_md5=None,
                         ):
-                            self.duplication_strategy = duplication_strategy or [""]
+                            self.duplication_strategy = (
+                                duplication_strategy
+                                or CromwellConfiguration.DEFAULT_LOCALIZATION_STRATEGY
+                            )
                             self.hashing_strategy = hashing_strategy
                             self.check_sibling_md5 = check_sibling_md5
 
@@ -791,10 +733,19 @@ JOBID=$({sbatch} \\
 
     class Docker(Serializable):
         class HashLookup(Serializable):
-            def __init__(self, enabled=True):
+            def __init__(
+                self, enabled=True, perform_registry_lookup_if_digest_is_provided=False
+            ):
                 self.enabled = enabled
+                self.perform_registry_lookup_if_digest_is_provided = (
+                    perform_registry_lookup_if_digest_is_provided
+                )
 
-        def __init__(self, hash_lookup=None):
+            key_map = {
+                "perform_registry_lookup_if_digest_is_provided": "perform-registry-lookup-if-digest-is-provided",
+            }
+
+        def __init__(self, hash_lookup=HashLookup()):
             if hash_lookup is not None and not isinstance(hash_lookup, self.HashLookup):
                 raise Exception(
                     "hash-lookup is not of type CromwellConfiguration.Docker.HashLookup"
@@ -803,7 +754,7 @@ JOBID=$({sbatch} \\
 
         @classmethod
         def default(cls):
-            return None
+            return cls()
             # return cls(hash_lookup=cls.HashLookup(enabled=False))
 
         key_map = {"hash_lookup": "hash-lookup"}
@@ -844,7 +795,7 @@ JOBID=$({sbatch} \\
                 db_flush_rate: Optional[int] = None,
             ):
                 """
-                
+
                 :param summary_refresh_interval: Set this value to "Inf" to turn off metadata summary refresh.  The default value is currently "1 second"
                 :param summary_refresh_limit: maximum number of metadata rows to be considered per summarization cycle
                 :param db_batch_size:
@@ -930,9 +881,11 @@ JOBID=$({sbatch} \\
         self.aws: CromwellConfiguration.AWS = aws
 
         if additional_params is None:
-            from janis_assistant.management.configuration import JanisConfiguration
+            from janis_assistant.data.models.preparedjob import PreparedJob
 
-            additional_params = JanisConfiguration.manager().cromwell.additional_params
+            job = PreparedJob.instance()
+            if job and job.cromwell:
+                additional_params = job.cromwell.additional_params
 
         if additional_params is not None:
             additional_params = stringify_value_or_array(

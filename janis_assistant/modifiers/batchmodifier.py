@@ -54,9 +54,11 @@ class BatchPipelineModifier(PipelineModifierBase):
             if i.id() in fields:
                 continue
 
-            innode_base[i.id()] = w.input(
-                i.id(), i.intype, default=i.default, doc=i.doc
-            )
+            default = i.default
+            if isinstance(default, Selector):
+                default = None
+
+            innode_base[i.id()] = w.input(i.id(), i.intype, default=default, doc=i.doc)
 
         raw_groupby_values = inputs[self.batch.groupby]
 

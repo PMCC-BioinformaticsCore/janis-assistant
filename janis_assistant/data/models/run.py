@@ -3,7 +3,7 @@ from datetime import datetime
 
 from janis_assistant.utils import second_formatter
 
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 from janis_assistant.data.models.base import DatabaseObject, DatabaseObjectField
 from janis_assistant.data.enums.taskstatus import TaskStatus
@@ -267,9 +267,11 @@ class SubmissionModel(DatabaseObject):
             engine_ids = ", ".join(r.engine_id for r in self.runs if r.engine_id)
             errors.extend(r.error for r in self.runs if r.error)
 
-            rstatuses = ", ".join(str(r.status) for r in self.runs if r.status)
+            rstatuses = ", ".join(
+                str(r.status.to_string()) for r in self.runs if r.status
+            )
 
-        statuses = self.status if self.status else rstatuses
+        statuses = self.status.to_string() if self.status else rstatuses
         ers = "\n".join(errors)
 
         return f"""\
@@ -278,6 +280,7 @@ EngId:      {engine_ids}
 Engine:     {self.engine_type}
 
 Task Dir:   {self.output_dir}
+Exec Dir:   {self.execution_dir}
 
 Name:       {self.get_names() or 'N/A'} 
 Status:     {statuses}

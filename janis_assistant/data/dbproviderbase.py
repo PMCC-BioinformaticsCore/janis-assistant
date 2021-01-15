@@ -16,10 +16,14 @@ from contextlib import contextmanager
 
 from janis_assistant.utils import second_formatter
 
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_core import Logger
 
-from janis_assistant.data.models.base import DatabaseObject
+from janis_assistant.data.models.base import (
+    DatabaseObject,
+    DatabaseObjectField,
+    prep_object_for_db,
+)
 
 T = TypeVar("T")
 
@@ -164,6 +168,7 @@ class DbProviderBase(DbBase, Generic[T]):
         idkeys_ordered = list(idkeys)
         prows = f"SELECT {', '.join(idkeys_ordered)} FROM {self._tablename}"
         with self.with_cursor() as cursor:
+            Logger.log("Running query: " + str(prows))
             rows = cursor.execute(prows).fetchall()
             for row in rows:
                 self._id_cache.add(row)
@@ -178,21 +183,28 @@ class DbProviderBase(DbBase, Generic[T]):
 
         idkeys = set(self.get_id_keys())
         idkeys_ordered = list(idkeys)
-        dbalias_map = {t.dbalias: t.name for t in self._base.keymap()}
+        dbalias_map: Dict[str, DatabaseObjectField] = {
+            t.dbalias: t for t in self._base.keymap()
+        }
+
+        prep_el_idkey = lambda job: tuple(
+            [
+                prep_object_for_db(
+                    getattr(job, dbalias_map[_k].name), encode=dbalias_map[_k].encode,
+                )
+                for _k in idkeys_ordered
+            ]
+        )
 
         for job in jobs:
-            el_idkey = tuple(
-                [str(getattr(job, dbalias_map[_k])) for _k in idkeys_ordered]
-            )
+            el_idkey = prep_el_idkey(job)
             if el_idkey in self._id_cache:
                 updates.append(job)
             else:
                 inserts.append(job)
 
         for job in inserts:
-            el_idkey = tuple(
-                [str(getattr(job, dbalias_map[_k])) for _k in idkeys_ordered]
-            )
+            el_idkey = prep_el_idkey(job)
             self._id_cache.add(el_idkey)
 
         return updates, inserts
@@ -211,7 +223,9 @@ class DbProviderBase(DbBase, Generic[T]):
 
         # get all primary keys
 
-        dbalias_map = {t.dbalias: t.name for t in self._base.keymap()}
+        dbalias_map: Dict[str, DatabaseObjectField] = {
+            t.dbalias: t for t in self._base.keymap()
+        }
 
         updates, inserts = self.filter_updates(els)
 
@@ -238,7 +252,11 @@ class DbProviderBase(DbBase, Generic[T]):
             #   WHERE id1 = ? AND id2 = ? AND id3 is null AND id4 is null
 
             id_keyvalues = {
-                pkey: getattr(job, dbalias_map[pkey]) for pkey in idkeys_ordered
+                pkey: prep_object_for_db(
+                    getattr(job, dbalias_map[pkey].name),
+                    encode=dbalias_map[pkey].encode,
+                )
+                for pkey in idkeys_ordered
             }
             id_withvalues_keyvalue_ordered = [
                 (idkey, idvalue)

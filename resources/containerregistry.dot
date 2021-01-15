@@ -1,0 +1,18 @@
+digraph "classes_janis_assistant_containerregistry" {
+charset="utf-8"
+rankdir=BT
+"20" [label="{ContainerInfo|CONTAINER_INVALID_CHARS\lchash\lhost\limage : str\lrepository\ltag\l|convert_to_filename(container)\ldeconstruct_image_name(name)\lis_host_name(potentialhost)\lparse(container)\lrepo_and_image(empty_repo)\lto_filename()\lto_string(host, repository, image, tag, chash)\lvalidate_docker_digest(chash)\l}", shape="record"];
+"21" [label="{ContainerRegistry|\l|from_host(host)\lto_registry()\l}", shape="record"];
+"22" [label="{ContainerRegistryBase|\l|build_request(info, token)\lbuild_token_request(info)\lget_digest(info)\lget_token(info)\lhost_name(info)\l}", shape="record"];
+"30" [label="{CustomContainerRegistry|\l|host_name(info)\l}", shape="record"];
+"42" [label="{DockerHubContainerRegistry|\l|build_token_request(info)\lhost_name(info)\l}", shape="record"];
+"54" [label="{GcrContainerRegistry|\l|host_name(info)\l}", shape="record"];
+"96" [label="{QuayContainerRegistry|\l|host_name(info)\l}", shape="record"];
+"30" -> "22" [arrowhead="empty", arrowtail="none"];
+"22" -> "21" [arrowhead="empty", arrowtail="none"];
+"42" -> "22" [arrowhead="empty", arrowtail="none"];
+"54" -> "22" [arrowhead="empty", arrowtail="none"];
+"96" -> "22" [arrowhead="empty", arrowtail="none"];
+"20" -> "21" [arrowhead="empty", arrowtail="none"];
+
+}

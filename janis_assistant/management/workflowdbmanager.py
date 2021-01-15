@@ -21,7 +21,7 @@ from janis_assistant.data.providers.submissiondbprovider import SubmissionDbProv
 from janis_assistant.data.providers.workflowmetadataprovider import (
     SubmissionMetadataDbProvider,
 )
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 from janis_core.utils.logger import Logger
 
 
@@ -86,6 +86,9 @@ class WorkflowDbManager:
             submission_id=submission_id,
             run_id=RunModel.DEFAULT_ID,
         )
+
+    def get_uncached_status(self):
+        return self.submission_metadata.get_uncached_status()
 
     @contextmanager
     def with_cursor(self):

@@ -1,15 +1,21 @@
 import abc
 import os
 import shutil
-
 import subprocess
 from enum import Enum
 from shutil import copyfile, rmtree
 from typing import Optional, Callable
 
-from janis_assistant.management import Archivable
-from janis_assistant.management.configuration import JanisConfiguration
 from janis_core.utils.logger import Logger
+
+from janis_assistant.management import Archivable
+
+try:
+    from google.cloud import storage
+
+    has_google_cloud = True
+except:
+    has_google_cloud = False
 
 
 class FileScheme(Archivable, abc.ABC):
@@ -29,6 +35,10 @@ class FileScheme(Archivable, abc.ABC):
 
     def id(self):
         return self.identifier
+
+    @abc.abstractmethod
+    def exists(self, path):
+        pass
 
     @abc.abstractmethod
     def cp_from(
@@ -86,6 +96,10 @@ class FileScheme(Archivable, abc.ABC):
         return None
 
     @staticmethod
+    def get_filescheme_for_url(url: str):
+        return FileScheme.get_type_by_prefix(url)()
+
+    @staticmethod
     def is_local_path(prefix: str):
         return (
             prefix.startswith(".")
@@ -105,6 +119,10 @@ class FileScheme(Archivable, abc.ABC):
             return S3FileScheme
 
         raise Exception(f"Couldn't find filescheme with id '{identifier}'")
+
+    @staticmethod
+    def last_modified(path: str) -> Optional[str]:
+        return None
 
 
 class LocalFileScheme(FileScheme):
@@ -151,16 +169,22 @@ class LocalFileScheme(FileScheme):
             return None
 
     @staticmethod
-    def link_copy_or_fail(source, dest, force=False):
+    def link_copy_or_fail(source: str, dest: str, force=False):
         """
         Eventually move this to some generic util class
-        :param s: Source to link from
-        :param d: Place to link to
+        :param source: Source to link from
+        :param dest: Place to link to
+        :param force: Overwrite destination if it exists
         :return:
         """
         try:
 
-            to_copy = [(source, dest)]
+            to_copy = [
+                (
+                    LocalFileScheme.prepare_path(source),
+                    LocalFileScheme.prepare_path(dest),
+                )
+            ]
 
             while len(to_copy) > 0:
                 s, d = to_copy.pop(0)
@@ -191,16 +215,27 @@ class LocalFileScheme(FileScheme):
                     Logger.log(f"Copying file {s} → {d}")
                     copyfile(s, d)
         except Exception as e:
-            Logger.critical(f"An unexpected error occurred when link/copying {s}: {e}")
+            Logger.critical(
+                f"An unexpected error occurred when link/copying {s} -> {d}: {e}"
+            )
+
+    @staticmethod
+    def prepare_path(path):
+        if path.startswith("file://"):
+            return path[6:]
+        return path
 
     @staticmethod
     def is_valid_prefix(prefix: str):
         return True
 
+    def exists(self, path):
+        return os.path.exists(LocalFileScheme.prepare_path(path))
+
 
 class HTTPFileScheme(FileScheme):
-    def __init__(self, identifier, credentials: any = None):
-        super().__init__(identifier, FileScheme.FileSchemeType.http)
+    def __init__(self, credentials: any = None):
+        super().__init__("http", FileScheme.FileSchemeType.http)
         self._credentials = credentials
 
     @staticmethod
@@ -246,6 +281,31 @@ class HTTPFileScheme(FileScheme):
 
     def mkdirs(self, directory):
         return None
+
+    def exists(self, path):
+        import urllib.request
+
+        try:
+            req = urllib.request.Request(path, method="HEAD")
+            response = urllib.request.urlopen(req)
+            return response.getcode() == 200
+        except:
+            return False
+
+    @staticmethod
+    def last_modified(path: str) -> Optional[str]:
+        import urllib.request
+
+        try:
+            req = urllib.request.Request(path, method="HEAD")
+            response = urllib.request.urlopen(req)
+            if response.getheader("Last-Modified"):
+                return response.getheader("Last-Modified")
+            else:
+                return None
+
+        except:
+            return None
 
 
 class SSHFileScheme(FileScheme):
@@ -327,11 +387,57 @@ class GCSFileScheme(FileScheme):
         super().__init__("gcp", fstype=FileScheme.FileSchemeType.gcs)
 
     @staticmethod
+    def check_if_has_gcp():
+        if has_google_cloud:
+            return True
+        raise ImportError(
+            "You've tried to use the Google Cloud storage (GCS) filesystem, but don't have the 'google-cloud-storage' "
+            "library. This can be installed with 'pip install janis-pipelines.runner[gcs]'."
+        )
+
+    @staticmethod
     def is_valid_prefix(prefix: str):
         return prefix.lower().startswith("gs://")
 
     def get_file_size(self, path) -> Optional[int]:
         return None
+
+    def get_public_client(self):
+        from google.cloud.storage import Client
+
+        return Client.create_anonymous_client()
+
+    def get_blob_from_link(self, link):
+        bucket, blob = self.parse_gcs_link(link)
+
+        storage_client = self.get_public_client()
+
+        bucket = storage_client.bucket(bucket)
+        blob = bucket.get_blob(blob)
+        if not blob:
+            raise Exception(f"Couldn't find GCS link: {link}")
+
+        return blob
+
+    @staticmethod
+    def parse_gcs_link(gcs_link: str):
+        import re
+
+        gcs_locator = re.compile("gs:\/\/([A-z0-9-]+)\/(.*)")
+        match = gcs_locator.match(gcs_link)
+        if match is None:
+            raise Exception(
+                f"Janis was unable to validate your GCS link '{gcs_link}', as it couldn't determine the BUCKET, "
+                f"and FILE COMPONENT. Please raise an issue for more information."
+            )
+
+        bucket, blob = match.groups()
+
+        return bucket, blob
+
+    def exists(self, path):
+        blob = self.get_blob_from_link(path)
+        return blob.exists()
 
     def cp_from(
         self,
@@ -340,7 +446,22 @@ class GCSFileScheme(FileScheme):
         force=False,
         report_progress: Optional[Callable[[float], None]] = None,
     ):
-        pass
+        """
+        Downloads a public blob from the bucket.
+        Source: https://cloud.google.com/storage/docs/access-public-data#code-samples
+        """
+        self.check_if_has_gcp()
+        blob = self.get_blob_from_link(source)
+        size_mb = blob.size // (1024 * 1024)
+        Logger.debug(f"Downloading {source} -> {dest} ({size_mb} MB)")
+
+        blob.download_to_filename(dest)
+
+        print(
+            "Downloaded public blob {} from bucket {} to {}.".format(
+                blob.name, blob.bucket.name, dest
+            )
+        )
 
     def cp_to(
         self,
@@ -349,10 +470,14 @@ class GCSFileScheme(FileScheme):
         force=False,
         report_progress: Optional[Callable[[float], None]] = None,
     ):
-        pass
+        raise Exception("Janis doesn't support copying files TO google cloud storage.")
 
     def mkdirs(self, directory):
-        pass
+        raise NotImplementedError("Cannot make directories through GCS filescheme")
+
+    def rm_dir(self, directory):
+
+        raise NotImplementedError("Cannot remove directories through GCS filescheme")
 
 
 class S3FileScheme(FileScheme):

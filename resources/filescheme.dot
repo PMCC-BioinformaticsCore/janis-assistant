@@ -1,0 +1,20 @@
+digraph "classes_janis_assistant_filescheme" {
+charset="utf-8"
+rankdir=BT
+
+"50" [label="{FileScheme|fstype\lidentifier\l|cp_from(source, dest, force, report_progress)\lcp_to(source, dest, force, report_progress)\lexists(path)\lget_file_size(path)\lget_filescheme_for_url(url)\lget_type(identifier)\lget_type_by_prefix(prefix)\lid()\lis_local_path(prefix)\lis_valid_prefix(prefix)\llast_modified(path)\lmkdirs(directory)\lrm_dir(directory)\l}", shape="record"];
+"51" [label="{FileSchemeType|\l|}", shape="record"];
+"53" [label="{GCSFileScheme|\l|check_if_has_gcp()\lcp_from(source, dest, force, report_progress)\lcp_to(source, dest, force, report_progress)\lexists(path)\lget_blob_from_link(link)\lget_file_size(path)\lget_public_client()\lis_valid_prefix(prefix)\lmkdirs(directory)\lparse_gcs_link(gcs_link)\lrm_dir(directory)\l}", shape="record"];
+"58" [label="{HTTPFileScheme|\l|cp_from(source, dest, force, report_progress)\lcp_to(source, dest, force, report_progress)\lexists(path)\lget_file_size(path)\lis_valid_prefix(prefix)\llast_modified(path)\lmkdirs(directory)\lrm_dir(directory)\l}", shape="record"];
+"80" [label="{LocalFileScheme|\l|cp_from(source, dest, force, report_progress)\lcp_to(source, dest, force, report_progress)\lexists(path)\lget_file_size(path)\lis_valid_prefix(prefix)\llink_copy_or_fail(source, dest, force)\lmkdirs(directory)\lprepare_path(path)\lrm_dir(directory)\l}", shape="record"];
+"103" [label="{S3FileScheme|\l|get_file_size(path)\lis_valid_prefix(prefix)\lmkdirs(directory)\l}", shape="record"];
+"104" [label="{SSHFileScheme|connectionstring\l|cp_from(source, dest, force, report_progress)\lcp_to(source, dest, force, report_progress)\lget_file_size(path)\lis_valid_prefix(prefix)\lmakedir(location)\lmkdirs(directory)\lrm_dir(directory)\l}", shape="record"];
+# Fileschemes
+"104" -> "50" [arrowhead="empty", arrowtail="none"];
+"53" -> "50" [arrowhead="empty", arrowtail="none"];
+"58" -> "50" [arrowhead="empty", arrowtail="none"];
+"80" -> "50" [arrowhead="empty", arrowtail="none"];
+"103" -> "50" [arrowhead="empty", arrowtail="none"];
+"51" -> "50" [arrowhead="empty", arrowtail="none"];
+
+}

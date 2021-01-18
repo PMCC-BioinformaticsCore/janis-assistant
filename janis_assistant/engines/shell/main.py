@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 from typing import Dict, Any
+from datetime import datetime
 
 from janis_core import LogLevel
 from janis_core.types.data_types import is_python_primitive
@@ -14,7 +15,7 @@ from janis_assistant.engines.shell.shellconfiguration import ShellConfiguration
 from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
-from janis_assistant.utils.dateutil import DateUtil
+from janis_assistant.utils.dateutils import DateUtil
 
 class ShellLogger(ProcessLogger):
 
@@ -30,6 +31,67 @@ class ShellLogger(ProcessLogger):
         super().__init__(
             process=process, prefix="shell", logfp=logfp, exit_function=exit_function
         )
+
+    def run(self):
+        try:
+            for c in iter(
+                self.process.stdout.readline, "b"
+            ):  # replace '' with b'' for Python 3
+                Logger.debug(c)
+
+                if self.should_terminate:
+                    return
+
+                # if not c:
+                #     continue
+
+                line = c.decode("utf-8").rstrip()
+
+                if not line:
+                    rc = self.process.poll()
+                    if rc is not None:
+                        # process has terminated
+                        self.rc = rc
+                        print("Process has ended")
+                        self.terminate()
+                        if self.exit_function:
+                            self.exit_function(rc)
+
+                        return
+
+                has_error = self.error_keyword and self.error_keyword in line
+                # log to debug / critical the self.prefix + line
+                (Logger.critical if has_error else Logger.debug)(self.prefix + line)
+
+                should_write = (datetime.now() - self.last_write).total_seconds() > 5
+
+                if self.logfp and not self.logfp.closed:
+                    self.logfp.write(line + "\n")
+                    if should_write:
+                        self.last_write = datetime.now()
+                        self.logfp.flush()
+                        os.fsync(self.logfp.fileno())
+
+                if has_error:
+                    # process has terminated
+                    self.rc = rc
+                    self.logfp.flush()
+                    os.fsync(self.logfp.fileno())
+
+                    print("Process has ended")
+                    if self.exit_function:
+                        self.exit_function(rc)
+                    return
+
+            Logger.info("Process has completed")
+
+        except KeyboardInterrupt:
+            self.should_terminate = True
+            print("Detected keyboard interrupt")
+            # raise
+        except Exception as e:
+            print("Detected another error")
+            raise e
 
 
 class Shell(Engine):
@@ -92,8 +154,8 @@ class Shell(Engine):
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE,
         )
         Logger.debug(f"returncode {process.returncode}")
-        Logger.debug(f"stdout {process.stdout.read().decode()}")
-        Logger.debug(f"stderr {process.stderr.read().decode()}")
+        # Logger.debug(f"stdout {process.stdout.read().decode()}")
+        # Logger.debug(f"stderr {process.stderr.read().decode()}")
 
         Logger.info("Shell has started with pid=" + str(process.pid))
         self.process_id = process.pid
@@ -147,7 +209,7 @@ class Shell(Engine):
     def task_did_exit(self, logger: ShellLogger):
         Logger.debug("Shell fired 'did exit'")
         Logger.debug(logger)
-        # self.taskmeta["status"] = status
+        self.taskmeta["status"] = TaskStatus.COMPLETED
         self.taskmeta["finish"] = DateUtil.now()
         # self.taskmeta["outputs"] = logger.outputs
 
@@ -160,8 +222,9 @@ class Shell(Engine):
         # if logger.error:
         #     self.taskmeta["error"] = logger.error
 
-        # for callback in self.progress_callbacks.get(logger.sid, []):
-        #     callback(self.metadata(logger.sid))
+        Logger.debug(self.progress_callbacks)
+        for callback in self.progress_callbacks.get(self._logger.sid, []):
+            callback(self.metadata(self._logger.sid))
 
     def task_did_update(self, logger: ShellLogger, job: RunJobModel):
         Logger.debug(f"Updated task {job.id_} with status={job.status}")

@@ -45,6 +45,7 @@ class ProcessLogger(threading.Thread):
             for c in iter(
                 self.process.stdout.readline, "b"
             ):  # replace '' with b'' for Python 3
+                Logger.debug(c)
                 if self.should_terminate:
                     return
                 rc = self.process.poll()

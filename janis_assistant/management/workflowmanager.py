@@ -50,6 +50,7 @@ from janis_assistant.engines import (
     get_ideal_specification_for_engine,
     Cromwell,
     CWLTool,
+    Shell,
     CromwellConfiguration,
     Engine,
     EngineType,
@@ -1368,7 +1369,7 @@ janis run \\
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.meta, fp)
 
-        elif isinstance(engine, CWLTool):
+        elif isinstance(engine, CWLTool) or isinstance(engine, Shell):
             import json
 
             meta = engine.metadata(self.submission_id)

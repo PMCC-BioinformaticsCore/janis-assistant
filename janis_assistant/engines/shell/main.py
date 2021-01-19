@@ -17,19 +17,18 @@ from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
 from janis_assistant.utils.dateutils import DateUtil
 
+
 class ShellLogger(ProcessLogger):
 
     statusupdateregex = re.compile("INFO \[(.*)\] (.+)$")
 
-    def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None, stdout_file_path: str = None):
+    def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None):
         self.sid = sid
 
         self.error = None
         self.metadata_callback = metadata_callback
         self.outputs = None
         self.workflow_scope = []
-        self.stdout_file_path = stdout_file_path
-        self.stdout_tag_name = None
         super().__init__(
             process=process, prefix="shell", logfp=logfp, exit_function=exit_function
         )
@@ -76,16 +75,20 @@ class ShellLogger(ProcessLogger):
                 if self.should_terminate:
                     return
 
-                line = c.decode("utf-8")
+                line = c.decode("utf-8").rstrip()
+                if line.startswith("{"):
+                    self.outputs = json.loads(line)
 
-                # Reading the Tool output tag name printed in stdout
-                start_marker = "STDOUT START: "
-                if line.startswith(start_marker):
-                    self.stdout_tag_name = line.rstrip().split(start_marker)[1]
-                else:
-                    self.outputs.append(line)
+                # # Reading the Tool output tag name printed in stdout
+                # start_marker = "STDOUT START: "
+                # if line.startswith(start_marker):
+                #     self.stdout_tag_name = line.rstrip().split(start_marker)[1]
+                # else:
+                #     self.outputs.append(line)
 
-                line = line.rstrip()
+
+                Logger.debug(line)
+
                 if not line:
                     rc = self.process.poll()
                     if rc is not None:
@@ -143,19 +146,6 @@ class Shell(Engine):
         return self
 
     def stop_engine(self):
-        # # we're going to abort!
-        # if self.process_id:
-        #     Logger.info("Received stop_engine request for Shell")
-        #     try:
-        #         import signal
-        #
-        #         os.kill(self.process_id, signal.SIGTERM)
-        #     except Exception as e:
-        #         Logger.critical("Couldn't terminate Shell as " + str(e))
-        #
-        # else:
-        #     Logger.critical("Couldn't terminate Shell as there was no process ID")
-
         return self
 
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
@@ -172,7 +162,7 @@ class Shell(Engine):
         cmd = ["sh", source_path, input_path]
         Logger.info(f"Running command: {cmd}")
 
-        stdout_file_path = os.path.join(self.execution_dir, "_stdout")
+        # stdout_file_path = os.path.join(self.execution_dir, "_stdout")
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE,
         )
@@ -186,7 +176,6 @@ class Shell(Engine):
             logfp=open(self.logfile, "a+"),
             metadata_callback=self.task_did_update,
             exit_function=self.task_did_exit,
-            stdout_file_path=stdout_file_path
         )
 
         return wid
@@ -296,12 +285,7 @@ class Shell(Engine):
         Logger.debug("Shell fired 'did exit'")
         self.taskmeta["status"] = TaskStatus.COMPLETED
         self.taskmeta["finish"] = DateUtil.now()
-
-        with open(logger.stdout_file_path, "w") as f:
-            f.writelines(logger.outputs)
-
-        if logger.stdout_tag_name:
-            self.taskmeta["outputs"] = {logger.stdout_tag_name: logger.stdout_file_path}
+        self.taskmeta["outputs"] = logger.outputs
 
         # if status != TaskStatus.COMPLETED:
         #     js: Dict[str, RunJobModel] = self.taskmeta.get("jobs")

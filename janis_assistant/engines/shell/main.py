@@ -21,29 +21,28 @@ class ShellLogger(ProcessLogger):
 
     statusupdateregex = re.compile("INFO \[(.*)\] (.+)$")
 
-    def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None):
+    def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None, stdout_file_path: str = None):
         self.sid = sid
 
         self.error = None
         self.metadata_callback = metadata_callback
         self.outputs = None
         self.workflow_scope = []
+        self.stdout_file_path = stdout_file_path
+        self.stdout_tag_name = None
         super().__init__(
             process=process, prefix="shell", logfp=logfp, exit_function=exit_function
         )
 
     def run(self):
+        self.outputs = []
         try:
+            # Handle stderr first
             for c in iter(
-                self.process.stdout.readline, "b"
-            ):  # replace '' with b'' for Python 3
-                Logger.debug(c)
-
+                self.process.stderr.readline, "b"
+            ):
                 if self.should_terminate:
                     return
-
-                # if not c:
-                #     continue
 
                 line = c.decode("utf-8").rstrip()
 
@@ -52,16 +51,47 @@ class ShellLogger(ProcessLogger):
                     if rc is not None:
                         # process has terminated
                         self.rc = rc
-                        print("Process has ended")
-                        self.terminate()
-                        if self.exit_function:
-                            self.exit_function(rc)
-
-                        return
+                        break
 
                 has_error = self.error_keyword and self.error_keyword in line
                 # log to debug / critical the self.prefix + line
-                (Logger.critical if has_error else Logger.debug)(self.prefix + line)
+                (Logger.critical if has_error else Logger.debug)(self.prefix + " " + line)
+
+                if has_error:
+                    # process has terminated
+                    rc = self.process.poll()
+                    self.rc = rc
+                    self.logfp.flush()
+                    os.fsync(self.logfp.fileno())
+
+                    print("Process has ended")
+                    if self.exit_function:
+                        self.exit_function(rc)
+                    return
+
+            # Now, look at stdout
+            for c in iter(
+                self.process.stdout.readline, "b"
+            ):
+                if self.should_terminate:
+                    return
+
+                line = c.decode("utf-8")
+
+                # Reading the Tool output tag name printed in stdout
+                start_marker = "STDOUT START: "
+                if line.startswith(start_marker):
+                    self.stdout_tag_name = line.rstrip().split(start_marker)[1]
+                else:
+                    self.outputs.append(line)
+
+                line = line.rstrip()
+                if not line:
+                    rc = self.process.poll()
+                    if rc is not None:
+                        # process has terminated
+                        self.rc = rc
+                        break
 
                 should_write = (datetime.now() - self.last_write).total_seconds() > 5
 
@@ -72,18 +102,11 @@ class ShellLogger(ProcessLogger):
                         self.logfp.flush()
                         os.fsync(self.logfp.fileno())
 
-                if has_error:
-                    # process has terminated
-                    self.rc = rc
-                    self.logfp.flush()
-                    os.fsync(self.logfp.fileno())
-
-                    print("Process has ended")
-                    if self.exit_function:
-                        self.exit_function(rc)
-                    return
-
             Logger.info("Process has completed")
+
+            self.terminate()
+            if self.exit_function:
+                self.exit_function(self)
 
         except KeyboardInterrupt:
             self.should_terminate = True
@@ -120,18 +143,18 @@ class Shell(Engine):
         return self
 
     def stop_engine(self):
-        # we're going to abort!
-        if self.process_id:
-            Logger.info("Received stop_engine request for Shell")
-            try:
-                import signal
-
-                os.kill(self.process_id, signal.SIGTERM)
-            except Exception as e:
-                Logger.critical("Couldn't terminate Shell as " + str(e))
-
-        else:
-            Logger.critical("Couldn't terminate Shell as there was no process ID")
+        # # we're going to abort!
+        # if self.process_id:
+        #     Logger.info("Received stop_engine request for Shell")
+        #     try:
+        #         import signal
+        #
+        #         os.kill(self.process_id, signal.SIGTERM)
+        #     except Exception as e:
+        #         Logger.critical("Couldn't terminate Shell as " + str(e))
+        #
+        # else:
+        #     Logger.critical("Couldn't terminate Shell as there was no process ID")
 
         return self
 
@@ -147,15 +170,12 @@ class Shell(Engine):
         }
 
         cmd = ["sh", source_path, input_path]
-        # cmd = f"source {input_path}; sh {source_path};"
         Logger.info(f"Running command: {cmd}")
 
+        stdout_file_path = os.path.join(self.execution_dir, "_stdout")
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE,
         )
-        Logger.debug(f"returncode {process.returncode}")
-        # Logger.debug(f"stdout {process.stdout.read().decode()}")
-        # Logger.debug(f"stderr {process.stderr.read().decode()}")
 
         Logger.info("Shell has started with pid=" + str(process.pid))
         self.process_id = process.pid
@@ -166,6 +186,7 @@ class Shell(Engine):
             logfp=open(self.logfile, "a+"),
             metadata_callback=self.task_did_update,
             exit_function=self.task_did_exit,
+            stdout_file_path=stdout_file_path
         )
 
         return wid
@@ -185,6 +206,75 @@ class Shell(Engine):
 
         return retval
 
+    @staticmethod
+    def process_potential_out(run_id, key, out):
+
+        if isinstance(out, list):
+            outs = [Shell.process_potential_out(run_id, key, o) for o in out]
+            ups = {}
+            for o in outs:
+                for k, v in o.items():
+                    if k not in ups:
+                        ups[k] = []
+                    ups[k].append(v)
+            return ups
+
+        updates = {}
+        if out is None:
+            return {}
+
+        if is_python_primitive(out):
+            updates[key] = WorkflowOutputModel(
+                submission_id=None,
+                run_id=run_id,
+                id_=key,
+                original_path=None,
+                is_copyable=False,
+                timestamp=DateUtil.now(),
+                value=out,
+                new_path=None,
+                output_folder=None,
+                output_name=None,
+                secondaries=None,
+                extension=None,
+            )
+
+        elif "path" in out:
+            updates[key] = WorkflowOutputModel(
+                submission_id=None,
+                run_id=run_id,
+                id_=key,
+                is_copyable=True,
+                value=out["path"],
+                original_path=None,
+                timestamp=DateUtil.now(),
+                new_path=None,
+                output_folder=None,
+                output_name=None,
+                secondaries=None,
+                extension=None,
+            )
+            for s in out.get("secondaryFiles", []):
+                path = s["path"]
+                ext = path.rpartition(".")[-1]
+                newk = f"{key}_{ext}"
+                updates[newk] = WorkflowOutputModel(
+                    submission_id=None,
+                    run_id=run_id,
+                    id_=newk,
+                    value=path,
+                    original_path=None,
+                    is_copyable=True,
+                    timestamp=DateUtil.now(),
+                    new_path=None,
+                    output_folder=None,
+                    output_name=None,
+                    secondaries=None,
+                    extension=None,
+                )
+
+        return updates
+
     def terminate_task(self, identifier) -> TaskStatus:
         self.stop_engine()
         self.taskmeta["status"] = TaskStatus.ABORTED
@@ -198,20 +288,20 @@ class Shell(Engine):
             submission_id=None,
             name=identifier,
             status=self.taskmeta.get("status"),
-            # start=self.taskmeta.get("start"),
-            # finish=self.taskmeta.get("finish"),
-            # outputs=meta.get("outputs") or [],
             jobs=list(self.taskmeta.get("jobs", {}).values()),
             error=self.taskmeta.get("error"),
-            # executiondir=None,
         )
 
     def task_did_exit(self, logger: ShellLogger):
         Logger.debug("Shell fired 'did exit'")
-        Logger.debug(logger)
         self.taskmeta["status"] = TaskStatus.COMPLETED
         self.taskmeta["finish"] = DateUtil.now()
-        # self.taskmeta["outputs"] = logger.outputs
+
+        with open(logger.stdout_file_path, "w") as f:
+            f.writelines(logger.outputs)
+
+        if logger.stdout_tag_name:
+            self.taskmeta["outputs"] = {logger.stdout_tag_name: logger.stdout_file_path}
 
         # if status != TaskStatus.COMPLETED:
         #     js: Dict[str, RunJobModel] = self.taskmeta.get("jobs")

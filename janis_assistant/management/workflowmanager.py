@@ -24,6 +24,9 @@ from enum import Enum
 from subprocess import call
 from typing import Optional, List, Dict, Union, Any, Tuple
 
+from janis_assistant.modifiers.cwlinputobjectunwrappermodifier import (
+    CwlInputObjectUnwrapperModifier,
+)
 from janis_assistant.utils.callprogram import collect_output_from_command
 from janis_core import (
     Logger,
@@ -1165,7 +1168,7 @@ janis run \\
             container_override=container_override,
         )
 
-        modifiers = []
+        modifiers = [CwlInputObjectUnwrapperModifier()]
         if validation:
             modifiers.append(ValidatorPipelineModifier(validation))
 

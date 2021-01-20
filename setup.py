@@ -27,7 +27,7 @@ setup(
     },
     install_requires=[
         "janis-pipelines.core>=0.11.0",
-        "janis-pipelines.templates>=0.10.3",
+        "janis-pipelines.templates>=0.11.0",
         "requests",
         "path",
         "python-dateutil",

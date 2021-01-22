@@ -20,6 +20,9 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         "can_run_in_foreground",
         "run_in_background",
         "intermediate_execution_dir",
+        "max_workflow_time",
+        "sbatch",
+        "catch_slurm_errors",
     ]
 
     def __init__(

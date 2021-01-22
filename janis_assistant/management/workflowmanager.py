@@ -1093,13 +1093,10 @@ Kind regards,
         out_job_path = os.path.join(output_dir, "job.yaml")
         out_run_path = os.path.join(output_dir, "run.sh")
 
-        if os.path.exists(out_job_path) and not force_write:
-            Logger.warn(
-                f"There was already a job file at '{out_job_path}', skipping write"
-            )
-        else:
-            with open(out_job_path, "w+") as f:
-                f.write(s)
+        # mfranklin 2020-01-22: Always force overrite the job.yaml, because it gets re-parsed in when
+        # janis runs in a detatched mode (in the background with: janis run -B <wf>)
+        with open(out_job_path, "w+") as f:
+            f.write(s)
 
         if prepared_job._workflow_reference and isinstance(
             prepared_job._workflow_reference, str

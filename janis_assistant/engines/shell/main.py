@@ -65,7 +65,7 @@ class ShellLogger(ProcessLogger):
 
                     print("Process has ended")
                     if self.exit_function:
-                        self.exit_function(rc)
+                        self.exit_function(rc, TaskStatus.FAILED)
                     return
 
             # Now, look at stdout
@@ -85,7 +85,6 @@ class ShellLogger(ProcessLogger):
                 #     self.stdout_tag_name = line.rstrip().split(start_marker)[1]
                 # else:
                 #     self.outputs.append(line)
-
 
                 Logger.debug(line)
 
@@ -109,7 +108,7 @@ class ShellLogger(ProcessLogger):
 
             self.terminate()
             if self.exit_function:
-                self.exit_function(self)
+                self.exit_function(self, TaskStatus.COMPLETED)
 
         except KeyboardInterrupt:
             self.should_terminate = True
@@ -281,9 +280,9 @@ class Shell(Engine):
             error=self.taskmeta.get("error"),
         )
 
-    def task_did_exit(self, logger: ShellLogger):
+    def task_did_exit(self, logger: ShellLogger, status: TaskStatus):
         Logger.debug("Shell fired 'did exit'")
-        self.taskmeta["status"] = TaskStatus.COMPLETED
+        self.taskmeta["status"] = status
         self.taskmeta["finish"] = DateUtil.now()
         self.taskmeta["outputs"] = logger.outputs
 

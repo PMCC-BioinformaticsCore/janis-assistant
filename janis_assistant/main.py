@@ -18,6 +18,9 @@ import janis_core as j
 from janis_assistant.data.enums import TaskStatus
 
 from janis_assistant.modifiers.base import PipelineModifierBase
+from janis_assistant.modifiers.cwlinputobjectunwrappermodifier import (
+    CwlInputObjectUnwrapperModifier,
+)
 
 from janis_assistant.modifiers.inputchecker import InputChecker
 
@@ -661,6 +664,7 @@ def prepare_job(
 
         os.makedirs(cache_dir, exist_ok=True)
         processors = [
+            CwlInputObjectUnwrapperModifier(),
             FileFinderLocatorModifier(cache_dir=cache_dir, source_hints=source_hints),
             InputFileQualifierModifier(),
             InputTransformerModifier(cache_dir=cache_dir),

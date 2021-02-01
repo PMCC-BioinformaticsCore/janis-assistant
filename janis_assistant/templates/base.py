@@ -190,20 +190,6 @@ class EnvironmentTemplate(ABC):
     Kind regards,
     
     - Janis
-        <p>
-            The workflow '{wfname}' ({wid}) moved to the '{status}' status.
-        </p>
-        <ul>
-            <li>Task directory: <code>{tdir}</code></li>
-            <li>Execution directory: <code>{exdir}</code></li>
-        </ul>
-        
-        {progress_and_header}
-        
-        <em>Sent at {timestamp}</em>
-        
-        Kind regards,
-        - Janis
         """
 
         progress_and_header = ""

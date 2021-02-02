@@ -207,12 +207,11 @@ class Shell(Engine):
                     ups[k].append(v)
             return ups
 
-        updates = {}
         if out is None:
             return {}
 
-        if is_python_primitive(out):
-            updates[key] = WorkflowOutputModel(
+        return {
+            key: WorkflowOutputModel(
                 submission_id=None,
                 run_id=run_id,
                 id_=key,
@@ -226,42 +225,7 @@ class Shell(Engine):
                 secondaries=None,
                 extension=None,
             )
-
-        elif "path" in out:
-            updates[key] = WorkflowOutputModel(
-                submission_id=None,
-                run_id=run_id,
-                id_=key,
-                is_copyable=True,
-                value=out["path"],
-                original_path=None,
-                timestamp=DateUtil.now(),
-                new_path=None,
-                output_folder=None,
-                output_name=None,
-                secondaries=None,
-                extension=None,
-            )
-            for s in out.get("secondaryFiles", []):
-                path = s["path"]
-                ext = path.rpartition(".")[-1]
-                newk = f"{key}_{ext}"
-                updates[newk] = WorkflowOutputModel(
-                    submission_id=None,
-                    run_id=run_id,
-                    id_=newk,
-                    value=path,
-                    original_path=None,
-                    is_copyable=True,
-                    timestamp=DateUtil.now(),
-                    new_path=None,
-                    output_folder=None,
-                    output_name=None,
-                    secondaries=None,
-                    extension=None,
-                )
-
-        return updates
+        }
 
     def terminate_task(self, identifier) -> TaskStatus:
         self.stop_engine()
@@ -295,7 +259,6 @@ class Shell(Engine):
         # if logger.error:
         #     self.taskmeta["error"] = logger.error
 
-        Logger.debug(self.progress_callbacks)
         for callback in self.progress_callbacks.get(self._logger.sid, []):
             callback(self.metadata(self._logger.sid))
 

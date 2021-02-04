@@ -20,7 +20,7 @@ from janis_assistant.utils.dateutils import DateUtil
 
 class ShellLogger(ProcessLogger):
 
-    statusupdateregex = re.compile("INFO \[(.*)\] (.+)$")
+    error_keywords = ["error", "fail", "exception"]
 
     def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None):
         self.sid = sid
@@ -34,58 +34,23 @@ class ShellLogger(ProcessLogger):
         )
 
     def run(self):
-        self.outputs = []
+        self.outputs = {}
+
         try:
-            # Handle stderr first
-            has_error = False
-            for c in iter(
-                self.process.stderr.readline, "b"
-            ):
-                if self.should_terminate:
-                    return
-
-                line = c.decode("utf-8").rstrip()
-
-                if not line:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        # process has terminated
-                        self.rc = rc
-                        break
-                else:
-                    has_error = True
-
-                Logger.critical(line)
-
-            if has_error:
-                # process has terminated
-                rc = self.process.poll()
-                self.rc = rc
-                self.logfp.flush()
-                os.fsync(self.logfp.fileno())
-
-                print("Process has ended")
-                if self.exit_function:
-                    self.exit_function(self, TaskStatus.FAILED)
-                return
-
             # Now, look at stdout
             for c in iter(
-                self.process.stdout.readline, "b"
+                    self.process.stdout.readline, "b"
             ):
                 if self.should_terminate:
                     return
 
                 line = c.decode("utf-8").rstrip()
-                if line.startswith("{"):
-                    self.outputs = json.loads(line)
 
-                # # Reading the Tool output tag name printed in stdout
-                # start_marker = "STDOUT START: "
-                # if line.startswith(start_marker):
-                #     self.stdout_tag_name = line.rstrip().split(start_marker)[1]
-                # else:
-                #     self.outputs.append(line)
+                # If we find any json line, then it is the output
+                try:
+                    self.outputs = json.loads(line)
+                except Exception as e:
+                    pass
 
                 Logger.debug(line)
 
@@ -107,9 +72,44 @@ class ShellLogger(ProcessLogger):
 
             Logger.info("Process has completed")
 
+            # Handle stderr
+            has_error = False
+            for c in iter(
+                self.process.stderr.readline, "b"
+            ):
+                if self.should_terminate:
+                    return
+
+                line = c.decode("utf-8").rstrip()
+
+                if not line:
+                    rc = self.process.poll()
+                    if rc is not None:
+                        # process has terminated
+                        self.rc = rc
+                        break
+                else:
+                    for keyword in self.error_keywords:
+                        if keyword in line.lower():
+                            has_error = True
+
+                Logger.critical(line)
+
+            if has_error:
+                # process has terminated
+                rc = self.process.poll()
+                self.rc = rc
+                self.logfp.flush()
+                os.fsync(self.logfp.fileno())
+
             self.terminate()
             if self.exit_function:
-                self.exit_function(self, TaskStatus.COMPLETED)
+                if has_error:
+                    status = TaskStatus.FAILED
+                else:
+                    status = TaskStatus.COMPLETED
+
+                self.exit_function(self, status)
 
         except KeyboardInterrupt:
             self.should_terminate = True
@@ -162,7 +162,6 @@ class Shell(Engine):
         cmd = ["sh", source_path, input_path]
         Logger.info(f"Running command: {cmd}")
 
-        # stdout_file_path = os.path.join(self.execution_dir, "_stdout")
         process = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE,
         )
@@ -250,15 +249,6 @@ class Shell(Engine):
         self.taskmeta["status"] = status
         self.taskmeta["finish"] = DateUtil.now()
         self.taskmeta["outputs"] = logger.outputs
-
-        # if status != TaskStatus.COMPLETED:
-        #     js: Dict[str, RunJobModel] = self.taskmeta.get("jobs")
-        #     for j in js.values():
-        #         if j.status != TaskStatus.COMPLETED:
-        #             j.status = status
-
-        # if logger.error:
-        #     self.taskmeta["error"] = logger.error
 
         for callback in self.progress_callbacks.get(self._logger.sid, []):
             callback(self.metadata(self._logger.sid))

@@ -37,6 +37,7 @@ class ShellLogger(ProcessLogger):
         self.outputs = []
         try:
             # Handle stderr first
+            has_error = False
             for c in iter(
                 self.process.stderr.readline, "b"
             ):
@@ -51,22 +52,22 @@ class ShellLogger(ProcessLogger):
                         # process has terminated
                         self.rc = rc
                         break
+                else:
+                    has_error = True
 
-                has_error = self.error_keyword and self.error_keyword in line
-                # log to debug / critical the self.prefix + line
-                (Logger.critical if has_error else Logger.debug)(self.prefix + " " + line)
+                Logger.critical(line)
 
-                if has_error:
-                    # process has terminated
-                    rc = self.process.poll()
-                    self.rc = rc
-                    self.logfp.flush()
-                    os.fsync(self.logfp.fileno())
+            if has_error:
+                # process has terminated
+                rc = self.process.poll()
+                self.rc = rc
+                self.logfp.flush()
+                os.fsync(self.logfp.fileno())
 
-                    print("Process has ended")
-                    if self.exit_function:
-                        self.exit_function(rc, TaskStatus.FAILED)
-                    return
+                print("Process has ended")
+                if self.exit_function:
+                    self.exit_function(self, TaskStatus.FAILED)
+                return
 
             # Now, look at stdout
             for c in iter(

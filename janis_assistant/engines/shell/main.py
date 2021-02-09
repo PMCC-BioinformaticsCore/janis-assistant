@@ -22,13 +22,14 @@ class ShellLogger(ProcessLogger):
 
     error_keywords = ["error", "fail", "exception"]
 
-    def __init__(self, sid: str, process, logfp, metadata_callback, exit_function=None):
+    def __init__(self, sid: str, process, logfp, metadata_callback, execution_directory, exit_function=None):
         self.sid = sid
 
         self.error = None
         self.metadata_callback = metadata_callback
         self.outputs = None
         self.workflow_scope = []
+        self.execution_directory = execution_directory
         super().__init__(
             process=process, prefix="shell", logfp=logfp, exit_function=exit_function
         )
@@ -38,69 +39,10 @@ class ShellLogger(ProcessLogger):
 
         try:
             # Now, look at stdout
-            for c in iter(
-                    self.process.stdout.readline, "b"
-            ):
-                if self.should_terminate:
-                    return
-
-                line = c.decode("utf-8").rstrip()
-
-                # If we find any json line, then it is the output
-                try:
-                    self.outputs = json.loads(line)
-                except Exception as e:
-                    pass
-
-                Logger.debug(line)
-
-                if not line:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        # process has terminated
-                        self.rc = rc
-                        break
-
-                should_write = (datetime.now() - self.last_write).total_seconds() > 5
-
-                if self.logfp and not self.logfp.closed:
-                    self.logfp.write(line + "\n")
-                    if should_write:
-                        self.last_write = datetime.now()
-                        self.logfp.flush()
-                        os.fsync(self.logfp.fileno())
-
+            self.read_script_output()
             Logger.info("Process has completed")
 
-            # Handle stderr
-            has_error = False
-            for c in iter(
-                self.process.stderr.readline, "b"
-            ):
-                if self.should_terminate:
-                    return
-
-                line = c.decode("utf-8").rstrip()
-
-                if not line:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        # process has terminated
-                        self.rc = rc
-                        break
-                else:
-                    for keyword in self.error_keywords:
-                        if keyword in line.lower():
-                            has_error = True
-
-                Logger.critical(line)
-
-            if has_error:
-                # process has terminated
-                rc = self.process.poll()
-                self.rc = rc
-                self.logfp.flush()
-                os.fsync(self.logfp.fileno())
+            has_error = self.read_script_error()
 
             self.terminate()
             if self.exit_function:
@@ -118,6 +60,73 @@ class ShellLogger(ProcessLogger):
         except Exception as e:
             print("Detected another error")
             raise e
+
+    def read_script_output(self):
+        for c in iter(
+                self.process.stdout.readline, "b"
+        ):
+            if self.should_terminate:
+                return
+
+            line = c.decode("utf-8").rstrip()
+
+            # If we find any json line, then it is the output
+            try:
+                self.outputs = json.loads(line)
+            except Exception as e:
+                pass
+
+            Logger.debug(line)
+
+            if not line:
+                rc = self.process.poll()
+                if rc is not None:
+                    # process has terminated
+                    self.rc = rc
+                    break
+
+            should_write = (datetime.now() - self.last_write).total_seconds() > 5
+
+            if self.logfp and not self.logfp.closed:
+                self.logfp.write(line + "\n")
+                if should_write:
+                    self.last_write = datetime.now()
+                    self.logfp.flush()
+                    os.fsync(self.logfp.fileno())
+
+    def read_script_error(self):
+        # Handle stderr
+        has_error = False
+        for c in iter(
+                self.process.stderr.readline, "b"
+        ):
+            if self.should_terminate:
+                return
+
+            line = c.decode("utf-8").rstrip()
+
+            if not line:
+                rc = self.process.poll()
+                if rc is not None:
+                    # process has terminated
+                    self.rc = rc
+                    break
+            else:
+                for keyword in self.error_keywords:
+                    if keyword in line.lower():
+                        if not line.startswith("INFO"):
+                            has_error = True
+
+            Logger.warn(line)
+
+        if has_error:
+            # process has terminated
+            rc = self.process.poll()
+            self.rc = rc
+            self.logfp.flush()
+            os.fsync(self.logfp.fileno())
+
+        return has_error
 
 
 class Shell(Engine):
@@ -159,7 +168,7 @@ class Shell(Engine):
             "jobs": {},
         }
 
-        cmd = ["sh", source_path, input_path]
+        cmd = ["bash", source_path, input_path]
         Logger.info(f"Running command: {cmd}")
 
         process = subprocess.Popen(
@@ -174,6 +183,7 @@ class Shell(Engine):
             process,
             logfp=open(self.logfile, "a+"),
             metadata_callback=self.task_did_update,
+            execution_directory=self.execution_dir,
             exit_function=self.task_did_exit,
         )
 
@@ -196,7 +206,6 @@ class Shell(Engine):
 
     @staticmethod
     def process_potential_out(run_id, key, out):
-
         if isinstance(out, list):
             outs = [Shell.process_potential_out(run_id, key, o) for o in out]
             ups = {}

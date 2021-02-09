@@ -36,6 +36,7 @@ from janis_core import (
     Directory,
     Tool,
     WorkflowBase,
+    CommandTool
 )
 from janis_core.__meta__ import GITHUB_URL
 from janis_core.operators.operator import Operator
@@ -1276,6 +1277,7 @@ janis run \\
             if isinstance(innertype, File):
                 if ext is None:
                     ext = innertype.extension
+
                 secs = innertype.secondary_files()
 
             outputs.append(
@@ -1652,6 +1654,13 @@ janis run \\
             frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
             tofn = apply_secondary_file_format_to_filename(outfn, sec)
             topath = os.path.join(outdir, tofn)
+
+            if not os.path.exists(frompath):
+                if sec.startswith("."):
+                    sec = f"^{sec}"
+
+                    frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
+
             fs.cp_from(frompath, topath, force=True)
 
         return [original_filepath, newoutputfilepath]

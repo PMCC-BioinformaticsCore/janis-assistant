@@ -168,7 +168,8 @@ class Shell(Engine):
             "jobs": {},
         }
 
-        cmd = ["bash", source_path, input_path]
+        tool_dir = deps_path[:-1 * len(".zip")]
+        cmd = ["bash", source_path, input_path, tool_dir]
         Logger.info(f"Running command: {cmd}")
 
         process = subprocess.Popen(

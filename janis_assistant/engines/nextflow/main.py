@@ -8,6 +8,7 @@ from datetime import datetime
 from janis_core import LogLevel
 from janis_core.types.data_types import is_python_primitive
 from janis_core.utils.logger import Logger
+from janis_core.translations import nfgen
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.models.workflowjob import RunJobModel
@@ -120,10 +121,13 @@ class NextFlowTaskMonitor:
 
     def __init__(self, task_monitor_log_entry: str):
 
+        Logger.debug("[Task monitor]")
+        Logger.debug(task_monitor_log_entry)
+        task_monitor = []
         match = re.search(self.task_monitor_regex, task_monitor_log_entry)
-        if len(match.groups()) >= 1:
+        if match and len(match.groups()) >= 1:
             task_monitor_str = match[1]
-        task_monitor = task_monitor_str.split("; ")
+            task_monitor = task_monitor_str.split("; ")
 
         for att in task_monitor:
             key, val = att.split(": ")
@@ -272,7 +276,7 @@ class Nextflow(Engine):
 
     def read_janis_output(self):
         outputs = {}
-        output_meta_path = os.path.join(self.taskmeta["work_directory"], ".janis.out")
+        output_meta_path = os.path.join(self.taskmeta["work_directory"], nfgen.process.Process.OUTPUT_METADATA_FILENAME)
         with open(output_meta_path, "r") as f:
             for line in f:
                 outputs = json.loads(line)

@@ -129,15 +129,30 @@ class NextFlowTaskMonitor:
             task_monitor_str = match[1]
             task_monitor = task_monitor_str.split("; ")
 
+        Logger.debug("task_monitor")
+        Logger.debug(task_monitor)
+
         for att in task_monitor:
             key, val = att.split(": ")
             setattr(self, key.strip(), val.strip())
 
-        self.read_task_status()
-        self.read_stdout_path()
+        if task_monitor:
+            self.read_task_status()
+            self.read_stdout_path()
+        else:
+            self.init_attributes()
+
+    def init_attributes(self):
+        self.id = None
+        self.name = None
+        self.status = None
+        self.exit = None
+        self.error = None
+        self.workDir = None
+        self.stdout_path = None
 
     def read_task_status(self):
-        if self.status == 'COMPLETED':
+        if self.status == 'COMPLETED' and self.exit == '0':
             self.status = TaskStatus.COMPLETED
         else:
             self.status = TaskStatus.PROCESSING
@@ -276,10 +291,26 @@ class Nextflow(Engine):
 
     def read_janis_output(self):
         outputs = {}
+
+        if self.taskmeta["work_directory"] is None:
+            return outputs
+
         output_meta_path = os.path.join(self.taskmeta["work_directory"], nfgen.process.Process.OUTPUT_METADATA_FILENAME)
         with open(output_meta_path, "r") as f:
             for line in f:
-                outputs = json.loads(line)
+                try:
+                    key, val = line.split("=")
+                    key = key.strip()
+                    val = val.strip()
+
+                    # Note: cannot use json.load or ast.literal_eval because strings are not quoted
+                    if val.startswith("["):
+                        val = val.strip("][").split(", ")
+
+                    outputs[key] = val
+
+                except Exception as e:
+                    raise Exception(f"Failed to parse line {line} in {nfgen.process.Process.OUTPUT_METADATA_FILENAME}")
 
         return outputs
 

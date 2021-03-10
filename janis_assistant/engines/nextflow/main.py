@@ -8,7 +8,7 @@ from datetime import datetime
 from janis_core import LogLevel
 from janis_core.types.data_types import is_python_primitive
 from janis_core.utils.logger import Logger
-from janis_core.translations import nfgen
+from janis_core.translations import nfgen, NextflowTranslator
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.models.workflowjob import RunJobModel
@@ -207,7 +207,8 @@ class Nextflow(Engine):
 
         tool_dir = deps_path[:-1 * len(".zip")]
         workflow_dir = os.path.dirname(source_path)
-        cmd = ["nextflow", "run", source_path, '-params-file', input_path]
+        config_path = os.path.join(tool_dir, nfgen.CONFIG_FILENAME)
+        cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
         Logger.info(f"Running command: {cmd}")
 
         process = subprocess.Popen(
@@ -295,7 +296,7 @@ class Nextflow(Engine):
         if self.taskmeta["work_directory"] is None:
             return outputs
 
-        output_meta_path = os.path.join(self.taskmeta["work_directory"], nfgen.process.Process.OUTPUT_METADATA_FILENAME)
+        output_meta_path = os.path.join(self.taskmeta["work_directory"], NextflowTranslator.OUTPUT_METADATA_FILENAME)
         with open(output_meta_path, "r") as f:
             for line in f:
                 try:

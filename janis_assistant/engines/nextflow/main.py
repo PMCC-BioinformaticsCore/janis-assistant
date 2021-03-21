@@ -305,13 +305,15 @@ class Nextflow(Engine):
                     val = val.strip()
 
                     # Note: cannot use json.load or ast.literal_eval because strings are not quoted
-                    if val.startswith("["):
+                    if val == "[]":
+                        val = []
+                    elif val.startswith("["):
                         val = val.strip("][").split(", ")
 
                     outputs[key] = val
 
                 except Exception as e:
-                    raise Exception(f"Failed to parse line {line} in {nfgen.process.Process.OUTPUT_METADATA_FILENAME}")
+                    raise Exception(f"Failed to parse line {line} in {NextflowTranslator.OUTPUT_METADATA_FILENAME}")
 
         return outputs
 

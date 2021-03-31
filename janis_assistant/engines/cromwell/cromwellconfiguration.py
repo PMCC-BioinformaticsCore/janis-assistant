@@ -358,7 +358,7 @@ hsqldb.script_format=3
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
+                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotok:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 return cls(
                     actor_factory="cromwell.backend.impl.sfs.config.ConfigBackendLifecycleActorFactory",
@@ -433,7 +433,7 @@ JOBID=$({sbatch} \\
 
                 afternotokaycommand = ""
                 if afternotokaycatch:
-                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotokay:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
+                    afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotok:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 emailextra = (
                     f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""

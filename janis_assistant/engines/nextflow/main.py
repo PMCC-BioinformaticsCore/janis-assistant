@@ -89,8 +89,12 @@ class NextflowLogger(ProcessLogger):
                 if self.should_terminate:
                     return
 
+                current_nf_monitor = None
                 if self.monitor_tag in line:
-                    self.nf_monitor = NextFlowTaskMonitor(line)
+                   current_nf_monitor = NextFlowTaskMonitor(line)
+
+                if current_nf_monitor is not None and current_nf_monitor.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
+                    self.nf_monitor = current_nf_monitor
 
                 # line = c.decode("utf-8").rstrip()
 
@@ -320,6 +324,7 @@ class Nextflow(Engine):
     def task_did_exit(self, logger: NextflowLogger):
         Logger.debug("Shell fired 'did exit'")
         Logger.debug(logger.nf_monitor.status)
+
         self.taskmeta["status"] = logger.nf_monitor.status
         self.taskmeta["finish"] = DateUtil.now()
         self.taskmeta["work_directory"] = logger.nf_monitor.workDir

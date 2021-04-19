@@ -181,7 +181,20 @@ class Nextflow(Engine):
 
         self.taskmeta = {}
 
-        self.config = None
+        self.config = self.find_or_generate_config(config)
+
+    def find_or_generate_config(self, config: NextflowConfiguration):
+        from janis_assistant.data.models.preparedjob import PreparedJob
+
+        job = PreparedJob.instance()
+
+        if config:
+            self.config = config
+        else:
+            self.config = (
+                job.template.template.engine_config(EngineType.nextflow, job)
+                or NextflowConfiguration()
+            )
 
     def start_engine(self):
         Logger.log(
@@ -212,7 +225,12 @@ class Nextflow(Engine):
         tool_dir = deps_path[:-1 * len(".zip")]
         workflow_dir = os.path.dirname(source_path)
         config_path = os.path.join(tool_dir, nfgen.CONFIG_FILENAME)
-        cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
+        # cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
+
+        nf_config = NextflowConfiguration()
+
+        cmd = nf_config.build_command_line(source_path=source_path, input_path=input_path)
+
         Logger.info(f"Running command: {cmd}")
 
         process = subprocess.Popen(

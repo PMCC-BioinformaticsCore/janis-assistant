@@ -1651,6 +1651,13 @@ janis run \\
             frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
             tofn = apply_secondary_file_format_to_filename(outfn, sec)
             topath = os.path.join(outdir, tofn)
+
+            if not os.path.exists(frompath):
+                if sec.startswith("."):
+                    sec = f"^{sec}"
+
+                    frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
+
             fs.cp_from(frompath, topath, force=True)
 
         return [original_filepath, newoutputfilepath]

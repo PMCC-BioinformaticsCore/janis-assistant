@@ -138,7 +138,9 @@ class NextFlowTaskMonitor:
 
         for att in task_monitor:
             if ": " in att:
-                key, val = att.split(": ")
+                parts = att.split(": ")
+                key = parts[0]
+                val = parts[1]
                 setattr(self, key.strip(), val.strip())
             else:
                 Logger.warn(f"unknown task_monitor entry {att}")

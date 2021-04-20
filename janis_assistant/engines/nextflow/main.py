@@ -142,6 +142,13 @@ class NextFlowTaskMonitor:
                 key = parts[0]
                 val = parts[1]
                 setattr(self, key.strip(), val.strip())
+
+                # TODO: why is nextflow returning
+                # 'workDir: /data/gpfs/projects/punim0755/workspace/juny/nextflow/fastqcNf/janis/execution/work/f1/da15bd54d649281b1f60e93047128f started: 1618904643195'
+                if hasattr(self, "workDir"):
+                    unexpected_str = " started"
+                    if self.workDir.endswith(unexpected_str):
+                        self.workDir = self.workDir[:- len(unexpected_str)]
             else:
                 Logger.warn(f"unknown task_monitor entry {att}")
 

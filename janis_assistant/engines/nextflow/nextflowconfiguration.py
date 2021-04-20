@@ -28,7 +28,7 @@ class NextflowConfiguration:
             config_values["docker.enabled"] = self._to_nexflow_string(self.docker)
 
         if self.process_executor is not None:
-            config_values["process.executor"] = self.process_executor
+            config_values["process.executor"] = f"'{self.process_executor}'"
 
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:

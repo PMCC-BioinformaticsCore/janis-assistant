@@ -181,7 +181,7 @@ class Nextflow(Engine):
 
         self.taskmeta = {}
 
-        self.config = self.find_or_generate_config(config)
+        self.find_or_generate_config(config)
 
     def find_or_generate_config(self, config: NextflowConfiguration):
         from janis_assistant.data.models.preparedjob import PreparedJob

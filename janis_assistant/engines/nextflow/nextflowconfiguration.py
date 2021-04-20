@@ -24,11 +24,12 @@ class NextflowConfiguration:
         # we only want one or the other and we want to prioritise singularity
         if self.singularity:
             config_values["singularity.enabled"] = self._to_nexflow_string(self.singularity)
+            config_values["singularity.autoMounts"] = self._to_nexflow_string(True)
         else:
             config_values["docker.enabled"] = self._to_nexflow_string(self.docker)
 
         if self.process_executor is not None:
-            config_values["process.executor"] = f"'{self.process_executor}'"
+            config_values["process.executor"] = self._to_nexflow_string(self.process_executor)
 
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:
@@ -41,5 +42,7 @@ class NextflowConfiguration:
     def _to_nexflow_string(self, val: Any):
         if type(val) == bool:
             return str(val).lower()
+        if type(val) == str:
+            return f"'{val}'"
 
         return val

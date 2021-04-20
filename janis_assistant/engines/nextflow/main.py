@@ -227,9 +227,9 @@ class Nextflow(Engine):
         config_path = os.path.join(tool_dir, nfgen.CONFIG_FILENAME)
         # cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
 
-        nf_config = NextflowConfiguration()
+        # nf_config = NextflowConfiguration()
 
-        cmd = nf_config.build_command_line(source_path=source_path, input_path=input_path)
+        cmd = self.config.build_command_line(source_path=source_path, input_path=input_path)
 
         Logger.info(f"Running command: {cmd}")
 

@@ -32,7 +32,7 @@ class NextflowConfiguration:
 
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:
-            f.writelines(config_lines)
+            f.write("\n".join(config_lines))
 
         cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
 

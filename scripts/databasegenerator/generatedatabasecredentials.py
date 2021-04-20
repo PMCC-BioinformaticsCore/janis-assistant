@@ -319,7 +319,7 @@ def generate_hash_from_string(value, length):
     import hashlib
 
     logging.debug(f"Generating hash of length {length} for '{value}'")
-    hsh = hashlib.sha1(str(value).encode("UTF-8")).hexdigest()
+    hsh = hashlib.sha3_224(str(value).encode("UTF-8")).hexdigest()
     return hsh[: min(len(hsh), length) - 1]
 
 

@@ -1432,6 +1432,13 @@ janis run \\
                     f"Couldn't find expected output with tag {out.id_}, found outputs ({', '.join(eoutkeys)}"
                 )
                 continue
+
+            # not None but just some empty values like an empty list or empty string
+            if not eout:
+                return Logger.critical(
+                    f"Engine '{self.engine.id()}' didn't return {out.id_} outputs for Janis to copy, skipping"
+                )
+
             originalfile, newfilepath = self.copy_output(
                 fs=self.filescheme,
                 output_dir=submission.output_dir,

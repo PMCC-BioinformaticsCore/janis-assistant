@@ -288,8 +288,9 @@ class WorkflowManager:
 
         jc = metadb.prepared_job
         PreparedJob._instance = jc
+
         metadb.containertype = jc._container.__name__
-        metadb.containerversion = jc._container.test_available_by_getting_version()
+        metadb.containerversion = jc._container.test_available_by_getting_version(jc.template.template.setup_container_command())
 
         self.database.submission_metadata.save_changes()
 

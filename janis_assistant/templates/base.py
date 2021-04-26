@@ -224,6 +224,9 @@ class EnvironmentTemplate(ABC):
         """
         return test_command
 
+    def setup_container_command(self):
+        return None
+
 
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
     def __init__(

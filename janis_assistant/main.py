@@ -526,7 +526,7 @@ def run_from_jobfile(
     prejanis = jobfile.template.template.prejanis_hook()
     if prejanis is not None:
         Logger.info(f"running prejanis_hook with: {prejanis}")
-        subprocess.run(prejanis)
+        subprocess.run(prejanis, shell=True)
 
     # set logger for submit
     Logger.set_write_level(Logger.CONSOLE_LEVEL)

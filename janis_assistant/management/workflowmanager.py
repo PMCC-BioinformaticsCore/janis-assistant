@@ -313,7 +313,7 @@ class WorkflowManager:
         ]
 
         if jc.template.template.prejanis_hook() is not None:
-            command = [jc.template.template.prejanis_hook()] + command
+            command = [f"{jc.template.template.prejanis_hook()};"] + command
 
         scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
         logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)

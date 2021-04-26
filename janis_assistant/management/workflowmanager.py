@@ -312,8 +312,8 @@ class WorkflowManager:
             self.execution_dir,
         ]
 
-        if self.prejanis_hook() is not None:
-            command = [self.prejanis_hook()] + command
+        if self.jc.template.template.prejanis_hook() is not None:
+            command = [self.jc.template.template.prejanis_hook()] + command
 
         scriptdir = self.get_path_for_component(self.WorkflowManagerPath.configuration)
         logdir = self.get_path_for_component(self.WorkflowManagerPath.logs)

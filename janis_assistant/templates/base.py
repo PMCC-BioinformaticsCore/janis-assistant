@@ -77,6 +77,14 @@ class EnvironmentTemplate(ABC):
     ):
         import subprocess
 
+        if self.prejanis_hook() is not None:
+            script_name = "prejanis-hook.sh"
+            with open(script_name, "w") as f:
+                f.write(self.prejanis_hook())
+
+            subprocess.run(["source", script_name])
+
+
         Logger.info(
             "Starting Janis in the background with: "
             + (

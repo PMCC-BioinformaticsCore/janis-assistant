@@ -1,4 +1,5 @@
 import sys
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Type, Optional, List, Dict
@@ -78,7 +79,8 @@ class EnvironmentTemplate(ABC):
         import subprocess
 
         if self.prejanis_hook() is not None:
-            script_name = "prejanis-hook.sh"
+
+            script_name = os.path.join("intermediate_execution_dir", "prejanis-hook.sh")
             with open(script_name, "w") as f:
                 f.write(self.prejanis_hook())
 

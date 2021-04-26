@@ -78,9 +78,6 @@ class EnvironmentTemplate(ABC):
     ):
         import subprocess
 
-        if self.prejanis_hook() is not None:
-            command = f"{self.prejanis_hook()}; {command}"
-
         Logger.info(
             "Starting Janis in the background with: "
             + (

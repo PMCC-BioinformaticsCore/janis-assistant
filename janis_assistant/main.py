@@ -9,6 +9,7 @@
 import os
 import sys
 import time
+import subprocess
 from datetime import datetime
 from inspect import isclass
 from textwrap import dedent
@@ -521,6 +522,11 @@ def run_from_jobfile(
 
     jobfile.execution_dir = row.execution_dir
     jobfile.output_dir = row.output_dir
+
+    prejanis = jobfile.template.template.prejanis_hook()
+    if prejanis is not None:
+        Logger.info(f"running prejanis_hook with: {prejanis}")
+        subprocess.run(prejanis)
 
     # set logger for submit
     Logger.set_write_level(Logger.CONSOLE_LEVEL)

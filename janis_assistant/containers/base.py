@@ -1,6 +1,7 @@
 from abc import abstractmethod, ABC
 from enum import Enum
-from typing import Dict
+from typing import Dict, Optional
+from janis_assistant.templates import EnvironmentTemplate
 
 
 class ContainerType(Enum):
@@ -41,7 +42,7 @@ class Container(ABC):
 
     @staticmethod
     @abstractmethod
-    def test_available_by_getting_version() -> str:
+    def test_available_by_getting_version(template: Optional[EnvironmentTemplate] = None) -> str:
         """
         Test if the container environment is available, raise the ContainerEnvNotFound if not.
         :return:

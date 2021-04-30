@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from typing import Dict
+from typing import Dict, Optional
 
 from janis_core import Logger
 
@@ -41,7 +41,7 @@ class Singularity(Container):
         return ["singularity", "pull", containerlocation, "docker://" + docker]
 
     @staticmethod
-    def test_available_by_getting_version() -> str:
+    def test_available_by_getting_version(command: Optional[str] = None) -> str:
         try:
             version = subprocess.check_output(["singularity", "--version"]).decode()
             import re
@@ -58,8 +58,18 @@ class Singularity(Container):
                 )
 
             return version
-        except subprocess.CalledProcessError as e:
-            raise Container.ContainerEnvNotFound("singularity", e)
+        # except subprocess.CalledProcessError as e:
+        #     raise Container.ContainerEnvNotFound("singularity", e)
+        except Exception as e:
+
+            if command is not None:
+                try:
+                    Logger.info("Trying to load singularity")
+                    subprocess.run(command, shell=True)
+                except Exception as e:
+                    raise Container.ContainerEnvNotFound("singularity", e)
+            else:
+                raise Container.ContainerEnvNotFound("singularity", e)
 
     def start_container(self):
 

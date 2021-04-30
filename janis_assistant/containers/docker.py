@@ -1,5 +1,5 @@
 import subprocess
-from typing import Dict
+from typing import Dict, Optional
 
 from janis_core import Logger
 
@@ -31,7 +31,7 @@ class Docker(Container):
         return ContainerType.docker
 
     @staticmethod
-    def test_available_by_getting_version() -> str:
+    def test_available_by_getting_version(command: Optional[str] = None) -> str:
         try:
             return subprocess.check_output(["docker", "-v"]).decode()
         except subprocess.CalledProcessError as e:

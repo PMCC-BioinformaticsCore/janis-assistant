@@ -237,3 +237,6 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             logsdir=logsdir,
             **kwargs,
         )
+
+    def setup_container_command(self):
+        return self.singularity_load_instructions

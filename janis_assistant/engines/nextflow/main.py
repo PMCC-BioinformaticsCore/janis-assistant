@@ -67,16 +67,12 @@ class NextflowLogger(ProcessLogger):
             line = c.decode("utf-8").rstrip()
             Logger.debug(line)
 
-            # if "executor >" in line:
-            #     self.read_log()
-
-
-            # if not line:
-            #     rc = self.process.poll()
-            #     if rc is not None:
-            #         # process has terminated
-            #         self.rc = rc
-            #         break
+            if not line:
+                rc = self.process.poll()
+                if rc is not None:
+                    # process has terminated
+                    self.rc = rc
+                    break
             #
             # should_write = (datetime.now() - self.last_write).total_seconds() > 5
             #

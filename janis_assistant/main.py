@@ -101,7 +101,7 @@ def run_with_outputs(
         validation_reqs=None,
         engine=engine,
         hints={},
-        keep_intermediate_files=False,
+        keep_intermediate_files=True,
         max_cores=None,
         max_memory=None,
         max_duration=None,

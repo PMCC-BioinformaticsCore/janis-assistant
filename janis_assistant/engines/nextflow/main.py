@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import re
 import subprocess
 from typing import Dict, Any
@@ -21,10 +22,10 @@ from janis_assistant.utils.dateutils import DateUtil
 
 class NextflowLogger(ProcessLogger):
 
-    error_keywords = ["error", "fail", "exception"]
     monitor_tag = "[Task monitor]"
+    submitter_tag = "[Task submitter]"
 
-    def __init__(self, sid: str, process, logfp, metadata_callback, execution_directory, exit_function=None):
+    def __init__(self, sid: str, process, nextflow_log_filename, logfp, metadata_callback, execution_directory, exit_function=None):
         self.sid = sid
 
         self.error = None
@@ -32,7 +33,8 @@ class NextflowLogger(ProcessLogger):
         self.outputs = None
         self.workflow_scope = []
         self.execution_directory = execution_directory
-        self.nextflow_log_file = os.path.join(self.execution_directory, ".nextflow.log")
+        # self.nextflow_log_file = os.path.join(self.execution_directory, ".nextflow.log")
+        self.nextflow_log_file = os.path.join(self.execution_directory, nextflow_log_filename)
         self.nf_monitor = None
         super().__init__(
             process=process, prefix="nextflow: ", logfp=logfp, exit_function=exit_function
@@ -41,7 +43,7 @@ class NextflowLogger(ProcessLogger):
     def run(self):
 
         try:
-            self.read_script_output()
+            # self.read_script_output()
             self.read_log()
 
             self.exit_function(self)
@@ -57,35 +59,55 @@ class NextflowLogger(ProcessLogger):
 
     def read_script_output(self):
         for c in iter(
-                self.process.stdout.readline, "b"
+                self.process.stdout.readline, ""
         ):
             if self.should_terminate:
                 return
 
             line = c.decode("utf-8").rstrip()
-
             Logger.debug(line)
 
-            if not line:
-                rc = self.process.poll()
-                if rc is not None:
-                    # process has terminated
-                    self.rc = rc
-                    break
+            # if "executor >" in line:
+            #     self.read_log()
 
-            should_write = (datetime.now() - self.last_write).total_seconds() > 5
 
-            if self.logfp and not self.logfp.closed:
-                self.logfp.write(line + "\n")
-                if should_write:
-                    self.last_write = datetime.now()
-                    self.logfp.flush()
-                    os.fsync(self.logfp.fileno())
+            # if not line:
+            #     rc = self.process.poll()
+            #     if rc is not None:
+            #         # process has terminated
+            #         self.rc = rc
+            #         break
+            #
+            # should_write = (datetime.now() - self.last_write).total_seconds() > 5
+            #
+            # if self.logfp and not self.logfp.closed:
+            #     self.logfp.write(line + "\n")
+            #     if should_write:
+            #         self.last_write = datetime.now()
+            #         self.logfp.flush()
+            #         os.fsync(self.logfp.fileno())
 
     def read_log(self):
+        num_tries = 5
+        while True and num_tries > 0:
+            if os.path.exists(self.nextflow_log_file):
+                break
+            time.sleep(2)
+            num_tries -= 1
 
         with open(self.nextflow_log_file, "r") as f:
-            for line in f:
+            Logger.info("reading nextflow log file")
+            while True:
+                line = f.readline()
+                if not line:
+                    rc = self.process.poll()
+                    if rc is not None:
+                        # process has terminated
+                        Logger.debug("process has terminated")
+                        self.rc = rc
+                        break
+                    continue
+
                 if self.should_terminate:
                     return
 
@@ -93,8 +115,62 @@ class NextflowLogger(ProcessLogger):
                 if self.monitor_tag in line:
                    current_nf_monitor = NextFlowTaskMonitor(line)
 
-                if current_nf_monitor is not None and current_nf_monitor.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
-                    self.nf_monitor = current_nf_monitor
+                current_nf_submitter = None
+                if self.submitter_tag in line:
+                    current_nf_submitter = NextFlowTaskSubmitter(line)
+
+                if current_nf_submitter is not None:
+                    if current_nf_submitter.name is not None and current_nf_submitter.status is not None \
+                            and not current_nf_submitter.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
+                        jid = current_nf_submitter.name
+                        parentid = None
+                        stepname = current_nf_submitter.name
+                        status = current_nf_submitter.status
+                        start = DateUtil.now() if current_nf_submitter.status == TaskStatus.RUNNING else None
+                        finish = DateUtil.now() if current_nf_submitter.status == TaskStatus.COMPLETED else None
+
+                        job = RunJobModel(
+                            submission_id=None,
+                            run_id=self.sid,
+                            id_=jid,
+                            parent=parentid,
+                            name=stepname,
+                            status=status,
+                            start=start,
+                            finish=finish,
+                            backend="local",
+                            batchid="",
+                            stderr=self.logfp.name,
+                        )
+
+                        self.metadata_callback(self, job)
+
+                if current_nf_monitor is not None and current_nf_monitor.name is not None:
+                    if current_nf_monitor.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
+                        self.nf_monitor = current_nf_monitor
+                    else:
+                        jid = current_nf_monitor.name
+                        parentid = None
+                        stepname = current_nf_monitor.name
+                        status = current_nf_monitor.status
+                        start = DateUtil.now() if current_nf_monitor.status == TaskStatus.RUNNING else None
+                        finish = DateUtil.now() if current_nf_monitor.status == TaskStatus.COMPLETED else None
+
+                        job = RunJobModel(
+                            submission_id=None,
+                            run_id=self.sid,
+                            id_=jid,
+                            parent=parentid,
+                            name=stepname,
+                            status=status,
+                            start=start,
+                            finish=finish,
+                            backend="local",
+                            batchid="",
+                            stderr=self.logfp.name,
+                        )
+
+                        self.metadata_callback(self, job)
 
                 # line = c.decode("utf-8").rstrip()
 
@@ -104,13 +180,6 @@ class NextflowLogger(ProcessLogger):
                 except Exception as e:
                     pass
 
-                if not line:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        # process has terminated
-                        self.rc = rc
-                        break
-
                 should_write = (datetime.now() - self.last_write).total_seconds() > 5
 
                 if self.logfp and not self.logfp.closed:
@@ -119,6 +188,7 @@ class NextflowLogger(ProcessLogger):
                         self.last_write = datetime.now()
                         self.logfp.flush()
                         os.fsync(self.logfp.fileno())
+
 
 class NextFlowTaskMonitor:
     task_monitor_regex = r"TaskHandler\[(.+)\]"
@@ -149,6 +219,7 @@ class NextFlowTaskMonitor:
                     unexpected_str = " started"
                     if self.workDir.endswith(unexpected_str):
                         self.workDir = self.workDir[:- len(unexpected_str)]
+
             else:
                 Logger.warn(f"unknown task_monitor entry {att}")
 
@@ -170,11 +241,33 @@ class NextFlowTaskMonitor:
     def read_task_status(self):
         if self.status == 'COMPLETED' and self.exit == '0':
             self.status = TaskStatus.COMPLETED
+        elif self.status == 'COMPLETED' and self.exit == '1':
+            self.status = TaskStatus.FAILED
         else:
             self.status = TaskStatus.PROCESSING
 
     def read_stdout_path(self):
         self.stdout_path = os.path.join(self.workDir, ".command.out")
+
+
+class NextFlowTaskSubmitter:
+    INFO = "INFO"
+    task_submitter_regex = r" > (.+)"
+
+    def __init__(self, task_submitter_log_entry: str):
+        self.init_attributes()
+
+        if self.INFO in task_submitter_log_entry:
+            if "Submitted process" in task_submitter_log_entry:
+                self.status = TaskStatus.RUNNING
+
+            match = re.search(self.task_submitter_regex, task_submitter_log_entry)
+            if match and len(match.groups()) >= 1:
+                self.name = match[1]
+
+    def init_attributes(self):
+        self.name = None
+        self.status = None
 
 
 class Nextflow(Engine):
@@ -190,6 +283,7 @@ class Nextflow(Engine):
         )
         self.process = None
         self._logger = None
+        self.nextflow_log_filename = f"nextflow-{int(time.time())}.log"
 
         self.taskmeta = {}
 
@@ -241,7 +335,8 @@ class Nextflow(Engine):
 
         # nf_config = NextflowConfiguration()
 
-        cmd = self.config.build_command_line(source_path=source_path, input_path=input_path)
+        cmd = self.config.build_command_line(source_path=source_path, input_path=input_path,
+                                             nextflow_log_filename=self.nextflow_log_filename)
 
         Logger.info(f"Running command: {cmd}")
 
@@ -255,6 +350,7 @@ class Nextflow(Engine):
         self._logger = NextflowLogger(
             wid,
             process,
+            nextflow_log_filename=self.nextflow_log_filename,
             logfp=open(self.logfile, "a+"),
             metadata_callback=self.task_did_update,
             execution_directory=self.execution_dir,
@@ -353,13 +449,16 @@ class Nextflow(Engine):
 
     def task_did_exit(self, logger: NextflowLogger):
         Logger.debug("Shell fired 'did exit'")
-        Logger.debug(logger.nf_monitor.status)
 
-        self.taskmeta["status"] = logger.nf_monitor.status
-        self.taskmeta["finish"] = DateUtil.now()
-        self.taskmeta["work_directory"] = logger.nf_monitor.workDir
-        self.taskmeta["stdout_path"] = logger.nf_monitor.stdout_path
-        self.taskmeta["outputs"] = self.read_janis_output()
+        if logger.nf_monitor is not None:
+            self.taskmeta["status"] = logger.nf_monitor.status
+            self.taskmeta["finish"] = DateUtil.now()
+            self.taskmeta["work_directory"] = logger.nf_monitor.workDir
+            self.taskmeta["stdout_path"] = logger.nf_monitor.stdout_path
+            self.taskmeta["outputs"] = self.read_janis_output()
+        else:
+            self.taskmeta["status"] = TaskStatus.FAILED
+            self.taskmeta["outputs"] = None
 
         for callback in self.progress_callbacks.get(self._logger.sid, []):
             callback(self.metadata(self._logger.sid))

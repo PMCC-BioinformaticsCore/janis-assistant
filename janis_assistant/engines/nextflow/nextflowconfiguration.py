@@ -12,7 +12,7 @@ class NextflowConfiguration:
         self.singularity = singularity
         self.docker = docker
 
-    def build_command_line(self, source_path: str, input_path: str):
+    def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str):
         # cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
 
         config_path = os.path.join("nextflow.config")
@@ -21,6 +21,7 @@ class NextflowConfiguration:
         #     "docker.enabled": "true"
         # }
 
+        config_values["executor.dumpInterval"] = self._to_nexflow_string("1min")
         # we only want one or the other and we want to prioritise singularity
         if self.singularity:
             config_values["singularity.enabled"] = self._to_nexflow_string(self.singularity)
@@ -35,7 +36,13 @@ class NextflowConfiguration:
         with open(config_path, "w") as f:
             f.write("\n".join(config_lines))
 
-        cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
+        cmd = [
+            "nextflow",
+            "-C", config_path,
+            "-log", nextflow_log_filename,
+            "run", source_path,
+            '-params-file', input_path,
+        ]
 
         return cmd
 

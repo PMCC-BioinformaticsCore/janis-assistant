@@ -43,7 +43,7 @@ class NextflowLogger(ProcessLogger):
     def run(self):
 
         try:
-            # self.read_script_output()
+            self.read_script_output()
             self.read_log()
 
             self.exit_function(self)

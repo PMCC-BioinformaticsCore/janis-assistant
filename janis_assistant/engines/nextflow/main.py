@@ -1,9 +1,10 @@
 import json
 import os
+import glob
 import time
 import re
 import subprocess
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 from janis_core import LogLevel
@@ -33,9 +34,13 @@ class NextflowLogger(ProcessLogger):
         self.outputs = None
         self.workflow_scope = []
         self.execution_directory = execution_directory
+        self.work_directory = None
         # self.nextflow_log_file = os.path.join(self.execution_directory, ".nextflow.log")
         self.nextflow_log_file = os.path.join(self.execution_directory, nextflow_log_filename)
         self.nf_monitor = None
+        self.executor = None
+        self.current_nf_monitor = None
+        self.current_nf_submitter = None
         super().__init__(
             process=process, prefix="nextflow: ", logfp=logfp, exit_function=exit_function
         )
@@ -43,9 +48,7 @@ class NextflowLogger(ProcessLogger):
     def run(self):
 
         try:
-            self.read_script_output()
             self.read_log()
-
             self.exit_function(self)
             self.terminate()
 
@@ -83,6 +86,103 @@ class NextflowLogger(ProcessLogger):
             #         self.logfp.flush()
             #         os.fsync(self.logfp.fileno())
 
+    def read_important_value(self, line: str):
+        """
+        Nextflow log lines prints the important value of the log line after " > "
+
+        :param line:
+        :type line:
+        :return:
+        :rtype:
+        """
+        # example line: "nextflow.executor.Executor - [warm up] executor > local"
+        regex = r".+ > (.+)"
+        match = re.search(regex, line)
+
+        if match and len(match.groups()) >= 1:
+            return match[1]
+
+        return None
+
+    def read_process_work_dir(self, line: str):
+        regex = r"(.+)\[(.+)\](.+)"
+        match = re.search(regex, line)
+
+        if match and len(match.groups()) >= 2:
+            return match[2]
+
+        return None
+
+    def read_executor(self, line: str):
+        keyword = "nextflow.executor.Executor -"
+
+        if keyword in line:
+            self.executor = self.read_important_value(line)
+            return self.executor
+
+        return None
+
+    def read_work_dir(self, line: str):
+        keyword = "nextflow.Session - Work-dir: "
+        regex = rf"(.+)({keyword})(.+) \[(.+)\]"
+        if keyword in line:
+            match = re.search(regex, line)
+            Logger.debug(match.groups())
+
+            if match and len(match.groups()) >= 3:
+                self.work_directory = match[3]
+
+        return None
+
+    def read_task_monitor(self, line: str):
+        self.current_nf_monitor = None
+        if self.monitor_tag in line:
+            self.current_nf_monitor = NextFlowTaskMonitor.from_task_monitor(line)
+        elif self.submitter_tag in line and "Submitted process > " in line:
+            process_name = self.read_important_value(line)
+            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.RUNNING)
+        elif "nextflow.processor.TaskProcessor - Starting process " in line:
+            process_name = self.read_important_value(line)
+            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.PREPARED)
+        elif "nextflow.processor.TaskProcessor - " in line and "Cached process > " in line:
+            process_name = self.read_important_value(line)
+            process_work_dir = self.read_process_work_dir(line)
+            Logger.debug(process_work_dir)
+
+            work_dir_path = None
+            if process_work_dir is not None:
+                work_dir_path = os.path.join(self.work_directory, f"{process_work_dir}*")
+
+            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.COMPLETED, work_dir=work_dir_path)
+
+        return self.current_nf_monitor
+
+    def poll_process_update(self):
+        if self.current_nf_monitor is not None and \
+                self.current_nf_monitor.name is not None and \
+                self.current_nf_monitor.status is not None:
+
+            if not self.current_nf_monitor.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
+                parentid = None
+                start = DateUtil.now() if self.current_nf_monitor.status == TaskStatus.RUNNING else None
+                finish = DateUtil.now() if self.current_nf_monitor.status == TaskStatus.COMPLETED else None
+
+                job = RunJobModel(
+                    submission_id=None,
+                    run_id=self.sid,
+                    id_=self.current_nf_monitor.name,
+                    parent=parentid,
+                    name=self.current_nf_monitor.name,
+                    status=self.current_nf_monitor.status,
+                    start=start,
+                    finish=finish,
+                    backend=self.executor,
+                    workdir=self.current_nf_monitor.workDir)
+
+                self.metadata_callback(self, job)
+            else:
+                self.nf_monitor = self.current_nf_monitor
+
     def read_log(self):
         num_tries = 5
         while True and num_tries > 0:
@@ -107,74 +207,11 @@ class NextflowLogger(ProcessLogger):
                 if self.should_terminate:
                     return
 
-                current_nf_monitor = None
-                if self.monitor_tag in line:
-                   current_nf_monitor = NextFlowTaskMonitor(line)
+                self.read_executor(line)
+                self.read_work_dir(line)
+                self.read_task_monitor(line)
 
-                current_nf_submitter = None
-                if self.submitter_tag in line:
-                    current_nf_submitter = NextFlowTaskSubmitter(line)
-
-                if current_nf_submitter is not None:
-                    if current_nf_submitter.name is not None and current_nf_submitter.status is not None \
-                            and not current_nf_submitter.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
-                        jid = current_nf_submitter.name
-                        parentid = None
-                        stepname = current_nf_submitter.name
-                        status = current_nf_submitter.status
-                        start = DateUtil.now() if current_nf_submitter.status == TaskStatus.RUNNING else None
-                        finish = DateUtil.now() if current_nf_submitter.status == TaskStatus.COMPLETED else None
-
-                        job = RunJobModel(
-                            submission_id=None,
-                            run_id=self.sid,
-                            id_=jid,
-                            parent=parentid,
-                            name=stepname,
-                            status=status,
-                            start=start,
-                            finish=finish,
-                            backend="local",
-                            batchid="",
-                            stderr=self.logfp.name,
-                        )
-
-                        self.metadata_callback(self, job)
-
-                if current_nf_monitor is not None and current_nf_monitor.name is not None:
-                    if current_nf_monitor.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
-                        self.nf_monitor = current_nf_monitor
-                    else:
-                        jid = current_nf_monitor.name
-                        parentid = None
-                        stepname = current_nf_monitor.name
-                        status = current_nf_monitor.status
-                        start = DateUtil.now() if current_nf_monitor.status == TaskStatus.RUNNING else None
-                        finish = DateUtil.now() if current_nf_monitor.status == TaskStatus.COMPLETED else None
-
-                        job = RunJobModel(
-                            submission_id=None,
-                            run_id=self.sid,
-                            id_=jid,
-                            parent=parentid,
-                            name=stepname,
-                            status=status,
-                            start=start,
-                            finish=finish,
-                            backend="local",
-                            batchid="",
-                            stderr=self.logfp.name,
-                        )
-
-                        self.metadata_callback(self, job)
-
-                # line = c.decode("utf-8").rstrip()
-
-                # If we find any json line, then it is the output
-                try:
-                    self.outputs = json.loads(line)
-                except Exception as e:
-                    pass
+                self.poll_process_update()
 
                 should_write = (datetime.now() - self.last_write).total_seconds() > 5
 
@@ -189,41 +226,59 @@ class NextflowLogger(ProcessLogger):
 class NextFlowTaskMonitor:
     task_monitor_regex = r"TaskHandler\[(.+)\]"
 
-    def __init__(self, task_monitor_log_entry: str):
+    def __init__(self, id: Optional[str] = None,
+                 name: Optional[str] = None,
+                 status: Optional[str] = None,
+                 exit: Optional[str] = None,
+                 error: Optional[str] = None,
+                 work_dir: Optional[str] = None,
+                 stdout_path: Optional[str] = None):
+        self.id = id
+        self.name = name
+        self.status = status
+        self.exit = exit
+        self.error = error
+        self.workDir = work_dir
+        self.stdout_path = stdout_path
+
+    @classmethod
+    def from_task_monitor(cls, task_monitor_log_entry: str):
 
         Logger.debug("[Task monitor]")
         Logger.debug(task_monitor_log_entry)
-        task_monitor = []
-        match = re.search(self.task_monitor_regex, task_monitor_log_entry)
+        match = re.search(cls.task_monitor_regex, task_monitor_log_entry)
+        monitor = cls()
+
         if match and len(match.groups()) >= 1:
             task_monitor_str = match[1]
             task_monitor = task_monitor_str.split("; ")
 
-        Logger.debug("task_monitor")
-        Logger.debug(task_monitor)
+            Logger.debug("task_monitor")
+            Logger.debug(task_monitor)
 
-        for att in task_monitor:
-            if ": " in att:
-                parts = att.split(": ")
-                key = parts[0]
-                val = parts[1]
-                setattr(self, key.strip(), val.strip())
+            for att in task_monitor:
+                if ": " in att:
+                    parts = att.split(": ")
+                    key = parts[0]
+                    val = parts[1]
+                    setattr(monitor, key.strip(), val.strip())
 
-                # TODO: why is nextflow returning
-                # 'workDir: /data/gpfs/projects/punim0755/workspace/juny/nextflow/fastqcNf/janis/execution/work/f1/da15bd54d649281b1f60e93047128f started: 1618904643195'
-                if hasattr(self, "workDir"):
-                    unexpected_str = " started"
-                    if self.workDir.endswith(unexpected_str):
-                        self.workDir = self.workDir[:- len(unexpected_str)]
+                else:
+                    Logger.warn(f"unknown task_monitor entry {att}")
 
-            else:
-                Logger.warn(f"unknown task_monitor entry {att}")
+            # TODO: why is nextflow returning
+            # 'workDir: /data/gpfs/projects/punim0755/workspace/juny/nextflow/fastqcNf/janis/execution/work/f1/da15bd54d649281b1f60e93047128f started: 1618904643195'
+            if monitor.workDir is not None:
+                unexpected_str = " started"
+                if monitor.workDir.endswith(unexpected_str):
+                    monitor.workDir = monitor.workDir[:- len(unexpected_str)]
 
-        if task_monitor:
-            self.read_task_status()
-            self.read_stdout_path()
-        else:
-            self.init_attributes()
+        if monitor:
+            monitor.read_task_status()
+            monitor.read_stdout_path()
+            monitor.read_stderr_path()
+
+        return monitor
 
     def init_attributes(self):
         self.id = None
@@ -245,25 +300,8 @@ class NextFlowTaskMonitor:
     def read_stdout_path(self):
         self.stdout_path = os.path.join(self.workDir, ".command.out")
 
-
-class NextFlowTaskSubmitter:
-    INFO = "INFO"
-    task_submitter_regex = r" > (.+)"
-
-    def __init__(self, task_submitter_log_entry: str):
-        self.init_attributes()
-
-        if self.INFO in task_submitter_log_entry:
-            if "Submitted process" in task_submitter_log_entry:
-                self.status = TaskStatus.RUNNING
-
-            match = re.search(self.task_submitter_regex, task_submitter_log_entry)
-            if match and len(match.groups()) >= 1:
-                self.name = match[1]
-
-    def init_attributes(self):
-        self.name = None
-        self.status = None
+    def read_stderr_path(self):
+        self.stdout_path = os.path.join(self.workDir, ".command.err")
 
 
 class Nextflow(Engine):
@@ -323,13 +361,6 @@ class Nextflow(Engine):
             "status": TaskStatus.PROCESSING,
             "jobs": {},
         }
-
-        tool_dir = deps_path[:-1 * len(".zip")]
-        workflow_dir = os.path.dirname(source_path)
-        config_path = os.path.join(tool_dir, nfgen.CONFIG_FILENAME)
-        # cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
-
-        # nf_config = NextflowConfiguration()
 
         cmd = self.config.build_command_line(source_path=source_path, input_path=input_path,
                                              nextflow_log_filename=self.nextflow_log_filename)
@@ -422,24 +453,35 @@ class Nextflow(Engine):
         if self.taskmeta["work_directory"] is None:
             return outputs
 
-        output_meta_path = os.path.join(self.taskmeta["work_directory"], NextflowTranslator.OUTPUT_METADATA_FILENAME)
-        with open(output_meta_path, "r") as f:
-            for line in f:
-                try:
-                    key, val = line.split("=")
-                    key = key.strip()
-                    val = val.strip()
+        # output_meta_path = os.path.join(self.taskmeta["work_directory"], NextflowTranslator.OUTPUT_METADATA_FILENAME)
+        output_meta_path = None
+        output_meta_regex = os.path.join(self.taskmeta["work_directory"], NextflowTranslator.OUTPUT_METADATA_FILENAME)
+        Logger.debug(output_meta_regex)
+        found = glob.glob(output_meta_regex)
+        Logger.debug(found)
+        if len(found) == 1:
+            output_meta_path = found[0]
+        else:
+            raise Exception(f"Cannot find file that matches {output_meta_regex}")
 
-                    # Note: cannot use json.load or ast.literal_eval because strings are not quoted
-                    if val == "[]":
-                        val = []
-                    elif val.startswith("["):
-                        val = val.strip("][").split(", ")
+        if output_meta_path is not None:
+            with open(output_meta_path, "r") as f:
+                for line in f:
+                    try:
+                        key, val = line.split("=")
+                        key = key.strip()
+                        val = val.strip()
 
-                    outputs[key] = val
+                        # Note: cannot use json.load or ast.literal_eval because strings are not quoted
+                        if val == "[]":
+                            val = []
+                        elif val.startswith("["):
+                            val = val.strip("][").split(", ")
 
-                except Exception as e:
-                    raise Exception(f"Failed to parse line {line} in {NextflowTranslator.OUTPUT_METADATA_FILENAME}")
+                        outputs[key] = val
+
+                    except Exception as e:
+                        raise Exception(f"Failed to parse line {line} in {NextflowTranslator.OUTPUT_METADATA_FILENAME}")
 
         return outputs
 

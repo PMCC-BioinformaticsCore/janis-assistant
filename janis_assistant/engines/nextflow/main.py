@@ -181,8 +181,9 @@ class NextflowLogger(ProcessLogger):
                 self.nf_monitor = self.current_nf_monitor
 
     def read_log(self):
-        num_tries = 5
+        num_tries = 10
         while True and num_tries > 0:
+            Logger.info("Waiting for Nextflow to start logging")
             if os.path.exists(self.nextflow_log_file):
                 break
             time.sleep(2)

@@ -198,25 +198,28 @@ class NextflowLogger(ProcessLogger):
             try:
                 while True:
                     line = f.readline()
-                    # if not line:
-                    #     rc = self.process.poll()
-                    #     if rc is not None:
-                    #         # process has terminated
-                    #         Logger.debug("process has terminated")
-                    #         self.rc = rc
-                    #         break
-                    #     continue
-
                     if not line:
-                        if max_tries > 0:
-                            time.sleep(30)
-                            max_tries -= 1
-                            continue
-                    else:
-                        max_tries = 10
+                        Logger.debug("empty line")
+                        rc = self.process.poll()
+                        if rc is not None:
+                            # process has terminated
+                            Logger.debug("process has terminated")
+                            self.rc = rc
+                            break
+                        continue
 
-                    if self.should_terminate:
-                        return
+                    # if not line:
+                    #     if max_tries > 0:
+                    #         time.sleep(30)
+                    #         max_tries -= 1
+                    #         continue
+                    #     else:
+                    #         break
+                    # else:
+                    #     max_tries = 10
+                    #
+                    # if self.should_terminate:
+                    #     return
 
                     self.read_executor(line)
                     self.read_work_dir(line)

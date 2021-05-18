@@ -21,7 +21,7 @@ class NextflowConfiguration:
         #     "docker.enabled": "true"
         # }
 
-        config_values["executor.dumpInterval"] = self._to_nexflow_string("1min")
+        # config_values["executor.dumpInterval"] = self._to_nexflow_string("1min")
         # we only want one or the other and we want to prioritise singularity
         if self.singularity:
             config_values["singularity.enabled"] = self._to_nexflow_string(self.singularity)
@@ -42,7 +42,6 @@ class NextflowConfiguration:
             "-log", nextflow_log_filename,
             "run", source_path,
             "-params-file", input_path,
-            "-ansi-log",
             "-resume"
         ]
 

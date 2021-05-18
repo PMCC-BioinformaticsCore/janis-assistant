@@ -143,7 +143,7 @@ class NextflowLogger(ProcessLogger):
             self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.RUNNING)
         elif "nextflow.processor.TaskProcessor - Starting process " in line:
             process_name = self.read_important_value(line)
-            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.PREPARED)
+            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.QUEUED)
         elif "nextflow.processor.TaskProcessor - " in line and "Cached process > " in line:
             process_name = self.read_important_value(line)
             process_work_dir = self.read_process_work_dir(line)

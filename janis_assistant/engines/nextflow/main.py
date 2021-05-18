@@ -189,19 +189,31 @@ class NextflowLogger(ProcessLogger):
             time.sleep(2)
             num_tries -= 1
 
+        if not os.path.exists(self.nextflow_log_file):
+            raise Exception(f"{self.nextflow_log_file} not found")
+
+        max_tries = 15
         with open(self.nextflow_log_file, "r") as f:
             Logger.info(f"Start reading Nextflow log file in {self.nextflow_log_file}")
             try:
                 while True:
                     line = f.readline()
+                    # if not line:
+                    #     rc = self.process.poll()
+                    #     if rc is not None:
+                    #         # process has terminated
+                    #         Logger.debug("process has terminated")
+                    #         self.rc = rc
+                    #         break
+                    #     continue
+
                     if not line:
-                        rc = self.process.poll()
-                        if rc is not None:
-                            # process has terminated
-                            Logger.debug("process has terminated")
-                            self.rc = rc
-                            break
-                        continue
+                        if max_tries > 0:
+                            time.sleep(5)
+                            max_tries -= 1
+                            continue
+                    else:
+                        max_tries = 15
 
                     if self.should_terminate:
                         return

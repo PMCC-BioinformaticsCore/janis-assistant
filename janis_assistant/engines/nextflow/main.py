@@ -45,7 +45,7 @@ class NextflowLogger(ProcessLogger):
     def run(self):
 
         try:
-            # self.read_script_output()
+            self.read_script_output()
             self.read_log()
             self.exit_function(self)
             self.terminate()
@@ -199,7 +199,6 @@ class NextflowLogger(ProcessLogger):
             Logger.info(f"Start reading Nextflow log file in {self.nextflow_log_file}")
             try:
                 while True:
-                    time.sleep(1)
                     line = f.readline()
                     if not line:
                         rc = self.process.poll()

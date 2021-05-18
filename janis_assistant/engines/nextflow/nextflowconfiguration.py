@@ -42,6 +42,7 @@ class NextflowConfiguration:
             "-log", nextflow_log_filename,
             "run", source_path,
             "-params-file", input_path,
+            "-ansi-log", 'false',
             "-resume"
         ]
 

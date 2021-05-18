@@ -23,9 +23,6 @@ from janis_assistant.utils.dateutils import DateUtil
 
 class NextflowLogger(ProcessLogger):
 
-    monitor_tag = "[Task monitor]"
-    submitter_tag = "[Task submitter]"
-
     def __init__(self, sid: str, process, nextflow_log_filename, logfp, metadata_callback, execution_directory, exit_function=None):
         self.sid = sid
 
@@ -136,9 +133,9 @@ class NextflowLogger(ProcessLogger):
 
     def read_task_monitor(self, line: str):
         self.current_nf_monitor = None
-        if self.monitor_tag in line:
+        if "[Task monitor]" and "TaskHandler[" in line:
             self.current_nf_monitor = NextFlowTaskMonitor.from_task_monitor(line)
-        elif self.submitter_tag in line and "Submitted process > " in line:
+        elif "[Task submitter]" in line and "Submitted process > " in line:
             process_name = self.read_important_value(line)
             self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.RUNNING)
         elif "nextflow.processor.TaskProcessor - Starting process " in line:
@@ -232,7 +229,10 @@ class NextFlowTaskMonitor:
                  exit: Optional[str] = None,
                  error: Optional[str] = None,
                  work_dir: Optional[str] = None,
-                 stdout_path: Optional[str] = None):
+                 stdout_path: Optional[str] = None,
+                 stderr_path: Optional[str] = None,
+                 ):
+
         self.id = id
         self.name = name
         self.status = status
@@ -240,12 +240,13 @@ class NextFlowTaskMonitor:
         self.error = error
         self.workDir = work_dir
         self.stdout_path = stdout_path
+        self.stderr_path = stderr_path
 
     @classmethod
     def from_task_monitor(cls, task_monitor_log_entry: str):
 
-        Logger.debug("[Task monitor]")
-        Logger.debug(task_monitor_log_entry)
+        Logger.info("[Task monitor]")
+        Logger.info(task_monitor_log_entry)
         match = re.search(cls.task_monitor_regex, task_monitor_log_entry)
         monitor = cls()
 
@@ -280,14 +281,14 @@ class NextFlowTaskMonitor:
 
         return monitor
 
-    def init_attributes(self):
-        self.id = None
-        self.name = None
-        self.status = None
-        self.exit = None
-        self.error = None
-        self.workDir = None
-        self.stdout_path = None
+    # def init_attributes(self):
+    #     self.id = None
+    #     self.name = None
+    #     self.status = None
+    #     self.exit = None
+    #     self.error = None
+    #     self.workDir = None
+    #     self.stdout_path = None
 
     def read_task_status(self):
         if self.status == 'COMPLETED' and self.exit == '0':
@@ -301,7 +302,7 @@ class NextFlowTaskMonitor:
         self.stdout_path = os.path.join(self.workDir, ".command.out")
 
     def read_stderr_path(self):
-        self.stdout_path = os.path.join(self.workDir, ".command.err")
+        self.stderr_path = os.path.join(self.workDir, ".command.err")
 
 
 class Nextflow(Engine):

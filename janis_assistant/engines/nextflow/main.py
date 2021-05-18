@@ -45,6 +45,7 @@ class NextflowLogger(ProcessLogger):
     def run(self):
 
         try:
+            # self.read_script_output()
             self.read_log()
             self.exit_function(self)
             self.terminate()
@@ -73,6 +74,8 @@ class NextflowLogger(ProcessLogger):
                     # process has terminated
                     self.rc = rc
                     break
+                else:
+                    time.sleep(10)
             #
             # should_write = (datetime.now() - self.last_write).total_seconds() > 5
             #
@@ -192,34 +195,22 @@ class NextflowLogger(ProcessLogger):
         if not os.path.exists(self.nextflow_log_file):
             raise Exception(f"{self.nextflow_log_file} not found")
 
-        max_tries = 10
         with open(self.nextflow_log_file, "r") as f:
             Logger.info(f"Start reading Nextflow log file in {self.nextflow_log_file}")
             try:
                 while True:
+                    time.sleep(1)
                     line = f.readline()
                     if not line:
-                        Logger.debug("empty line")
                         rc = self.process.poll()
                         if rc is not None:
                             # process has terminated
                             Logger.debug("process has terminated")
                             self.rc = rc
                             break
+                        else:
+                            time.sleep(10)
                         continue
-
-                    # if not line:
-                    #     if max_tries > 0:
-                    #         time.sleep(30)
-                    #         max_tries -= 1
-                    #         continue
-                    #     else:
-                    #         break
-                    # else:
-                    #     max_tries = 10
-                    #
-                    # if self.should_terminate:
-                    #     return
 
                     self.read_executor(line)
                     self.read_work_dir(line)

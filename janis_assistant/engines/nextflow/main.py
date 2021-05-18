@@ -190,35 +190,41 @@ class NextflowLogger(ProcessLogger):
             num_tries -= 1
 
         with open(self.nextflow_log_file, "r") as f:
-            Logger.info("reading nextflow log file")
-            while True:
-                line = f.readline()
-                if not line:
-                    rc = self.process.poll()
-                    if rc is not None:
-                        # process has terminated
-                        Logger.debug("process has terminated")
-                        self.rc = rc
-                        break
-                    continue
+            Logger.info(f"Start reading Nextflow log file in {self.nextflow_log_file}")
+            try:
+                while True:
+                    line = f.readline()
+                    if not line:
+                        rc = self.process.poll()
+                        if rc is not None:
+                            # process has terminated
+                            Logger.debug("process has terminated")
+                            self.rc = rc
+                            break
+                        continue
 
-                if self.should_terminate:
-                    return
+                    if self.should_terminate:
+                        return
 
-                self.read_executor(line)
-                self.read_work_dir(line)
-                self.read_task_monitor(line)
+                    self.read_executor(line)
+                    self.read_work_dir(line)
+                    self.read_task_monitor(line)
 
-                self.poll_process_update()
+                    self.poll_process_update()
 
-                should_write = (datetime.now() - self.last_write).total_seconds() > 5
+                    should_write = (datetime.now() - self.last_write).total_seconds() > 5
 
+                    if self.logfp and not self.logfp.closed:
+                        self.logfp.write(line + "\n")
+                        if should_write:
+                            self.last_write = datetime.now()
+                            self.logfp.flush()
+                            os.fsync(self.logfp.fileno())
+
+            except Exception as e:
                 if self.logfp and not self.logfp.closed:
                     self.logfp.write(line + "\n")
-                    if should_write:
-                        self.last_write = datetime.now()
-                        self.logfp.flush()
-                        os.fsync(self.logfp.fileno())
+                    self.logfp.flush()
 
 
 class NextFlowTaskMonitor:

@@ -192,7 +192,7 @@ class NextflowLogger(ProcessLogger):
         if not os.path.exists(self.nextflow_log_file):
             raise Exception(f"{self.nextflow_log_file} not found")
 
-        max_tries = 15
+        max_tries = 10
         with open(self.nextflow_log_file, "r") as f:
             Logger.info(f"Start reading Nextflow log file in {self.nextflow_log_file}")
             try:
@@ -209,11 +209,11 @@ class NextflowLogger(ProcessLogger):
 
                     if not line:
                         if max_tries > 0:
-                            time.sleep(5)
+                            time.sleep(30)
                             max_tries -= 1
                             continue
                     else:
-                        max_tries = 15
+                        max_tries = 10
 
                     if self.should_terminate:
                         return

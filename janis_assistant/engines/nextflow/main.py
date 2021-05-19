@@ -4,8 +4,10 @@ import glob
 import time
 import re
 import subprocess
+import socketserver
 from typing import Dict, Any, Optional
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler
 
 from janis_core import LogLevel
 from janis_core.types.data_types import is_python_primitive
@@ -20,6 +22,69 @@ from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
 from janis_assistant.utils.dateutils import DateUtil
 
+
+def make_request_handler(nextflow_logger):
+    class NextflowRequestHandler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            content_len = int(self.headers.get('Content-Length'))
+            post_body = self.rfile.read(content_len)
+            body_as_str = post_body.decode("utf-8")
+            body_as_json = json.loads(body_as_str)
+
+            # Logger.debug(self.path)
+            # Logger.debug(body_as_json)
+            # Logger.debug(post_body)
+
+            event = body_as_json["event"]
+
+            if event == "completed":
+                Logger.debug("shutting down server")
+                self.server.shutdown()
+                Logger.debug("server shut down")
+            elif event.startswith("process_"):
+                trace = body_as_json["trace"]
+                name = trace["name"]
+                task_id = trace["task_id"]
+                work_dir = trace["workdir"]
+                status = trace["status"]
+                exit_code = trace["exit"]
+
+                janis_status = TaskStatus.QUEUED
+                if status == "COMPLETED":
+                    janis_status = TaskStatus.COMPLETED
+
+                    if name == NextflowTranslator.FINAL_STEP_NAME:
+                        nextflow_logger.nf_monitor = NextFlowTaskMonitor(id=task_id,name=name, status=janis_status, exit=exit_code)
+
+                elif status == "RUNNING":
+                    janis_status = TaskStatus.RUNNING
+                elif status == "SUBMITTED":
+                    janis_status = TaskStatus.QUEUED
+
+                start = DateUtil.now() if janis_status == TaskStatus.RUNNING else None
+                finish = DateUtil.now() if janis_status == TaskStatus.COMPLETED else None
+
+                parentid = None
+                parts = name.split(":")
+                if len(parts) >= 2:
+                    parentid = parts[0]
+
+                job = RunJobModel(
+                    submission_id=None,
+                    run_id=nextflow_logger.sid,
+                    id_=name,
+                    parent=parentid,
+                    name=name,
+                    status=janis_status,
+                    start=start,
+                    finish=finish,
+                    # backend=self.executor,
+                    workdir=work_dir
+                )
+
+                nextflow_logger.metadata_callback(nextflow_logger, job)
+
+    return NextflowRequestHandler
 
 class NextflowLogger(ProcessLogger):
 
@@ -43,19 +108,26 @@ class NextflowLogger(ProcessLogger):
         )
 
     def run(self):
+        PORT = 8000
 
         try:
-            self.read_script_output()
-            self.read_log()
+            httpd = socketserver.ThreadingTCPServer(("", PORT), make_request_handler(self))
+            print("serving at port", PORT)
+            httpd.serve_forever()
+
+            # self.read_script_output()
+            # self.read_log()
             self.exit_function(self)
             self.terminate()
 
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")
+            httpd.shutdown()
             # raise
         except Exception as e:
             print("Detected another error")
+            httpd.shutdown()
             raise e
 
     def read_script_output(self):

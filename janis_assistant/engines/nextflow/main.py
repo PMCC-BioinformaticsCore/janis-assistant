@@ -114,7 +114,7 @@ class NextflowLogger(ProcessLogger):
             print("serving at port", PORT)
             httpd.serve_forever()
 
-            self.read_script_output()
+            # self.read_script_output()
             # self.read_log()
             # self.exit_function(self)
             # self.terminate()

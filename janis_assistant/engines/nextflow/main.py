@@ -31,15 +31,13 @@ def make_request_handler(nextflow_logger):
             body_as_str = post_body.decode("utf-8")
             body_as_json = json.loads(body_as_str)
 
-            # Logger.debug(self.path)
-            # Logger.debug(body_as_json)
-            # Logger.debug(post_body)
-
             event = body_as_json["event"]
 
             if event == "completed":
                 Logger.debug("shutting down server")
                 self.server.shutdown()
+                nextflow_logger.exit_function(nextflow_logger)
+                nextflow_logger.terminate()
                 Logger.debug("server shut down")
             elif event.startswith("process_"):
                 trace = body_as_json["trace"]
@@ -86,6 +84,7 @@ def make_request_handler(nextflow_logger):
 
     return NextflowRequestHandler
 
+
 class NextflowLogger(ProcessLogger):
 
     def __init__(self, sid: str, process, nextflow_log_filename, logfp, metadata_callback, execution_directory, exit_function=None):
@@ -115,10 +114,10 @@ class NextflowLogger(ProcessLogger):
             print("serving at port", PORT)
             httpd.serve_forever()
 
-            # self.read_script_output()
+            self.read_script_output()
             # self.read_log()
-            self.exit_function(self)
-            self.terminate()
+            # self.exit_function(self)
+            # self.terminate()
 
         except KeyboardInterrupt:
             self.should_terminate = True
@@ -146,17 +145,9 @@ class NextflowLogger(ProcessLogger):
                     # process has terminated
                     self.rc = rc
                     break
-                else:
-                    time.sleep(10)
-            #
-            # should_write = (datetime.now() - self.last_write).total_seconds() > 5
-            #
-            # if self.logfp and not self.logfp.closed:
-            #     self.logfp.write(line + "\n")
-            #     if should_write:
-            #         self.last_write = datetime.now()
-            #         self.logfp.flush()
-            #         os.fsync(self.logfp.fileno())
+                # else:
+                #     time.sleep(1)
+
 
     def read_important_value(self, line: str):
         """

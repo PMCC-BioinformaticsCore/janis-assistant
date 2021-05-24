@@ -1,16 +1,19 @@
 import os
 from typing import Optional, Dict, List, Any
+from janis_assistant.management.configuration import JanisConfigurationTemplate
 
 
 class NextflowConfiguration:
     def __init__(self,
                  process_executor: Optional[str] = None,
                  docker: Optional[bool] = True,
-                 singularity: Optional[bool] = False):
+                 singularity: Optional[bool] = False,
+                 queue: Optional[str] = None):
 
         self.process_executor = process_executor
         self.singularity = singularity
         self.docker = docker
+        self.queue = queue
 
     def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str):
         # cmd = ["nextflow", "-C", config_path, "run", source_path, '-params-file', input_path]
@@ -31,6 +34,9 @@ class NextflowConfiguration:
 
         if self.process_executor is not None:
             config_values["process.executor"] = self._to_nexflow_string(self.process_executor)
+
+        if self.queue is not None:
+            config_values["process.queue"] = self._to_nexflow_string(self.queue)
 
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:

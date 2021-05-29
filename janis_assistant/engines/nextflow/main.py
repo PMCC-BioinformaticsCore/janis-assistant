@@ -110,23 +110,23 @@ class NextflowLogger(ProcessLogger):
         PORT = 8000
 
         try:
-            # httpd = socketserver.ThreadingTCPServer(("", PORT), make_request_handler(self))
-            # print("serving at port", PORT)
-            # httpd.serve_forever()
+            httpd = socketserver.ThreadingTCPServer(("", PORT), make_request_handler(self))
+            print("serving at port", PORT)
+            httpd.serve_forever()
 
-            self.read_script_output()
-            self.read_log()
+            # self.read_script_output()
+            # self.read_log()
             self.exit_function(self)
             self.terminate()
 
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")
-            # httpd.shutdown()
+            httpd.shutdown()
             # raise
         except Exception as e:
             print("Detected another error")
-            # httpd.shutdown()
+            httpd.shutdown()
             raise e
 
     def read_script_output(self):

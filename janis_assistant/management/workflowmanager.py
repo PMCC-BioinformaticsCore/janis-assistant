@@ -722,9 +722,13 @@ class WorkflowManager:
                     if res is True:
                         break
                 except queue.Empty:
+                    # if (
+                    #     last_semaphore_check is None
+                    #     or (DateUtil.now() - last_semaphore_check).total_seconds() > 2
+                    # ):
                     if (
-                        last_semaphore_check is None
-                        or (DateUtil.now() - last_semaphore_check).total_seconds() > 2
+                            last_semaphore_check is None
+                            or (DateUtil.now() - last_semaphore_check).total_seconds() > 5
                     ):
                         Logger.log("Checking semaphores")
                         last_semaphore_check = DateUtil.now()
@@ -742,7 +746,8 @@ class WorkflowManager:
                     #     self.do_health_check()
                     #     last_health_check = DateUtil.now()
 
-                    time.sleep(0.5)
+                    time.sleep(2)
+                    # time.sleep(0.5)
 
                     continue
                 except Exception as e:

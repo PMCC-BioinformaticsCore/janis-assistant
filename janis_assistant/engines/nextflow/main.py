@@ -119,8 +119,8 @@ class NextflowLogger(ProcessLogger):
 
             # self.read_script_output()
             # self.read_log()
-            self.exit_function(self)
-            self.terminate()
+            # self.exit_function(self)
+            # self.terminate()
 
         except KeyboardInterrupt:
             self.should_terminate = True

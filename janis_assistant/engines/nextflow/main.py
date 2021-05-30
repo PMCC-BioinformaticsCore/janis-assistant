@@ -35,7 +35,7 @@ def make_request_handler(nextflow_logger):
 
             event = body_as_json["event"]
 
-            if event == "completed":
+            if event == "completed" or event == "error":
                 Logger.debug("shutting down server")
                 self.server.shutdown()
                 nextflow_logger.exit_function(nextflow_logger)
@@ -44,6 +44,7 @@ def make_request_handler(nextflow_logger):
             elif event.startswith("process_"):
                 trace = body_as_json["trace"]
                 name = trace["name"]
+                process = trace["process"]
                 task_id = trace["task_id"]
                 work_dir = trace["workdir"]
                 status = trace["status"]
@@ -52,10 +53,6 @@ def make_request_handler(nextflow_logger):
                 janis_status = TaskStatus.QUEUED
                 if status == "COMPLETED":
                     janis_status = TaskStatus.COMPLETED
-
-                    if name == NextflowTranslator.FINAL_STEP_NAME:
-                        nextflow_logger.nf_monitor = NextFlowTaskMonitor(id=task_id,name=name, status=janis_status, exit=exit_code)
-
                 elif status == "RUNNING":
                     janis_status = TaskStatus.RUNNING
                 elif status == "SUBMITTED":
@@ -65,22 +62,26 @@ def make_request_handler(nextflow_logger):
                 finish = DateUtil.now() if janis_status == TaskStatus.COMPLETED else None
 
                 parentid = None
-                parts = name.split(":")
-                if len(parts) >= 2:
-                    parentid = parts[0]
+                # parts = name.split(":")
+                # if len(parts) >= 2:
+                #     parentid = parts[0]
 
-                job = RunJobModel(
-                    submission_id=None,
-                    run_id=nextflow_logger.sid,
-                    id_=name,
-                    parent=parentid,
-                    name=name,
-                    status=janis_status,
-                    start=start,
-                    finish=finish,
-                    # backend=self.executor,
-                    workdir=work_dir
-                )
+                if process == NextflowTranslator.FINAL_STEP_NAME:
+                    nextflow_logger.nf_monitor = NextFlowTaskMonitor(id=task_id, name=name, status=janis_status,
+                                                                     exit=exit_code)
+                else:
+                    job = RunJobModel(
+                        submission_id=None,
+                        run_id=nextflow_logger.sid,
+                        id_=name,
+                        parent=parentid,
+                        name=name,
+                        status=janis_status,
+                        start=start,
+                        finish=finish,
+                        # backend=self.executor,
+                        workdir=work_dir
+                    )
 
                 nextflow_logger.metadata_callback(nextflow_logger, job)
 

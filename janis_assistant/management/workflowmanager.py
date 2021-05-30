@@ -714,7 +714,6 @@ class WorkflowManager:
             last_semaphore_check = None
             last_health_check = DateUtil.now()
 
-            num_tries = 10
             while True:
                 try:
                     cb = self.main_queue.get(False)
@@ -723,9 +722,6 @@ class WorkflowManager:
                     if res is True:
                         break
                 except queue.Empty:
-                    if num_tries == 0:
-                        break
-
                     if (
                         last_semaphore_check is None
                         or (DateUtil.now() - last_semaphore_check).total_seconds() > 2
@@ -739,7 +735,6 @@ class WorkflowManager:
                             self.suspend_workflow()
                             break
 
-                        num_tries -= 1
 
                     # # TODO: make this interval be a config option
                     # if (

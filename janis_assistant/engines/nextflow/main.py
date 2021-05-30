@@ -31,8 +31,6 @@ def make_request_handler(nextflow_logger):
             body_as_str = post_body.decode("utf-8")
             body_as_json = json.loads(body_as_str)
 
-            Logger.debug(f"POST BODY|{body_as_json}")
-
             event = body_as_json["event"]
 
             if event == "completed" or event == "error":
@@ -565,7 +563,7 @@ class Nextflow(Engine):
         return outputs
 
     def task_did_exit(self, logger: NextflowLogger):
-        Logger.debug("Shell fired 'did exit'")
+        # Logger.debug("Shell fired 'did exit'")
 
         if logger.nf_monitor is not None:
             self.taskmeta["status"] = logger.nf_monitor.status
@@ -581,7 +579,7 @@ class Nextflow(Engine):
             callback(self.metadata(self._logger.sid))
 
     def task_did_update(self, logger: NextflowLogger, job: RunJobModel):
-        Logger.debug(f"Updated task {job.id_} with status={job.status}")
+        # Logger.debug(f"Updated task {job.id_} with status={job.status}")
         self.taskmeta["jobs"][job.id_] = job
 
         for callback in self.progress_callbacks.get(logger.sid, []):

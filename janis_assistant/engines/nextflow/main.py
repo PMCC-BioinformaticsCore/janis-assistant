@@ -31,6 +31,8 @@ def make_request_handler(nextflow_logger):
             body_as_str = post_body.decode("utf-8")
             body_as_json = json.loads(body_as_str)
 
+            Logger.debug(f"POST BODY|{body_as_json}")
+
             event = body_as_json["event"]
 
             if event == "completed":

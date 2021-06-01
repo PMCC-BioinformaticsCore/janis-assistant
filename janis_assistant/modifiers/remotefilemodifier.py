@@ -37,31 +37,26 @@ class RemoteFileLocatorModifier(FileLocatorModifierBase):
         :return: modified input
         :rtype: dict
         """
-        if not isinstance(tool, WorkflowBase):
-            return inputs
-
-        wf: WorkflowBase = tool
         new_inputs = {}
 
-        for inpnode in wf.input_nodes.values():
+        for inp in tool.tool_inputs():
             modification_required = False
 
-            if isinstance(inpnode.datatype, File) or (
-                isinstance(inpnode.datatype, Array)
-                and isinstance(inpnode.datatype.fundamental_type(), File)
+            if isinstance(inp.intype, File) or (
+                    isinstance(inp.intype, Array)
+                    and isinstance(inp.intype.fundamental_type(), File)
             ):
-                if inpnode.id() in inputs and inputs[inpnode.id()] is not None:
+                if inp.id() in inputs and inputs[inp.id()] is not None:
                     modification_required = True
 
             if modification_required:
-                doc: InputDocumentation = inpnode.doc
-                source = inputs[inpnode.id()]
+                source = inputs[inp.id()]
                 basedir = self.cache_dir
                 os.makedirs(basedir, exist_ok=True)
 
-                new_inputs[inpnode.id()] = self.localise_inputs(
-                    inpnode.id(),
-                    inpnode.datatype,
+                new_inputs[inp.id()] = self.localise_inputs(
+                    inp.id(),
+                    inp.intype,
                     basedir,
                     source,
                     # mfranklin 2021-01-08:

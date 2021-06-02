@@ -37,7 +37,6 @@ class NextflowConfiguration:
 
         if self.queue is not None:
             config_values["process.queue"] = self._to_nexflow_string(self.queue)
-            config_values["process.cpu"] = 4
 
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:

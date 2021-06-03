@@ -36,11 +36,11 @@ def make_request_handler(nextflow_logger):
             event = body_as_json["event"]
 
             if event == "completed" or event == "error":
-                Logger.debug("shutting down server")
+                # Logger.debug("shutting down server")
                 self.server.shutdown()
+                # Logger.debug("server shut down")
                 nextflow_logger.exit_function(nextflow_logger)
                 nextflow_logger.terminate()
-                Logger.debug("server shut down")
             elif event.startswith("process_"):
                 trace = body_as_json["trace"]
                 name = trace["name"]
@@ -57,6 +57,8 @@ def make_request_handler(nextflow_logger):
                     janis_status = TaskStatus.RUNNING
                 elif status == "SUBMITTED":
                     janis_status = TaskStatus.QUEUED
+                elif status == "FAILED":
+                    janis_status = TaskStatus.FAILED
 
                 start = DateUtil.now() if janis_status == TaskStatus.RUNNING else None
                 finish = DateUtil.now() if janis_status == TaskStatus.COMPLETED else None
@@ -110,10 +112,11 @@ class NextflowLogger(ProcessLogger):
         )
 
     def run(self):
+        HOST = "localhost"
         PORT = 8000
 
         try:
-            httpd = socketserver.ThreadingTCPServer(("", PORT), make_request_handler(self))
+            httpd = socketserver.ThreadingTCPServer((HOST, PORT), make_request_handler(self))
             print("serving at port", PORT)
             httpd.serve_forever()
 

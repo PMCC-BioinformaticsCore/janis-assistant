@@ -450,7 +450,7 @@ class Nextflow(Engine):
         Logger.info(f"Running command: {cmd}")
 
         process = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, preexec_fn=os.setsid, stderr=subprocess.PIPE
+            cmd,  preexec_fn=os.setsid,
         )
 
         Logger.info("Nextflow has started with pid=" + str(process.pid))

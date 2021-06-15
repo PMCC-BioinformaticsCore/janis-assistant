@@ -1,4 +1,5 @@
 import sys
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Type, Optional, List, Dict
@@ -222,6 +223,9 @@ class EnvironmentTemplate(ABC):
         :rtype: Optional[List]
         """
         return test_command
+
+    def setup_container_command(self):
+        return None
 
 
 class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):

@@ -73,7 +73,12 @@ class FileLocatorModifierBase(PipelineModifierBase):
 
         if localise_secondary_files:
             try:
-                for sec in inptype.secondary_files() or []:
+                # Handle normal input type or array input type
+                secondary_files = inptype.secondary_files()
+                if inptype.is_array():
+                    secondary_files = inptype.subtype().secondary_files()
+
+                for sec in secondary_files or []:
                     sec_source = apply_secondary_file_format_to_filename(source, sec)
                     out_sec_path = apply_secondary_file_format_to_filename(
                         out_path, sec

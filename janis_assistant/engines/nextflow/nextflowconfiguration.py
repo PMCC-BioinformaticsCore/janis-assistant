@@ -50,7 +50,7 @@ class NextflowConfiguration:
             "-params-file", input_path,
             "-ansi-log", 'true',
             "-with-weblog", "http://localhost:8000",
-
+            "-resume"
         ]
 
         return cmd

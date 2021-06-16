@@ -9,6 +9,7 @@ from janis_assistant.validation import ValidationRequirements
 from janis_assistant.management.configuration import (
     parse_if_dict,
     JanisConfigurationCromwell,
+    JanisConfigurationNextflow,
     JanisConfigurationTemplate,
     JanisConfigurationNotifications,
     JanisConfigurationEnvironment,
@@ -66,6 +67,7 @@ class PreparedJob(Serializable):
         container_type: str = None,
         workflow_reference: str = None,
         post_run_script: str = None,
+        nextflow: JanisConfigurationNextflow = None
     ):
         """
 
@@ -115,6 +117,9 @@ class PreparedJob(Serializable):
             cromwell or {},
             "cromwell",
             skip_if_empty=not requires_cromwell_config,
+        )
+        self.nextflow: JanisConfigurationNextflow = parse_if_dict(
+            JanisConfigurationNextflow, nextflow or {}, "nextflow", skip_if_empty=True
         )
         self.template: JanisConfigurationTemplate = parse_if_dict(
             JanisConfigurationTemplate, template or {}, "template", skip_if_empty=False

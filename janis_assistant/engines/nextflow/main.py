@@ -21,6 +21,8 @@ from janis_assistant.engines.engine import Engine, TaskStatus
 from janis_assistant.engines.enginetypes import EngineType
 from janis_assistant.utils import ProcessLogger
 from janis_assistant.utils.dateutils import DateUtil
+from janis_assistant.management.configuration import JanisConfigurationNextflow
+from janis_assistant.data.models.preparedjob import PreparedJob
 
 
 def make_request_handler(nextflow_logger):
@@ -406,8 +408,16 @@ class Nextflow(Engine):
         self.find_or_generate_config(config)
 
     def find_or_generate_config(self, config: NextflowConfiguration):
-        from janis_assistant.data.models.preparedjob import PreparedJob
+        """
+        Nextflow run configuration
 
+        :param config:
+        :type config:
+        :param job:
+        :type job:
+        :return:
+        :rtype:
+        """
         job = PreparedJob.instance()
 
         if config:
@@ -415,7 +425,7 @@ class Nextflow(Engine):
         else:
             self.config = (
                 job.template.template.engine_config(EngineType.nextflow, job)
-                or NextflowConfiguration()
+                or NextflowConfiguration(job)
             )
 
     def start_engine(self):
@@ -423,6 +433,7 @@ class Nextflow(Engine):
             "Nextflow doesn't run in a server mode, an instance will "
             "automatically be started when a task is created"
         )
+
         return self
 
     def stop_engine(self):

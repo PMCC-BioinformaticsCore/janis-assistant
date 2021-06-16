@@ -145,7 +145,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
 
     def nextflow(self, job):
 
-        config = NextflowConfiguration()
+        config = NextflowConfiguration(job)
         config.singularity = True
         config.process_executor = "slurm"
 

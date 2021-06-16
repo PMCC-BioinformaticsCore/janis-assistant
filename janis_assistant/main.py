@@ -715,6 +715,7 @@ def prepare_job(
         call_caching_enabled=jc.call_caching_enabled,
         container_type=jc.container.get_container_type(),
         post_run_script=post_run_script,
+        nextflow=jc.nextflow
     )
 
     if db_type:

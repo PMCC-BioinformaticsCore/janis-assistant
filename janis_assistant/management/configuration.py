@@ -166,6 +166,11 @@ class JanisConfigurationCromwell(Serializable):
         )
 
 
+class JanisConfigurationNextflow(Serializable):
+    def __init__(self, executable: str = None):
+        self.executable = executable
+
+
 class JanisConfigurationRecipes(Serializable):
     VALID_YAML_EXTENSIONS = {
         "yaml",
@@ -390,6 +395,7 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         digest_cache_location: str = None,
         container: Union[str, Container] = None,
         search_paths: List[str] = None,
+        nextflow: Union[JanisConfigurationNextflow, dict] = None,
     ):
         """
         :param engine: Default engine to use
@@ -440,6 +446,9 @@ class JanisConfiguration(NoAttributeErrors, Serializable):
         )
         self.cromwell: JanisConfigurationCromwell = parse_if_dict(
             JanisConfigurationCromwell, cromwell or {}, "cromwell", skip_if_empty=False
+        )
+        self.nextflow: JanisConfigurationNextflow = parse_if_dict(
+            JanisConfigurationNextflow, nextflow or {}, "nextflow", skip_if_empty=False
         )
         self.notifications: JanisConfigurationNotifications = parse_if_dict(
             JanisConfigurationNotifications,

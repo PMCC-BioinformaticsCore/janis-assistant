@@ -118,8 +118,9 @@ class PreparedJob(Serializable):
             "cromwell",
             skip_if_empty=not requires_cromwell_config,
         )
+        requires_nextflow_config = self.engine == EngineType.nextflow
         self.nextflow: JanisConfigurationNextflow = parse_if_dict(
-            JanisConfigurationNextflow, nextflow or {}, "nextflow", skip_if_empty=True
+            JanisConfigurationNextflow, nextflow or {}, "nextflow", skip_if_empty=not requires_nextflow_config
         )
         self.template: JanisConfigurationTemplate = parse_if_dict(
             JanisConfigurationTemplate, template or {}, "template", skip_if_empty=False

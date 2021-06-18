@@ -102,7 +102,7 @@ def make_request_handler(nextflow_logger):
 class NextflowLogger(ProcessLogger):
 
     def __init__(self, sid: str, process, nextflow_log_filename, logfp, metadata_callback, execution_directory,
-                 listener_host, listener_port, exit_function=None):
+                 listener_host, listener_port, listener_socket, exit_function=None):
         self.sid = sid
 
         self.error = None
@@ -118,6 +118,7 @@ class NextflowLogger(ProcessLogger):
         self.current_nf_submitter = None
         self.listener_host = listener_host
         self.listener_port = listener_port
+        self.listener_socket = listener_socket
         super().__init__(
             process=process, prefix="nextflow: ", logfp=logfp, exit_function=exit_function
         )
@@ -125,6 +126,7 @@ class NextflowLogger(ProcessLogger):
     def run(self):
         try:
             httpd = None
+            self.listener_socket.close()
             socketserver.ThreadingTCPServer.allow_reuse_address = True
             httpd = socketserver.ThreadingTCPServer((self.listener_host, self.listener_port),
                                                     make_request_handler(self))
@@ -249,6 +251,7 @@ class Nextflow(Engine):
         self.nextflow_log_filename = f"nextflow-{int(time.time())}.log"
         self.listener_host = "localhost"
         self.listener_port = None
+        self.listener_socket = None
 
         self.taskmeta = {}
 
@@ -304,12 +307,10 @@ class Nextflow(Engine):
                 available_port = port
                 break
 
-        a_socket.close()
-
         if available_port is None:
             raise Exception(f"Cannot find available port between {range_min} and {range_max}")
 
-        return available_port
+        return port, a_socket
 
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         Logger.debug(f"source_path: {source_path}")
@@ -322,7 +323,7 @@ class Nextflow(Engine):
             "jobs": {},
         }
 
-        self.listener_port = self.find_available_port()
+        self.listener_port, self.listener_socket = self.find_available_port()
         Logger.info(f"Port {self.listener_port} is available")
         cmd = self.config.build_command_line(source_path=source_path, input_path=input_path,
                                              nextflow_log_filename=self.nextflow_log_filename,
@@ -346,6 +347,7 @@ class Nextflow(Engine):
             execution_directory=self.execution_dir,
             listener_host=self.listener_host,
             listener_port=self.listener_port,
+            listener_socket=self.listener_socket,
             exit_function=self.task_did_exit
         )
 

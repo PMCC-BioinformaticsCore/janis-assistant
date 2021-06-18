@@ -34,7 +34,7 @@ def make_request_handler(nextflow_logger):
             body_as_str = post_body.decode("utf-8")
             body_as_json = json.loads(body_as_str)
 
-            # print(body_as_json)
+            Logger.debug(body_as_json)
 
             event = body_as_json["event"]
 
@@ -51,26 +51,10 @@ def make_request_handler(nextflow_logger):
                 process = trace["process"]
                 task_id = trace["task_id"]
                 work_dir = trace["workdir"]
-                status = trace["status"]
                 exit_code = trace["exit"]
 
-                janis_status = TaskStatus.QUEUED
-                if status == "COMPLETED":
-                    janis_status = TaskStatus.COMPLETED
-                elif status == "RUNNING":
-                    janis_status = TaskStatus.RUNNING
-                elif status == "SUBMITTED":
-                    janis_status = TaskStatus.QUEUED
-                elif status == "FAILED":
-                    janis_status = TaskStatus.FAILED
-
-                start = DateUtil.now() if janis_status == TaskStatus.RUNNING else None
-                finish = DateUtil.now() if janis_status == TaskStatus.COMPLETED else None
-
-                parentid = None
-                # parts = name.split(":")
-                # if len(parts) >= 2:
-                #     parentid = parts[0]
+                janis_status = self.read_process_status(body_as_json)
+                start, finish = self.set_start_finish_time(janis_status)
 
                 if process == NextflowTranslator.FINAL_STEP_NAME:
                     nextflow_logger.nf_monitor = NextFlowTaskMonitor(id=task_id, name=name, status=janis_status,
@@ -80,7 +64,7 @@ def make_request_handler(nextflow_logger):
                         submission_id=None,
                         run_id=nextflow_logger.sid,
                         id_=name,
-                        parent=parentid,
+                        parent=None,
                         name=name,
                         status=janis_status,
                         start=start,
@@ -90,6 +74,27 @@ def make_request_handler(nextflow_logger):
                     )
 
                     nextflow_logger.metadata_callback(nextflow_logger, job)
+
+        def read_process_status(self, data: dict):
+            status = data["trace"]["status"]
+
+            janis_status = TaskStatus.QUEUED
+            if status == "COMPLETED":
+                janis_status = TaskStatus.COMPLETED
+            elif status == "RUNNING":
+                janis_status = TaskStatus.RUNNING
+            elif status == "SUBMITTED":
+                janis_status = TaskStatus.QUEUED
+            elif status == "FAILED":
+                janis_status = TaskStatus.FAILED
+
+            return janis_status
+
+        def set_start_finish_time(self, janis_status: TaskStatus):
+            start = DateUtil.now() if janis_status == TaskStatus.RUNNING else None
+            finish = DateUtil.now() if janis_status == TaskStatus.COMPLETED else None
+
+            return start, finish
 
     return NextflowRequestHandler
 
@@ -106,7 +111,6 @@ class NextflowLogger(ProcessLogger):
         self.workflow_scope = []
         self.execution_directory = execution_directory
         self.work_directory = None
-        # self.nextflow_log_file = os.path.join(self.execution_directory, ".nextflow.log")
         self.nextflow_log_file = os.path.join(self.execution_directory, nextflow_log_filename)
         self.nf_monitor = None
         self.executor = None
@@ -131,11 +135,6 @@ class NextflowLogger(ProcessLogger):
             else:
                 raise Exception("Failed to start http server to listen to Nextflow status update")
 
-            # self.read_script_output()
-            # self.read_log()
-            # self.exit_function(self)
-            # self.terminate()
-
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")
@@ -156,171 +155,6 @@ class NextflowLogger(ProcessLogger):
             return True
 
         return False
-
-    def read_script_output(self):
-        for c in iter(
-                self.process.stdout.readline, ""
-        ):
-            if self.should_terminate:
-                return
-
-            line = c.decode("utf-8").rstrip()
-            Logger.debug(line)
-
-            if not line:
-                rc = self.process.poll()
-                if rc is not None:
-                    # process has terminated
-                    self.rc = rc
-                    break
-                # else:
-                #     time.sleep(1)
-
-
-    def read_important_value(self, line: str):
-        """
-        Nextflow log lines prints the important value of the log line after " > "
-
-        :param line:
-        :type line:
-        :return:
-        :rtype:
-        """
-        # example line: "nextflow.executor.Executor - [warm up] executor > local"
-        regex = r".+ > (.+)"
-        match = re.search(regex, line)
-
-        if match and len(match.groups()) >= 1:
-            return match[1]
-
-        return None
-
-    def read_process_work_dir(self, line: str):
-        regex = r"(.+)\[(.+)\](.+)"
-        match = re.search(regex, line)
-
-        if match and len(match.groups()) >= 2:
-            return match[2]
-
-        return None
-
-    def read_executor(self, line: str):
-        keyword = "nextflow.executor.Executor -"
-
-        if keyword in line:
-            self.executor = self.read_important_value(line)
-            return self.executor
-
-        return None
-
-    def read_work_dir(self, line: str):
-        keyword = "nextflow.Session - Work-dir: "
-        regex = rf"(.+)({keyword})(.+) \[(.+)\]"
-        if keyword in line:
-            match = re.search(regex, line)
-            Logger.debug(match.groups())
-
-            if match and len(match.groups()) >= 3:
-                self.work_directory = match[3]
-
-        return None
-
-    def read_task_monitor(self, line: str):
-        self.current_nf_monitor = None
-        if "[Task monitor]" and "TaskHandler[" in line:
-            self.current_nf_monitor = NextFlowTaskMonitor.from_task_monitor(line)
-        elif "[Task submitter]" in line and "Submitted process > " in line:
-            process_name = self.read_important_value(line)
-            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.RUNNING)
-        elif "nextflow.processor.TaskProcessor - Starting process " in line:
-            process_name = self.read_important_value(line)
-            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.QUEUED)
-        elif "nextflow.processor.TaskProcessor - " in line and "Cached process > " in line:
-            process_name = self.read_important_value(line)
-            process_work_dir = self.read_process_work_dir(line)
-            Logger.debug(process_work_dir)
-
-            work_dir_path = None
-            if process_work_dir is not None:
-                work_dir_path = os.path.join(self.work_directory, f"{process_work_dir}*")
-
-            self.current_nf_monitor = NextFlowTaskMonitor(name=process_name, status=TaskStatus.COMPLETED, work_dir=work_dir_path)
-
-        return self.current_nf_monitor
-
-    def poll_process_update(self):
-        if self.current_nf_monitor is not None and \
-                self.current_nf_monitor.name is not None and \
-                self.current_nf_monitor.status is not None:
-
-            if not self.current_nf_monitor.name.startswith(NextflowTranslator.FINAL_STEP_NAME):
-                parentid = None
-                start = DateUtil.now() if self.current_nf_monitor.status == TaskStatus.RUNNING else None
-                finish = DateUtil.now() if self.current_nf_monitor.status == TaskStatus.COMPLETED else None
-
-                job = RunJobModel(
-                    submission_id=None,
-                    run_id=self.sid,
-                    id_=self.current_nf_monitor.name,
-                    parent=parentid,
-                    name=self.current_nf_monitor.name,
-                    status=self.current_nf_monitor.status,
-                    start=start,
-                    finish=finish,
-                    backend=self.executor,
-                    workdir=self.current_nf_monitor.workDir)
-
-                self.metadata_callback(self, job)
-            else:
-                self.nf_monitor = self.current_nf_monitor
-
-    def read_log(self):
-        num_tries = 10
-        while True and num_tries > 0:
-            Logger.info("Waiting for Nextflow to start logging")
-            if os.path.exists(self.nextflow_log_file):
-                break
-            time.sleep(2)
-            num_tries -= 1
-
-        if not os.path.exists(self.nextflow_log_file):
-            raise Exception(f"{self.nextflow_log_file} not found")
-
-        with open(self.nextflow_log_file, "r") as f:
-            Logger.info(f"Start reading Nextflow log file in {self.nextflow_log_file}")
-            try:
-                while True:
-                    line = f.readline()
-                    if not line:
-                        rc = self.process.poll()
-                        if rc is not None:
-                            # process has terminated
-                            Logger.debug("process has terminated")
-                            self.rc = rc
-                            break
-                        else:
-                            time.sleep(1)
-                        continue
-
-                    self.read_executor(line)
-                    self.read_work_dir(line)
-                    self.read_task_monitor(line)
-
-                    self.poll_process_update()
-
-                    should_write = (datetime.now() - self.last_write).total_seconds() > 5
-
-                    if self.logfp and not self.logfp.closed:
-                        self.logfp.write(line + "\n")
-                        if should_write:
-                            self.last_write = datetime.now()
-                            self.logfp.flush()
-                            os.fsync(self.logfp.fileno())
-
-            except Exception as e:
-                if self.logfp and not self.logfp.closed:
-                    self.logfp.write(line + "\n")
-                    self.logfp.flush()
 
 
 class NextFlowTaskMonitor:
@@ -584,8 +418,6 @@ class Nextflow(Engine):
         if self.taskmeta["work_directory"] is None:
             return outputs
 
-        # output_meta_path = os.path.join(self.taskmeta["work_directory"], NextflowTranslator.OUTPUT_METADATA_FILENAME)
-        output_meta_path = None
         output_meta_regex = os.path.join(self.taskmeta["work_directory"], NextflowTranslator.OUTPUT_METADATA_FILENAME)
         Logger.debug(output_meta_regex)
         found = glob.glob(output_meta_regex)

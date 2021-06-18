@@ -1,6 +1,7 @@
 from typing import Union, List, Optional
 
 from janis_assistant.engines.cwltool.cwltoolconfiguation import CWLToolConfiguration
+from janis_assistant.engines.nextflow.nextflowconfiguration import NextflowConfiguration
 
 from janis_assistant.data.models.preparedjob import PreparedJob
 from janis_assistant.engines.cromwell.cromwellconfiguration import CromwellConfiguration
@@ -142,12 +143,23 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
 
         return config
 
+    def nextflow(self, job):
+
+        config = NextflowConfiguration(job)
+        config.singularity = True
+        config.process_executor = "slurm"
+
+        return config
+
     def engine_config(self, engine: EngineType, job):
         if engine == EngineType.cromwell:
             return self.cromwell(job)
 
         elif engine == EngineType.cwltool:
             return self.cwltool(job)
+
+        elif engine == EngineType.nextflow:
+            return self.nextflow(job)
 
         raise NotImplementedError(
             f"The {self.__class__.__name__} template does not have a configuration for {engine.value}"

@@ -268,7 +268,7 @@ class SubmissionModel(DatabaseObject):
             errors.extend(r.error for r in self.runs if r.error)
 
             rstatuses = ", ".join(
-                str(r.status.to_string()) for r in self.runs if r.status
+                str(r.status) for r in self.runs if r.status
             )
 
         statuses = self.status.to_string() if self.status else rstatuses

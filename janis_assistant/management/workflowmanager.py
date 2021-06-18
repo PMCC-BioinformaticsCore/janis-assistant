@@ -53,6 +53,7 @@ from janis_assistant.engines import (
     get_ideal_specification_for_engine,
     Cromwell,
     CWLTool,
+    Nextflow,
     CromwellConfiguration,
     Engine,
     EngineType,
@@ -706,6 +707,7 @@ class WorkflowManager:
             # add extra check for engine on resume
             meta = self.engine.metadata(self.get_engine_id())
             if meta and meta.status in TaskStatus.final_states():
+                # meta.submission_id = self.submission_id
                 self.save_metadata(meta)
                 return self.process_completed_task()
 
@@ -732,6 +734,7 @@ class WorkflowManager:
                         if os.path.exists(self.get_pause_semaphore_path()):
                             self.suspend_workflow()
                             break
+
 
                     # # TODO: make this interval be a config option
                     # if (
@@ -1372,7 +1375,7 @@ janis run \\
             with open(os.path.join(metadir, "metadata.json"), "w+") as fp:
                 json.dump(meta.meta, fp)
 
-        elif isinstance(engine, CWLTool):
+        elif isinstance(engine, CWLTool) or isinstance(engine, Nextflow):
             import json
 
             meta = engine.metadata(self.submission_id)
@@ -1662,6 +1665,13 @@ janis run \\
             frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
             tofn = apply_secondary_file_format_to_filename(outfn, sec)
             topath = os.path.join(outdir, tofn)
+
+            if not os.path.exists(frompath):
+                if sec.startswith("."):
+                    sec = f"^{sec}"
+
+                    frompath = apply_secondary_file_format_to_filename(original_filepath, sec)
+
             fs.cp_from(frompath, topath, force=True)
 
         return [original_filepath, newoutputfilepath]

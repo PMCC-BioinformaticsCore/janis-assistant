@@ -6,6 +6,7 @@ import re
 import subprocess
 import socketserver
 import socket
+import random
 from typing import Dict, Any, Optional
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
@@ -295,7 +296,11 @@ class Nextflow(Engine):
         range_min = 8000
         range_max = 8100
         available_port = None
-        for port in range(range_min, range_max):
+        num_tries = 10
+        while True and num_tries > 0:
+            port = random.randint(range_min, range_max)
+            num_tries -= 1
+
             location = (self.listener_host, port)
             result_of_check = a_socket.connect_ex(location)
 

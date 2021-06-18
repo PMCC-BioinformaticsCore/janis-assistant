@@ -26,7 +26,7 @@ class NextflowConfiguration:
         self.queue = queue
         self.executable_path = self.resolve_executable(job.nextflow, job.config_dir)
 
-    def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str):
+    def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str, host: str, port: int):
 
         config_path = os.path.join("nextflow.config")
         config_values = {}
@@ -56,7 +56,8 @@ class NextflowConfiguration:
             "run", source_path,
             "-params-file", input_path,
             "-ansi-log", 'false',
-            "-with-weblog", "http://localhost:8000",
+            "-with-weblog", f"http://{host}:{port}",
+            "-resume"
         ]
 
         return cmd
@@ -93,6 +94,11 @@ class NextflowConfiguration:
 
         if path is None:
             path = cls.executable_exists()
+
+        if path is None:
+            path = os.path.join(janis_config_dir, cls.EXECUTABLE)
+            if not os.path.exists(path):
+                path = None
 
         # Now, try to download online
         if path is None:

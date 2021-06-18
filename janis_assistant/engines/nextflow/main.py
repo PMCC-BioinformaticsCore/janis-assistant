@@ -5,6 +5,7 @@ import time
 import re
 import subprocess
 import socketserver
+import socket
 from typing import Dict, Any, Optional
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
@@ -33,14 +34,15 @@ def make_request_handler(nextflow_logger):
             body_as_str = post_body.decode("utf-8")
             body_as_json = json.loads(body_as_str)
 
-            # Logger.debug(body_as_json)
+            # print(body_as_json)
 
             event = body_as_json["event"]
 
             if event == "completed" or event == "error":
-                # Logger.debug("shutting down server")
+                Logger.debug("shutting down server")
                 self.server.shutdown()
-                # Logger.debug("server shut down")
+                Logger.debug("server shut down")
+
                 nextflow_logger.exit_function(nextflow_logger)
                 nextflow_logger.terminate()
             elif event.startswith("process_"):
@@ -94,7 +96,8 @@ def make_request_handler(nextflow_logger):
 
 class NextflowLogger(ProcessLogger):
 
-    def __init__(self, sid: str, process, nextflow_log_filename, logfp, metadata_callback, execution_directory, exit_function=None):
+    def __init__(self, sid: str, process, nextflow_log_filename, logfp, metadata_callback, execution_directory,
+                 listener_host, listener_port, exit_function=None):
         self.sid = sid
 
         self.error = None
@@ -109,18 +112,24 @@ class NextflowLogger(ProcessLogger):
         self.executor = None
         self.current_nf_monitor = None
         self.current_nf_submitter = None
+        self.listener_host = listener_host
+        self.listener_port = listener_port
         super().__init__(
             process=process, prefix="nextflow: ", logfp=logfp, exit_function=exit_function
         )
 
     def run(self):
-        HOST = "localhost"
-        PORT = 8000
-
         try:
-            httpd = socketserver.ThreadingTCPServer((HOST, PORT), make_request_handler(self))
-            print("serving at port", PORT)
-            httpd.serve_forever()
+            httpd = None
+            socketserver.ThreadingTCPServer.allow_reuse_address = True
+            httpd = socketserver.ThreadingTCPServer((self.listener_host, self.listener_port),
+                                                    make_request_handler(self))
+            print("serving at port", self.listener_port)
+
+            if httpd is not None:
+                httpd.serve_forever()
+            else:
+                raise Exception("Failed to start http server to listen to Nextflow status update")
 
             # self.read_script_output()
             # self.read_log()
@@ -130,12 +139,23 @@ class NextflowLogger(ProcessLogger):
         except KeyboardInterrupt:
             self.should_terminate = True
             print("Detected keyboard interrupt")
-            httpd.shutdown()
-            # raise
+            self.shutdown_listener(httpd)
+
         except Exception as e:
             print("Detected another error")
+            if not self.shutdown_listener(httpd):
+                self.exit_function(self)
+                self.process.kill()
+                self.terminate()
+            raise
+
+    def shutdown_listener(self, httpd):
+        if httpd is not None:
             httpd.shutdown()
-            raise e
+
+            return True
+
+        return False
 
     def read_script_output(self):
         for c in iter(
@@ -364,15 +384,6 @@ class NextFlowTaskMonitor:
 
         return monitor
 
-    # def init_attributes(self):
-    #     self.id = None
-    #     self.name = None
-    #     self.status = None
-    #     self.exit = None
-    #     self.error = None
-    #     self.workDir = None
-    #     self.stdout_path = None
-
     def read_task_status(self):
         if self.status == 'COMPLETED' and self.exit == '0':
             self.status = TaskStatus.COMPLETED
@@ -402,6 +413,8 @@ class Nextflow(Engine):
         self.process = None
         self._logger = None
         self.nextflow_log_filename = f"nextflow-{int(time.time())}.log"
+        self.listener_host = "localhost"
+        self.listener_port = None
 
         self.taskmeta = {}
 
@@ -429,11 +442,6 @@ class Nextflow(Engine):
             )
 
     def start_engine(self):
-        Logger.log(
-            "Nextflow doesn't run in a server mode, an instance will "
-            "automatically be started when a task is created"
-        )
-
         return self
 
     def stop_engine(self):
@@ -443,6 +451,31 @@ class Nextflow(Engine):
         self.stop_engine()
         self.taskmeta["status"] = TaskStatus.ABORTED
         return TaskStatus.ABORTED
+
+    def find_available_port(self):
+        a_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        range_min = 8000
+        range_max = 8100
+        available_port = None
+        for port in range(range_min, range_max):
+            location = (self.listener_host, port)
+            result_of_check = a_socket.connect_ex(location)
+
+            if result_of_check == 0:
+                # Port is open
+                continue
+            else:
+                # Port is not open
+                available_port = port
+                break
+
+        a_socket.close()
+
+        if available_port is None:
+            raise Exception(f"Cannot find available port between {range_min} and {range_max}")
+
+        return available_port
 
     def start_from_paths(self, wid, source_path: str, input_path: str, deps_path: str):
         Logger.debug(f"source_path: {source_path}")
@@ -455,26 +488,31 @@ class Nextflow(Engine):
             "jobs": {},
         }
 
+        self.listener_port = self.find_available_port()
+        Logger.info(f"Port {self.listener_port} is available")
         cmd = self.config.build_command_line(source_path=source_path, input_path=input_path,
-                                             nextflow_log_filename=self.nextflow_log_filename)
+                                             nextflow_log_filename=self.nextflow_log_filename,
+                                             host=self.listener_host, port=self.listener_port)
 
         Logger.info(f"Running command: {cmd}")
 
-        process = subprocess.Popen(
+        self.process = subprocess.Popen(
             cmd, preexec_fn=os.setsid,
         )
 
-        Logger.info("Nextflow has started with pid=" + str(process.pid))
-        self.process_id = process.pid
+        Logger.info("Nextflow has started with pid=" + str(self.process.pid))
+        self.process_id = self.process.pid
 
         self._logger = NextflowLogger(
             wid,
-            process,
+            self.process,
             nextflow_log_filename=self.nextflow_log_filename,
             logfp=open(self.logfile, "a+"),
             metadata_callback=self.task_did_update,
             execution_directory=self.execution_dir,
-            exit_function=self.task_did_exit,
+            listener_host=self.listener_host,
+            listener_port=self.listener_port,
+            exit_function=self.task_did_exit
         )
 
         return wid

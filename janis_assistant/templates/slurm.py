@@ -148,6 +148,7 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         config = NextflowConfiguration(job)
         config.singularity = True
         config.process_executor = "slurm"
+        config.singularity_container_dir = self.singularity_container_dir
 
         return config
 

@@ -281,7 +281,7 @@ class SingularityEnvironmentTemplate(EnvironmentTemplate, ABC):
 
         from os import getenv
 
-        envs_to_search = ["CWL_SINGULARITY_CACHE", "SINGULARITY_TMPDIR"]
+        envs_to_search = ["CWL_SINGULARITY_CACHE", "SINGULARITY_TMPDIR", "NXF_SINGULARITY_CACHEDIR"]
         for env in envs_to_search:
             e = getenv(env)
             if e:

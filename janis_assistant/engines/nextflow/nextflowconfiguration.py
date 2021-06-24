@@ -17,7 +17,8 @@ class NextflowConfiguration:
                  process_executor: Optional[str] = None,
                  docker: Optional[bool] = True,
                  singularity: Optional[bool] = False,
-                 queue: Optional[str] = None):
+                 queue: Optional[str] = None,
+                 singularity_container_dir: Optional[str] = None):
 
         self.job = job
         self.process_executor = process_executor
@@ -25,6 +26,7 @@ class NextflowConfiguration:
         self.docker = docker
         self.queue = queue
         self.executable_path = self.resolve_executable(job.nextflow, job.config_dir)
+        self.singularity_container_dir = singularity_container_dir
 
     def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str, host: str, port: int):
 
@@ -36,6 +38,9 @@ class NextflowConfiguration:
         if self.singularity:
             config_values["singularity.enabled"] = self._to_nexflow_string(self.singularity)
             config_values["singularity.autoMounts"] = self._to_nexflow_string(True)
+
+            if self.singularity_container_dir is not None:
+                config_values["singularity.cacheDir"] = self._to_nexflow_string(self.singularity_container_dir)
         else:
             config_values["docker.enabled"] = self._to_nexflow_string(self.docker)
 

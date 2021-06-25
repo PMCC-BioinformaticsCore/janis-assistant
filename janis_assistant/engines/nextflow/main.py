@@ -372,8 +372,6 @@ class Nextflow(Engine):
 
     def outputs_task(self, identifier) -> Dict[str, Any]:
         outs = self.taskmeta.get("outputs")
-        Logger.debug("outputs")
-        Logger.debug(outs)
 
         if not outs:
             return {}

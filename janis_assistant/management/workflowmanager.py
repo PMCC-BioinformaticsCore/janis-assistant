@@ -707,7 +707,7 @@ class WorkflowManager:
             # add extra check for engine on resume
             meta = self.engine.metadata(self.get_engine_id())
             if meta and meta.status in TaskStatus.final_states():
-                # meta.submission_id = self.submission_id
+                meta.submission_id = self.submission_id
                 self.save_metadata(meta)
                 return self.process_completed_task()
 

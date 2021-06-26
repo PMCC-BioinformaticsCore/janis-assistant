@@ -150,6 +150,9 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
         config.process_executor = "slurm"
         config.singularity_container_dir = self.singularity_container_dir
 
+        if self.send_job_emails:
+            config.job_email = job.notifications.email
+
         return config
 
     def engine_config(self, engine: EngineType, job):

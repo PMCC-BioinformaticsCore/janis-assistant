@@ -770,6 +770,8 @@ def get_engine_from_eng(
             cromwelljar=cromwell_jar,
             execution_dir=execdir,
         )
+    elif engid == EngineType.nextflow.value:
+        return get_engine_type(eng)(logfile=logfile, execution_dir=execdir, configuration_dir=confdir)
 
     return get_engine_type(eng)(logfile=logfile, execution_dir=execdir)
 

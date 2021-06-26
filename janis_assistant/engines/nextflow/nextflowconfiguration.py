@@ -30,9 +30,9 @@ class NextflowConfiguration:
         self.singularity_container_dir = singularity_container_dir
         self.job_email = job_email
 
-    def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str, host: str, port: int):
+    def build_command_line(self, source_path: str, input_path: str, configuration_dir: str, nextflow_log_filename: str, host: str, port: int):
 
-        config_path = self.build_config_file()
+        config_path = self.build_config_file(configuration_dir)
 
         cmd = [
             self.executable_path,
@@ -47,8 +47,8 @@ class NextflowConfiguration:
 
         return cmd
 
-    def build_config_file(self):
-        config_path = os.path.join(self.job.config_dir, "nextflow.config")
+    def build_config_file(self, configuration_dir: str):
+        config_path = os.path.join(configuration_dir, "nextflow.config")
         config_values = {}
 
         # we only want one or the other and we want to prioritise singularity

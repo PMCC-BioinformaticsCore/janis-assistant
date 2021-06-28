@@ -35,7 +35,7 @@ def make_request_handler(nextflow_logger):
             body_as_str = post_body.decode("utf-8")
             body_as_json = json.loads(body_as_str)
 
-            Logger.debug(body_as_json)
+            # Logger.debug(body_as_json)
 
             event = body_as_json["event"]
 
@@ -240,6 +240,7 @@ class Nextflow(Engine):
     def __init__(
             self,
             execution_dir: str,
+            configuration_dir: str,
             logfile=None,
             identifier: str = "nextflow",
             config: NextflowConfiguration = None,
@@ -247,6 +248,8 @@ class Nextflow(Engine):
         super().__init__(
             identifier, EngineType.nextflow, logfile=logfile, execution_dir=execution_dir
         )
+        self.configuration_dir = configuration_dir
+
         self.process = None
         self._logger = None
         self.nextflow_log_filename = f"nextflow-{int(time.time())}.log"
@@ -332,6 +335,7 @@ class Nextflow(Engine):
         Logger.info(f"Port {self.listener_port} is available")
         cmd = self.config.build_command_line(source_path=source_path, input_path=input_path,
                                              nextflow_log_filename=self.nextflow_log_filename,
+                                             configuration_dir=self.configuration_dir,
                                              host=self.listener_host, port=self.listener_port)
 
         Logger.info(f"Running command: {cmd}")
@@ -372,8 +376,6 @@ class Nextflow(Engine):
 
     def outputs_task(self, identifier) -> Dict[str, Any]:
         outs = self.taskmeta.get("outputs")
-        Logger.debug("outputs")
-        Logger.debug(outs)
 
         if not outs:
             return {}

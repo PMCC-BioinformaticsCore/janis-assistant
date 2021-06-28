@@ -18,7 +18,8 @@ class NextflowConfiguration:
                  docker: Optional[bool] = True,
                  singularity: Optional[bool] = False,
                  queue: Optional[str] = None,
-                 singularity_container_dir: Optional[str] = None):
+                 singularity_container_dir: Optional[str] = None,
+                 job_email: Optional[str] = None):
 
         self.job = job
         self.process_executor = process_executor
@@ -27,13 +28,29 @@ class NextflowConfiguration:
         self.queue = queue
         self.executable_path = self.resolve_executable(job.nextflow, job.config_dir)
         self.singularity_container_dir = singularity_container_dir
+        self.job_email = job_email
 
-    def build_command_line(self, source_path: str, input_path: str, nextflow_log_filename: str, host: str, port: int):
+    def build_command_line(self, source_path: str, input_path: str, configuration_dir: str, nextflow_log_filename: str, host: str, port: int):
 
-        config_path = os.path.join("nextflow.config")
+        config_path = self.build_config_file(configuration_dir)
+
+        cmd = [
+            self.executable_path,
+            "-C", config_path,
+            "-log", nextflow_log_filename,
+            "run", source_path,
+            "-params-file", input_path,
+            "-ansi-log", 'false',
+            "-with-weblog", f"http://{host}:{port}",
+            "-resume"
+        ]
+
+        return cmd
+
+    def build_config_file(self, configuration_dir: str):
+        config_path = os.path.join(configuration_dir, "nextflow.config")
         config_values = {}
 
-        # config_values["executor.dumpInterval"] = self._to_nexflow_string("1min")
         # we only want one or the other and we want to prioritise singularity
         if self.singularity:
             config_values["singularity.enabled"] = self._to_nexflow_string(self.singularity)
@@ -50,22 +67,15 @@ class NextflowConfiguration:
         if self.queue is not None:
             config_values["process.queue"] = self._to_nexflow_string(self.queue)
 
+        if self.job_email is not None:
+            config_values["process.clusterOptions"] = self._to_nexflow_string(
+                f"--mail-user {self.job_email} --mail-type ALL")
+
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:
             f.write("\n".join(config_lines))
 
-        cmd = [
-            self.executable_path,
-            "-C", config_path,
-            "-log", nextflow_log_filename,
-            "run", source_path,
-            "-params-file", input_path,
-            "-ansi-log", 'false',
-            "-with-weblog", f"http://{host}:{port}",
-            "-resume"
-        ]
-
-        return cmd
+        return config_path
 
     def _to_nexflow_string(self, val: Any):
         if type(val) == bool:

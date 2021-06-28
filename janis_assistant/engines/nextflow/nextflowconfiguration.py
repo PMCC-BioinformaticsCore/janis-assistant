@@ -69,7 +69,7 @@ class NextflowConfiguration:
 
         if self.job_email is not None:
             config_values["process.clusterOptions"] = self._to_nexflow_string(
-                f"--mail-user {self.job_email} --mail-type ALL")
+                f"--mail-user {self.job_email} --mail-type END")
 
         config_lines = [f"{key} = {value}" for key, value in config_values.items()]
         with open(config_path, "w") as f:

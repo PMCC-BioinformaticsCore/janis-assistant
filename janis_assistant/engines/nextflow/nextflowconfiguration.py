@@ -103,19 +103,29 @@ class NextflowConfiguration:
         """
         # Order of checks:
         # 1. Check if Nextflow executable path is provided in config
-        # 2. Check if Nextflow executable can be found in $PATH env variable
-        # 3. Attempt to download Nextflow executable
+        # 2. Check if Nextflow executable path is found in `.janis` configuration directory
+        # 3. Check if Nextflow executable can be found in $PATH env variable
+        # 4. Attempt to download Nextflow executable
+
+        # Check if Nextflow executable path is provided in config
         path = janis_nextflow_config.executable
 
-        if path is None:
-            path = cls.executable_exists()
+        if path is not None and not os.path.exists(path):
+            raise Exception(f"Nextflow executable file provided in Janis configuration not found: {path}")
 
+        # Check if Nextflow executable path is found in `.janis` configuration directory
         if path is None:
             path = os.path.join(janis_config_dir, cls.EXECUTABLE)
             if not os.path.exists(path):
                 path = None
 
+        # Check if Nextflow executable can be found in $PATH env variable
+        if path is None:
+            path = cls.executable_exists()
+
+        # Attempt to download Nextflow executable
         # Now, try to download online
+        # follow instructions from https://www.nextflow.io/docs/latest/getstarted.html
         if path is None:
             try:
                 Logger.info("Downloading Nextflow executable")

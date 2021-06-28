@@ -37,7 +37,7 @@ def make_request_handler(nextflow_logger):
 
             # Logger.debug(body_as_json)
 
-            event = body_as_json["event"]
+            event = body_as_json.get("event")
 
             if event == "completed" or event == "error":
                 Logger.debug("shutting down server")
@@ -49,12 +49,15 @@ def make_request_handler(nextflow_logger):
                 nextflow_logger.exit_function(nextflow_logger)
                 nextflow_logger.terminate()
             elif event.startswith("process_"):
-                trace = body_as_json["trace"]
-                name = trace["name"]
-                process = trace["process"]
-                task_id = trace["task_id"]
-                work_dir = trace["workdir"]
-                exit_code = trace["exit"]
+                trace = body_as_json.get("trace", {})
+                name = trace.get("name")
+                process = trace.get("process")
+                task_id = trace.get("task_id")
+                work_dir = trace.get("workdir")
+                exit_code = trace.get("exit")
+                process_id = trace.get("native_id")
+                container = trace.get("container")
+                err_message = self.read_error_message(work_dir)
 
                 janis_status = self.read_process_status(body_as_json)
                 start, finish = self.set_start_finish_time(janis_status)
@@ -72,11 +75,30 @@ def make_request_handler(nextflow_logger):
                         status=janis_status,
                         start=start,
                         finish=finish,
-                        # backend=self.executor,
-                        workdir=work_dir
+                        workdir=work_dir,
+                        stderr=os.path.join(work_dir, ".command.err"),
+                        stdout=os.path.join(work_dir, ".command.out"),
+                        script=os.path.join(work_dir, ".command.run"),
+                        batchid=process_id,
+                        container=container,
+                        returncode=exit_code,
+                        error=err_message
                     )
 
                     nextflow_logger.metadata_callback(nextflow_logger, job)
+            else:
+                raise Exception(f"Unknown weblog request event {event}")
+
+        @classmethod
+        def read_error_message(cls, work_dir: str) -> Optional[str]:
+            err_message = None
+
+            file_path = os.path.join(work_dir, ".err")
+            if os.path.exists(file_path):
+                with open(file_path, "r") as f:
+                    err_message = f.read()
+
+            return err_message
 
         def read_cached_process(self, data: dict):
             processes = data.get("metadata", {}).get("workflow", {}).get("workflowStats", {}).get("processes", [])
@@ -96,8 +118,8 @@ def make_request_handler(nextflow_logger):
                         status=janis_status,
                         start=start,
                         finish=finish,
-                        # backend=self.executor,
-                        workdir=None
+                        workdir=None,
+                        cached=True
                     )
 
                     nextflow_logger.metadata_callback(nextflow_logger, job)

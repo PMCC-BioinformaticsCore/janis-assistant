@@ -86,6 +86,8 @@ def make_request_handler(nextflow_logger):
                     )
 
                     nextflow_logger.metadata_callback(nextflow_logger, job)
+            elif event == "started":
+                pass
             else:
                 raise Exception(f"Unknown weblog request event {event}")
 

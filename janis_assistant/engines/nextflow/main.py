@@ -44,6 +44,8 @@ def make_request_handler(nextflow_logger):
                 self.server.shutdown()
                 Logger.debug("server shut down")
 
+                self.read_cached_process(body_as_json)
+
                 nextflow_logger.exit_function(nextflow_logger)
                 nextflow_logger.terminate()
             elif event.startswith("process_"):
@@ -75,6 +77,37 @@ def make_request_handler(nextflow_logger):
                     )
 
                     nextflow_logger.metadata_callback(nextflow_logger, job)
+
+        def read_cached_process(self, data: dict):
+            processes = data.get("metadata", {}).get("workflow", {}).get("workflowStats", {}).get("processes", [])
+
+            for p in processes:
+                if p["cached"] == 1:
+                    name = p["name"]
+                    janis_status = self.read_cached_process_status(p)
+                    start, finish = self.set_start_finish_time(janis_status)
+
+                    job = RunJobModel(
+                        submission_id=None,
+                        run_id=nextflow_logger.sid,
+                        id_=name,
+                        parent=None,
+                        name=name,
+                        status=janis_status,
+                        start=start,
+                        finish=finish,
+                        # backend=self.executor,
+                        workdir=None
+                    )
+
+                    nextflow_logger.metadata_callback(nextflow_logger, job)
+
+        @classmethod
+        def read_cached_process_status(cls, process_json: dict):
+            if process_json.get("errored") == False:
+                return TaskStatus.COMPLETED
+            else:
+                return TaskStatus.FAILED
 
         def read_process_status(self, data: dict):
             status = data["trace"]["status"]

@@ -37,22 +37,27 @@ def make_request_handler(nextflow_logger):
 
             # Logger.debug(body_as_json)
 
-            event = body_as_json["event"]
+            event = body_as_json.get("event")
 
             if event == "completed" or event == "error":
                 Logger.debug("shutting down server")
                 self.server.shutdown()
                 Logger.debug("server shut down")
 
+                self.read_cached_process(body_as_json)
+
                 nextflow_logger.exit_function(nextflow_logger)
                 nextflow_logger.terminate()
             elif event.startswith("process_"):
-                trace = body_as_json["trace"]
-                name = trace["name"]
-                process = trace["process"]
-                task_id = trace["task_id"]
-                work_dir = trace["workdir"]
-                exit_code = trace["exit"]
+                trace = body_as_json.get("trace", {})
+                name = trace.get("name")
+                process = trace.get("process")
+                task_id = trace.get("task_id")
+                work_dir = trace.get("workdir")
+                exit_code = trace.get("exit")
+                process_id = trace.get("native_id")
+                container = trace.get("container")
+                err_message = self.read_error_message(work_dir)
 
                 janis_status = self.read_process_status(body_as_json)
                 start, finish = self.set_start_finish_time(janis_status)
@@ -70,11 +75,63 @@ def make_request_handler(nextflow_logger):
                         status=janis_status,
                         start=start,
                         finish=finish,
-                        # backend=self.executor,
-                        workdir=work_dir
+                        workdir=work_dir,
+                        stderr=os.path.join(work_dir, ".command.err"),
+                        stdout=os.path.join(work_dir, ".command.out"),
+                        script=os.path.join(work_dir, ".command.run"),
+                        batchid=process_id,
+                        container=container,
+                        returncode=exit_code,
+                        error=err_message
                     )
 
                     nextflow_logger.metadata_callback(nextflow_logger, job)
+            elif event == "started":
+                pass
+            else:
+                raise Exception(f"Unknown weblog request event {event}")
+
+        @classmethod
+        def read_error_message(cls, work_dir: str) -> Optional[str]:
+            err_message = None
+
+            file_path = os.path.join(work_dir, ".err")
+            if os.path.exists(file_path):
+                with open(file_path, "r") as f:
+                    err_message = f.read()
+
+            return err_message
+
+        def read_cached_process(self, data: dict):
+            processes = data.get("metadata", {}).get("workflow", {}).get("workflowStats", {}).get("processes", [])
+
+            for p in processes:
+                if p["cached"] == 1:
+                    name = p["name"]
+                    janis_status = self.read_cached_process_status(p)
+                    start, finish = self.set_start_finish_time(janis_status)
+
+                    job = RunJobModel(
+                        submission_id=None,
+                        run_id=nextflow_logger.sid,
+                        id_=name,
+                        parent=None,
+                        name=name,
+                        status=janis_status,
+                        start=start,
+                        finish=finish,
+                        workdir=None,
+                        cached=True
+                    )
+
+                    nextflow_logger.metadata_callback(nextflow_logger, job)
+
+        @classmethod
+        def read_cached_process_status(cls, process_json: dict):
+            if process_json.get("errored") == False:
+                return TaskStatus.COMPLETED
+            else:
+                return TaskStatus.FAILED
 
         def read_process_status(self, data: dict):
             status = data["trace"]["status"]

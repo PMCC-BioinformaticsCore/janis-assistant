@@ -189,6 +189,13 @@ class LocalFileScheme(FileScheme):
             while len(to_copy) > 0:
                 s, d = to_copy.pop(0)
 
+                # Check if path is Null/None
+                if not s:
+                    continue
+
+                if not d:
+                    continue
+
                 if os.path.exists(d) and force:
                     Logger.debug(f"Destination exists, overwriting '{d}'")
                     if os.path.isdir(d):
@@ -216,13 +223,17 @@ class LocalFileScheme(FileScheme):
                     copyfile(s, d)
         except Exception as e:
             Logger.critical(
-                f"An unexpected error occurred when link/copying {s} -> {d}: {e}"
+                f"An unexpected error occurred when link/copying {source} -> {dest}: {e}"
             )
 
     @staticmethod
     def prepare_path(path):
-        if path.startswith("file://"):
-            return path[6:]
+        # Check if path is Null / None
+        if path:
+            # Check if path starts with file://
+            if path.startswith("file://"):
+                return path[6:]
+
         return path
 
     @staticmethod

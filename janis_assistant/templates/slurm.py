@@ -118,8 +118,10 @@ class SlurmSingularityTemplate(SingularityEnvironmentTemplate):
             ),
             services=CromwellConfiguration.Services(
                 metadata=CromwellConfiguration.Services.MetadataService(
-                    # 2 million rows
-                    read_row_number_safety_threshold=2000000
+                    config=CromwellConfiguration.Services.MetadataService.Config(
+                        # 2 million rows
+                        read_row_number_safety_threshold=2000000
+                    )
                 )
             ),
         )

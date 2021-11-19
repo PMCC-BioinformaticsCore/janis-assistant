@@ -786,48 +786,50 @@ JOBID=$({sbatch} \\
 
     class Services(Serializable):
         class MetadataService(Serializable):
-            def __init__(
-                self,
-                summary_refresh_interval: Optional[Union[str, int]] = None,
-                summary_refresh_limit: Optional[int] = None,
-                read_row_number_safety_threshold: Optional[int] = None,
-                db_batch_size: Optional[int] = None,
-                db_flush_rate: Optional[int] = None,
-            ):
-                """
+            class Config(Serializable):
+                def __init__(
+                    self,
+                    summary_refresh_interval: Optional[Union[str, int]] = None,
+                    summary_refresh_limit: Optional[int] = None,
+                    read_row_number_safety_threshold: Optional[int] = None,
+                    db_batch_size: Optional[int] = None,
+                    db_flush_rate: Optional[int] = None,
+                ):
+                    """
 
-                :param summary_refresh_interval: Set this value to "Inf" to turn off metadata summary refresh.  The default value is currently "1 second"
-                :param summary_refresh_limit: maximum number of metadata rows to be considered per summarization cycle
-                :param db_batch_size:
-                :param db_flush_rate:
-                """
-                self.summary_refesh_interval = summary_refresh_interval
-                self.summary_refresh_limit = summary_refresh_limit
-                self.read_row_number_safety_threshold = read_row_number_safety_threshold
-                self.db_batch_size = db_batch_size
-                self.db_flush_rate = db_flush_rate
+                    :param summary_refresh_interval: Set this value to "Inf" to turn off metadata summary refresh.  The default value is currently "1 second"
+                    :param summary_refresh_limit: maximum number of metadata rows to be considered per summarization cycle
+                    :param db_batch_size:
+                    :param db_flush_rate:
+                    """
+                    self.summary_refresh_interval = summary_refresh_interval
+                    self.summary_refresh_limit = summary_refresh_limit
+                    self.read_row_number_safety_threshold = read_row_number_safety_threshold
+                    self.db_batch_size = db_batch_size
+                    self.db_flush_rate = db_flush_rate
 
-            key_map = {
-                "summary_refresh_interval": "metadata-summary-refresh-interval",
-                "summary_refresh_limit": "metadata-summary-refresh-limit",
-                "db_batch_size": "db-batch-size",
-                "db_flush_rate": "db-flush-rate",
-                "read_row_number_safety_threshold": "metadata-read-row-number-safety-threshold",
-            }
-
-            def to_dict(self):
-                return {
-                    "class": "cromwell.services.metadata.impl.MetadataServiceActor",
-                    "config": super().to_dict(),
+                key_map = {
+                    "summary_refresh_interval": "metadata-summary-refresh-interval",
+                    "summary_refresh_limit": "metadata-summary-refresh-limit",
+                    "db_batch_size": "db-batch-size",
+                    "db_flush_rate": "db-flush-rate",
+                    "read_row_number_safety_threshold": "metadata-read-row-number-safety-threshold",
                 }
 
-        def __init__(self, metadata: MetadataService, **kwargs):
-            self.__d = {}
-            self.__d.update(kwargs)
-            self.__d["MetadataService"] = metadata
+            def __init__(
+                self,
+                class_actor="cromwell.services.metadata.impl.MetadataServiceActor",
+                config: Config = None,
+            ):
+                self.class_actor = class_actor
+                self.config = config
 
-        def to_dict(self):
-            return self.__d
+            key_map = {"class_actor": "class"}
+
+        def __init__(self, metadata: MetadataService = None):
+            self.metadata = metadata
+
+        key_map = {"metadata": "MetadataService"}
 
     def __init__(
         self,
@@ -867,6 +869,11 @@ JOBID=$({sbatch} \\
         if engine is not None and not isinstance(engine, CromwellConfiguration.Engine):
             raise Exception("engine not of type CromwellConfiguration.Engine")
         self.engine: CromwellConfiguration.Engine = engine
+
+        if services is not None and not isinstance(services, CromwellConfiguration.Services):
+            raise Exception("services not of type CromwellConfiguration.Services")
+        self.services: CromwellConfiguration.Services = services
+
         if docker is not None and not isinstance(docker, CromwellConfiguration.Docker):
             raise Exception("docker not of type CromwellConfiguration.Docker")
         self.docker: CromwellConfiguration.Docker = docker

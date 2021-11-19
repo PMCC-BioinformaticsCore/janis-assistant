@@ -339,7 +339,7 @@ hsqldb.script_format=3
                 sbatch: str = "sbatch",
             ):
                 emailextra = (
-                    f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""
+                    f'--mail-user "{jobemail}" --mail-type FAIL' if jobemail else ""
                 )
 
                 partition_string = ""
@@ -436,7 +436,7 @@ JOBID=$({sbatch} \\
                     afternotokaycommand = f" && NTOKDEP=$({sbatch} --parsable --job-name \"catch-$jobname\" --kill-on-invalid-dep=yes {partition_string} --time '0:60' --dependency=afternotok:$JOBID --wrap '{CromwellConfiguration.CATCH_ERROR_COMMAND}')"
 
                 emailextra = (
-                    f'--mail-user "{jobemail}" --mail-type END' if jobemail else ""
+                    f'--mail-user "{jobemail}" --mail-type FAIL' if jobemail else ""
                 )
 
                 # slurm.config.submit = None

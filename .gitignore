@@ -12,3 +12,6 @@ pip-wheel-metadata/
 dist/
 venv/
 .python-version
+.vscode/
+output/
+local_data/

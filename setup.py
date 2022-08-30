@@ -35,6 +35,7 @@ setup(
         "tabulate",
         "ruamel.yaml >= 0.12.4, <= 0.16.5",
         "cwltool",
+        "cwl-utils==0.15",
         "blessed",
     ],
     extras_require={

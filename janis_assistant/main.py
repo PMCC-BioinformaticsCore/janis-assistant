@@ -35,6 +35,7 @@ from janis_assistant.validation import ValidationRequirements
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
+from janis_core import ingestion
 
 import janis_assistant.templates as janistemplates
 from janis_assistant.data.models.preparedjob import PreparedJob
@@ -207,6 +208,28 @@ def resolve_tool(
     if raises:
         raise Exception("Couldn't find tool with name: " + str(tool))
 
+
+def ingest(
+    infile: str,
+    format: str,
+) -> str | j.CommandTool | j.Workflow:
+    """
+    orchestrator of ingest process.
+    used translate() below as a guide.
+    currently just ingests the supplied file. 
+    mainly a placeholder for more extensive logic in the future.
+    future extensions (related to ingesting a whole folder)
+        - gathering & loading files
+        - ingesting input dict
+        - ingesting script files 
+        - ingesting tools (held in external file - like in a 'tools' or 'processes' subfolder)
+    """
+    # if janis, just return the path.
+    # all file loading etc handled in translate() (resolve_tool())
+    if format == 'janis':
+        return infile
+    else:
+        return ingestion.ingest(infile, format)
 
 def translate(
     config: JanisConfiguration,

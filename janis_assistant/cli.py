@@ -95,7 +95,7 @@ def process_args(sysargs=None):
     )
     add_translate_args(
         subparsers.add_parser(
-            "translate", help="Translate a janis workflow to CWL or WDL"
+            "translate", help="Translate a janis workflow to CWL, WDL or Nextflow"
         )
     )
     add_inputs_args(

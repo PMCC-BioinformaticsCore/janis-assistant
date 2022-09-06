@@ -244,6 +244,7 @@ def translate(
     skip_digest_lookup=False,
     skip_digest_cache=False,
     recipes: List[str] = None,
+    render_comments: bool = True,
     **kwargs,
 ):
 
@@ -285,6 +286,7 @@ def translate(
             additional_inputs=inputsdict,
             allow_empty_container=allow_empty_container,
             container_override=container_overrides,
+            render_comments=render_comments
         )
     elif isinstance(toolref, (j.CommandTool, j.CodeTool)):
         wfstr = toolref.translate(
@@ -294,6 +296,7 @@ def translate(
             export_path=output_dir or "./{language}",
             allow_empty_container=allow_empty_container,
             container_override=container_overrides,
+            render_comments=render_comments
         )
 
     else:

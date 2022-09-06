@@ -11,7 +11,8 @@ from janis_assistant.management.workflowmanager import WorkflowManager
 
 from janis_assistant.management.envvariables import EnvVariables
 
-from janis_core import InputQualityType, HINTS, HintEnum, SupportedIngestion, SupportedTranslation, Tool
+from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, Tool
+from janis_core.ingestion import SupportedIngestion
 from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
@@ -311,6 +312,12 @@ def add_translate_args(parser: argparse.ArgumentParser):
         help="Language to translate to. Prefix ('--to') can be omitted.",
         choices=SupportedTranslation.all(),
         type=str
+    )
+    parser.add_argument(
+        "--no-comments",
+        help="don't provide info comments in output translation",
+        default=False,
+        action="store_true"
     )
     parser.add_argument(
         "-c", 
@@ -1260,7 +1267,10 @@ def parse_container_override_format(container_override):
 def do_translate(args: argparse.Namespace):
     # setup 
     # (ensure all parameters are ready for ingest & translate)
-    jc = JanisConfiguration.initial_configuration(args.config)
+    # JanisConfiguration holds settings related to janis-assistant, not janis-core translate
+    # settings in janis should be a singleton module so they are globally available.
+    # this would be time consuming, so will avoid for now. will just pass things as arguments. 
+    jc = JanisConfiguration.initial_configuration(args.config) 
     container_override = parse_container_override_format(args.container_override)
     source_fmt = _get_source_fmt(args)
     dest_fmt = _get_dest_fmt(args)
@@ -1291,6 +1301,7 @@ def do_translate(args: argparse.Namespace):
         recipes=args.recipe,
         inputs=inputs,
         hints=hints,
+        render_comments=not args.no_comments  # reversed using 'not'
     )
 
 def _get_source_fmt(args: argparse.Namespace) -> str:

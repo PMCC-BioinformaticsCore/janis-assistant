@@ -12,7 +12,7 @@ __version__ = vsn["__version__"]
 
 setup(
     # legacy .runner - renamed to assistant
-    name="janis-pipelines.runner",
+    name="janis-pipelines.assistant.grace",
     version=__version__,
     description="Easier way to run workflows, configurable across environments",
     long_description=open("./README.md").read(),
@@ -26,7 +26,8 @@ setup(
         "janis.extension": ["assistant=janis_assistant"],
     },
     install_requires=[
-        "janis-pipelines.core>=0.11.0",
+        # "janis-pipelines.core>=0.11.0",
+        "janis-pipelines.core.grace==0.12.0.2",
         "janis-pipelines.templates>=0.11.0",
         "requests",
         "path",

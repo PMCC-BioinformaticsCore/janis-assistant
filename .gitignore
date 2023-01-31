@@ -16,5 +16,7 @@ venv/
 output/
 local_data/
 docs/
-translated/
+translated*
 *.log
+test.py
+testout/

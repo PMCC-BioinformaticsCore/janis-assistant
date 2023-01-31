@@ -1,0 +1,104 @@
+docker.enabled = true
+
+params {
+
+    // OUTPUT DIRECTORY
+    outdir  = './outputs'
+
+    // INPUTS
+    fastqs                          = [
+        [
+            '/home/grace/work/pp/translation/janis-assistant/local_data/data/NA12878-BRCA1_R1.fastq.gz',
+            '/home/grace/work/pp/translation/janis-assistant/local_data/data/NA12878-BRCA1_R2.fastq.gz'
+        ],
+    ]
+
+    // FastaWithIndexes
+    reference                       = [
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta.amb',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta.ann',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta.bwt',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.dict',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta.fai',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta.pac',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.chr17.fasta.sa',
+    ]
+
+    // CompressedIndexedVCF
+    snps_dbsnp                      = [
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.dbsnp138.BRCA1.vcf.gz',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.dbsnp138.BRCA1.vcf.gz.tbi'
+    ]
+
+    // CompressedIndexedVCF
+    snps_1000gp                     = [
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/1000G_phase1.snps.high_confidence.hg38.BRCA1.vcf.gz',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/1000G_phase1.snps.high_confidence.hg38.BRCA1.vcf.gz.tbi'
+    ]
+
+    // CompressedIndexedVCF
+    known_indels                    = [
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.known_indels.BRCA1.vcf.gz',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Homo_sapiens_assembly38.known_indels.BRCA1.vcf.gz.tbi'
+    ]
+
+    // CompressedIndexedVCF
+    mills_indels                    = [
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Mills_and_1000G_gold_standard.indels.hg38.BRCA1.vcf.gz',
+        '/home/grace/work/pp/translation/janis-assistant/local_data/data/Mills_and_1000G_gold_standard.indels.hg38.BRCA1.vcf.gz.tbi'
+    ]
+
+    adapter_file                    = '/home/grace/work/pp/translation/janis-assistant/local_data/data/adapter_list.txt'
+    contaminant_file                = '/home/grace/work/pp/translation/janis-assistant/local_data/data/contaminant_list.txt'
+    sample_name                     = 'NA12878-BRCA1'
+    allele_freq_threshold           = 0.05
+    min_mapping_qual                = null
+    filter                          = null
+    align_and_sort_sortsam_tmp_dir  = './tmp'
+
+    // PROCESSES
+    getfastqc_adapters.code_file                       = '/home/grace/work/pp/translation/janis-assistant/translated_BwaAlignmentAndQC/templates/ParseFastqcAdapters.py'
+    calculate_performancesummary_genomefile.code_file  = '/home/grace/work/pp/translation/janis-assistant/translated_BwaAlignmentAndQC/templates/GenerateGenomeFileForBedtoolsCoverage.py'
+    fastqc.cpus    = 1
+    fastqc.memory  = 8
+
+    // SUBWORKFLOW: ALIGN_AND_SORT
+    align_and_sort.five_prime_adapter_read1       = [
+        // list values here
+    ]
+    align_and_sort.five_prime_adapter_read2       = [
+        // list values here
+    ]
+    align_and_sort.cutadapt_quality_cutoff        = 15
+    align_and_sort.cutadapt_minimum_length        = 50
+    align_and_sort.bwamem_mark_shorter_splits     = true
+    align_and_sort.sortsam_sort_order             = 'coordinate'
+    align_and_sort.sortsam_create_index           = true
+    align_and_sort.sortsam_validation_stringency  = 'SILENT'
+    align_and_sort.sortsam_max_records_in_ram     = 5000000
+    align_and_sort.cutadapt.cpus                  = 5
+    align_and_sort.cutadapt.memory                = 4
+    align_and_sort.bwamem.cpus                    = 16
+    align_and_sort.bwamem.memory                  = 16
+    align_and_sort.sortsam.cpus                   = 1
+    align_and_sort.sortsam.memory                 = 8
+
+    // SUBWORKFLOW: MERGE_AND_MARKDUPS
+    merge_and_markdups.create_index                           = true
+    merge_and_markdups.max_records_in_ram                     = 5000000
+    merge_and_markdups.merge_sam_files_use_threading          = true
+    merge_and_markdups.merge_sam_files_validation_stringency  = 'SILENT'
+    merge_and_markdups.merge_sam_files.cpus                   = 4
+    merge_and_markdups.merge_sam_files.memory                 = 8
+    merge_and_markdups.mark_duplicates.cpus                   = 4
+    merge_and_markdups.mark_duplicates.memory                 = 8
+
+    // SUBWORKFLOW: PERFORMANCE_SUMMARY
+    performance_summary.samtoolsview_do_not_output_alignments_with_bits_set  = '0x400'
+    performance_summary.performancesummary_genome                            = true
+    performance_summary.gatk4collectinsertsizemetrics.cpus                   = 1
+    performance_summary.gatk4collectinsertsizemetrics.memory                 = 8
+    performance_summary.bedtoolsgenomecoveragebed.memory                     = 8
+
+}

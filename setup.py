@@ -27,7 +27,7 @@ setup(
     },
     install_requires=[
         # "janis-pipelines.core>=0.11.0",
-        "janis-pipelines.core>=0.12.0",
+        "git+https://github.com/GraceAHall/janis-core.git@release-v0.12.0",
         "janis-pipelines.templates>=0.11.0",
         "requests",
         "path",

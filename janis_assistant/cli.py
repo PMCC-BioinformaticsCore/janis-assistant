@@ -7,8 +7,8 @@ from typing import Optional, Tuple
 
 import ruamel.yaml
 import tabulate
-from janis_assistant.management.workflowmanager import WorkflowManager
 
+from janis_assistant.management.workflowmanager import WorkflowManager
 from janis_assistant.management.envvariables import EnvVariables
 
 from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, Tool
@@ -1270,6 +1270,7 @@ def do_translate(args: argparse.Namespace):
     # JanisConfiguration holds settings related to janis-assistant, not janis-core translate
     # settings in janis should be a singleton module so they are globally available.
     # this would be time consuming, so will avoid for now. will just pass things as arguments. 
+    # - GH
     jc = JanisConfiguration.initial_configuration(args.config) 
     container_override = parse_container_override_format(args.container_override)
     source_fmt = _get_source_fmt(args)

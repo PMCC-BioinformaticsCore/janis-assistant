@@ -20,3 +20,5 @@ translated*
 *.log
 test.py
 testout/
+ubu*
+janis_assistant/tests/data

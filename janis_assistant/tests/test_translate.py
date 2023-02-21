@@ -27,6 +27,21 @@ class TestCwlToWdl(unittest.TestCase):
     def setUp(self) -> None:
         self.src = 'cwl'
         self.dest = 'wdl'
+    
+    def test_ebi_metagenomics_raw_reads(self):
+        filepath = 'janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/raw-reads-wf--v.5-cond.cwl'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
+    
+    def test_ebi_metagenomics_amplicon(self):
+        filepath = 'janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/amplicon-wf--v.5-cond.cwl'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
+    
+    def test_ebi_metagenomics_assembly(self):
+        filepath = 'janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/assembly-wf--v.5-cond.cwl'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
 
     def test_munlock_demultiplexing(self):
         filepath = 'janis_assistant/tests/data/cwl/m-unlock/workflows/demultiplexing.cwl'
@@ -81,6 +96,21 @@ class TestCwlToNextflow(unittest.TestCase):
     def setUp(self) -> None:
         self.src = 'cwl'
         self.dest = 'nextflow'
+    
+    def test_ebi_metagenomics_raw_reads(self):
+        filepath = 'janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/raw-reads-wf--v.5-cond.cwl'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
+    
+    def test_ebi_metagenomics_amplicon(self):
+        filepath = 'janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/amplicon-wf--v.5-cond.cwl'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
+    
+    def test_ebi_metagenomics_assembly(self):
+        filepath = 'janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/assembly-wf--v.5-cond.cwl'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
 
     def test_munlock_demultiplexing(self):
         filepath = 'janis_assistant/tests/data/cwl/m-unlock/workflows/demultiplexing.cwl'
@@ -137,7 +167,7 @@ class TestWdlToCwl(unittest.TestCase):
     def setUp(self) -> None:
         self.src = 'wdl'
         self.dest = 'cwl'
-    
+
     def test_multisample_jointgt_gatk4(self):
         filepath = 'janis_assistant/tests/data/wdl/Multisample_jointgt_GATK4.wdl'
         mainstr = run(filepath, self.src, self.dest)
@@ -192,14 +222,6 @@ class TestWdlToNextflow(unittest.TestCase):
 
 
 # ---- FROM GALAXY ------------------------
-
-class TestGalaxyToCwl(unittest.TestCase):
-    
-    def setUp(self) -> None:
-        self.src = 'galaxy'
-        self.dest = 'cwl'
-
-
 
 class TestGalaxyToWdl(unittest.TestCase):
     

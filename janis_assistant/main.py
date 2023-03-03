@@ -9,7 +9,6 @@
 import os
 import sys
 import time
-import subprocess
 from datetime import datetime
 from inspect import isclass
 from textwrap import dedent
@@ -212,6 +211,7 @@ def resolve_tool(
 def ingest(
     infile: str,
     format: str,
+    strict_identifiers: bool=False
 ) -> str | j.CommandTool | j.Workflow:
     """
     orchestrator of ingest process.
@@ -229,11 +229,11 @@ def ingest(
     if format == 'janis':
         return infile
     else:
-        return ingestion.ingest(infile, format)
+        return ingestion.ingest(infile, format, strict_identifiers=strict_identifiers)
 
 def translate(
     config: JanisConfiguration,
-    tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
+    tool: str | j.CommandTool | j.Workflow,
     translation: str,
     name: str = None,
     hints: Optional[Dict[str, str]] = None,
@@ -245,9 +245,7 @@ def translate(
     skip_digest_cache=False,
     recipes: List[str] = None,
     render_comments: bool = True,
-    **kwargs,
 ):
-
     toolref, _ = resolve_tool(tool, name, from_toolshed=True)
 
     if not toolref:

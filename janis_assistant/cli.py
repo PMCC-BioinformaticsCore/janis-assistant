@@ -44,7 +44,6 @@ from janis_assistant.utils import (
     parse_additional_arguments,
     parse_dict,
     get_file_from_searchname,
-    fully_qualify_filename,
     dict_to_yaml_string,
 )
 
@@ -288,6 +287,11 @@ def add_cleanup_args(parser):
 
 
 def add_translate_args(parser: argparse.ArgumentParser):
+    """
+    intended syntax
+    fmt1: janis translate [OPTIONS] --from cwl --to nextflow infile.cwl   [longform]
+    fmt2: janis translate [OPTIONS] nextflow infile.cwl                   [shortform]
+    """
     # MAIN ARGS
     parser.add_argument(
         "infile", 
@@ -299,6 +303,7 @@ def add_translate_args(parser: argparse.ArgumentParser):
         choices=SupportedIngestion.all(),
         type=str
     )
+    # dest language - either use position
     dest = parser.add_mutually_exclusive_group(required=True)
     dest.add_argument(
         "dest_language",
@@ -335,7 +340,7 @@ def add_translate_args(parser: argparse.ArgumentParser):
     )
     parser.add_argument(
         "--no-cache",
-        help="Force re-download of workflow if remote",
+        help="Turns off galaxy tool downloads cache. Cache stores local copies of tool.xml files so they don't have to be re-downloaded if they have been downloaded before.",
         action="store_true",
     )
     parser.add_argument(
@@ -1271,6 +1276,7 @@ def do_translate(args: argparse.Namespace):
     # settings in janis should be a singleton module so they are globally available.
     # this would be time consuming, so will avoid for now. will just pass things as arguments. 
     # - GH
+
     jc = JanisConfiguration.initial_configuration(args.config) 
     container_override = parse_container_override_format(args.container_override)
     source_fmt = _get_source_fmt(args)
@@ -1280,7 +1286,7 @@ def do_translate(args: argparse.Namespace):
         k[5:]: v for k, v in vars(args).items()
         if k.startswith("hint_") and v is not None
     }
-    
+
     # ingest
     internal_model = ingest(
         infile=args.infile,
@@ -1294,7 +1300,6 @@ def do_translate(args: argparse.Namespace):
         translation=dest_fmt,
         name=args.name,
         output_dir=args.output_dir,
-        force=args.no_cache,    # this doesn't map to anything in the function?
         allow_empty_container=args.allow_empty_container,
         container_override=container_override,
         skip_digest_lookup=args.skip_digest_lookup,

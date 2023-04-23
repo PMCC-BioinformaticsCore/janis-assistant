@@ -12,6 +12,10 @@ class TestIngestCwl(unittest.TestCase):
     def test_super_enhancer(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/super_enhancer_wf.cwl'
         wf = ingest(filepath, self.src)
+    
+    def test_fastqc2_tool(self):
+        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/fastqc2.cwl'
+        wf = ingest(filepath, self.src)
 
     def test_kids_manta(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/kf-somatic-workflow/workflow/kfdrc_production_manta_wf.cwl'
@@ -77,7 +81,15 @@ class TestIngestCwl(unittest.TestCase):
     def test_munlock_ngtax_picrust2(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/ngtax_picrust2.cwl'
         wf = ingest(filepath, self.src)
-
+    
+    def test_gatk_haplotype_tool(self):
+        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/gatk_haplotype_tool.cwl'
+        tool = ingest(filepath, self.src)
+    
+    def test_fastqc_tool(self):
+        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/fastqc.cwl'
+        tool = ingest(filepath, self.src)
+  
     # hard
     def test_cromast(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/CroMaSt/CroMaSt.cwl'

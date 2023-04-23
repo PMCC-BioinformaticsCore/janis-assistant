@@ -8,7 +8,8 @@ from janis_core.translations import translate
 
 def run(filepath: str, srcfmt: str, destfmt: str) -> Optional[str]:
     wf = ingest(filepath, srcfmt)
-    return translate(wf, destfmt, allow_empty_container=True)
+    return translate(wf, destfmt, allow_empty_container=True, export_path='./translated')
+
 
 
 
@@ -26,6 +27,11 @@ class TestCwlToWdl(unittest.TestCase):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/super_enhancer_wf.cwl'
         mainstr = run(filepath, self.src, self.dest)
         print(mainstr)
+
+    def test_fastqc2_tool(self):
+        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/fastqc2.cwl'
+        toolstr = run(filepath, self.src, self.dest)
+        print(toolstr)
 
     def test_kids_manta(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/kf-somatic-workflow/workflow/kfdrc_production_manta_wf.cwl'
@@ -105,12 +111,19 @@ class TestCwlToNextflow(unittest.TestCase):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/super_enhancer_wf.cwl'
         mainstr = run(filepath, self.src, self.dest)
         print(mainstr)
+    
+    def test_fastqc2_tool(self):
+        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/fastqc2.cwl'
+        toolstr = run(filepath, self.src, self.dest)
+        from janis_core import settings
+        settings.translate.nextflow.MODE = 'workflow'
+        print(toolstr)
 
     def test_kids_manta(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/kf-somatic-workflow/workflow/kfdrc_production_manta_wf.cwl'
         mainstr = run(filepath, self.src, self.dest)
         print(mainstr)
-    
+     
     def test_ebi_metagenomics_raw_reads(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/raw-reads-wf--v.5-cond.cwl'
         mainstr = run(filepath, self.src, self.dest)

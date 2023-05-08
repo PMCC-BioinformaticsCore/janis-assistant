@@ -278,7 +278,7 @@ def translate(
         wfstr, _, _ = toolref.translate(
             translation,
             to_console=False,
-            to_disk=bool(output_dir),
+            # to_disk=bool(output_dir),
             export_path=output_dir or "./{language}",
             hints=hints,
             additional_inputs=inputsdict,
@@ -290,7 +290,7 @@ def translate(
         wfstr = toolref.translate(
             translation=translation,
             to_console=False,
-            to_disk=bool(output_dir),
+            # to_disk=bool(output_dir),
             export_path=output_dir or "./{language}",
             allow_empty_container=allow_empty_container,
             container_override=container_overrides,

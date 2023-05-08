@@ -1,7 +1,14 @@
 
-
+from typing import Optional
 import unittest
 from janis_core.ingestion import ingest
+from janis_core.translations import translate
+
+
+
+def run(filepath: str, srcfmt: str, destfmt: str) -> Optional[str]:
+    wf = ingest(filepath, srcfmt)
+    return translate(wf, destfmt, allow_empty_container=True, export_path='./translated')
 
 
 class TestIngestCwl(unittest.TestCase):
@@ -94,3 +101,30 @@ class TestIngestCwl(unittest.TestCase):
     def test_cromast(self):
         filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/CroMaSt/CroMaSt.cwl'
         wf = ingest(filepath, self.src)
+
+
+
+class TestIngestGalaxy(unittest.TestCase):
+    
+    def setUp(self) -> None:
+        self.src = 'galaxy'
+        self.dest = 'janis'
+
+    def test_unicycler_assembly(self) -> None:
+        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/unicycler_assembly.ga'
+        mainstr = run(filepath, self.src, self.dest)
+        print(mainstr)
+
+
+
+
+
+# PATHS MUST BE ABSOLUTE
+
+# ---- FROM CWL ---------------------------
+
+class TestCwlToWdl(unittest.TestCase):
+    
+    def setUp(self) -> None:
+        self.src = 'cwl'
+        self.dest = 'wdl'

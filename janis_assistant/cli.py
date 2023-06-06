@@ -304,17 +304,17 @@ def add_translate_args(parser: argparse.ArgumentParser):
         type=str
     )
     # dest language - either use position
-    dest = parser.add_mutually_exclusive_group(required=True)
-    dest.add_argument(
-        "dest_language",
-        help="Language to translate to.",
-        choices=SupportedTranslation.all(),
-        nargs='?',   # makes this positional optional. '?' is regex expr. 
-        type=str
-    )
-    dest.add_argument(
+    # dest = parser.add_mutually_exclusive_group(required=True)
+    # dest.add_argument(
+    #     "dest_language",
+    #     help="Language to translate to.",
+    #     choices=SupportedTranslation.all(),
+    #     nargs='?',   # makes this positional optional. '?' is regex expr. 
+    #     type=str
+    # )
+    parser.add_argument(
         "--to",
-        help="Language to translate to. Prefix ('--to') can be omitted.",
+        help="Language to translate to.",
         choices=SupportedTranslation.all(),
         type=str
     )

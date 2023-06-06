@@ -12,7 +12,7 @@ import time
 from datetime import datetime
 from inspect import isclass
 from textwrap import dedent
-from typing import Optional, Dict, Union, Type, List, Tuple
+from typing import Optional, Dict, Union, Type, List, Tuple, Any
 
 import janis_core as j
 from janis_assistant.data.enums import TaskStatus
@@ -35,6 +35,7 @@ from janis_assistant.validation import ValidationRequirements
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
 from janis_core import ingestion
+from janis_core import translations
 
 import janis_assistant.templates as janistemplates
 from janis_assistant.data.models.preparedjob import PreparedJob
@@ -211,7 +212,6 @@ def resolve_tool(
 def ingest(
     infile: str,
     format: str,
-    strict_identifiers: bool=False
 ) -> str | j.CommandTool | j.Workflow:
     """
     orchestrator of ingest process.
@@ -229,22 +229,23 @@ def ingest(
     if format == 'janis':
         return infile
     else:
-        return ingestion.ingest(infile, format, strict_identifiers=strict_identifiers)
+        return ingestion.ingest(infile, format)
 
 def translate(
     config: JanisConfiguration,
     tool: str | j.CommandTool | j.Workflow,
-    translation: str,
-    name: str = None,
-    hints: Optional[Dict[str, str]] = None,
-    output_dir: Optional[str] = None,
-    inputs: Union[str, dict] = None,
-    allow_empty_container=False,
-    container_override=None,
-    skip_digest_lookup=False,
-    skip_digest_cache=False,
-    recipes: List[str] = None,
-    render_comments: bool = True,
+    dest_fmt: str,
+    mode: Optional[str]=None,
+    name: Optional[str]=None,
+    hints: Optional[Dict[str, str]]=None,
+    output_dir: Optional[str]=None,
+    inputs: Optional[str | dict[str, Any]]=None,
+    allow_empty_container: Optional[bool]=False,
+    container_override: Optional[bool]=None,
+    skip_digest_lookup: Optional[bool]=False,
+    skip_digest_cache: Optional[bool]=False,
+    recipes: Optional[list[str]]=None,
+    render_comments: bool=True,
 ):
     toolref, _ = resolve_tool(tool, name, from_toolshed=True)
 
@@ -274,36 +275,44 @@ def translate(
             skip_digest_cache=skip_digest_cache,
         )
 
-    if isinstance(toolref, j.WorkflowBase):
-        wfstr, _, _ = toolref.translate(
-            translation,
-            to_console=False,
-            # to_disk=bool(output_dir),
-            export_path=output_dir or "./{language}",
-            hints=hints,
-            additional_inputs=inputsdict,
-            allow_empty_container=allow_empty_container,
-            container_override=container_overrides,
-            render_comments=render_comments
-        )
-    elif isinstance(toolref, (j.CommandTool, j.CodeTool)):
-        wfstr = toolref.translate(
-            translation=translation,
-            to_console=False,
-            # to_disk=bool(output_dir),
-            export_path=output_dir or "./{language}",
-            allow_empty_container=allow_empty_container,
-            container_override=container_overrides,
-            render_comments=render_comments
-        )
+    translations.translate(
+        entity=toolref,
+        dest_fmt=dest_fmt,
+        mode=mode,
+        
+        # file io
+        export_path=output_dir,
+        should_zip=None,   
+        to_console=None,
+        tool_to_console=None,
+        should_validate=None,
+        write_inputs_file=None,
+        source_files=None,
+        
+        # inputs
+        additional_inputs=inputsdict if inputsdict else None,
+        hints=hints,
+        
+        # containers
+        with_container=None,
+        allow_empty_container=allow_empty_container,
+        container_override=container_overrides if container_overrides else None,
+        
+        # resouces
+        with_resource_overrides=None,
+        merge_resources=None,
+        max_cores=None,
+        max_mem=None,
+        max_duration=None,
+        
+        # misc
+        render_comments=render_comments,
+    
+    )
 
-    else:
-        name = toolref.__name__ if isclass(toolref) else toolref.__class__.__name__
-        raise Exception("Unsupported tool type: " + name)
-
-    print(wfstr, file=sys.stdout)
-    return wfstr
-
+    # if to_console:
+    #     print(wfstr, file=sys.stdout)
+    # return wfstr
 
 def spider_tool(
     tool: Union[str, j.CommandTool, j.Workflow],

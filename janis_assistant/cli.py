@@ -319,10 +319,18 @@ def add_translate_args(parser: argparse.ArgumentParser):
         type=str
     )
     parser.add_argument(
-        "--no-comments",
-        help="don't provide info comments in output translation",
-        default=False,
-        action="store_true"
+        "-o",
+        "--output-dir",
+        help="Output directory to write output to (default: translated).",
+        type=str,
+        default="translated"
+    )
+    parser.add_argument(
+        "--mode",
+        help="Translate mode (default: regular). Controls extent of tool translation",
+        type=str,
+        choices=["skeleton", "regular", "extended"],
+        default="regular"
     )
     parser.add_argument(
         "-c", 
@@ -334,9 +342,10 @@ def add_translate_args(parser: argparse.ArgumentParser):
         help="Specifies the name of the workflow/tool to translate, in case where infile has multiple such objects.",
     )
     parser.add_argument(
-        "-o",
-        "--output-dir",
-        help="Output directory to write output to (default=stdout).",
+        "--no-comments",
+        help="don't provide info comments in output translation",
+        default=False,
+        action="store_true"
     )
     parser.add_argument(
         "--no-cache",
@@ -1281,11 +1290,12 @@ def do_translate(args: argparse.Namespace):
     container_override = parse_container_override_format(args.container_override)
     source_fmt = _get_source_fmt(args)
     dest_fmt = _get_dest_fmt(args)
-    inputs = args.inputs or []
+    inputs = args.inputs if args.inputs else None
     hints = {
         k[5:]: v for k, v in vars(args).items()
         if k.startswith("hint_") and v is not None
     }
+    hints = hints if hints else None
 
     # ingest
     internal_model = ingest(
@@ -1297,7 +1307,8 @@ def do_translate(args: argparse.Namespace):
     translate(
         config=jc,
         tool=internal_model,
-        translation=dest_fmt,
+        dest_fmt=dest_fmt,
+        mode=args.mode,
         name=args.name,
         output_dir=args.output_dir,
         allow_empty_container=args.allow_empty_container,
@@ -1307,7 +1318,7 @@ def do_translate(args: argparse.Namespace):
         recipes=args.recipe,
         inputs=inputs,
         hints=hints,
-        render_comments=not args.no_comments  # reversed using 'not'
+        render_comments=not args.no_comments
     )
 
 def _get_source_fmt(args: argparse.Namespace) -> str:

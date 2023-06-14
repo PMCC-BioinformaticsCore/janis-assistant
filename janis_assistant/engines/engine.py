@@ -64,7 +64,16 @@ class Engine(Archivable, ABC):
 
     @abstractmethod
     def metadata(self, identifier) -> RunModel:
-        pass
+        return RunModel(
+            id_=identifier,
+            engine_id=identifier,
+            execution_dir=None,
+            submission_id=None,
+            name=identifier,
+            status=self.taskmeta.get("status"),
+            jobs=list(self.taskmeta.get("jobs", {}).values()),
+            error=self.taskmeta.get("error"),
+        )
 
     keys_to_ignore = {"progress_callbacks"}
 

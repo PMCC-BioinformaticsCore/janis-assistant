@@ -102,7 +102,7 @@ def run_with_outputs(
         validation_reqs=None,
         engine=engine,
         hints={},
-        keep_intermediate_files=False,
+        keep_intermediate_files=True,
         max_cores=None,
         max_memory=None,
         max_duration=None,
@@ -715,6 +715,7 @@ def prepare_job(
         call_caching_enabled=jc.call_caching_enabled,
         container_type=jc.container.get_container_type(),
         post_run_script=post_run_script,
+        nextflow=jc.nextflow
     )
 
     if db_type:
@@ -769,6 +770,8 @@ def get_engine_from_eng(
             cromwelljar=cromwell_jar,
             execution_dir=execdir,
         )
+    elif engid == EngineType.nextflow.value:
+        return get_engine_type(eng)(logfile=logfile, execution_dir=execdir, configuration_dir=confdir)
 
     return get_engine_type(eng)(logfile=logfile, execution_dir=execdir)
 

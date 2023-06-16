@@ -212,6 +212,7 @@ def resolve_tool(
 def ingest(
     infile: str,
     format: str,
+    build_galaxy_tool_images: bool
 ) -> str | j.CommandTool | j.Workflow:
     """
     orchestrator of ingest process.
@@ -229,7 +230,7 @@ def ingest(
     if format == 'janis':
         return infile
     else:
-        return ingestion.ingest(infile, format)
+        return ingestion.ingest(infile, format, build_galaxy_tool_images)
 
 def translate(
     config: JanisConfiguration,

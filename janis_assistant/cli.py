@@ -395,6 +395,11 @@ def add_translate_args(parser: argparse.ArgumentParser):
         "Including this flag will disable this check, and empty containers can be used.",
     )
     container_args.add_argument(
+        "--build-galaxy-tool-images",
+        action="store_true",
+        help="Requires docker. \nFor Galaxy Tool Wrappers with multiple software requirements, build a new container image containing all requirements.\nAdds ~5 mins per affected Galaxy Wrapper. "
+    )
+    container_args.add_argument(
         "--container-override",
         help="Override a tool's container by specifying a new container. This argument should be specified in the "
         "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
@@ -1301,6 +1306,7 @@ def do_translate(args: argparse.Namespace):
     internal_model = ingest(
         infile=args.infile,
         format=source_fmt,
+        build_galaxy_tool_images=args.build_galaxy_tool_images
     )
 
     # translate

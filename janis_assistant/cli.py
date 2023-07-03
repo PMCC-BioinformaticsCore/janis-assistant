@@ -327,7 +327,10 @@ def add_translate_args(parser: argparse.ArgumentParser):
     )
     parser.add_argument(
         "--mode",
-        help="Translate mode (default: regular). Controls extent of tool translation",
+        help="Translate mode (default: regular). Controls extent of tool translation\n\
+        - skeleton: ignores inputs which aren't used in workflow. no CLI command generation.\n\
+        - regular: ignores inputs which aren't used in workflow. \n\
+        - extended: full translation of all inputs & CLI command",
         type=str,
         choices=["skeleton", "regular", "extended"],
         default="regular"

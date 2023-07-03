@@ -1,3 +1,5 @@
+# import setuptools; setuptools.setup()
+
 from setuptools import setup, find_packages
 
 # from setuptools.command.develop import develop
@@ -26,7 +28,7 @@ setup(
         "janis.extension": ["assistant=janis_assistant"],
     },
     install_requires=[
-        # "janis-pipelines.core>=0.12.0",
+        "janis-pipelines.core @ git+https://github.com/GraceAHall/janis-core@release-v0.13.0-beta1",
         "janis-pipelines.templates>=0.11.0",
         "requests",
         "path",

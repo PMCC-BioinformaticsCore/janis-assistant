@@ -2,31 +2,39 @@
 
 
 """
-To test CWL / WDL / Galaxy -> CWL / WDL / Nextflow
+To test translate CLI
+To test end-to-end translations
 """
 
-
+import os
 import unittest
 from typing import Optional
 
-from janis_core.ingestion import ingest
-from janis_core.translations import translate
-
 from janis_core import settings
-# PATHS MUST BE ABSOLUTE
+from janis_assistant.management.configuration import JanisConfiguration
+from janis_assistant.main import ingest
+from janis_assistant.main import translate
+from janis_assistant.cli import process_args
+
+CWL_TESTDATA_DIR = os.path.join(os.getcwd(), 'janis_assistant/tests/data/cwl')
+WDL_TESTDATA_DIR = os.path.join(os.getcwd(), 'janis_assistant/tests/data/wdl')
+GALAXY_TESTDATA_DIR = os.path.join(os.getcwd(), 'janis_assistant/tests/data/galaxy')
 
 
 
 # ------- HELPER FUNCS ------- #
 
-def _run(filepath: str, srcfmt: str, destfmt: str) -> Optional[str]:
+def _run_translate(filepath: str, srcfmt: str, destfmt: str) -> Optional[str]:
+    config = JanisConfiguration.initial_configuration(None) 
     internal = ingest(filepath, srcfmt)
-    return translate(internal, destfmt, allow_empty_container=True, export_path='./translated')
+    return translate(config, internal, destfmt)
 
 def _reset_global_settings() -> None:
-    settings.ingest.SAFE_MODE = False
+    settings.translate.MODE = 'regular'
+    settings.translate.SAFE_MODE = False
+    settings.translate.ALLOW_EMPTY_CONTAINER = True
     settings.ingest.galaxy.GEN_IMAGES = False
-    settings.ingest.galaxy.DISABLE_CONTAINER_CACHE = False
+    settings.ingest.galaxy.DISABLE_IMAGE_CACHE = False
     settings.ingest.cwl.INGEST_JAVASCRIPT_EXPRESSIONS = True
     settings.ingest.cwl.REQUIRE_CWL_VERSION = False
     settings.datatypes.ALLOW_UNPARSEABLE_DATATYPES = True
@@ -40,76 +48,67 @@ def _reset_global_settings() -> None:
 
 
 
+### --------- CLI ---------- ###
 
 class TestCli(unittest.TestCase):
-    def setUp(self) -> None:
-        _reset_global_settings()
-
-
-
-class TestWorkshopCwlToNextflow(unittest.TestCase):
-    
     def setUp(self) -> None:
         self.src = 'cwl'
         self.dest = 'nextflow'
         _reset_global_settings()
 
-    def test_tool_samtools_flagstat(self):
-        filepath = '/home/grace/work/pp/translation/examples/analysis-workflows/definitions/tools/samtools_flagstat.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_tool_gatk_haplotype_caller(self):
-        filepath = '/home/grace/work/pp/translation/examples/analysis-workflows/definitions/tools/gatk_haplotype_caller.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_wf_align_sort_markdup(self):
-        filepath = '/home/grace/work/pp/translation/examples/analysis-workflows/definitions/subworkflows/align_sort_markdup.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_wf_alignment_exome(self):
-        filepath = '/home/grace/work/pp/translation/examples/analysis-workflows/definitions/pipelines/alignment_exome.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_basic(self) -> None:
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc.cwl'
+        args = ['translate', '--from', self.src, '--to', self.dest, filepath]
+        mainstr = process_args(sysargs=args)
+        # assert file exists?
+        print()
+
+    def test_mode(self) -> None:
+        raise NotImplementedError
+
+    def test_galaxy_build_images(self) -> None:
+        raise NotImplementedError
+
+    def test_galaxy_no_image_cache(self) -> None:
+        raise NotImplementedError
+
+    def test_galaxy_no_wrapper_cache(self) -> None:
+        raise NotImplementedError
+
+    def test_output_dir(self) -> None:
+        raise NotImplementedError
+
+    def test_disallow_empty_container(self) -> None:
+        raise NotImplementedError
 
 
-class TestWorkshopGalaxyToNextflow(unittest.TestCase):
+
+### ---- END TO END TRANSLATIONS ---- ###
+
+
+class TestCwlToCwl(unittest.TestCase):
     
     def setUp(self) -> None:
-        self.src = 'galaxy'
-        self.dest = 'nextflow'
+        self.src = 'cwl'
+        self.dest = 'cwl'
         _reset_global_settings()
-
-    def test_abricate_wf(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/wf_abricate.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_unicycler_assembly(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/unicycler_assembly.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_rna_seq_counts_to_genes(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_counts_to_genes.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
     
-    def test_rna_seq_genes_to_pathways(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_genes_to_pathways.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_fastqc_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
+  
+    def test_fastqc2_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc2.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_rna_seq_reads_to_counts(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_reads_to_counts.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_gatk_haplotype_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/gatk_haplotype_tool.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
+    
+    def test_super_enhancer_wf(self):
+        filepath = f'{CWL_TESTDATA_DIR}/super_enhancer_wf.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
 
-
-
-# ---- FROM CWL ---------------------------
 
 class TestCwlToWdl(unittest.TestCase):
     
@@ -118,81 +117,21 @@ class TestCwlToWdl(unittest.TestCase):
         self.dest = 'wdl'
         _reset_global_settings()
     
-    def test_super_enhancer(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/super_enhancer_wf.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
+    def test_fastqc_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
+  
     def test_fastqc2_tool(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/fastqc2.cwl'
-        toolstr = _run(filepath, self.src, self.dest)
-        print(toolstr)
-
-    def test_kids_manta(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/kf-somatic-workflow/workflow/kfdrc_production_manta_wf.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc2.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_ebi_metagenomics_raw_reads(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/raw-reads-wf--v.5-cond.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_gatk_haplotype_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/gatk_haplotype_tool.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_ebi_metagenomics_amplicon(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/amplicon-wf--v.5-cond.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_ebi_metagenomics_assembly(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/assembly-wf--v.5-cond.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_munlock_demultiplexing(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/demultiplexing.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_mock_ngtax(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/mock_ngtax.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_pilon_mapping(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/pilon_mapping.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_sapp_microbes(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/sapp_microbes.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_munlock_toHDT_compression(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/toHDT_compression.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_ngtax(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/ngtax.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-        
-    def test_munlock_metagenomics_GEM(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/metagenomics_GEM.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_munlock_ngtax_picrust2(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/ngtax_picrust2.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    # hard
-    def test_cromast(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/CroMaSt/CroMaSt.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_super_enhancer_wf(self):
+        filepath = f'{CWL_TESTDATA_DIR}/super_enhancer_wf.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
 
 
 class TestCwlToNextflow(unittest.TestCase):
@@ -201,184 +140,42 @@ class TestCwlToNextflow(unittest.TestCase):
         self.src = 'cwl'
         self.dest = 'nextflow'
         _reset_global_settings()
-
-    def test_super_enhancer(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/super_enhancer_wf.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
     
+    def test_fastqc_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
+  
     def test_fastqc2_tool(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/fastqc2.cwl'
-        toolstr = _run(filepath, self.src, self.dest)
-        from janis_core import settings
-        settings.translate.nextflow.MODE = 'workflow'
-        print(toolstr)
-
-    def test_kids_manta(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/kf-somatic-workflow/workflow/kfdrc_production_manta_wf.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-     
-    def test_ebi_metagenomics_raw_reads(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/raw-reads-wf--v.5-cond.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+        filepath = f'{CWL_TESTDATA_DIR}/fastqc2.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_ebi_metagenomics_amplicon(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/amplicon-wf--v.5-cond.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_gatk_haplotype_tool(self):
+        filepath = f'{CWL_TESTDATA_DIR}/gatk_haplotype_tool.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_ebi_metagenomics_assembly(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/ebi-metagenomics/workflows/assembly-wf--v.5-cond.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_munlock_demultiplexing(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/demultiplexing.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_mock_ngtax(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/mock_ngtax.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_pilon_mapping(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/pilon_mapping.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_sapp_microbes(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/sapp_microbes.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_munlock_toHDT_compression(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/toHDT_compression.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_munlock_ngtax(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/ngtax.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-        
-    def test_munlock_metagenomics_GEM(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/metagenomics_GEM.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_munlock_ngtax_picrust2(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/m-unlock/workflows/ngtax_picrust2.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    # hard
-    def test_cromast(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/cwl/CroMaSt/CroMaSt.cwl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_super_enhancer_wf(self):
+        filepath = f'{CWL_TESTDATA_DIR}/super_enhancer_wf.cwl'
+        maintask = _run_translate(filepath, self.src, self.dest)
 
 
-
-# ---- FROM WDL ---------------------------
-
-class TestWdlToCwl(unittest.TestCase):
-    
-    def setUp(self) -> None:
-        self.src = 'wdl'
-        self.dest = 'cwl'
-        _reset_global_settings()
-
-    def test_multisample_jointgt_gatk4(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Multisample_jointgt_GATK4.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_reads2map_preprocessing(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Reads2Map/pipelines/PreprocessingReads/PreprocessingReads.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_reads2map_reads2map(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Reads2Map/pipelines/EmpiricalReads2Map/EmpiricalReads2Map.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_reads2map_snp_calling(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Reads2Map/pipelines/EmpiricalSNPCalling/EmpiricalSNPCalling.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    
-
-
-class TestWdlToNextflow(unittest.TestCase):
-    
-    def setUp(self) -> None:
-        self.src = 'wdl'
-        self.dest = 'nextflow'
-        _reset_global_settings()
-
-    def test_multisample_jointgt_gatk4(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Multisample_jointgt_GATK4.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_reads2map_preprocessing(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Reads2Map/pipelines/PreprocessingReads/PreprocessingReads.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_reads2map_reads2map(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Reads2Map/pipelines/EmpiricalReads2Map/EmpiricalReads2Map.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-    
-    def test_reads2map_snp_calling(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/wdl/Reads2Map/pipelines/EmpiricalSNPCalling/EmpiricalSNPCalling.wdl'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-
-
-
-
-# ---- FROM GALAXY ------------------------
-
-class TestGalaxyToWdl(unittest.TestCase):
+class TestGalaxyToNextflow(unittest.TestCase):
     
     def setUp(self) -> None:
         self.src = 'galaxy'
-        self.dest = 'wdl'
+        self.dest = 'nextflow'
         _reset_global_settings()
-    
-    def test_abricate_wf(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/wf_abricate.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
 
-    def test_unicycler_assembly(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/unicycler_assembly.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_rna_seq_counts_to_genes(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_counts_to_genes.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_fastqc_tool(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/fastqc-5ec9f6bceaee/rgFastQC.xml'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_rna_seq_genes_to_pathways(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_genes_to_pathways.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_abricate_wf(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/abricate_wf.ga'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_rna_seq_reads_to_counts(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_reads_to_counts.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
+    def test_unicycler_assembly_wf(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/unicycler_assembly.ga'
+        maintask = _run_translate(filepath, self.src, self.dest)
 
 
 class TestGalaxyToCwl(unittest.TestCase):
@@ -388,29 +185,90 @@ class TestGalaxyToCwl(unittest.TestCase):
         self.dest = 'cwl'
         _reset_global_settings()
 
-    def test_abricate_wf(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/wf_abricate.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_unicycler_assembly(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/unicycler_assembly.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
-
-    def test_rna_seq_counts_to_genes(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_counts_to_genes.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_fastqc_tool(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/fastqc-5ec9f6bceaee/rgFastQC.xml'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_rna_seq_genes_to_pathways(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_genes_to_pathways.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_abricate_wf(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/abricate_wf.ga'
+        maintask = _run_translate(filepath, self.src, self.dest)
     
-    def test_rna_seq_reads_to_counts(self):
-        filepath = '/home/grace/work/pp/translation/janis-assistant/janis_assistant/tests/data/galaxy/rna_seq_reads_to_counts.ga'
-        mainstr = _run(filepath, self.src, self.dest)
-        print(mainstr)
+    def test_unicycler_assembly_wf(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/unicycler_assembly.ga'
+        maintask = _run_translate(filepath, self.src, self.dest)
 
+
+class TestGalaxyToWdl(unittest.TestCase):
+    
+    def setUp(self) -> None:
+        self.src = 'galaxy'
+        self.dest = 'wdl'
+        _reset_global_settings()
+
+    def test_fastqc_tool(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/fastqc-5ec9f6bceaee/rgFastQC.xml'
+        maintask = _run_translate(filepath, self.src, self.dest)
+    
+    def test_abricate_wf(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/abricate_wf.ga'
+        maintask = _run_translate(filepath, self.src, self.dest)
+    
+    def test_unicycler_assembly_wf(self) -> None:
+        filepath = f'{GALAXY_TESTDATA_DIR}/unicycler_assembly.ga'
+        maintask = _run_translate(filepath, self.src, self.dest)
+
+
+
+class TestWdlToWdl(unittest.TestCase):
+    
+    def setUp(self) -> None:
+        self.src = 'wdl'
+        self.dest = 'wdl'
+        _reset_global_settings()
+
+    @unittest.skip('TODO WDL ingest needs work')
+    def test_bwa_mem_tool(self) -> None:
+        filepath = f'{WDL_TESTDATA_DIR}/bwa.xml'
+        maintask = _run_translate(filepath, self.src, self.dest)
+    
+    @unittest.skip('TODO WDL ingest needs work')
+    def test_gatk4_wf(self) -> None:
+        filepath = f'{WDL_TESTDATA_DIR}/Multisample_jointgt_GATK4.wdl'
+        maintask = _run_translate(filepath, self.src, self.dest)
+
+
+class TestWdlToCwl(unittest.TestCase):
+    
+    def setUp(self) -> None:
+        self.src = 'wdl'
+        self.dest = 'cwl'
+        _reset_global_settings()
+
+    @unittest.skip('TODO WDL ingest needs work')
+    def test_bwa_mem_tool(self) -> None:
+        filepath = f'{WDL_TESTDATA_DIR}/bwa.xml'
+        maintask = _run_translate(filepath, self.src, self.dest)
+    
+    @unittest.skip('TODO WDL ingest needs work')
+    def test_gatk4_wf(self) -> None:
+        filepath = f'{WDL_TESTDATA_DIR}/Multisample_jointgt_GATK4.wdl'
+        maintask = _run_translate(filepath, self.src, self.dest)
+
+
+class TestWdlToNextflow(unittest.TestCase):
+    
+    def setUp(self) -> None:
+        self.src = 'wdl'
+        self.dest = 'nextflow'
+        _reset_global_settings()
+
+    @unittest.skip('TODO WDL ingest needs work')
+    def test_bwa_mem_tool(self) -> None:
+        filepath = f'{WDL_TESTDATA_DIR}/bwa.xml'
+        maintask = _run_translate(filepath, self.src, self.dest)
+    
+    @unittest.skip('TODO WDL ingest needs work')
+    def test_gatk4_wf(self) -> None:
+        filepath = f'{WDL_TESTDATA_DIR}/Multisample_jointgt_GATK4.wdl'
+        maintask = _run_translate(filepath, self.src, self.dest)
 

@@ -290,9 +290,8 @@ def add_translate_args(parser: argparse.ArgumentParser):
     """
     intended syntax
     fmt1: janis translate [OPTIONS] --from cwl --to nextflow infile.cwl   [longform]
-    fmt2: janis translate [OPTIONS] nextflow infile.cwl                   [shortform]
     """
-    # MAIN ARGS
+    ### --- MANDATORY ARGS --- ###
     parser.add_argument(
         "infile", 
         help="Path to input file",
@@ -303,28 +302,16 @@ def add_translate_args(parser: argparse.ArgumentParser):
         choices=SupportedIngestion.all(),
         type=str
     )
-    # dest language - either use position
-    # dest = parser.add_mutually_exclusive_group(required=True)
-    # dest.add_argument(
-    #     "dest_language",
-    #     help="Language to translate to.",
-    #     choices=SupportedTranslation.all(),
-    #     nargs='?',   # makes this positional optional. '?' is regex expr. 
-    #     type=str
-    # )
     parser.add_argument(
         "--to",
         help="Language to translate to.",
         choices=SupportedTranslation.all(),
         type=str
     )
-    parser.add_argument(
-        "-o",
-        "--output-dir",
-        help="Output directory to write output to (default: translated).",
-        type=str,
-        default="translated"
-    )
+    
+    ### --- OPTIONAL ARGS --- ###
+    
+    # translation features
     parser.add_argument(
         "--mode",
         help="Translate mode (default: regular). Controls extent of tool translation\n\
@@ -335,6 +322,36 @@ def add_translate_args(parser: argparse.ArgumentParser):
         choices=["skeleton", "regular", "extended"],
         default="regular"
     )
+    # parser.add_argument(
+    #     "--no-comments",
+    #     help="don't provide info comments in output translation",
+    #     default=False,
+    #     action="store_true"
+    # )
+    parser.add_argument(
+        "--galaxy-build-images",
+        action="store_true",
+        help="Requires docker. \nFor Galaxy Tool Wrappers with multiple software requirements, build a new container image containing all requirements.\nAdds ~2-10 mins per affected Galaxy Wrapper. "
+    )
+    parser.add_argument(
+        "--galaxy-no-image-cache",
+        help="Turns off galaxy container image cache. Cache stores previously identified containers suitable for different tool wrappers so that quay.io API calls are unnecessary for previously parsed tools.",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--galaxy-no-wrapper-cache",
+        help="Turns off galaxy tool downloads cache. Cache stores local copies of tool.xml files so they don't have to be re-downloaded if they have been downloaded before.",
+        action="store_true",
+    )
+
+    # accessory files & directories
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        help="Output directory to write output to (default: translated).",
+        type=str,
+        default="translated"
+    )
     parser.add_argument(
         "-c", 
         "--config", 
@@ -343,17 +360,6 @@ def add_translate_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--name",
         help="Specifies the name of the workflow/tool to translate, in case where infile has multiple such objects.",
-    )
-    parser.add_argument(
-        "--no-comments",
-        help="don't provide info comments in output translation",
-        default=False,
-        action="store_true"
-    )
-    parser.add_argument(
-        "--no-cache",
-        help="Turns off galaxy tool downloads cache. Cache stores local copies of tool.xml files so they don't have to be re-downloaded if they have been downloaded before.",
-        action="store_true",
     )
     parser.add_argument(
         "--resources",
@@ -366,7 +372,7 @@ def add_translate_args(parser: argparse.ArgumentParser):
         action="store_true"
     )
 
-    # WORKFLOW INPUTS
+    # workflow inputs
     inputargs = parser.add_argument_group("Inputs")
     inputargs.add_argument(
         "-i",
@@ -381,7 +387,7 @@ def add_translate_args(parser: argparse.ArgumentParser):
         action="append",
     )
 
-    # HINTS
+    # hints
     hint_args = parser.add_argument_group("hints")
     for HintType in HINTS:
         if issubclass(HintType, HintEnum):
@@ -389,18 +395,14 @@ def add_translate_args(parser: argparse.ArgumentParser):
                 "--hint-" + HintType.key(), choices=HintType.symbols()
             )
 
-    # CONTAINERS
+    # containers
     container_args = parser.add_argument_group("container related args")
+
     container_args.add_argument(
-        "--allow-empty-container",
+        "--disallow-empty-container",
         action="store_true",
-        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
-        "Including this flag will disable this check, and empty containers can be used.",
-    )
-    container_args.add_argument(
-        "--build-galaxy-tool-images",
-        action="store_true",
-        help="Requires docker. \nFor Galaxy Tool Wrappers with multiple software requirements, build a new container image containing all requirements.\nAdds ~5 mins per affected Galaxy Wrapper. "
+        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error."
+        "Including this flag will check that all tools have a container."
     )
     container_args.add_argument(
         "--container-override",
@@ -1293,7 +1295,6 @@ def do_translate(args: argparse.Namespace):
     # settings in janis should be a singleton module so they are globally available.
     # this would be time consuming, so will avoid for now. will just pass things as arguments. 
     # - GH
-
     jc = JanisConfiguration.initial_configuration(args.config) 
     container_override = parse_container_override_format(args.container_override)
     source_fmt = _get_source_fmt(args)
@@ -1309,7 +1310,9 @@ def do_translate(args: argparse.Namespace):
     internal_model = ingest(
         infile=args.infile,
         format=source_fmt,
-        build_galaxy_tool_images=args.build_galaxy_tool_images
+        galaxy_build_images=args.galaxy_build_images,
+        galaxy_no_image_cache=args.galaxy_no_image_cache,
+        galaxy_no_wrapper_cache=args.galaxy_no_wrapper_cache
     )
 
     # translate
@@ -1320,14 +1323,14 @@ def do_translate(args: argparse.Namespace):
         mode=args.mode,
         name=args.name,
         output_dir=args.output_dir,
-        allow_empty_container=args.allow_empty_container,
+        inputs=inputs,
+        hints=hints,
+        allow_empty_container=not args.disallow_empty_container,
         container_override=container_override,
         skip_digest_lookup=args.skip_digest_lookup,
         skip_digest_cache=args.skip_digest_cache,
         recipes=args.recipe,
-        inputs=inputs,
-        hints=hints,
-        render_comments=not args.no_comments
+        render_comments=False
     )
 
 def _get_source_fmt(args: argparse.Namespace) -> str:

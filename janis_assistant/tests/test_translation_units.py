@@ -2,16 +2,11 @@
 
 
 """
-To test Janis -> CWL / WDL / Nextflow
+To test translation units: CWL / WDL / Nextflow
 """
 
 import unittest
 from janis_core.translations import translate
-
-
-from janis_assistant.tests.data.janis.unicycler_assembly.unicycler_assembly import w as UnicyclerAssembly
-from janis_assistant.tests.data.janis.wgs_somatic.wgssomatic import WGSSomaticMultiCallers
-from janis_assistant.tests.data.janis.wgsgermline.wgsgermline import WGSGermlineMultiCallers
 
 
 class TestTranslateNextflow(unittest.TestCase):

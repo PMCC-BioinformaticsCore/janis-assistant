@@ -25,6 +25,7 @@ sample_data/
 local_data/
 
 # translation files
+.janis/
 output/
 translated*/
 testout/

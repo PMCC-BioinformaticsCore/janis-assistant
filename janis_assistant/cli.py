@@ -331,7 +331,7 @@ def add_translate_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--galaxy-build-images",
         action="store_true",
-        help="Requires docker. \nFor Galaxy Tool Wrappers with multiple software requirements, build a new container image containing all requirements.\nAdds ~2-10 mins per affected Galaxy Wrapper. "
+        help="Requires docker. \nFor Galaxy Tool Wrappers with multiple software requirements, build a local container image containing all requirements.\nAdds ~2-10 mins per affected Galaxy Wrapper. "
     )
     parser.add_argument(
         "--galaxy-no-image-cache",

@@ -1,9 +1,8 @@
 
 
---allow-empty-container -> --disallow-empty-container
+BUGS
+- IlluminaGermlineVariantCaller
+    - "--mode regular" or "--mode skeleton" fails for translation
+    - can't find input in the unwrap functions
 
 
-container_args -> parser
---build-galaxy-tool-images -> --galaxy-build-tool-images
-
---no-cache -> --galaxy-no-wrapper-cache

@@ -1,5 +1,5 @@
-janis-pipelines.bioinformatics @ git+https://github.com/PMCC-BioinformaticsCore/janis-bioinformatics
 janis-pipelines.core @ git+https://github.com/GraceAHall/janis-core@release-v0.13.0
+janis-pipelines.bioinformatics @ git+https://github.com/PMCC-BioinformaticsCore/janis-bioinformatics
 janis-pipelines.unix @ git+https://github.com/PMCC-BioinformaticsCore/janis-unix
 janis-pipelines.templates >= 0.11.0
 ruamel.yaml >= 0.12.4, <= 0.16.5
@@ -13,3 +13,4 @@ tabulate
 cwltool
 cwl-utils==0.15
 blessed
+regex

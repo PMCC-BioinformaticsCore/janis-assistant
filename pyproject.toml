@@ -60,7 +60,7 @@ ci = [
     "requests_mock",
     "nose_parameterized",
     "keyring==21.4.0",
-    "setuptools",
+    "setuptools >= 67.8.0",
     "wheel",
     "twine",
 ]

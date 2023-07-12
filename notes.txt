@@ -1,0 +1,20 @@
+
+
+TODO
+- IlluminaGermlineVariantCaller
+    - "--mode regular" or "--mode skeleton" fails for translation
+    - can't find input in the unwrap functions
+- move <js> to <__UNTRANSLATED_JS__>
+
+- docker permission issues
+    - super fucked 
+    - can we run docker as non-root? 
+
+- --galaxy-build-images 
+    - doesn't work if running on singularity as docker isn't running
+    - "you have supplied "--build-galaxy-tool-images", but docker was not found"
+    - can we make this work with singularity? 
+    - can we detect whether singularity is running & tell users to swap to docker?
+
+- get a pypi package ready for janis
+    - avoids singularity / docker issues

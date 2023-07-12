@@ -4,7 +4,7 @@ build-backend   = "setuptools.build_meta"
 requires        = ["setuptools>=67.8.0", "wheel>=0.40.0"]
 
 [project]
-name            = "janis-pipelines.assistant"
+name            = "janis-pipelines.runner"
 version         = "v0.13.0"
 description     = "Easier way to run workflows, configurable across environments"
 readme          = "README.md"

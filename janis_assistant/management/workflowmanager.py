@@ -41,7 +41,7 @@ from janis_core.__meta__ import GITHUB_URL
 from janis_core.operators.operator import Operator
 from janis_core.translations import get_translator, CwlTranslator
 from janis_core.translations.translationbase import TranslatorBase
-from janis_core.translations.wdl import apply_secondary_file_format_to_filename
+from janis_core.utils.secondary import apply_secondary_file_format_to_filename
 
 from janis_assistant.data.enums import TaskStatus, ProgressKeys
 from janis_assistant.data.models.joblabel import JobLabelModel

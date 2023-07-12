@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler
 from janis_core import LogLevel
 from janis_core.types.data_types import is_python_primitive
 from janis_core.utils.logger import Logger
-from janis_core.translations import nfgen, NextflowTranslator
+from janis_core.translations import NextflowTranslator
 from janis_assistant.data.models.outputs import WorkflowOutputModel
 from janis_assistant.data.models.run import RunModel
 from janis_assistant.data.models.workflowjob import RunJobModel

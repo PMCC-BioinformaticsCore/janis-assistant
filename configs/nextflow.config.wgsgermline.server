@@ -1,0 +1,182 @@
+docker.enabled = true
+
+params {
+
+    // OUTPUT DIRECTORY
+    outdir  = './outputs'
+
+    // INPUTS
+    fastqs                          = [
+        [
+            '/home/ubuntu/data/NA12878-BRCA1_R1.fastq.gz',
+            '/home/ubuntu/data/NA12878-BRCA1_R2.fastq.gz'
+        ],
+    ]
+
+    // FastaWithIndexes
+    reference                       = [
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta.amb',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta.ann',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta.bwt',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.dict',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta.fai',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta.pac',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.chr17.fasta.sa',
+    ]
+
+    // CompressedIndexedVCF
+    snps_dbsnp                      = [
+        '/home/ubuntu/data/Homo_sapiens_assembly38.dbsnp138.BRCA1.vcf.gz',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.dbsnp138.BRCA1.vcf.gz.tbi'
+    ]
+
+    // CompressedIndexedVCF
+    snps_1000gp                     = [
+        '/home/ubuntu/data/1000G_phase1.snps.high_confidence.hg38.BRCA1.vcf.gz',
+        '/home/ubuntu/data/1000G_phase1.snps.high_confidence.hg38.BRCA1.vcf.gz.tbi'
+    ]
+
+    // CompressedIndexedVCF
+    known_indels                    = [
+        '/home/ubuntu/data/Homo_sapiens_assembly38.known_indels.BRCA1.vcf.gz',
+        '/home/ubuntu/data/Homo_sapiens_assembly38.known_indels.BRCA1.vcf.gz.tbi'
+    ]
+
+    // CompressedIndexedVCF
+    mills_indels                    = [
+        '/home/ubuntu/data/Mills_and_1000G_gold_standard.indels.hg38.BRCA1.vcf.gz',
+        '/home/ubuntu/data/Mills_and_1000G_gold_standard.indels.hg38.BRCA1.vcf.gz.tbi'
+    ]
+
+    adapter_file                    = '/home/ubuntu/data/adapter_list.txt'
+    contaminant_file                = '/home/ubuntu/data/contaminant_list.txt'
+    
+    gatk_intervals                  = [
+        '/home/ubuntu/data/BRCA1.hg38.bed'
+    ]
+    vardict_intervals               = [
+        '/home/ubuntu/data/BRCA1.hg38.split-intervals.bed'
+    ]
+    // BedTABIX
+    strelka_intervals               = [
+        '/home/ubuntu/data/BRCA1.hg38.bed.gz',
+        '/home/ubuntu/data/BRCA1.hg38.bed.gz.tbi'
+    ]
+
+    gridss_blacklist                = '/home/ubuntu/data/consensusBlacklist.hg38.chr17.bed'
+    sample_name                     = 'NA12878-BRCA1'
+    allele_freq_threshold           = 0.05
+    min_mapping_qual                = null
+    filter                          = null
+    align_and_sort_sortsam_tmp_dir  = './tmp'
+    combine_variants_type           = 'germline'
+    combine_variants_columns        = ['AC', 'AN', 'AF', 'AD', 'DP', 'GT']
+
+    // PROCESSES
+    getfastqc_adapters.code_file                       = '/home/grace/work/pp/translation/janis-assistant/translated_wgsgermline/templates/ParseFastqcAdapters.py'
+    calculate_performancesummary_genomefile.code_file  = '/home/grace/work/pp/translation/janis-assistant/translated_wgsgermline/templates/GenerateGenomeFileForBedtoolsCoverage.py'
+    generate_gatk_intervals.code_file                  = '/home/grace/work/pp/translation/janis-assistant/translated_wgsgermline/templates/GenerateIntervalsByChromosome.py'
+    generate_manta_config.code_file                    = '/home/grace/work/pp/translation/janis-assistant/translated_wgsgermline/templates/GenerateMantaConfig.py'
+    generate_vardict_headerlines.code_file             = '/home/grace/work/pp/translation/janis-assistant/translated_wgsgermline/templates/GenerateVardictHeaderLines.py'
+    fastqc.cpus                                        = 1
+    fastqc.memory                                      = 8
+    vc_gridss.cpus                                     = 8
+    vc_gridss.memory                                   = 31
+    vc_gatk_sort_combined.cpus                         = 1
+    vc_gatk_sort_combined.memory                       = 8
+    vc_vardict_sort_combined.cpus                      = 1
+    vc_vardict_sort_combined.memory                    = 8
+    combine_variants.memory                            = 8
+    combined_sort.cpus                                 = 1
+    combined_sort.memory                               = 8
+
+    // SUBWORKFLOW: ALIGN_AND_SORT
+    align_and_sort.five_prime_adapter_read1       = []  // list values here
+    align_and_sort.five_prime_adapter_read2       = []  // list values here
+    align_and_sort.cutadapt_quality_cutoff        = 15
+    align_and_sort.cutadapt_minimum_length        = 50
+    align_and_sort.bwamem_mark_shorter_splits     = true
+    align_and_sort.sortsam_sort_order             = 'coordinate'
+    align_and_sort.sortsam_create_index           = true
+    align_and_sort.sortsam_validation_stringency  = 'SILENT'
+    align_and_sort.sortsam_max_records_in_ram     = 5000000
+    align_and_sort.cutadapt.cpus                  = 5
+    align_and_sort.cutadapt.memory                = 4
+    align_and_sort.bwamem.cpus                    = 16
+    align_and_sort.bwamem.memory                  = 16
+    align_and_sort.sortsam.cpus                   = 1
+    align_and_sort.sortsam.memory                 = 8
+
+    // SUBWORKFLOW: BQSR
+    bqsr.base_recalibrator.cpus    = 1
+    bqsr.base_recalibrator.memory  = 16
+    bqsr.apply_bqsr.cpus           = 1
+    bqsr.apply_bqsr.memory         = 8
+
+    // SUBWORKFLOW: COMBINED_ADDBAMSTATS
+    combined_addbamstats.samtoolsmpileup_count_orphans  = true
+    combined_addbamstats.samtoolsmpileup_nobaq          = true
+    combined_addbamstats.samtoolsmpileup_minbq          = 0
+    combined_addbamstats.samtoolsmpileup_max_depth      = 10000
+    combined_addbamstats.addbamstats_type               = 'germline'
+
+    // SUBWORKFLOW: MERGE_AND_MARKDUPS
+    merge_and_markdups.create_index                           = true
+    merge_and_markdups.max_records_in_ram                     = 5000000
+    merge_and_markdups.merge_sam_files_use_threading          = true
+    merge_and_markdups.merge_sam_files_validation_stringency  = 'SILENT'
+    merge_and_markdups.merge_sam_files.cpus                   = 4
+    merge_and_markdups.merge_sam_files.memory                 = 8
+    merge_and_markdups.mark_duplicates.cpus                   = 4
+    merge_and_markdups.mark_duplicates.memory                 = 8
+
+    // SUBWORKFLOW: PERFORMANCE_SUMMARY
+    performance_summary.samtoolsview_do_not_output_alignments_with_bits_set  = '0x400'
+    performance_summary.performancesummary_genome                            = true
+    performance_summary.gatk4collectinsertsizemetrics.cpus                   = 1
+    performance_summary.gatk4collectinsertsizemetrics.memory                 = 8
+    performance_summary.bedtoolsgenomecoveragebed.memory                     = 8
+
+    // SUBWORKFLOW: VC_GATK
+    vc_gatk.haplotype_caller_pair_hmm_implementation  = 'LOGLESS_CACHING'
+    vc_gatk.split_bam.memory                          = 4
+    vc_gatk.haplotype_caller.cpus                     = 1
+    vc_gatk.haplotype_caller.memory                   = 8
+    vc_gatk.splitnormalisevcf.cpus                    = 1
+    vc_gatk.splitnormalisevcf.memory                  = 8
+
+    // SUBWORKFLOW: VC_STRELKA
+    vc_strelka.is_exome                         = null
+    vc_strelka.strelka_config                   = null
+    vc_strelka.filterpass_remove_filetered_all  = true
+    vc_strelka.filterpass_recode                = true
+    vc_strelka.filterpass_recode_infoall        = true
+    vc_strelka.manta.cpus                       = 4
+    vc_strelka.manta.memory                     = 4
+    vc_strelka.strelka.cpus                     = 4
+    vc_strelka.strelka.memory                   = 4
+    vc_strelka.splitnormalisevcf.cpus           = 1
+    vc_strelka.splitnormalisevcf.memory         = 8
+
+    // SUBWORKFLOW: VC_VARDICT
+    vc_vardict.vardict_vcf_format               = true
+    vc_vardict.vardict_chrom_column             = 1
+    vc_vardict.vardict_reg_start_col            = 2
+    vc_vardict.vardict_gene_end_col             = 3
+    vc_vardict.vardict_threads                  = 4
+    vc_vardict.compressvcf_stdout               = true
+    vc_vardict.filterpass_remove_filetered_all  = true
+    vc_vardict.filterpass_recode                = true
+    vc_vardict.filterpass_recode_infoall        = true
+    vc_vardict.vardict.cpus                     = 4
+    vc_vardict.vardict.memory                   = 8
+    vc_vardict.annotate.cpus                    = 1
+    vc_vardict.annotate.memory                  = 8
+    vc_vardict.splitnormalisevcf.cpus           = 1
+    vc_vardict.splitnormalisevcf.memory         = 8
+    vc_vardict.trim.cpus                        = 1
+    vc_vardict.trim.memory                      = 1
+
+
+}

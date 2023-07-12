@@ -1,14 +1,38 @@
-cromwell-executions/
-cromwell-workflow-logs/
+
+# built files
 __pycache__/
+build/
 .idea/
 .pyc
-.env
 .DS_Store
 *.egg-info/
 pip-wheel-metadata/
-.coverage
-.mypy_cache/
 dist/
-venv/
+
+# env & IDE
+.env
 .python-version
+.mypy_cache/
+.vscode/
+venv/
+
+# tests
+.coverage
+.nextflow/
+cromwell-executions/
+cromwell-workflow-logs/
+sample_data/
+local_data/
+
+# translation files
+.janis/
+output/
+translated*/
+testout/
+*.log
+involucro
+
+# misc files
+test.py
+ubu*
+temp.txt

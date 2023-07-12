@@ -1,8 +1,16 @@
-blessed
 janis-pipelines.core
+janis-pipelines.bioinformatics
+janis-pipelines.unix
 janis-pipelines.templates
+ruamel.yaml >= 0.12.4, <= 0.16.5
+progressbar2
+path
 black
 pre-commit
 requests
 python-dateutil
 tabulate
+cwltool
+cwl-utils==0.15
+blessed
+regex

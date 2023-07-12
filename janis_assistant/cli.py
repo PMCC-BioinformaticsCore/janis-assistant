@@ -3,15 +3,16 @@ import argparse
 import os.path
 import json
 from time import sleep
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 import ruamel.yaml
 import tabulate
-from janis_assistant.management.workflowmanager import WorkflowManager
 
+from janis_assistant.management.workflowmanager import WorkflowManager
 from janis_assistant.management.envvariables import EnvVariables
 
 from janis_core import InputQualityType, HINTS, HintEnum, SupportedTranslation, Tool
+from janis_core.ingestion import SupportedIngestion
 from janis_core.utils.logger import Logger, LogLevel
 
 from janis_assistant.__meta__ import DOCS_URL
@@ -27,6 +28,7 @@ from janis_assistant.management.configuration import (
 from janis_assistant.data.enums.taskstatus import TaskStatus
 
 from janis_assistant.main import (
+    ingest,
     translate,
     generate_inputs,
     cleanup,
@@ -42,7 +44,6 @@ from janis_assistant.utils import (
     parse_additional_arguments,
     parse_dict,
     get_file_from_searchname,
-    fully_qualify_filename,
     dict_to_yaml_string,
 )
 
@@ -94,7 +95,7 @@ def process_args(sysargs=None):
     )
     add_translate_args(
         subparsers.add_parser(
-            "translate", help="Translate a janis workflow to CWL, WDL, or Nextflow"
+            "translate", help="Translate a janis workflow to CWL, WDL or Nextflow"
         )
     )
     add_inputs_args(
@@ -285,42 +286,94 @@ def add_cleanup_args(parser):
     return parser
 
 
-def add_translate_args(parser):
-    parser.add_argument("workflow", help="Path to workflow")
+def add_translate_args(parser: argparse.ArgumentParser):
+    """
+    intended syntax
+    fmt1: janis translate [OPTIONS] --from cwl --to nextflow infile.cwl   [longform]
+    """
+    ### --- MANDATORY ARGS --- ###
     parser.add_argument(
-        "translation",
-        help="language to translate to",
+        "infile", 
+        help="Path to input file",
+    )
+    parser.add_argument(
+        "--from",
+        help="Language of infile. Will be autodetected if not supplied",
+        choices=SupportedIngestion.all(),
+        type=str
+    )
+    parser.add_argument(
+        "--to",
+        help="Language to translate to.",
         choices=SupportedTranslation.all(),
+        type=str
     )
-    parser.add_argument("-c", "--config", help="Path to config file")
+    
+    ### --- OPTIONAL ARGS --- ###
+    
+    # translation features
     parser.add_argument(
-        "--name",
-        help="If you have multiple workflows in your file, you may want to "
-        "help Janis out to select the right workflow to run",
+        "--mode",
+        help="Translate mode (default: regular). Controls extent of tool translation\n\
+        - skeleton: ignores inputs which aren't used in workflow. no CLI command generation.\n\
+        - regular: ignores inputs which aren't used in workflow. \n\
+        - extended: full translation of all inputs & CLI command",
+        type=str,
+        choices=["skeleton", "regular", "extended"],
+        default="regular"
+    )
+    # parser.add_argument(
+    #     "--no-comments",
+    #     help="don't provide info comments in output translation",
+    #     default=False,
+    #     action="store_true"
+    # )
+    parser.add_argument(
+        "--galaxy-build-images",
+        action="store_true",
+        help="Requires docker. \nFor Galaxy Tool Wrappers with multiple software requirements, build a local container image containing all requirements.\nAdds ~2-10 mins per affected Galaxy Wrapper. "
     )
     parser.add_argument(
-        "-o",
-        "--output-dir",
-        help="output directory to write output to (default=stdout)",
+        "--galaxy-no-image-cache",
+        help="Turns off galaxy container image cache. Cache stores previously identified containers suitable for different tool wrappers so that quay.io API calls are unnecessary for previously parsed tools.",
+        action="store_true",
     )
     parser.add_argument(
-        "--no-cache",
-        help="Force re-download of workflow if remote",
+        "--galaxy-no-wrapper-cache",
+        help="Turns off galaxy tool downloads cache. Cache stores local copies of tool.xml files so they don't have to be re-downloaded if they have been downloaded before.",
         action="store_true",
     )
 
+    # accessory files & directories
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        help="Output directory to write output to (default: translated).",
+        type=str,
+        default="translated"
+    )
+    parser.add_argument(
+        "-c", 
+        "--config", 
+        help="Path to config file"
+    )
+    parser.add_argument(
+        "--name",
+        help="Specifies the name of the workflow/tool to translate, in case where infile has multiple such objects.",
+    )
     parser.add_argument(
         "--resources",
         action="store_true",
         help="Add resource overrides into inputs file (eg: runtime_cpu / runtime_memory)",
     )
-
     parser.add_argument(
-        "--toolbox", help="Only look for tools in the toolbox", action="store_true"
+        "--toolbox", 
+        help="Only look for tools in the toolbox", 
+        action="store_true"
     )
 
+    # workflow inputs
     inputargs = parser.add_argument_group("Inputs")
-
     inputargs.add_argument(
         "-i",
         "--inputs",
@@ -334,6 +387,7 @@ def add_translate_args(parser):
         action="append",
     )
 
+    # hints
     hint_args = parser.add_argument_group("hints")
     for HintType in HINTS:
         if issubclass(HintType, HintEnum):
@@ -341,21 +395,20 @@ def add_translate_args(parser):
                 "--hint-" + HintType.key(), choices=HintType.symbols()
             )
 
+    # containers
     container_args = parser.add_argument_group("container related args")
 
     container_args.add_argument(
-        "--allow-empty-container",
+        "--disallow-empty-container",
         action="store_true",
-        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error. "
-        "Including this flag will disable this check, and empty containers can be used.",
+        help="Some tools you use may not include a container, this would usually (and intentionally) cause an error."
+        "Including this flag will check that all tools have a container."
     )
-
     container_args.add_argument(
         "--container-override",
         help="Override a tool's container by specifying a new container. This argument should be specified in the "
         "following (comma separated) format: t1=v1,t2=v2. Eg toolid=container/override:version,toolid2=<container>.",
     )
-
     container_args.add_argument(
         "--skip-digest-lookup",
         action="store_true",
@@ -1235,38 +1288,85 @@ def parse_container_override_format(container_override):
     return co
 
 
-def do_translate(args):
-    jc = JanisConfiguration.initial_configuration(args.config)
-
+def do_translate(args: argparse.Namespace):
+    # setup 
+    # (ensure all parameters are ready for ingest & translate)
+    # JanisConfiguration holds settings related to janis-assistant, not janis-core translate
+    # settings in janis should be a singleton module so they are globally available.
+    # this would be time consuming, so will avoid for now. will just pass things as arguments. 
+    # - GH
+    jc = JanisConfiguration.initial_configuration(args.config) 
     container_override = parse_container_override_format(args.container_override)
-
+    source_fmt = _get_source_fmt(args)
+    dest_fmt = _get_dest_fmt(args)
+    inputs = args.inputs if args.inputs else None
     hints = {
-        k[5:]: v
-        for k, v in vars(args).items()
+        k[5:]: v for k, v in vars(args).items()
         if k.startswith("hint_") and v is not None
     }
+    hints = hints if hints else None
 
-    inputs = args.inputs or []
-    # the args.extra_inputs parameter are inputs that we MUST match
-    # we'll need to parse them manually and then pass them to fromjanis as requiring a match
-    # required_inputs = parse_additional_arguments(args.extra_inputs)
+    # ingest
+    internal_model = ingest(
+        infile=args.infile,
+        format=source_fmt,
+        galaxy_build_images=args.galaxy_build_images,
+        galaxy_no_image_cache=args.galaxy_no_image_cache,
+        galaxy_no_wrapper_cache=args.galaxy_no_wrapper_cache
+    )
 
+    # translate
     translate(
         config=jc,
-        tool=args.workflow,
-        translation=args.translation,
+        tool=internal_model,
+        dest_fmt=dest_fmt,
+        mode=args.mode,
         name=args.name,
         output_dir=args.output_dir,
-        force=args.no_cache,
-        allow_empty_container=args.allow_empty_container,
+        inputs=inputs,
+        hints=hints,
+        allow_empty_container=not args.disallow_empty_container,
         container_override=container_override,
         skip_digest_lookup=args.skip_digest_lookup,
         skip_digest_cache=args.skip_digest_cache,
-        inputs=inputs,
         recipes=args.recipe,
-        hints=hints,
+        render_comments=False
     )
 
+def _get_source_fmt(args: argparse.Namespace) -> str:
+    # user supplied fmt
+    fmt: Optional[str] = None
+    for key, val in args._get_kwargs():  # workaround for '--from' name: usually a python error.
+        if key == 'from' and val is not None:
+            fmt = val
+            break
+    # auto-detect fmt
+    ext_map = {
+        '.cwl': 'cwl',      # any cwl file
+        '.py': 'janis',     # any janis file
+        '.xml': 'galaxy',   # galaxy tool
+        '.ga': 'galaxy'     # galaxy workflow
+    }
+    if not fmt:
+        name, ext = os.path.splitext(args.infile)
+        if ext in ext_map:
+            fmt = ext_map[ext]
+    # guard 
+    if not fmt:
+        raise ValueError(f"unknown source language for {args.infile}. please specify with '--from'")
+    return fmt
+
+def _get_dest_fmt(args: argparse.Namespace) -> str:
+    # user supplied fmt (mandatory)
+    fmt: Optional[str] = None
+    for key, val in args._get_kwargs():  # workaround for '--from' name: usually a python error.
+        if key in ['to', 'dest_language'] and val is not None:
+            fmt = val
+            break
+    # guard 
+    if not fmt:
+        raise ValueError(f"unsupplied dest language for {args.infile}. please specify with '--to'")
+    return fmt
 
 def do_cleanup(args):
     cleanup()

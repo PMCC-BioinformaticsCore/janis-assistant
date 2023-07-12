@@ -9,11 +9,10 @@
 import os
 import sys
 import time
-import subprocess
 from datetime import datetime
 from inspect import isclass
+from typing import Optional, Type, Tuple, Any
 from textwrap import dedent
-from typing import Optional, Dict, Union, Type, List, Tuple
 
 import janis_core as j
 from janis_assistant.data.enums import TaskStatus
@@ -35,6 +34,8 @@ from janis_assistant.validation import ValidationRequirements
 
 from janis_assistant.utils.batchrun import BatchRunRequirements
 from janis_core import InputQualityType, Tool, DynamicWorkflow, LogLevel, JanisShed
+from janis_core import ingestion
+from janis_core import translations
 
 import janis_assistant.templates as janistemplates
 from janis_assistant.data.models.preparedjob import PreparedJob
@@ -42,8 +43,8 @@ from janis_assistant.engines import Engine, get_engine_type, Cromwell, EngineTyp
 from janis_assistant.management.configmanager import ConfigManager
 from janis_assistant.management.configuration import (
     JanisConfiguration,
-    EnvVariables,
     stringify_dict_keys_or_return_value,
+    EnvVariables,
     JanisConfigurationEnvironment,
     DatabaseTypeToUse,
     JanisConfigurationCromwell,
@@ -66,10 +67,10 @@ from janis_assistant.utils.inputshelper import cascade_inputs
 
 
 def run_with_outputs(
-    tool: Union[j.CommandTool, j.Workflow],
-    inputs: Dict[str, any],
+    tool: j.CommandTool | j.Workflow,
+    inputs: dict[str, Any],
     output_dir: str,
-    config: JanisConfiguration = None,
+    config: Optional[JanisConfiguration] = None,
     engine: Optional[str] = None,
     workflow_reference: Optional[str] = None,
 ):
@@ -144,7 +145,7 @@ def run_with_outputs(
 
 
 def resolve_tool(
-    tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
+    tool: str | j.CommandTool | Type[j.CommandTool] | j.Workflow | Type[j.Workflow],
     name=None,
     from_toolshed=False,
     force=False,
@@ -208,22 +209,53 @@ def resolve_tool(
         raise Exception("Couldn't find tool with name: " + str(tool))
 
 
+def ingest(
+    infile: str,
+    format: str,
+    galaxy_build_images: bool=False,
+    galaxy_no_image_cache: bool=False,
+    galaxy_no_wrapper_cache: bool=False
+    ) -> str | j.CommandTool | j.Workflow:
+    """
+    orchestrator of ingest process.
+    used translate() below as a guide.
+    currently just ingests the supplied file. 
+    mainly a placeholder for more extensive logic in the future.
+    future extensions (related to ingesting a whole folder)
+        - gathering & loading files
+        - ingesting input dict
+        - ingesting script files 
+        - ingesting tools (held in external file - like in a 'tools' or 'processes' subfolder)
+    """
+    # if janis, just return the path.
+    # all file loading etc handled in translate() (resolve_tool())
+    if format == 'janis':
+        return infile
+    else:
+        return ingestion.ingest(
+            infile,
+            format,
+            galaxy_build_images,
+            galaxy_no_image_cache,
+            galaxy_no_wrapper_cache,
+        ) 
+
 def translate(
     config: JanisConfiguration,
-    tool: Union[str, j.CommandTool, Type[j.CommandTool], j.Workflow, Type[j.Workflow]],
-    translation: str,
-    name: str = None,
-    hints: Optional[Dict[str, str]] = None,
-    output_dir: Optional[str] = None,
-    inputs: Union[str, dict] = None,
-    allow_empty_container=False,
-    container_override=None,
-    skip_digest_lookup=False,
-    skip_digest_cache=False,
-    recipes: List[str] = None,
-    **kwargs,
+    tool: str | j.CommandTool | j.Workflow,
+    dest_fmt: str,
+    mode: Optional[str]=None,
+    name: Optional[str]=None,
+    output_dir: str='translated',
+    inputs: Optional[str | dict[str, Any]]=None,
+    hints: Optional[dict[str, str]]=None,
+    allow_empty_container: Optional[bool]=True,
+    container_override: Optional[bool]=None,
+    skip_digest_lookup: Optional[bool]=False,
+    skip_digest_cache: Optional[bool]=False,
+    recipes: Optional[list[str]]=None,
+    render_comments: bool=True,
 ):
-
     toolref, _ = resolve_tool(tool, name, from_toolshed=True)
 
     if not toolref:
@@ -252,37 +284,44 @@ def translate(
             skip_digest_cache=skip_digest_cache,
         )
 
-    if isinstance(toolref, j.WorkflowBase):
-        wfstr, _, _ = toolref.translate(
-            translation,
-            to_console=False,
-            to_disk=bool(output_dir),
-            export_path=output_dir or "./{language}",
-            hints=hints,
-            additional_inputs=inputsdict,
-            allow_empty_container=allow_empty_container,
-            container_override=container_overrides,
-        )
-    elif isinstance(toolref, (j.CommandTool, j.CodeTool)):
-        wfstr = toolref.translate(
-            translation=translation,
-            to_console=False,
-            to_disk=bool(output_dir),
-            export_path=output_dir or "./{language}",
-            allow_empty_container=allow_empty_container,
-            container_override=container_overrides,
-        )
-
-    else:
-        name = toolref.__name__ if isclass(toolref) else toolref.__class__.__name__
-        raise Exception("Unsupported tool type: " + name)
-
-    print(wfstr, file=sys.stdout)
-    return wfstr
+    translations.translate(
+        entity=toolref,
+        dest_fmt=dest_fmt,
+        mode=mode,
+        
+        # file io
+        to_disk=True,
+        export_path=output_dir,
+        should_zip=None,                    # TODO create cli args?
+        to_console=None,                    # TODO create cli args?
+        tool_to_console=None,               # TODO create cli args?
+        write_inputs_file=None,             # TODO create cli args?
+        source_files=None,                  # TODO create cli args?
+        
+        # inputs
+        additional_inputs=inputsdict if inputsdict else None,
+        hints=hints,
+        
+        # containers
+        with_container=None,                # TODO create cli arg?
+        allow_empty_container=allow_empty_container,
+        container_override=container_overrides if container_overrides else None,
+        
+        # resouces
+        with_resource_overrides=None,       # TODO create cli arg?
+        merge_resources=None,               # TODO create cli arg?
+        max_cores=None,                     # TODO create cli arg?
+        max_mem=None,                       # TODO create cli arg?
+        max_duration=None,                  # TODO create cli arg?
+        
+        # misc
+        render_comments=render_comments,
+        should_validate=None,               # TODO create cli arg?
+    )
 
 
 def spider_tool(
-    tool: Union[str, j.CommandTool, j.Workflow],
+    tool: str | j.CommandTool | j.Workflow,
     name=None,
     force=False,
     only_toolbox=False,
@@ -312,15 +351,15 @@ def spider_tool(
 
 def generate_inputs(
     jc: JanisConfiguration,
-    tool: Union[str, j.CommandTool, j.Workflow],
+    tool: str | j.CommandTool | j.Workflow,
     all=False,
     name=None,
     force=False,
     additional_inputs=None,
     with_resources=False,
-    quality_type: List[InputQualityType] = None,
-    recipes: List[str] = None,
-    hints: dict = None,
+    quality_type: Optional[list[InputQualityType]] = None,
+    recipes: Optional[list[str]] = None,
+    hints: Optional[dict[str, Any]] = None,
 ):
     toolref, _ = resolve_tool(tool, name, from_toolshed=True, force=force)
     inputsdict = None
@@ -358,7 +397,7 @@ import argparse
 
 class InitArgParser(argparse.ArgumentParser):
     def __init__(
-        self, templatename, schema: List[TemplateInput], description: str = None
+        self, templatename, schema: list[TemplateInput], description: Optional[str] = None
     ):
         super().__init__(f"janis init {templatename}", description=description)
         # self.add_usage(
@@ -504,9 +543,9 @@ def init_template(
 
 
 def run_from_jobfile(
-    workflow: Union[str, j.Tool, Type[j.Tool]],
+    workflow: str | j.Tool | Type[j.Tool],
     jobfile: PreparedJob,
-    engine: Union[str, Engine, None] = None,
+    engine: Optional[str | Engine] = None,
     wait: bool = False,
     # specific engine args
     cromwell_jar: Optional[str] = None,
@@ -583,17 +622,17 @@ def run_from_jobfile(
 
 
 def prepare_job(
-    tool: Union[str, j.Tool, Type[j.Tool]],
+    tool: str | j.Tool | Type[j.Tool],
     # workflow search options
     workflow_reference: Optional[str],  # if this is None, no jobfile will be written
     jc: JanisConfiguration,
     engine: Optional[str],
     batchrun_reqs: Optional[BatchRunRequirements],
     validation_reqs: Optional[ValidationRequirements],
-    hints: Optional[Dict[str, str]],
+    hints: Optional[dict[str, str]],
     output_dir: Optional[str],
     execution_dir: Optional[str],
-    inputs: Union[str, dict],
+    inputs: str | dict,
     required_inputs: dict,
     watch,
     max_cores,
@@ -611,9 +650,9 @@ def prepare_job(
     skip_digest_lookup,
     skip_digest_cache,
     run_prepare_processing,
-    db_type: DatabaseTypeToUse = None,
-    source_hints: List[str] = None,
-    post_run_script: str = None,
+    db_type: Optional[DatabaseTypeToUse] = None,
+    source_hints: Optional[list[str]] = None,
+    post_run_script: Optional[str] = None,
     localise_all_files: bool = False,
 ):
 
@@ -793,7 +832,7 @@ def get_filescheme_from_fs(fs, **kwargs):
     raise Exception(f"Couldn't initialise filescheme with unrecognised type: '{fs}'")
 
 
-def abort_wids(sids: List[str], wait=True):
+def abort_wids(sids: list[str], wait=True):
     cm = ConfigManager(db_path=None)
     for sid in sids:
         try:

@@ -20,22 +20,17 @@ authors = [
     { name = "Grace Hall", email = "grace.hall1@unimelb.edu.au" },
     { name = "Richard Lupat", email = "Richard.Lupat@petermac.org" },
     { name = "Evan Thomas", email = "thomas.e@wehi.edu.au" },
-    { name = "Mohammad Bhuyan", email = "bhuyan.m@wehi.edu.au" },
 ]
 maintainers = [
     { name = "Grace Hall", email = "grace.hall1@unimelb.edu.au" },
     { name = "Richard Lupat", email = "Richard.Lupat@petermac.org" },
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License version 3",
-    "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
-    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
     "janis-pipelines.core",

@@ -55,7 +55,7 @@ dependencies = [
     "blessed",
     "regex",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10.5"
 
 [project.optional-dependencies]
 gcs = ["google-cloud-storage"]

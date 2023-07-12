@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
-    "janis-pipelines.core @ git+https://github.com/PMCC-BioinformaticsCore/janis-core@release-v0.13.0",
+    "janis-pipelines.core",
     "janis-pipelines.bioinformatics",
     "janis-pipelines.unix",
     "janis-pipelines.templates >= 0.11.0",

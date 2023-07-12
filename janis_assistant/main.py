@@ -236,8 +236,8 @@ def ingest(
             infile,
             format,
             galaxy_build_images,
-            galaxy_no_image_cache,
-            galaxy_no_wrapper_cache,
+#            galaxy_no_image_cache,
+#            galaxy_no_wrapper_cache,
         ) 
 
 def translate(
